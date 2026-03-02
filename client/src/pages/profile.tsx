@@ -178,12 +178,18 @@ export default function ProfilePage() {
       </Card>
 
       <div className="pt-4">
-        <a href="/api/logout" data-testid="link-logout">
-          <Button variant="outline" className="w-full">
-            <LogOut className="w-4 h-4" />
-            Log Out
-          </Button>
-        </a>
+        <Button
+          variant="outline"
+          className="w-full"
+          data-testid="button-logout"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+            window.location.href = "/";
+          }}
+        >
+          <LogOut className="w-4 h-4" />
+          Log Out
+        </Button>
       </div>
     </div>
   );

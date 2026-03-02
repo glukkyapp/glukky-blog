@@ -5,19 +5,27 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 
 ## Tech Stack
 - **Frontend**: React + TypeScript, Wouter (routing), TanStack React Query, Tailwind CSS, Shadcn UI, Framer Motion
-- **Backend**: Express.js, PostgreSQL (Drizzle ORM), Replit Auth (OpenID Connect)
+- **Backend**: Express.js, PostgreSQL (Drizzle ORM), Email/Password Auth (bcrypt + express-session)
 - **Notifications**: Email notifications (planned, not yet integrated)
 
 ## Architecture
 - `shared/schema.ts` - Drizzle database schema + types + constants (struggle priorities, tip ladders, mitigation trio)
-- `shared/models/auth.ts` - Auth-related user/session tables (Replit Auth)
+- `shared/models/auth.ts` - Auth-related user/session tables (email + hashed password)
 - `server/engine.ts` - Core algorithm engine (weekly planning, negotiation, diet progression, dinner graduation, fatigue detection)
 - `server/routes.ts` - API endpoints (all require authentication)
 - `server/storage.ts` - DatabaseStorage class with Drizzle ORM CRUD operations
 - `server/db.ts` - Database connection pool
-- `server/replit_integrations/auth/` - Replit Auth integration (OpenID Connect, sessions)
+- `server/replit_integrations/auth/` - Email/password auth (bcrypt, express-session, connect-pg-simple)
 
-## Key Algorithm
+## Auth System
+- Email + password registration and login
+- Passwords hashed with bcrypt (10 rounds)
+- Sessions stored in PostgreSQL via connect-pg-simple
+- Landing page has tabbed login/register form
+- Auth endpoints: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/user
+- isAuthenticated middleware sets req.user.claims.sub for backward compat with routes
+
+## Key Algorithm (DO NOT MODIFY without explicit request)
 1. **Walk Negotiation**: Frequency-first (+1 day if <5/7), then duration (+5 min, cap 20), then Standing Reset (2 min)
 2. **Late Dinner Priority**: If user has dinner after 9pm, focus on dinner timing before diet struggles. Labels: Move Early / Fiber Starter / Dusk Prep / Split Dinner. Graduation at >95% over 3 weeks.
 3. **Diet Struggle Queue**: Sugary Food/Drink → Oily/Fried Food → Eat Out → Portions → Snacks. Clean Week Rule for tip advancement.
@@ -25,14 +33,16 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 5. **Fatigue Detection**: Same day "Tired" 3/3 weeks → propose Rest Day
 
 ## Pages
-- `/` - Homepage (daily check-in + weekly calendar)
+- `/` - Landing (login/register tabs when not authenticated)
+- `/` - Homepage (daily check-in + weekly calendar, when authenticated)
 - `/plan` - Weekly planner (reflection + planning combined)
 - `/roadmap` - Mastery roadmap with progress bars
 - `/profile` - User profile, current focus, upcoming struggles
 - `/monthly` - Monthly deep dive with 3 flash cards
 
 ## Database Tables
-- `users`, `sessions` - Auth (Replit Auth)
+- `users` - Auth (id, email, hashed password)
+- `sessions` - Express sessions (connect-pg-simple)
 - `user_profiles` - Baseline data, current struggle, dinner state
 - `weekly_plans` - Walk/diet goals per week
 - `weekly_plan_days` - Per-day walk schedule + dinner labels
