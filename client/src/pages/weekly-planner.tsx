@@ -24,8 +24,17 @@ export default function WeeklyPlanner() {
   const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"] });
 
   const isFirstWeek = !reflection;
-  const totalSteps = getTotalSteps();
-  const [step, setStep] = useState(isFirstWeek ? 1 : 0);
+  const isDinnerFocus = profile?.hasLateDinner && !profile?.dinnerMastered;
+
+  const steps: string[] = [];
+  if (!isFirstWeek) steps.push("reflection");
+  steps.push("walkDays");
+  if (isDinnerFocus) { steps.push("dinnerDays"); steps.push("dinnerPlan"); }
+  else if (profile?.currentStruggle) steps.push("dietReview");
+  steps.push("preview");
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const currentStepId = steps[stepIndex] || steps[0];
 
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
   const [walkDays, setWalkDays] = useState<number[]>(getDefaultWalkDays());
@@ -69,14 +78,6 @@ export default function WeeklyPlanner() {
     return Array.from({ length: pw }, (_, i) => i);
   }
 
-  function getTotalSteps(): number {
-    const isDinnerFocus = profile?.hasLateDinner && !profile?.dinnerMastered;
-    let steps = isFirstWeek ? 2 : 3;
-    if (isDinnerFocus) steps += 2;
-    else if (profile?.currentStruggle) steps += 1;
-    return steps;
-  }
-
   function handleNegotiation(choice: string) {
     setNegotiationChoice(choice);
     let days = [...walkDays];
@@ -86,7 +87,7 @@ export default function WeeklyPlanner() {
       }
     }
     setWalkDays(days);
-    setStep(step + 1);
+    setStepIndex(stepIndex + 1);
   }
 
   function toggleWalkDay(day: number) {
@@ -124,10 +125,8 @@ export default function WeeklyPlanner() {
     );
   }
 
-  const isDinnerFocus = profile?.hasLateDinner && !profile?.dinnerMastered;
-
   function renderStep() {
-    if (!isFirstWeek && step === 0) {
+    if (currentStepId === "reflection") {
       return (
         <Card>
           <CardHeader>
@@ -183,15 +182,7 @@ export default function WeeklyPlanner() {
       );
     }
 
-    const walkDayStep = isFirstWeek ? 0 : 1;
-    const dinnerStep1 = walkDayStep + 1;
-    const dinnerStep2 = dinnerStep1 + 1;
-    const dietStep = isDinnerFocus ? dinnerStep2 + 1 : walkDayStep + 1;
-    const previewStep = isDinnerFocus ? dinnerStep2 + 1 : (profile?.currentStruggle ? dietStep + 1 : walkDayStep + 2);
-
-    const adjustedStep = isFirstWeek ? step - 1 : step;
-
-    if (adjustedStep === walkDayStep) {
+    if (currentStepId === "walkDays") {
       return (
         <Card>
           <CardHeader>
@@ -224,7 +215,7 @@ export default function WeeklyPlanner() {
       );
     }
 
-    if (isDinnerFocus && adjustedStep === dinnerStep1) {
+    if (currentStepId === "dinnerDays") {
       return (
         <Card>
           <CardHeader>
@@ -256,7 +247,7 @@ export default function WeeklyPlanner() {
       );
     }
 
-    if (isDinnerFocus && adjustedStep === dinnerStep2) {
+    if (currentStepId === "dinnerPlan") {
       return (
         <Card>
           <CardHeader>
@@ -313,7 +304,7 @@ export default function WeeklyPlanner() {
       );
     }
 
-    if (!isDinnerFocus && profile?.currentStruggle && adjustedStep === dietStep) {
+    if (currentStepId === "dietReview" && profile?.currentStruggle) {
       const tipLadder = profile.currentStruggle
         ? (DIET_TIP_LADDERS as Record<string, string[]>)[profile.currentStruggle] || []
         : [];
@@ -404,8 +395,7 @@ export default function WeeklyPlanner() {
     );
   }
 
-  const currentStep = step;
-  const maxSteps = isFirstWeek ? totalSteps : totalSteps + 1;
+  const isLastStep = currentStepId === "preview";
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-8 space-y-4">
@@ -415,35 +405,37 @@ export default function WeeklyPlanner() {
             {isFirstWeek ? "Plan Your First Week" : `Plan Week ${profile?.currentWeek || ""}`}
           </h1>
           <span className="text-sm text-muted-foreground">
-            Step {currentStep + 1}/{maxSteps}
+            Step {stepIndex + 1}/{steps.length}
           </span>
         </div>
-        <Progress value={((currentStep + 1) / maxSteps) * 100} className="h-2" />
+        <Progress value={((stepIndex + 1) / steps.length) * 100} className="h-2" />
       </div>
 
       {renderStep()}
 
-      <div className="flex justify-between pt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setStep(Math.max(isFirstWeek ? 1 : 0, step - 1))}
-          disabled={step === (isFirstWeek ? 1 : 0)}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" /> Back
-        </Button>
-
-        {step < maxSteps - 1 && (
+      {currentStepId !== "reflection" && (
+        <div className="flex justify-between pt-2">
           <Button
+            variant="outline"
             size="sm"
-            onClick={() => setStep(step + 1)}
-            data-testid="button-next"
+            onClick={() => setStepIndex(Math.max(0, stepIndex - 1))}
+            disabled={stepIndex === 0}
+            data-testid="button-back"
           >
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-        )}
-      </div>
+
+          {!isLastStep && (
+            <Button
+              size="sm"
+              onClick={() => setStepIndex(stepIndex + 1)}
+              data-testid="button-next"
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
