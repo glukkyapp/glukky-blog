@@ -1,19 +1,85 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AnimatedPageWrapper } from "@/components/page-transition";
+import { useAuth } from "@/hooks/use-auth";
+import FloatingNavBar from "@/components/floating-nav-bar";
+import Landing from "@/pages/landing";
+import Onboarding from "@/pages/onboarding";
+import WeeklyPlanner from "@/pages/weekly-planner";
+import Home from "@/pages/home";
+import Roadmap from "@/pages/roadmap";
+import Profile from "@/pages/profile";
+import MonthlyReport from "@/pages/monthly-report";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AuthenticatedApp() {
+  const [location] = useLocation();
+  const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
+  const { data: currentPlan, isLoading: planLoading } = useQuery({
+    queryKey: ["/api/plan/current"],
+    enabled: !!profile,
+  });
+
+  if (profileLoading || (profile && planLoading)) {
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full">
+          <div className="h-8 bg-muted rounded w-48 mx-auto" />
+          <div className="h-40 bg-muted rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return <Onboarding />;
+  }
+
+  if (!currentPlan) {
+    return <WeeklyPlanner />;
+  }
+
+  const hideNav = location === "/plan";
+
   return (
-    <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
-      <Route component={NotFound} />
-    </Switch>
+    <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
+      <AnimatedPageWrapper>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/roadmap" component={Roadmap} />
+          <Route path="/plan" component={WeeklyPlanner} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/monthly" component={MonthlyReport} />
+          <Route component={NotFound} />
+        </Switch>
+      </AnimatedPageWrapper>
+      {!hideNav && <FloatingNavBar />}
+    </div>
   );
+}
+
+function Router() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full">
+          <div className="h-8 bg-muted rounded w-48 mx-auto" />
+          <div className="h-20 bg-muted rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Landing />;
+  }
+
+  return <AuthenticatedApp />;
 }
 
 function App() {

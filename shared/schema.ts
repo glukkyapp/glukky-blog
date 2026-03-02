@@ -1,18 +1,129 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export { users, sessions } from "./models/auth";
+export type { User, UpsertUser } from "./models/auth";
+
+export const dinnerTimeEnum = pgEnum("dinner_time", ["before_9pm", "after_9pm"]);
+export const sleepPatternEnum = pgEnum("sleep_pattern", ["regular_10_6", "other_regular", "night_shifts", "irregular"]);
+export const dinnerLabelEnum = pgEnum("dinner_label", ["none", "move_early", "fiber_starter", "dusk_prep", "split_dinner"]);
+export const dietResponseEnum = pgEnum("diet_response", ["yes", "no", "no_chance"]);
+
+export const userProfiles = pgTable("user_profiles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().unique(),
+  walksPerWeek: integer("walks_per_week").notNull().default(0),
+  walkDuration: integer("walk_duration").notNull().default(10),
+  dinnerTime: dinnerTimeEnum("dinner_time").notNull().default("before_9pm"),
+  sleepPattern: sleepPatternEnum("sleep_pattern").notNull().default("regular_10_6"),
+  eatingOutFrequency: text("eating_out_frequency").notNull().default("0"),
+  struggles: text("struggles").array().notNull().default(sql`'{}'::text[]`),
+  currentStruggle: text("current_struggle"),
+  currentTipIndex: integer("current_tip_index").notNull().default(0),
+  hasLateDinner: boolean("has_late_dinner").notNull().default(false),
+  dinnerMastered: boolean("dinner_mastered").notNull().default(false),
+  dinnerSuccessWeeks: integer("dinner_success_weeks").notNull().default(0),
+  onboardingComplete: boolean("onboarding_complete").notNull().default(false),
+  notificationEmail: text("notification_email"),
+  restDay: integer("rest_day"),
+  currentWeek: integer("current_week").notNull().default(1),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const weeklyPlans = pgTable("weekly_plans", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  startDate: date("start_date").notNull(),
+  walkFrequencyGoal: integer("walk_frequency_goal").notNull(),
+  walkDurationGoal: integer("walk_duration_goal").notNull(),
+  dietStruggle: text("diet_struggle"),
+  dietTip: text("diet_tip"),
+  isDinnerFocus: boolean("is_dinner_focus").notNull().default(false),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export const weeklyPlanDays = pgTable("weekly_plan_days", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  weeklyPlanId: integer("weekly_plan_id").notNull(),
+  dayOfWeek: integer("day_of_week").notNull(),
+  walkScheduled: boolean("walk_scheduled").notNull().default(false),
+  dinnerLabel: dinnerLabelEnum("dinner_label").notNull().default("none"),
+  walkDuration: integer("walk_duration").notNull().default(10),
+});
+
+export const dailyLogs = pgTable("daily_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  walkCompleted: boolean("walk_completed"),
+  walkTired: boolean("walk_tired").notNull().default(false),
+  dietResponse: dietResponseEnum("diet_response"),
+  dinnerSuccess: boolean("dinner_success"),
+});
+
+export const weeklyReports = pgTable("weekly_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  walkSuccessPct: real("walk_success_pct"),
+  dietSuccessPct: real("diet_success_pct"),
+  dinnerSuccessPct: real("dinner_success_pct"),
+  weightedAvg: real("weighted_avg"),
+  negotiationResponse: jsonb("negotiation_response"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
+
+export const monthlyReports = pgTable("monthly_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  month: integer("month").notNull(),
+  totalMinutes: integer("total_minutes"),
+  dietStruggleStatus: jsonb("diet_struggle_status"),
+  dietTipPerformance: jsonb("diet_tip_performance"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
+
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
+export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true });
+export const insertWeeklyPlanDaySchema = createInsertSchema(weeklyPlanDays).omit({ id: true });
+export const insertDailyLogSchema = createInsertSchema(dailyLogs).omit({ id: true });
+export const insertWeeklyReportSchema = createInsertSchema(weeklyReports).omit({ id: true });
+export const insertMonthlyReportSchema = createInsertSchema(monthlyReports).omit({ id: true });
+
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertWeeklyPlan = z.infer<typeof insertWeeklyPlanSchema>;
+export type WeeklyPlan = typeof weeklyPlans.$inferSelect;
+export type InsertWeeklyPlanDay = z.infer<typeof insertWeeklyPlanDaySchema>;
+export type WeeklyPlanDay = typeof weeklyPlanDays.$inferSelect;
+export type InsertDailyLog = z.infer<typeof insertDailyLogSchema>;
+export type DailyLog = typeof dailyLogs.$inferSelect;
+export type InsertWeeklyReport = z.infer<typeof insertWeeklyReportSchema>;
+export type WeeklyReport = typeof weeklyReports.$inferSelect;
+export type InsertMonthlyReport = z.infer<typeof insertMonthlyReportSchema>;
+export type MonthlyReport = typeof monthlyReports.$inferSelect;
+
+export const STRUGGLE_PRIORITY = [
+  "sugary_food_drink",
+  "oily_fried_food",
+  "eat_out",
+  "portions",
+  "snacks",
+] as const;
+
+export const DIET_TIP_LADDERS: Record<string, string[]> = {
+  sugary_food_drink: ["Dilute juice 1:1 with water", "Swap dessert for yogurt + berries", "Limit fruit to 1x per week"],
+  oily_fried_food: ["Try Steam Burst Hack (steam then quick sear)", "Choose grilled over fried"],
+  eat_out: ["Decouple (eat at home first, socialize out)", "Share main dishes", "Swap sides for vegetables"],
+  portions: ["Use the plate method (½ veggies, ¼ protein, ¼ carbs)"],
+  snacks: ["Kitchen Closure after dinner", "Switch to edamame or nuts"],
+};
+
+export const MITIGATION_TRIO = ["fiber_starter", "dusk_prep", "split_dinner"] as const;
+
+export const MITIGATION_TRIO_LABELS: Record<string, string> = {
+  fiber_starter: "Fiber Starter — eat veggies first",
+  dusk_prep: "Dusk Prep — light snack at 5 PM",
+  split_dinner: "Split Dinner — split into two smaller meals",
+};
