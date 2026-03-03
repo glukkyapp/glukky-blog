@@ -4,6 +4,13 @@ import {
   type UserProfile, type WeeklyPlan, type WeeklyPlanDay, type DailyLog,
 } from "@shared/schema";
 
+export interface LastWeekDaySchedule {
+  dayOfWeek: number;
+  walkScheduled: boolean;
+  eatOutScheduled: boolean;
+  dinnerLabel: string;
+}
+
 export interface WeeklyReflection {
   weekNumber: number;
   walkDaysScheduled: number;
@@ -13,7 +20,12 @@ export interface WeeklyReflection {
   dinnerDaysTracked: number;
   dinnerDaysSuccessful: number;
   dinnerSuccessPct: number | null;
+  dinnerEarlyCount: number;
+  dinnerEarlyTotal: number;
+  dinnerTacticCount: number;
+  dinnerTacticTotal: number;
   dietTip: string | null;
+  dietStruggle: string | null;
   dietNoCount: number;
   dietYesCount: number;
   dietNoChanceCount: number;
@@ -21,6 +33,7 @@ export interface WeeklyReflection {
   isDinnerFocus: boolean;
   fatigueDetected: { dayOfWeek: number; count: number } | null;
   suggestedActions: SuggestedAction[];
+  lastWeekSchedule: LastWeekDaySchedule[];
 }
 
 export interface SuggestedAction {
@@ -70,6 +83,25 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
   }
   const dinnerSuccessPct = dinnerDaysTracked > 0 ? Math.round((dinnerDaysSuccessful / dinnerDaysTracked) * 100) : null;
 
+  const earlyDays = planDays.filter(d => d.dinnerLabel === "move_early");
+  const tacticDays = planDays.filter(d => d.dinnerLabel !== "none" && d.dinnerLabel !== "move_early");
+  let dinnerEarlyCount = 0;
+  let dinnerTacticCount = 0;
+  for (const day of earlyDays) {
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    if (log?.dinnerSuccess === true) dinnerEarlyCount++;
+  }
+  for (const day of tacticDays) {
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    if (log?.dinnerSuccess === true) dinnerTacticCount++;
+  }
+
   let dietNoCount = 0;
   let dietYesCount = 0;
   let dietNoChanceCount = 0;
@@ -84,6 +116,13 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
 
   const suggestedActions = buildSuggestedActions(profile, walkDaysScheduled, plan.walkDurationGoal, fatigueDetected);
 
+  const lastWeekSchedule: LastWeekDaySchedule[] = planDays.map(d => ({
+    dayOfWeek: d.dayOfWeek,
+    walkScheduled: d.walkScheduled,
+    eatOutScheduled: d.eatOutScheduled,
+    dinnerLabel: d.dinnerLabel,
+  }));
+
   return {
     weekNumber: lastWeek,
     walkDaysScheduled,
@@ -93,7 +132,12 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     dinnerDaysTracked,
     dinnerDaysSuccessful,
     dinnerSuccessPct,
+    dinnerEarlyCount,
+    dinnerEarlyTotal: earlyDays.length,
+    dinnerTacticCount,
+    dinnerTacticTotal: tacticDays.length,
     dietTip: plan.dietTip,
+    dietStruggle: plan.dietStruggle,
     dietNoCount,
     dietYesCount,
     dietNoChanceCount,
@@ -101,6 +145,7 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     isDinnerFocus: plan.isDinnerFocus,
     fatigueDetected,
     suggestedActions,
+    lastWeekSchedule,
   };
 }
 
@@ -191,6 +236,7 @@ export interface CreatePlanInput {
   userId: string;
   negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "standing_reset" | "set_rest_day";
   walkDays: number[];
+  eatOutDays: number[];
   dinnerPlan?: { dayOfWeek: number; label: "move_early" | "fiber_starter" | "dusk_prep" | "split_dinner" }[];
 }
 
@@ -241,23 +287,21 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   const dayEntries: any[] = [];
   for (let d = 0; d < 7; d++) {
     const walkScheduled = input.walkDays.includes(d);
+    const eatOutScheduled = input.eatOutDays.includes(d);
     let dinnerLabel: "none" | "move_early" | "fiber_starter" | "dusk_prep" | "split_dinner" = "none";
 
-    if (isDinnerFocus && input.dinnerPlan) {
+    if (input.dinnerPlan) {
       const dinnerDay = input.dinnerPlan.find(dp => dp.dayOfWeek === d);
       if (dinnerDay) {
         dinnerLabel = dinnerDay.label;
       }
     }
 
-    const dur = input.negotiationChoice === "standing_reset" && !walkScheduled
-      ? 2
-      : walkDuration;
-
     dayEntries.push({
       weeklyPlanId: plan.id,
       dayOfWeek: d,
       walkScheduled: walkScheduled || (input.negotiationChoice === "standing_reset" && !walkScheduled),
+      eatOutScheduled,
       dinnerLabel,
       walkDuration: walkScheduled ? walkDuration : (input.negotiationChoice === "standing_reset" ? 2 : 0),
     });

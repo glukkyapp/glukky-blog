@@ -98,7 +98,7 @@ export async function registerRoutes(
   app.post("/api/plan/weekly", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { negotiationChoice, walkDays, dinnerPlan } = req.body;
+      const { negotiationChoice, walkDays, eatOutDays, dinnerPlan } = req.body;
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
@@ -127,6 +127,7 @@ export async function registerRoutes(
         userId,
         negotiationChoice: negotiationChoice || "keep_current",
         walkDays: walkDays || [],
+        eatOutDays: eatOutDays || [],
         dinnerPlan: dinnerPlan || [],
       });
 

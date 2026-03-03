@@ -35,7 +35,12 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 ## Pages
 - `/` - Landing (login/register tabs when not authenticated)
 - `/` - Homepage (daily check-in + weekly calendar, when authenticated)
-- `/plan` - Weekly planner (reflection + planning combined)
+- `/plan` - Weekly planner with two flows:
+  - **First week**: walkDays → eatOutDays → lateDinnerDays → dinnerPlan (if late days selected) → dietReview (if struggle) → preview
+  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → dinnerPlan → dietReview (shows tip advance/repeat) → preview
+  - Late dinner days shown to ALL users regardless of profile settings
+  - Weekly Report shows: Physical (walk stats), Late Dinner (early/tactic stats), Diet Struggle (yes/no/no-chance counts)
+  - Diet gatekeeper: clean week (no "No") → advance tip; any "No" → repeat; all tips cleared → next struggle
 - `/roadmap` - Mastery roadmap with progress bars
 - `/profile` - User profile, current focus, upcoming struggles
 - `/monthly` - Monthly deep dive with 3 flash cards
@@ -45,7 +50,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `sessions` - Express sessions (connect-pg-simple)
 - `user_profiles` - Baseline data, current struggle, dinner state
 - `weekly_plans` - Walk/diet goals per week
-- `weekly_plan_days` - Per-day walk schedule + dinner labels
+- `weekly_plan_days` - Per-day walk schedule + eat-out flag + dinner labels
 - `daily_logs` - Daily check-in data
 - `weekly_reports`, `monthly_reports` - Generated reports
 
