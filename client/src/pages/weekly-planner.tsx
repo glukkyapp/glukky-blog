@@ -27,6 +27,7 @@ export default function WeeklyPlanner() {
   const { toast } = useToast();
 
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
+  const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"] });
 
   const isFirstWeek = !reflection;
@@ -653,6 +654,10 @@ export default function WeeklyPlanner() {
 
   const today = new Date();
   const isSunday = today.getDay() === 0;
+  const isAfter6pm = today.getHours() >= 18;
+  const isSundayNight = isSunday && isAfter6pm;
+
+  const isWeek1 = !currentPlan || currentPlan.weekNumber === 1;
 
   function renderMonthlyReportMessage() {
     const now = new Date();
@@ -682,29 +687,45 @@ export default function WeeklyPlanner() {
     );
   }
 
-  if (!isSunday) {
+  function renderPendingView() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
-        {isFirstWeek ? (
-          <Card data-testid="card-report-pending">
-            <CardContent className="pt-6 pb-6">
-              <div className="flex flex-col items-center text-center gap-3">
-                <Clock className="w-10 h-10 text-muted-foreground" />
-                <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
-                  Your first week's report is pending!
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Complete your week and check back on Sunday to see your report and plan the next week.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          renderWeeklyReport()
-        )}
+        <Card data-testid="card-report-pending">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex flex-col items-center text-center gap-3">
+              <Clock className="w-10 h-10 text-muted-foreground" />
+              <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
+                Your first week's report is pending!
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Complete your week and check back on Sunday to see your report and plan the next week.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         {renderMonthlyReportMessage()}
       </div>
     );
+  }
+
+  function renderLastWeekReport() {
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        <h1 className="text-lg font-bold" data-testid="text-last-week-title">
+          Your statistics last week
+        </h1>
+        {renderWeeklyReport()}
+        {renderMonthlyReportMessage()}
+      </div>
+    );
+  }
+
+  if (isWeek1 && !isSundayNight) {
+    return renderPendingView();
+  }
+
+  if (!isWeek1 && !isSundayNight) {
+    return renderLastWeekReport();
   }
 
   return (
