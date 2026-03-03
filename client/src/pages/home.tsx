@@ -141,13 +141,13 @@ export default function Home() {
     }
   }, [calendarData, show2pmWindow, show10pmWindow]);
 
-  const walkCompleted = calendarData?.calendar?.filter((d: any) => d.walkCompleted === true).length || 0;
-  const walkScheduled = calendarData?.calendar?.filter((d: any) => d.walkScheduled).length || 0;
-  const weightedPct = walkScheduled > 0 ? Math.round((walkCompleted / walkScheduled) * 100) : 0;
-
   const formatDate = (date?: Date) => {
     const d = date || today;
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  const formatWeekday = () => {
+    return today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   };
 
   const formatTomorrowDate = () => {
@@ -170,6 +170,21 @@ export default function Home() {
 
   function renderReadOnlyPlan(dayData: any, label: string, dateLabel: string) {
     if (!dayData) return null;
+
+    const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
+    if (dayData.walkScheduled) {
+      tasks.push({ icon: Footprints, text: `${dayData.walkDuration || plan?.walkDurationGoal} min walk after dinner`, testId: "text-plan-walk", color: "text-primary" });
+    }
+    if (dayData.lateDinnerScheduled) {
+      tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
+    }
+    if (dayData.eatOutScheduled) {
+      tasks.push({ icon: ShoppingBag, text: "Eating out", testId: "text-plan-eat-out", color: "text-orange-500" });
+    }
+    if (plan?.dietTip) {
+      tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
+    }
+
     return (
       <Card>
         <CardContent className="pt-4 space-y-3">
@@ -177,36 +192,27 @@ export default function Home() {
             <span className="font-semibold text-foreground">{label}</span> — {dateLabel}
           </div>
 
-          {dayData.walkScheduled && (
-            <div className="flex items-center gap-2" data-testid="text-plan-walk">
-              <Footprints className="w-4 h-4 text-primary" />
-              <p className="text-sm">{dayData.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
-            </div>
-          )}
-
-          {dayData.lateDinnerScheduled && (
-            <div className="flex items-center gap-2" data-testid="text-plan-late-dinner">
-              <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-              <p className="text-sm">Late dinner today</p>
-            </div>
-          )}
-
-          {dayData.eatOutScheduled && (
-            <div className="flex items-center gap-2" data-testid="text-plan-eat-out">
-              <ShoppingBag className="w-4 h-4 text-orange-500" />
-              <p className="text-sm">Eating out</p>
-            </div>
-          )}
-
-          {plan?.dietTip && (
-            <div className="space-y-1" data-testid="text-plan-diet">
-              <p className="text-sm text-muted-foreground">Diet tip:</p>
-              <p className="text-sm text-primary font-medium">"{plan.dietTip}"</p>
-            </div>
-          )}
-
-          {!dayData.walkScheduled && !dayData.lateDinnerScheduled && !dayData.eatOutScheduled && !plan?.dietTip && (
+          {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">Rest day — no tasks scheduled</p>
+          ) : (
+            <div className="space-y-2">
+              {tasks.map((task, idx) => {
+                const Icon = task.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 rounded-lg bg-muted/50 p-3"
+                    data-testid={task.testId}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {idx + 1}
+                    </div>
+                    <Icon className={`w-4 h-4 ${task.color} shrink-0`} />
+                    <p className="text-sm">{task.text}</p>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -335,7 +341,7 @@ export default function Home() {
     if (!todayPlan?.walkScheduled) return null;
 
     return (
-      <div className="space-y-2 border-t pt-3">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Footprints className="w-4 h-4 text-primary" />
           <p className="text-sm font-medium">{todayPlan?.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
@@ -392,7 +398,7 @@ export default function Home() {
     if (!plan?.dietTip) return null;
 
     return (
-      <div className="space-y-2 border-t pt-3">
+      <div className="space-y-2">
         <p className="text-sm font-medium">Diet tactic:</p>
         <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{plan.dietTip}"</p>
         <p className="text-xs text-muted-foreground">Completed?</p>
@@ -433,25 +439,50 @@ export default function Home() {
     const is2pmOnly = show2pmWindow && !show10pmWindow;
     const is10pm = show10pmWindow;
 
+    const rawSections: any[] = [];
+
+    if (is2pmOnly && isLateDinnerDay) {
+      rawSections.push(renderDinnerCheckIn());
+    }
+
+    if (is10pm) {
+      if (isLateDinnerDay && !dinnerLabelSet) {
+        rawSections.push(renderDinnerCheckIn());
+      }
+      if (isLateDinnerDay && dinnerLabelSet) {
+        rawSections.push(renderDinnerFollowUp());
+      }
+      if (todayPlan?.walkScheduled) {
+        rawSections.push(renderWalkCheckIn());
+      }
+      if (plan?.dietTip) {
+        rawSections.push(renderDietCheckIn());
+      }
+    }
+
+    const sections = rawSections
+      .filter(Boolean)
+      .map((content, idx) => ({ num: idx + 1, content }));
+
     return (
       <Card>
-        <CardContent className="pt-4 space-y-4">
+        <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
             <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
           </div>
 
-          {is2pmOnly && renderDinnerCheckIn()}
+          {sections.map(({ num, content }) => (
+            <div key={num} className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid={`section-checkin-task-${num}`}>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  {num}
+                </div>
+              </div>
+              {content}
+            </div>
+          ))}
 
-          {is10pm && (
-            <>
-              {isLateDinnerDay && !dinnerLabelSet && renderDinnerCheckIn()}
-              {isLateDinnerDay && dinnerLabelSet && renderDinnerFollowUp()}
-              {renderWalkCheckIn()}
-              {renderDietCheckIn()}
-            </>
-          )}
-
-          <div className="border-t pt-3 space-y-1">
+          <div className="rounded-lg bg-muted/30 p-3 space-y-1">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm font-medium">Diet Snap</p>
@@ -469,9 +500,7 @@ export default function Home() {
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center gap-2" data-testid="text-week-header">
         <Target className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-bold">
-          Week {weekNumber}: {weightedPct}% ({walkCompleted}/{walkScheduled})
-        </h1>
+        <h1 className="text-lg font-bold">{formatWeekday()}</h1>
       </div>
 
       {recorded ? (
@@ -515,18 +544,6 @@ export default function Home() {
               <p className="text-sm font-semibold">Focus: {plan.dietStruggle.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
             </div>
             {plan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{plan.dietTip}"</p>}
-            {(() => {
-              const dietDays = calendarData?.calendar?.filter((d: any) => d.dietResponse !== null) || [];
-              const yesCount = dietDays.filter((d: any) => d.dietResponse === "yes").length;
-              const noCount = dietDays.filter((d: any) => d.dietResponse === "no").length;
-              const noChanceCount = dietDays.filter((d: any) => d.dietResponse === "no_chance").length;
-              const total = yesCount + noCount + noChanceCount;
-              return total > 0 ? (
-                <p className="text-xs text-muted-foreground" data-testid="text-diet-focus-stats">
-                  This week: {yesCount} yes, {noCount} no, {noChanceCount} no chance
-                </p>
-              ) : null;
-            })()}
           </CardContent>
         </Card>
       )}
@@ -557,18 +574,19 @@ export default function Home() {
               ))}
             </div>
 
-            {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled || (d.dinnerLabel && d.dinnerLabel !== "none")) && (
+            {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Dinner</div>
                 {calendarData?.calendar?.map((d: any, i: number) => (
                   <div key={i} className={`h-7 rounded flex items-center justify-center text-[8px] font-medium ${
-                    !d.lateDinnerScheduled && d.dinnerLabel === "none" ? "bg-muted" :
+                    !d.lateDinnerScheduled ? "bg-muted" :
                     d.dinnerSuccess === true ? "bg-green-100 text-green-700" :
                     d.dinnerSuccess === false ? "bg-red-50 text-red-500" :
-                    d.dinnerLabel !== "none" ? "bg-amber-50 text-amber-700" :
-                    "bg-amber-50/50 text-amber-400"
+                    d.lateDinnerScheduled && d.dinnerLabel !== "none" ? "bg-amber-50 text-amber-700" :
+                    d.lateDinnerScheduled ? "bg-amber-50/50 text-amber-400" :
+                    "bg-muted"
                   }`}>
-                    {d.dinnerLabel !== "none" ? DINNER_LABEL_SHORT[d.dinnerLabel] || "" :
+                    {d.lateDinnerScheduled && d.dinnerLabel !== "none" ? DINNER_LABEL_SHORT[d.dinnerLabel] || "" :
                      d.lateDinnerScheduled ? <Minus className="w-3 h-3" /> : null}
                   </div>
                 ))}
