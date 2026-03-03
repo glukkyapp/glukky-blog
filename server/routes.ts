@@ -289,12 +289,21 @@ export async function registerRoutes(
       let walkSuccessAvg = 0;
       let dinnerSuccessAvg = 0;
       let dietTipAttempts = 0;
+      let dietTipCompletionCount = 0;
 
       if (weekNumber > 0) {
         const reportData = await generateWeeklyReportData(userId, weekNumber);
         if (reportData) {
           walkSuccessAvg = reportData.walkSuccessPct;
           dinnerSuccessAvg = reportData.dinnerSuccessPct || 0;
+        }
+
+        if (plan) {
+          const startDate = plan.startDate instanceof Date
+            ? plan.startDate.toISOString().split("T")[0]
+            : String(plan.startDate);
+          const logs = await storage.getDailyLogsByWeek(userId, weekNumber, startDate);
+          dietTipCompletionCount = logs.filter(l => l.dietResponse === "yes").length;
         }
       }
 
@@ -310,6 +319,7 @@ export async function registerRoutes(
         walkSuccessAvg,
         dinnerSuccessAvg,
         dietTipAttempts,
+        dietTipCompletionCount,
         struggles: profile.struggles,
         currentTipIndex: profile.currentTipIndex,
         tipLadders: DIET_TIP_LADDERS,

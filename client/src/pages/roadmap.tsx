@@ -11,6 +11,7 @@ interface RoadmapData {
   dinnerMastered: boolean;
   walkSuccessAvg: number;
   dinnerSuccessAvg: number;
+  dietTipCompletionCount: number;
   struggles: string[];
   currentTipIndex: number;
   tipLadders: Record<string, string[]>;
@@ -56,17 +57,12 @@ export default function RoadmapPage() {
     dinnerMastered,
     walkSuccessAvg,
     dinnerSuccessAvg,
+    dietTipCompletionCount,
     struggles,
     currentTipIndex,
     tipLadders,
   } = data;
 
-  const focusLabel = isDinnerFocus
-    ? "Dinner Timing"
-    : STRUGGLE_LABELS[currentStruggle] || currentStruggle;
-
-  const currentTipLadder = tipLadders[currentStruggle] || [];
-  const totalTips = currentTipLadder.length;
   const currentStruggleIndex = struggles.indexOf(currentStruggle);
 
   return (
@@ -75,12 +71,9 @@ export default function RoadmapPage() {
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-xl font-semibold" data-testid="text-focus-title">
-            {focusLabel}
+            Weekly Progress
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground" data-testid="text-current-tip">
-          {currentTip}
-        </p>
       </div>
 
       <Card data-testid="card-walk-progress">
@@ -120,16 +113,17 @@ export default function RoadmapPage() {
           <CardTitle className="text-base">Diet Tip</CardTitle>
         </CardHeader>
         <CardContent>
+          {currentTip && (
+            <p className="text-sm text-primary font-medium mb-3" data-testid="text-current-tip">
+              "{currentTip}"
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">Tip progress</span>
-            <span className="text-sm font-medium" data-testid="text-tip-attempts">
-              {currentTipIndex + 1} of {totalTips || "—"}
+            <span className="text-sm text-muted-foreground">Completion of diet tip per week</span>
+            <span className="text-sm font-medium" data-testid="text-diet-completion-count">
+              {dietTipCompletionCount} {dietTipCompletionCount === 1 ? "day" : "days"}
             </span>
           </div>
-          <Progress
-            value={totalTips > 0 ? ((currentTipIndex + 1) / totalTips) * 100 : 0}
-            data-testid="progress-diet-tip"
-          />
         </CardContent>
       </Card>
 
