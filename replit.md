@@ -40,9 +40,12 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
   - **After 10pm**: dinner follow-up (did you follow through?) + walk check-in + diet check-in
   - **After recording**: toast "Recorded!" → shows tomorrow's plan (read-only)
 - `/plan` - Weekly planner with two flows:
-  - **First week**: walkDays → eatOutDays → lateDinnerDays → dietReview (if struggle) → preview
-  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → dietReview (shows tip advance/repeat) → preview
-  - Dinner negotiation (move early? / pick tactic) happens at daily check-in (Task 2), NOT during weekly planning
+  - **First week**: walkDays → eatOutDays → lateDinnerDays → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
+  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
+  - **dinnerFocusReview**: Shows "Late Dinner Management" focus, graduation progress (success %, 3-week indicator), available tactics. Only when isDinnerFocus && no currentStruggle
+  - **dietReview**: Shows current struggle, tip advance/repeat/mastered status, this week's tip. Only when currentStruggle is set
+  - **Preview** includes focus section: dinner focus or diet struggle with tip
+  - Dinner negotiation (move early? / pick tactic) happens at daily check-in, NOT during weekly planning
   - Late dinner days shown to ALL users regardless of profile settings
   - Weekly Report shows: Physical (walk stats), Late Dinner (early/tactic stats), Diet Struggle (yes/no/no-chance counts)
   - Diet gatekeeper: clean week (no "No") → advance tip; any "No" → repeat; all tips cleared → next struggle

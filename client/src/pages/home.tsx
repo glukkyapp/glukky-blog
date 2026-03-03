@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -480,6 +480,55 @@ export default function Home() {
         renderCheckInCard()
       ) : (
         renderReadOnlyPlan(todayPlan, "TODAY", formatDate())
+      )}
+
+      {plan?.isDinnerFocus && !plan?.dietStruggle && (
+        <Card>
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-center gap-2" data-testid="section-home-dinner-focus">
+              <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-semibold">Focus: Late Dinner Management</p>
+            </div>
+            {(() => {
+              const dinnerDaysData = calendarData?.calendar?.filter((d: any) => d.lateDinnerScheduled || (d.dinnerLabel && d.dinnerLabel !== "none")) || [];
+              const dinnerSuccess = dinnerDaysData.filter((d: any) => d.dinnerSuccess === true).length;
+              const dinnerAnswered = dinnerDaysData.filter((d: any) => d.dinnerSuccess !== null).length;
+              return dinnerAnswered > 0 ? (
+                <p className="text-xs text-muted-foreground" data-testid="text-dinner-focus-stats">
+                  This week: {dinnerSuccess}/{dinnerAnswered} dinner tactics followed
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground" data-testid="text-dinner-focus-hint">
+                  Choose a tactic each late dinner day during your daily check-in
+                </p>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {plan?.dietStruggle && (
+        <Card>
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <p className="text-sm font-semibold">Focus: {plan.dietStruggle.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+            </div>
+            {plan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{plan.dietTip}"</p>}
+            {(() => {
+              const dietDays = calendarData?.calendar?.filter((d: any) => d.dietResponse !== null) || [];
+              const yesCount = dietDays.filter((d: any) => d.dietResponse === "yes").length;
+              const noCount = dietDays.filter((d: any) => d.dietResponse === "no").length;
+              const noChanceCount = dietDays.filter((d: any) => d.dietResponse === "no_chance").length;
+              const total = yesCount + noCount + noChanceCount;
+              return total > 0 ? (
+                <p className="text-xs text-muted-foreground" data-testid="text-diet-focus-stats">
+                  This week: {yesCount} yes, {noCount} no, {noChanceCount} no chance
+                </p>
+              ) : null;
+            })()}
+          </CardContent>
+        </Card>
       )}
 
       <Card>

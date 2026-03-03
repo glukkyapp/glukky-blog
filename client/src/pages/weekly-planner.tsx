@@ -31,9 +31,12 @@ export default function WeeklyPlanner() {
 
   const isFirstWeek = !reflection;
 
+  const isDinnerFocus = reflection ? reflection.isDinnerFocus : (!profile?.dinnerMastered && profile?.hasLateDinner);
+
   const steps: string[] = [];
   if (!isFirstWeek) steps.push("weeklyReport");
   steps.push("walkDays", "eatOutDays", "lateDinnerDays");
+  if (isDinnerFocus && !profile?.currentStruggle) steps.push("dinnerFocusReview");
   if (profile?.currentStruggle) steps.push("dietReview");
   steps.push("preview");
 
@@ -354,6 +357,91 @@ export default function WeeklyPlanner() {
     );
   }
 
+  function renderDinnerFocusReview() {
+    const hasReflection = !!reflection;
+    const dinnerSuccessPct = reflection?.dinnerSuccessPct || 0;
+    const successWeeks = profile?.dinnerSuccessWeeks || 0;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2" data-testid="text-dinner-focus-title">
+            <UtensilsCrossed className="w-5 h-5 text-amber-500" />
+            This Week's Focus: Late Dinner
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 text-center">
+            <p className="text-sm text-muted-foreground">Current focus</p>
+            <p className="font-semibold text-lg" data-testid="text-dinner-focus-label">Late Dinner Management</p>
+          </div>
+
+          {hasReflection && (
+            <div className="rounded-lg border p-4 space-y-3" data-testid="section-dinner-graduation-progress">
+              <p className="text-sm font-medium">Graduation progress</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Last week: {dinnerSuccessPct}% success</span>
+                    <span>Goal: 95%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 95 ? "bg-green-500" : "bg-amber-500"}`}
+                      style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                        i < successWeeks
+                          ? "bg-green-100 text-green-600 border border-green-300"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                      data-testid={`indicator-success-week-${i}`}
+                    >
+                      {i < successWeeks ? <Check className="w-3 h-3" /> : i + 1}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-muted-foreground text-xs">
+                  {successWeeks}/3 successful weeks (95%+ each)
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-card border rounded-lg p-4 space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Available tactics</p>
+            <div className="space-y-1">
+              <p className="text-sm" data-testid="text-tactic-fiber">
+                <span className="font-medium text-amber-600">Fiber Starter</span> — eat veggies first
+              </p>
+              <p className="text-sm" data-testid="text-tactic-dusk">
+                <span className="font-medium text-amber-600">Dusk Prep</span> — light snack at 5 PM
+              </p>
+              <p className="text-sm" data-testid="text-tactic-split">
+                <span className="font-medium text-amber-600">Split Dinner</span> — split into two smaller meals
+              </p>
+            </div>
+          </div>
+
+          {!hasReflection && (
+            <p className="text-xs text-center text-muted-foreground" data-testid="text-dinner-focus-first-week">
+              Each day you mark as "late dinner," you'll choose a tactic during your daily check-in.
+              Reach 95% success for 3 weeks to graduate!
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderDietReview() {
     if (!profile?.currentStruggle) return null;
 
@@ -513,6 +601,28 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
+          {isDinnerFocus && !profile?.currentStruggle && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1" data-testid="section-preview-dinner-focus">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <UtensilsCrossed className="w-3 h-3" /> Focus: Late Dinner Management
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Choose a tactic each late dinner day during your daily check-in
+              </p>
+            </div>
+          )}
+
+          {profile?.currentStruggle && (
+            <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[profile.currentStruggle] || profile.currentStruggle}
+              </p>
+              <p className="text-xs text-primary font-medium">
+                {(DIET_TIP_LADDERS as Record<string, string[]>)[profile.currentStruggle]?.[profile.currentTipIndex] || ""}
+              </p>
+            </div>
+          )}
+
           <Button
             className="w-full mt-4"
             onClick={() => createPlanMutation.mutate()}
@@ -532,6 +642,7 @@ export default function WeeklyPlanner() {
       case "walkDays": return renderWalkDays();
       case "eatOutDays": return renderEatOutDays();
       case "lateDinnerDays": return renderLateDinnerDays();
+      case "dinnerFocusReview": return renderDinnerFocusReview();
       case "dietReview": return renderDietReview();
       case "preview": return renderPreview();
       default: return null;
