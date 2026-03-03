@@ -8,6 +8,7 @@ export interface LastWeekDaySchedule {
   dayOfWeek: number;
   walkScheduled: boolean;
   eatOutScheduled: boolean;
+  lateDinnerScheduled: boolean;
   dinnerLabel: string;
 }
 
@@ -120,6 +121,7 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     dayOfWeek: d.dayOfWeek,
     walkScheduled: d.walkScheduled,
     eatOutScheduled: d.eatOutScheduled,
+    lateDinnerScheduled: d.lateDinnerScheduled,
     dinnerLabel: d.dinnerLabel,
   }));
 
@@ -237,7 +239,7 @@ export interface CreatePlanInput {
   negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "standing_reset" | "set_rest_day";
   walkDays: number[];
   eatOutDays: number[];
-  dinnerPlan?: { dayOfWeek: number; label: "move_early" | "fiber_starter" | "dusk_prep" | "split_dinner" }[];
+  lateDinnerDays: number[];
 }
 
 export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: WeeklyPlan; days: WeeklyPlanDay[] }> {
@@ -288,21 +290,15 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   for (let d = 0; d < 7; d++) {
     const walkScheduled = input.walkDays.includes(d);
     const eatOutScheduled = input.eatOutDays.includes(d);
-    let dinnerLabel: "none" | "move_early" | "fiber_starter" | "dusk_prep" | "split_dinner" = "none";
-
-    if (input.dinnerPlan) {
-      const dinnerDay = input.dinnerPlan.find(dp => dp.dayOfWeek === d);
-      if (dinnerDay) {
-        dinnerLabel = dinnerDay.label;
-      }
-    }
+    const lateDinnerScheduled = input.lateDinnerDays.includes(d);
 
     dayEntries.push({
       weeklyPlanId: plan.id,
       dayOfWeek: d,
       walkScheduled: walkScheduled || (input.negotiationChoice === "standing_reset" && !walkScheduled),
       eatOutScheduled,
-      dinnerLabel,
+      lateDinnerScheduled,
+      dinnerLabel: "none" as const,
       walkDuration: walkScheduled ? walkDuration : (input.negotiationChoice === "standing_reset" ? 2 : 0),
     });
   }

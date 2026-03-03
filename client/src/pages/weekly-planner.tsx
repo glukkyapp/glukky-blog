@@ -14,12 +14,6 @@ import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const MITIGATION_OPTIONS = [
-  { value: "fiber_starter", label: "Fiber Starter", desc: "Eat veggies first" },
-  { value: "dusk_prep", label: "Dusk Prep", desc: "Light snack at 5 PM" },
-  { value: "split_dinner", label: "Split Dinner", desc: "Split into two smaller meals" },
-] as const;
-
 const STRUGGLE_NAMES: Record<string, string> = {
   sugary_food_drink: "Sugary Food & Drinks",
   oily_fried_food: "Oily/Fried Food",
@@ -40,7 +34,6 @@ export default function WeeklyPlanner() {
   const steps: string[] = [];
   if (!isFirstWeek) steps.push("weeklyReport");
   steps.push("walkDays", "eatOutDays", "lateDinnerDays");
-  steps.push("dinnerPlan");
   if (profile?.currentStruggle) steps.push("dietReview");
   steps.push("preview");
 
@@ -52,7 +45,6 @@ export default function WeeklyPlanner() {
   const [walkDays, setWalkDays] = useState<number[]>([]);
   const [eatOutDays, setEatOutDays] = useState<number[]>([]);
   const [lateDinnerDays, setLateDinnerDays] = useState<number[]>([]);
-  const [dinnerPlan, setDinnerPlan] = useState<{ dayOfWeek: number; label: string; canMoveEarly: boolean }[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -63,13 +55,7 @@ export default function WeeklyPlanner() {
       const schedule = reflection.lastWeekSchedule;
       setWalkDays(schedule.filter((d: any) => d.walkScheduled).map((d: any) => d.dayOfWeek));
       setEatOutDays(schedule.filter((d: any) => d.eatOutScheduled).map((d: any) => d.dayOfWeek));
-      const lateD = schedule.filter((d: any) => d.dinnerLabel !== "none").map((d: any) => d.dayOfWeek);
-      setLateDinnerDays(lateD);
-      setDinnerPlan(lateD.map((dow: number) => {
-        const s = schedule.find((d: any) => d.dayOfWeek === dow);
-        const label = s?.dinnerLabel || "move_early";
-        return { dayOfWeek: dow, label, canMoveEarly: label === "move_early" };
-      }));
+      setLateDinnerDays(schedule.filter((d: any) => d.lateDinnerScheduled).map((d: any) => d.dayOfWeek));
       setInitialized(true);
     } else if (!reflection) {
       const pw = profile?.walksPerWeek || 3;
@@ -80,16 +66,11 @@ export default function WeeklyPlanner() {
 
   const createPlanMutation = useMutation({
     mutationFn: async () => {
-      const dinnerPlanData = dinnerPlan.map(d => ({
-        dayOfWeek: d.dayOfWeek,
-        label: d.canMoveEarly ? "move_early" : d.label,
-      }));
-
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
         walkDays,
         eatOutDays,
-        dinnerPlan: dinnerPlanData,
+        lateDinnerDays,
       });
       return res.json();
     },
@@ -142,50 +123,15 @@ export default function WeeklyPlanner() {
     }
   }
 
-  function toggleLateDinnerDay(day: number) {
-    const next = lateDinnerDays.includes(day)
-      ? lateDinnerDays.filter(d => d !== day)
-      : [...lateDinnerDays, day];
-    setLateDinnerDays(next);
-    setDinnerPlan(next.map(d => {
-      const existing = dinnerPlan.find(dp => dp.dayOfWeek === d);
-      return existing || { dayOfWeek: d, label: "move_early", canMoveEarly: true };
-    }));
-  }
-
-  function setDinnerDayCanMoveEarly(dayOfWeek: number, canMove: boolean) {
-    setDinnerPlan(prev =>
-      prev.map(d =>
-        d.dayOfWeek === dayOfWeek
-          ? { ...d, canMoveEarly: canMove, label: canMove ? "move_early" : "fiber_starter" }
-          : d
-      )
-    );
-  }
-
-  function setDinnerDayTip(dayOfWeek: number, tip: string) {
-    setDinnerPlan(prev =>
-      prev.map(d => d.dayOfWeek === dayOfWeek ? { ...d, label: tip } : d)
-    );
-  }
-
   function goNext() {
-    let nextIdx = stepIndex + 1;
-    if (steps[nextIdx] === "dinnerPlan" && lateDinnerDays.length === 0) {
-      nextIdx++;
-    }
-    if (nextIdx < steps.length) {
-      setStepIndex(nextIdx);
+    if (stepIndex + 1 < steps.length) {
+      setStepIndex(stepIndex + 1);
     }
   }
 
   function goBack() {
-    let prevIdx = stepIndex - 1;
-    if (steps[prevIdx] === "dinnerPlan" && lateDinnerDays.length === 0) {
-      prevIdx--;
-    }
-    if (prevIdx >= 0) {
-      setStepIndex(prevIdx);
+    if (stepIndex - 1 >= 0) {
+      setStepIndex(stepIndex - 1);
     }
   }
 
@@ -390,7 +336,7 @@ export default function WeeklyPlanner() {
             {DAY_NAMES.map((name, i) => (
               <button
                 key={i}
-                onClick={() => toggleLateDinnerDay(i)}
+                onClick={() => toggleDay(i, lateDinnerDays, setLateDinnerDays)}
                 className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
                   lateDinnerDays.includes(i)
                     ? "bg-amber-500 text-white"
@@ -403,63 +349,6 @@ export default function WeeklyPlanner() {
             ))}
           </div>
           <p className="text-center text-sm text-muted-foreground">{lateDinnerDays.length} days selected</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function renderDinnerPlan() {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle data-testid="text-dinner-plan-title">Plan Each Late Dinner Day</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {dinnerPlan.map(dp => (
-            <div key={dp.dayOfWeek} className="border rounded-lg p-3 space-y-2">
-              <p className="font-medium">{DAY_NAMES[dp.dayOfWeek]}</p>
-              <p className="text-sm text-muted-foreground">Can you move dinner earlier?</p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={dp.canMoveEarly ? "default" : "outline"}
-                  onClick={() => setDinnerDayCanMoveEarly(dp.dayOfWeek, true)}
-                  data-testid={`button-move-early-yes-${dp.dayOfWeek}`}
-                >
-                  Yes
-                </Button>
-                <Button
-                  size="sm"
-                  variant={!dp.canMoveEarly ? "default" : "outline"}
-                  onClick={() => setDinnerDayCanMoveEarly(dp.dayOfWeek, false)}
-                  data-testid={`button-move-early-no-${dp.dayOfWeek}`}
-                >
-                  No
-                </Button>
-              </div>
-              {!dp.canMoveEarly && (
-                <div className="space-y-1 pt-1">
-                  <p className="text-xs text-muted-foreground">Which tip feels easiest?</p>
-                  {MITIGATION_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setDinnerDayTip(dp.dayOfWeek, opt.value)}
-                      className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                        dp.label === opt.value ? "bg-primary/10 border border-primary" : "bg-muted"
-                      }`}
-                      data-testid={`button-tip-${opt.value}-${dp.dayOfWeek}`}
-                    >
-                      <span className="font-medium">{opt.label}</span>
-                      <span className="text-muted-foreground"> — {opt.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          {dinnerPlan.length === 0 && (
-            <p className="text-center text-muted-foreground py-4">No late dinner days selected</p>
-          )}
         </CardContent>
       </Card>
     );
@@ -613,17 +502,13 @@ export default function WeeklyPlanner() {
                 <UtensilsCrossed className="w-3 h-3" /> Late Dinner
               </p>
               <div className="grid grid-cols-7 gap-1">
-                {DAY_NAMES.map((_, i) => {
-                  const dp = dinnerPlan.find(d => d.dayOfWeek === i);
-                  const label = dp ? (dp.canMoveEarly ? "Early" : dp.label.replace("_", " ").slice(0, 5)) : "";
-                  return (
-                    <div key={i} className={`h-8 rounded flex items-center justify-center text-[9px] font-medium ${
-                      dp ? (dp.canMoveEarly ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700") : "bg-muted"
-                    }`}>
-                      {label}
-                    </div>
-                  );
-                })}
+                {DAY_NAMES.map((_, i) => (
+                  <div key={i} className={`h-8 rounded flex items-center justify-center text-xs ${
+                    lateDinnerDays.includes(i) ? "bg-amber-100 text-amber-700" : "bg-muted"
+                  }`}>
+                    {lateDinnerDays.includes(i) && <Check className="w-3 h-3" />}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -647,7 +532,6 @@ export default function WeeklyPlanner() {
       case "walkDays": return renderWalkDays();
       case "eatOutDays": return renderEatOutDays();
       case "lateDinnerDays": return renderLateDinnerDays();
-      case "dinnerPlan": return renderDinnerPlan();
       case "dietReview": return renderDietReview();
       case "preview": return renderPreview();
       default: return null;

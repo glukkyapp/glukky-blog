@@ -36,8 +36,9 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `/` - Landing (login/register tabs when not authenticated)
 - `/` - Homepage (daily check-in + weekly calendar, when authenticated)
 - `/plan` - Weekly planner with two flows:
-  - **First week**: walkDays → eatOutDays → lateDinnerDays → dinnerPlan (if late days selected) → dietReview (if struggle) → preview
-  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → dinnerPlan → dietReview (shows tip advance/repeat) → preview
+  - **First week**: walkDays → eatOutDays → lateDinnerDays → dietReview (if struggle) → preview
+  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → dietReview (shows tip advance/repeat) → preview
+  - Dinner negotiation (move early? / pick tactic) happens at daily check-in (Task 2), NOT during weekly planning
   - Late dinner days shown to ALL users regardless of profile settings
   - Weekly Report shows: Physical (walk stats), Late Dinner (early/tactic stats), Diet Struggle (yes/no/no-chance counts)
   - Diet gatekeeper: clean week (no "No") → advance tip; any "No" → repeat; all tips cleared → next struggle
@@ -50,7 +51,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `sessions` - Express sessions (connect-pg-simple)
 - `user_profiles` - Baseline data, current struggle, dinner state
 - `weekly_plans` - Walk/diet goals per week
-- `weekly_plan_days` - Per-day walk schedule + eat-out flag + dinner labels
+- `weekly_plan_days` - Per-day walk schedule + eat-out flag + late-dinner flag + dinner labels (set at check-in)
 - `daily_logs` - Daily check-in data
 - `weekly_reports`, `monthly_reports` - Generated reports
 
