@@ -82,7 +82,7 @@ export default function RoadmapPage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">Success rate</span>
+            <span className="text-sm text-muted-foreground">Completion rate</span>
             <span className="text-sm font-medium" data-testid="text-walk-avg">
               {Math.round(walkSuccessAvg)}%
             </span>
