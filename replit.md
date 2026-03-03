@@ -39,9 +39,13 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
   - **2pm–10pm**: dinner question only (if today is a late dinner day) — "Can you move dinner earlier?" Yes → move_early label; No → pick tactic
   - **After 10pm**: dinner follow-up (did you follow through?) + walk check-in + diet check-in
   - **After recording**: toast "Recorded!" → shows tomorrow's plan (read-only)
-- `/plan` - Weekly planner with two flows:
-  - **First week**: walkDays → eatOutDays → lateDinnerDays → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
-  - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
+- `/plan` - Weekly planner (time-gated):
+  - **Mon–Sat, Week 1**: Shows "Your first week's report is pending!" (no planning available)
+  - **Mon–Sat, Week 2+**: Shows read-only weekly report for previous week (no planning available)
+  - **Sunday only**: Full planning flow unlocked:
+    - **First week**: walkDays → eatOutDays → lateDinnerDays → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
+    - **Week 2+**: weeklyReport → walkDays (with negotiation + pre-fill) → eatOutDays → lateDinnerDays → [dinnerFocusReview] → [dietReview] → preview
+  - **Monthly report message** shown at bottom of planner tab: "Your monthly report will be available on [last day of month]" or "available today!" on last day
   - **dinnerFocusReview**: Shows "Late Dinner Management" focus, graduation progress (success %, 3-week indicator), available tactics. Only when isDinnerFocus && no currentStruggle
   - **dietReview**: Shows current struggle, tip advance/repeat/mastered status, this week's tip. Only when currentStruggle is set
   - **Preview** includes focus section: dinner focus or diet struggle with tip
@@ -49,7 +53,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
   - Late dinner days shown to ALL users regardless of profile settings
   - Weekly Report shows: Physical (walk stats), Late Dinner (early/tactic stats), Diet Struggle (yes/no/no-chance counts)
   - Diet gatekeeper: clean week (no "No") → advance tip; any "No" → repeat; all tips cleared → next struggle
-- `/roadmap` - Mastery roadmap with progress bars
+- `/roadmap` - Weekly progress view with completion rates and diet tip tracking
 - `/profile` - User profile, current focus, upcoming struggles
 - `/monthly` - Monthly deep dive with 3 flash cards
 

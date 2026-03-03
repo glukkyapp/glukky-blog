@@ -42,8 +42,6 @@ function AuthenticatedApp() {
     return <WeeklyPlanner />;
   }
 
-  const hideNav = location === "/plan";
-
   return (
     <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
       <AnimatedPageWrapper>
@@ -56,7 +54,7 @@ function AuthenticatedApp() {
           <Route component={NotFound} />
         </Switch>
       </AnimatedPageWrapper>
-      {!hideNav && <FloatingNavBar />}
+      <FloatingNavBar />
     </div>
   );
 }

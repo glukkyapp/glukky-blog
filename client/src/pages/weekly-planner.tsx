@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
-  Calendar, ShoppingBag, TrendingUp, Award, RotateCcw,
+  Calendar, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -651,8 +651,64 @@ export default function WeeklyPlanner() {
 
   const isLastStep = currentStepId === "preview";
 
+  const today = new Date();
+  const isSunday = today.getDay() === 0;
+
+  function renderMonthlyReportMessage() {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const isLastDayOfMonth = now.getDate() === lastDay;
+    const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthName = lastDayDate.toLocaleDateString("en-US", { month: "long" });
+
+    return (
+      <Card className="mt-4" data-testid="card-monthly-report-status">
+        <CardContent className="pt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Monthly Report</p>
+          </div>
+          {isLastDayOfMonth ? (
+            <p className="text-sm text-primary font-medium" data-testid="text-monthly-available">
+              Your monthly report is available today!
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
+              Your monthly report will be available on {monthName} {lastDay}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isSunday) {
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        {isFirstWeek ? (
+          <Card data-testid="card-report-pending">
+            <CardContent className="pt-6 pb-6">
+              <div className="flex flex-col items-center text-center gap-3">
+                <Clock className="w-10 h-10 text-muted-foreground" />
+                <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
+                  Your first week's report is pending!
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Complete your week and check back on Sunday to see your report and plan the next week.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderWeeklyReport()
+        )}
+        {renderMonthlyReportMessage()}
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-8 space-y-4">
+    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold" data-testid="text-planner-title">
@@ -688,6 +744,8 @@ export default function WeeklyPlanner() {
           </Button>
         )}
       </div>
+
+      {renderMonthlyReportMessage()}
     </div>
   );
 }
