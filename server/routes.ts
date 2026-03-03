@@ -140,6 +140,35 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/plan/dinner-label", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { planDayId, label } = req.body;
+
+      const validLabels = ["move_early", "fiber_starter", "dusk_prep", "split_dinner"];
+      if (!validLabels.includes(label)) {
+        return res.status(400).json({ message: "Invalid dinner label" });
+      }
+      if (!planDayId) {
+        return res.status(400).json({ message: "planDayId required" });
+      }
+
+      const currentPlan = await storage.getCurrentWeeklyPlan(userId);
+      if (!currentPlan) return res.status(404).json({ message: "No current plan" });
+      const planDays = await storage.getWeeklyPlanDays(currentPlan.id);
+      const targetDay = planDays.find(d => d.id === planDayId);
+      if (!targetDay) return res.status(403).json({ message: "Plan day does not belong to user" });
+
+      const updated = await storage.updateWeeklyPlanDay(planDayId, { dinnerLabel: label });
+      if (!updated) return res.status(404).json({ message: "Plan day not found" });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error setting dinner label:", error);
+      res.status(500).json({ message: "Failed to set dinner label" });
+    }
+  });
+
   app.post("/api/log", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -205,12 +234,15 @@ export async function registerRoutes(
           dayOfWeek: day.dayOfWeek,
           date: dateStr,
           walkScheduled: day.walkScheduled,
+          eatOutScheduled: day.eatOutScheduled,
+          lateDinnerScheduled: day.lateDinnerScheduled,
           walkCompleted: log?.walkCompleted ?? null,
           walkDuration: day.walkDuration,
           dinnerLabel: day.dinnerLabel,
           dinnerSuccess: log?.dinnerSuccess ?? null,
           dietResponse: log?.dietResponse ?? null,
           walkTired: log?.walkTired ?? false,
+          planDayId: day.id,
         };
       });
 

@@ -34,7 +34,11 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 
 ## Pages
 - `/` - Landing (login/register tabs when not authenticated)
-- `/` - Homepage (daily check-in + weekly calendar, when authenticated)
+- `/` - Homepage with time-gated daily check-in + weekly calendar:
+  - **Before 2pm**: read-only "Today's Plan" (no buttons)
+  - **2pm–10pm**: dinner question only (if today is a late dinner day) — "Can you move dinner earlier?" Yes → move_early label; No → pick tactic
+  - **After 10pm**: dinner follow-up (did you follow through?) + walk check-in + diet check-in
+  - **After recording**: toast "Recorded!" → shows tomorrow's plan (read-only)
 - `/plan` - Weekly planner with two flows:
   - **First week**: walkDays → eatOutDays → lateDinnerDays → dietReview (if struggle) → preview
   - **Week 2+**: weeklyReport (stats only) → walkDays (with negotiation + pre-fill) → eatOutDays (pre-fill) → lateDinnerDays (pre-fill) → dietReview (shows tip advance/repeat) → preview
