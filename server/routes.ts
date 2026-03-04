@@ -71,12 +71,35 @@ export async function registerRoutes(
       const days = await storage.getWeeklyPlanDays(plan.id);
       const profile = await storage.getProfile(userId);
 
+      let lastWeekDinnerEarlyPct: number | null = null;
+      if (profile && profile.currentWeek > 1) {
+        const lastWeekNum = plan.weekNumber - 1;
+        const lastPlan = await storage.getWeeklyPlan(userId, lastWeekNum);
+        if (lastPlan) {
+          const lastDays = await storage.getWeeklyPlanDays(lastPlan.id);
+          const earlyDays = lastDays.filter(d => d.dinnerLabel === "move_early");
+          if (earlyDays.length > 0) {
+            const lastLogs = await storage.getDailyLogsByWeek(userId, lastWeekNum, lastPlan.startDate);
+            let earlySuccess = 0;
+            for (const day of earlyDays) {
+              const dayDate = new Date(lastPlan.startDate);
+              dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+              const dateStr = dayDate.toISOString().split("T")[0];
+              const log = lastLogs.find(l => l.date === dateStr);
+              if (log?.dinnerSuccess === true) earlySuccess++;
+            }
+            lastWeekDinnerEarlyPct = Math.round((earlySuccess / earlyDays.length) * 100);
+          }
+        }
+      }
+
       res.json({
         ...plan,
         days,
         isDinnerFocus: plan.isDinnerFocus,
         mitigationLabels: MITIGATION_TRIO_LABELS,
         currentWeek: profile?.currentWeek,
+        lastWeekDinnerEarlyPct,
       });
     } catch (error) {
       console.error("Error fetching plan:", error);
@@ -174,27 +197,62 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const { date, walkCompleted, walkTired, dietResponse, dinnerSuccess } = req.body;
 
+      let result;
       const existing = await storage.getDailyLog(userId, date);
       if (existing) {
-        const updated = await storage.updateDailyLog(existing.id, {
-          walkCompleted,
-          walkTired: walkTired || false,
+        const updateData: any = {};
+        if (walkCompleted !== undefined) updateData.walkCompleted = walkCompleted;
+        if (walkTired !== undefined) updateData.walkTired = walkTired;
+        if (dietResponse !== undefined) updateData.dietResponse = dietResponse;
+        if (dinnerSuccess !== undefined) updateData.dinnerSuccess = dinnerSuccess;
+        result = await storage.updateDailyLog(existing.id, updateData);
+      } else {
+        result = await storage.createDailyLog({
+          userId,
+          date,
+          walkCompleted: walkCompleted !== undefined ? walkCompleted : null,
+          walkTired: walkTired !== undefined ? walkTired : false,
           dietResponse: dietResponse || null,
           dinnerSuccess: dinnerSuccess !== undefined ? dinnerSuccess : null,
         });
-        return res.json(updated);
       }
 
-      const log = await storage.createDailyLog({
-        userId,
-        date,
-        walkCompleted: walkCompleted !== undefined ? walkCompleted : null,
-        walkTired: walkTired || false,
-        dietResponse: dietResponse || null,
-        dinnerSuccess: dinnerSuccess !== undefined ? dinnerSuccess : null,
-      });
+      let nextDayAdjustment: { reduced: boolean; newDuration?: number; tomorrowWalkScheduled: boolean; walkCompleted: boolean } | null = null;
+      const finalLog = await storage.getDailyLog(userId, date);
+      if (finalLog && finalLog.walkTired === true) {
+        const walkDone = finalLog.walkCompleted === true;
+        const plan = await storage.getCurrentWeeklyPlan(userId);
+        if (plan) {
+          const planDays = await storage.getWeeklyPlanDays(plan.id);
+          const logDate = new Date(date + "T00:00:00");
+          const planStart = new Date(plan.startDate + "T00:00:00");
+          const todayDow = Math.round((logDate.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+          const tomorrowDow = todayDow + 1;
 
-      res.json(log);
+          if (tomorrowDow < 7) {
+            const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
+            if (tomorrowDay && tomorrowDay.walkScheduled) {
+              if (!walkDone) {
+                const newDuration = Math.max(tomorrowDay.walkDuration - 5, 2);
+                if (newDuration < tomorrowDay.walkDuration) {
+                  await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
+                  nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
+                } else {
+                  nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
+                }
+              } else {
+                nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
+              }
+            } else {
+              nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: false, walkCompleted: walkDone };
+            }
+          } else {
+            nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: false, walkCompleted: walkDone };
+          }
+        }
+      }
+
+      res.json({ ...result, nextDayAdjustment });
     } catch (error) {
       console.error("Error creating log:", error);
       res.status(500).json({ message: "Failed to create log" });

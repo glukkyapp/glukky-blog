@@ -159,13 +159,17 @@ function buildSuggestedActions(
 ): SuggestedAction[] {
   const actions: SuggestedAction[] = [];
 
+  const isStandingReset = currentDuration === 2;
+
   actions.push({
     type: "keep_current",
-    label: "Keep current schedule",
-    description: `Stay at ${currentWalkDays} days, ${currentDuration} min`,
+    label: isStandingReset ? "Continue standing reset" : "Keep current schedule",
+    description: isStandingReset
+      ? "Keep doing 2-min standing breaks — complete 2 weeks at 100% to unlock 5-min walks"
+      : `Stay at ${currentWalkDays} days, ${currentDuration} min`,
   });
 
-  if (currentWalkDays < 5) {
+  if (!isStandingReset && currentWalkDays < 5) {
     actions.push({
       type: "add_day",
       label: "Add 1 more walk day",
@@ -173,7 +177,7 @@ function buildSuggestedActions(
     });
   }
 
-  if (currentDuration < 20) {
+  if (!isStandingReset && currentDuration < 20) {
     actions.push({
       type: "add_minutes",
       label: "Add 5 more minutes",
@@ -181,7 +185,7 @@ function buildSuggestedActions(
     });
   }
 
-  if (currentDuration >= 20 && currentWalkDays < 7) {
+  if (!isStandingReset && currentDuration >= 20 && currentWalkDays < 7) {
     actions.push({
       type: "standing_reset",
       label: "Add a 2-min Standing Reset",
@@ -251,6 +255,11 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
 
   let walkDuration = profile.walkDuration;
   let walkFrequency = input.walkDays.length;
+
+  const biWeeklyTriggers = await checkBiWeeklyTriggers(input.userId);
+  if (biWeeklyTriggers.autoEscalation && walkDuration <= 2) {
+    walkDuration = 5;
+  }
 
   if (input.negotiationChoice === "add_minutes") {
     walkDuration = Math.min(walkDuration + 5, 20);

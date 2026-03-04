@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -30,6 +30,7 @@ export default function Home() {
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
+  const [hydrationAdvice, setHydrationAdvice] = useState<string | null>(null);
   const userInteracted = useRef(false);
 
   useEffect(() => {
@@ -101,8 +102,22 @@ export default function Home() {
       const res = await apiRequest("POST", "/api/log", { date: todayStr, ...data });
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
+
+      if (data?.nextDayAdjustment) {
+        const adj = data.nextDayAdjustment;
+        if (adj.walkCompleted) {
+          setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+        } else if (adj.reduced && adj.newDuration) {
+          setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
+        } else if (!adj.tomorrowWalkScheduled) {
+          setHydrationAdvice("Stay hydrated tomorrow! Rest well tonight.");
+        } else {
+          setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+        }
+      }
+
       await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
@@ -258,6 +273,43 @@ export default function Home() {
       );
     }
 
+    const shouldPivot = plan?.lastWeekDinnerEarlyPct === 0 && plan?.currentWeek > 1;
+
+    if (shouldPivot) {
+      return (
+        <div className="space-y-3" data-testid="section-dinner-pivot">
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+            <p className="text-sm font-medium">Late dinner tactic</p>
+          </div>
+          <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
+            We noticed moving dinner earlier hasn't worked out. Would you like to try an alternative tactic?
+          </p>
+          <p className="text-sm font-medium">Pick a dinner tactic for tonight:</p>
+          {MITIGATION_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleTacticPick(opt.value)}
+              className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
+              data-testid={`button-tactic-${opt.value}`}
+              disabled={dinnerLabelMutation.isPending}
+            >
+              <span className="font-medium">{opt.label}</span>
+              <span className="text-muted-foreground"> — {opt.desc}</span>
+            </button>
+          ))}
+          <button
+            onClick={() => handleDinnerMoveEarly(true)}
+            className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
+            data-testid="button-try-move-early-anyway"
+            disabled={dinnerLabelMutation.isPending}
+          >
+            <span className="font-medium">No, I will try to move dinner earlier today</span>
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2" data-testid="section-dinner-question">
         <div className="flex items-center gap-2">
@@ -388,6 +440,24 @@ export default function Home() {
             No
           </Button>
         </div>
+
+        {hydrationAdvice && (
+          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg mt-2" data-testid="section-hydration-advice">
+            <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs mt-1 text-blue-600"
+                onClick={() => setHydrationAdvice(null)}
+                data-testid="button-dismiss-hydration"
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
