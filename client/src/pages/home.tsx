@@ -474,29 +474,31 @@ export default function Home() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
-          <Battery className="w-4 h-4 text-amber-500" />
-          <p className="text-sm font-medium">Feeling tired after?</p>
-          <Button
-            size="sm"
-            variant={todayLog?.walkTired === true ? "secondary" : "outline"}
-            className="h-7 text-xs"
-            onClick={() => logMutation.mutate({ walkTired: true })}
-            disabled={logMutation.isPending}
-            data-testid="button-tired-yes"
-          >
-            Yes
-          </Button>
-          <Button
-            size="sm"
-            variant={todayLog?.walkTired === false ? "secondary" : "outline"}
-            className="h-7 text-xs"
-            onClick={() => logMutation.mutate({ walkTired: false })}
-            disabled={logMutation.isPending}
-            data-testid="button-tired-no"
-          >
-            No
-          </Button>
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-2">
+            <Battery className="w-4 h-4 text-amber-500" />
+            <p className="text-sm font-medium">Feeling tired today?</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={todayLog?.walkTired === true ? "secondary" : "outline"}
+              onClick={() => logMutation.mutate({ walkTired: true })}
+              disabled={logMutation.isPending}
+              data-testid="button-tired-yes"
+            >
+              Yes
+            </Button>
+            <Button
+              size="sm"
+              variant={todayLog?.walkTired === false ? "secondary" : "outline"}
+              onClick={() => logMutation.mutate({ walkTired: false })}
+              disabled={logMutation.isPending}
+              data-testid="button-tired-no"
+            >
+              No
+            </Button>
+          </div>
         </div>
 
         {hydrationAdvice && (
