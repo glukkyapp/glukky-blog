@@ -135,19 +135,27 @@ export default function Home() {
       const res = await apiRequest("POST", "/api/log", { date: todayStr, ...data });
       return res.json();
     },
-    onSuccess: async (data: any) => {
+    onSuccess: async (data: any, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
 
-      if (data?.nextDayAdjustment) {
-        const adj = data.nextDayAdjustment;
-        if (adj.walkCompleted) {
-          setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
-        } else if (adj.reduced && adj.newDuration) {
-          setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
-        } else if (!adj.tomorrowWalkScheduled) {
-          setHydrationAdvice("Stay hydrated tomorrow! Rest well tonight.");
-        } else {
-          setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+      if (data?.nextDayAdjustment && (variables.walkTired !== undefined || variables.walkCompleted !== undefined)) {
+        await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
+        const freshData = queryClient.getQueryData<any>(["/api/calendar", weekNumber]);
+        const freshLog = freshData?.calendar?.find((d: any) => d.date === todayStr);
+        const walkDone = freshLog?.walkCompleted !== null && freshLog?.walkCompleted !== undefined;
+        const tiredDone = freshLog?.walkTired !== null && freshLog?.walkTired !== undefined;
+
+        if (walkDone && tiredDone) {
+          const adj = data.nextDayAdjustment;
+          if (adj.walkCompleted) {
+            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+          } else if (adj.reduced && adj.newDuration) {
+            setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
+          } else if (!adj.tomorrowWalkScheduled) {
+            setHydrationAdvice("Stay hydrated tomorrow! Rest well tonight.");
+          } else {
+            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+          }
         }
       }
 
