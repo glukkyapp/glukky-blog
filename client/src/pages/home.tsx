@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -417,6 +417,36 @@ export default function Home() {
   function renderWalkCheckIn() {
     if (!todayPlan?.walkScheduled) return null;
 
+    const walkAnswered = todayLog?.walkCompleted !== null && todayLog?.walkCompleted !== undefined;
+    const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
+    const bothAnswered = walkAnswered && tiredAnswered;
+
+    if (bothAnswered) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Footprints className="w-4 h-4 text-primary" />
+            <p className="text-sm font-medium">{todayPlan?.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
+          </div>
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50" data-testid="section-walk-summary">
+            <div className="flex items-center gap-1.5">
+              {todayLog.walkCompleted ? (
+                <Check className="w-4 h-4 text-green-500" />
+              ) : (
+                <X className="w-4 h-4 text-red-400" />
+              )}
+              <span className="text-sm">{todayLog.walkCompleted ? "Walked" : "Skipped"}</span>
+            </div>
+            <span className="text-muted-foreground">·</span>
+            <div className="flex items-center gap-1.5">
+              <Battery className="w-4 h-4 text-amber-500" />
+              <span className="text-sm">{todayLog.walkTired ? "Felt tired" : "Feeling good"}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -445,7 +475,8 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2 pt-1">
-          <p className="text-xs text-muted-foreground">Feeling tired after?</p>
+          <Battery className="w-4 h-4 text-amber-500" />
+          <p className="text-sm font-medium">Feeling tired after?</p>
           <Button
             size="sm"
             variant={todayLog?.walkTired === true ? "secondary" : "outline"}
