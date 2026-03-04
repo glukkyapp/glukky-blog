@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replit_integrations/auth";
+import { authStorage } from "./replit_integrations/auth/storage";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData, processDietProgression,
@@ -384,6 +385,155 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch roadmap" });
+    }
+  });
+
+  const DEV_EMAILS = ["nicholaslaw283@gmail.com", "yusycyn@gmail.com"];
+  const devTimeOverrides = new Map<string, number | null>();
+
+  const isDevUser = async (req: any, res: any, next: any) => {
+    const userId = req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const user = await authStorage.getUser(userId);
+    if (!user || !DEV_EMAILS.includes(user.email)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
+
+  app.get("/api/dev/state", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      const plan = await storage.getCurrentWeeklyPlan(userId);
+      let days: any = null;
+      let logs: any = null;
+      if (plan) {
+        days = await storage.getWeeklyPlanDays(plan.id);
+        logs = await storage.getDailyLogsByWeek(userId, plan.weekNumber, plan.startDate);
+      }
+      const timeOverride = devTimeOverrides.get(userId) ?? null;
+      res.json({ profile, plan, days, logs, timeOverride });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch dev state" });
+    }
+  });
+
+  app.get("/api/dev/check", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await authStorage.getUser(userId);
+      res.json({ isDev: !!(user && DEV_EMAILS.includes(user.email)) });
+    } catch {
+      res.json({ isDev: false });
+    }
+  });
+
+  app.post("/api/dev/set-week", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { weekNumber } = req.body;
+      await storage.updateProfile(userId, { currentWeek: weekNumber });
+      res.json({ success: true, weekNumber });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to set week" });
+    }
+  });
+
+  app.post("/api/dev/set-profile", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const fields = req.body;
+      const allowed = ["currentStruggle", "currentTipIndex", "walkDuration", "walksPerWeek",
+        "dinnerMastered", "hasLateDinner", "dinnerSuccessWeeks", "restDay", "dinnerTime"];
+      const update: any = {};
+      for (const key of allowed) {
+        if (fields[key] !== undefined) update[key] = fields[key];
+      }
+      await storage.updateProfile(userId, update);
+      const profile = await storage.getProfile(userId);
+      res.json({ success: true, profile });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.post("/api/dev/set-time", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { hour } = req.body;
+      if (hour === null || hour === undefined) {
+        devTimeOverrides.delete(userId);
+        res.json({ success: true, timeOverride: null });
+      } else {
+        devTimeOverrides.set(userId, hour);
+        res.json({ success: true, timeOverride: hour });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to set time override" });
+    }
+  });
+
+  app.get("/api/dev/time", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const override = devTimeOverrides.get(userId) ?? null;
+    res.json({ timeOverride: override });
+  });
+
+  app.post("/api/dev/generate-history", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { weeks, walkSuccessRate = 70, dietSuccessRate = 60 } = req.body;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(400).json({ message: "No profile" });
+
+      const startWeek = profile.currentWeek;
+      const results: any[] = [];
+
+      for (let w = startWeek; w < startWeek + weeks; w++) {
+        await storage.updateProfile(userId, { currentWeek: w });
+
+        const walkDays = [0, 1, 2];
+        const planInput = {
+          userId,
+          walkDays,
+          eatOutDays: [] as number[],
+          lateDinnerDays: profile.hasLateDinner ? [1, 3, 5] : [],
+          negotiationChoice: "keep_current",
+        };
+
+        const { plan, days } = await createWeeklyPlan(planInput);
+
+        for (let d = 0; d < 7; d++) {
+          const dayDate = new Date(plan.startDate);
+          dayDate.setDate(dayDate.getDate() + d);
+          const dateStr = dayDate.toISOString().split("T")[0];
+
+          const day = days.find(dd => dd.dayOfWeek === d);
+          const doWalk = day?.walkScheduled && Math.random() * 100 < walkSuccessRate;
+          const dietOk = Math.random() * 100 < dietSuccessRate;
+          const dinnerOk = day?.lateDinnerScheduled && Math.random() * 100 < 50;
+
+          await storage.createDailyLog({
+            userId,
+            date: dateStr,
+            walkCompleted: day?.walkScheduled ? (doWalk || false) : null,
+            walkTired: day?.walkScheduled ? Math.random() < 0.2 : false,
+            dietResponse: dietOk ? "yes" : (Math.random() < 0.3 ? "no_chance" : "no"),
+            dinnerSuccess: day?.lateDinnerScheduled ? (dinnerOk || false) : null,
+          });
+        }
+
+        results.push({ week: w, planId: plan.id });
+      }
+
+      const finalWeek = startWeek + weeks;
+      await storage.updateProfile(userId, { currentWeek: finalWeek });
+
+      res.json({ success: true, generatedWeeks: results, currentWeek: finalWeek });
+    } catch (error) {
+      console.error("Error generating history:", error);
+      res.status(500).json({ message: "Failed to generate history" });
     }
   });
 

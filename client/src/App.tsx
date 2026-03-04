@@ -13,6 +13,7 @@ import Home from "@/pages/home";
 import Roadmap from "@/pages/roadmap";
 import Profile from "@/pages/profile";
 import MonthlyReport from "@/pages/monthly-report";
+import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -51,6 +52,7 @@ function AuthenticatedApp() {
           <Route path="/plan" component={WeeklyPlanner} />
           <Route path="/profile" component={Profile} />
           <Route path="/monthly" component={MonthlyReport} />
+          <Route path="/dev" component={DevPanel} />
           <Route component={NotFound} />
         </Switch>
       </AnimatedPageWrapper>

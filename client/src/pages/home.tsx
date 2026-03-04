@@ -27,11 +27,16 @@ export default function Home() {
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
 
+  const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
   const [hydrationAdvice, setHydrationAdvice] = useState<string | null>(null);
   const userInteracted = useRef(false);
+
+  const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
+    ? devTime.timeOverride
+    : currentHour;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,8 +64,8 @@ export default function Home() {
   const isLateDinnerDay = todayPlan?.lateDinnerScheduled === true;
   const dinnerLabelSet = todayPlan?.dinnerLabel && todayPlan.dinnerLabel !== "none";
 
-  const show2pmWindow = currentHour >= 14 && isLateDinnerDay;
-  const show10pmWindow = currentHour >= 22;
+  const show2pmWindow = effectiveHour >= 14 && isLateDinnerDay;
+  const show10pmWindow = effectiveHour >= 22;
 
   async function checkAllDoneAfterInteraction() {
     userInteracted.current = true;
@@ -71,7 +76,7 @@ export default function Home() {
     if (!tp) return;
 
     const labelSet = tp.dinnerLabel && tp.dinnerLabel !== "none";
-    const is2pmOnly = currentHour >= 14 && currentHour < 22 && tp.lateDinnerScheduled;
+    const is2pmOnly = effectiveHour >= 14 && effectiveHour < 22 && tp.lateDinnerScheduled;
 
     if (is2pmOnly) {
       if (tp.lateDinnerScheduled && labelSet) {
@@ -81,7 +86,7 @@ export default function Home() {
       return;
     }
 
-    if (currentHour >= 22) {
+    if (effectiveHour >= 22) {
       let allDone = true;
       if (tp.lateDinnerScheduled) {
         if (!labelSet) allDone = false;

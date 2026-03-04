@@ -60,6 +60,25 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `/profile` - User profile, current focus, upcoming struggles
 - `/monthly` - Monthly deep dive with 3 flash cards
 
+## Developer Debug Panel
+- Route: `/dev` — only accessible to users whose email is in `DEV_EMAILS` array in `server/routes.ts`
+- Current dev emails: `nicholaslaw283@gmail.com`, `yusycyn@gmail.com`
+- Backend endpoints (all protected by `isDevUser` middleware except `/api/dev/check` and `/api/dev/time`):
+  - `GET /api/dev/check` — returns `{isDev: boolean}` for current user
+  - `GET /api/dev/state` — full profile + plan + logs for inspection
+  - `GET /api/dev/time` — returns current time override (null if none)
+  - `POST /api/dev/set-week` — set `currentWeek` on profile
+  - `POST /api/dev/set-profile` — update profile fields
+  - `POST /api/dev/set-time` — set simulated hour override (stored in memory via `devTimeOverrides` Map)
+  - `POST /api/dev/generate-history` — auto-create past weekly plans + daily logs
+- Frontend (`client/src/pages/dev-panel.tsx`):
+  - Time Override: 8am, 2pm, 6pm, 10pm, 11pm, or Real time
+  - Week Control: Set week 1–12
+  - Profile State: Toggle hasLateDinner, dinnerMastered; set struggle, tipIndex, walkDuration, walksPerWeek, dinnerSuccessWeeks
+  - Generate History: N weeks with configurable walk/diet success rates
+  - Current State Inspector: Raw JSON of profile + plan
+- Time override in `home.tsx`: `effectiveHour` from `/api/dev/time` replaces `currentHour` for `show2pmWindow` and `show10pmWindow` gating
+
 ## Database Tables
 - `users` - Auth (id, email, hashed password)
 - `sessions` - Express sessions (connect-pg-simple)
