@@ -54,13 +54,20 @@ export default function Home() {
     ? devTime.dayOverride
     : realDayOfWeek;
 
+  const formatLocalDate = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const todayStr = (() => {
     if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && plan?.startDate) {
       const start = new Date(plan.startDate + "T00:00:00");
       start.setDate(start.getDate() + devTime.dayOverride);
-      return start.toISOString().split("T")[0];
+      return formatLocalDate(start);
     }
-    return today.toISOString().split("T")[0];
+    return formatLocalDate(today);
   })();
 
   const weekNumber = plan?.weekNumber || profile?.currentWeek || 1;
