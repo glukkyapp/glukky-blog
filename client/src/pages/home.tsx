@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ export default function Home() {
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
+  const userInteracted = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,14 +61,49 @@ export default function Home() {
   const show2pmWindow = currentHour >= 14 && isLateDinnerDay;
   const show10pmWindow = currentHour >= 22;
 
+  async function checkAllDoneAfterInteraction() {
+    userInteracted.current = true;
+    await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
+    const freshData = queryClient.getQueryData<any>(["/api/calendar", weekNumber]);
+    if (!freshData) return;
+    const tp = freshData.calendar?.find((d: any) => d.date === todayStr);
+    if (!tp) return;
+
+    const labelSet = tp.dinnerLabel && tp.dinnerLabel !== "none";
+    const is2pmOnly = currentHour >= 14 && currentHour < 22 && tp.lateDinnerScheduled;
+
+    if (is2pmOnly) {
+      if (tp.lateDinnerScheduled && labelSet) {
+        setRecorded(true);
+        toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
+      }
+      return;
+    }
+
+    if (currentHour >= 22) {
+      let allDone = true;
+      if (tp.lateDinnerScheduled) {
+        if (!labelSet) allDone = false;
+        if (labelSet && tp.dinnerSuccess === null) allDone = false;
+      }
+      if (tp.walkScheduled && tp.walkCompleted === null) allDone = false;
+      if (plan?.dietTip && tp.dietResponse === null) allDone = false;
+
+      if (allDone) {
+        setRecorded(true);
+        toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
+      }
+    }
+  }
+
   const logMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/log", { date: todayStr, ...data });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar", weekNumber] });
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
+      await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -79,8 +115,8 @@ export default function Home() {
       const res = await apiRequest("POST", "/api/plan/dinner-label", data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar", weekNumber] });
+    onSuccess: async () => {
+      await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -102,44 +138,6 @@ export default function Home() {
     setShowTacticPicker(false);
   }
 
-  useEffect(() => {
-    if (!calendarData || recorded) return;
-
-    const tp = calendarData?.calendar?.find((d: any) => d.date === todayStr);
-    if (!tp) return;
-
-    const labelSet = tp.dinnerLabel && tp.dinnerLabel !== "none";
-
-    if (show2pmWindow && !show10pmWindow) {
-      if (isLateDinnerDay && labelSet) {
-        setRecorded(true);
-        toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
-      }
-    }
-
-    if (show10pmWindow) {
-      let allDone = true;
-
-      if (isLateDinnerDay) {
-        if (!labelSet) allDone = false;
-        if (labelSet && tp.dinnerSuccess === null) allDone = false;
-      }
-
-      if (tp.walkScheduled && tp.walkCompleted === null) allDone = false;
-
-      if (plan?.dietTip) {
-        if (tp.dietResponse === null) allDone = false;
-      }
-
-      if (allDone) {
-        const hasAnyAnswer = tp.walkCompleted !== null || tp.dietResponse !== null || tp.dinnerSuccess !== null || labelSet;
-        if (hasAnyAnswer) {
-          setRecorded(true);
-          toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
-        }
-      }
-    }
-  }, [calendarData, show2pmWindow, show10pmWindow]);
 
   const formatDate = (date?: Date) => {
     const d = date || today;
