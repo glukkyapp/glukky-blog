@@ -29,6 +29,7 @@ export default function WeeklyPlanner() {
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"] });
+  const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
 
   const isFirstWeek = !reflection;
 
@@ -653,14 +654,27 @@ export default function WeeklyPlanner() {
   const isLastStep = currentStepId === "preview";
 
   const today = new Date();
-  const isSunday = today.getDay() === 0;
-  const isAfter6pm = today.getHours() >= 18;
+  const effectiveDayJS = devTime?.dayOverride !== null && devTime?.dayOverride !== undefined
+    ? (devTime.dayOverride + 1) % 7
+    : today.getDay();
+  const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
+    ? devTime.timeOverride
+    : today.getHours();
+  const isSunday = effectiveDayJS === 0;
+  const isAfter6pm = effectiveHour >= 18;
   const isSundayNight = isSunday && isAfter6pm;
 
   const isWeek1 = !currentPlan || currentPlan.weekNumber === 1;
 
   function renderMonthlyReportMessage() {
-    const now = new Date();
+    const now = (() => {
+      if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && currentPlan?.startDate) {
+        const start = new Date(currentPlan.startDate + "T00:00:00");
+        start.setDate(start.getDate() + devTime.dayOverride);
+        return start;
+      }
+      return new Date();
+    })();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const isLastDayOfMonth = now.getDate() === lastDay;
     const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
