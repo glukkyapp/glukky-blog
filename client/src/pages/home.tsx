@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2 } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -34,6 +34,7 @@ export default function Home() {
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
   const [hydrationAdvice, setHydrationAdvice] = useState<string | null>(null);
+  const [showTickAnimation, setShowTickAnimation] = useState(false);
   const userInteracted = useRef(false);
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
@@ -105,12 +106,19 @@ export default function Home() {
         if (!labelSet) allDone = false;
         if (labelSet && tp.dinnerSuccess === null) allDone = false;
       }
-      if (tp.walkScheduled && tp.walkCompleted === null) allDone = false;
+      if (tp.walkScheduled) {
+        if (tp.walkCompleted === null) allDone = false;
+        if (tp.walkTired === null || tp.walkTired === undefined) allDone = false;
+      }
       if (plan?.dietTip && tp.dietResponse === null) allDone = false;
 
       if (allDone) {
-        setRecorded(true);
-        toast({ title: "Nice work!", description: "Here's what's coming up tomorrow" });
+        setShowTickAnimation(true);
+        setTimeout(() => {
+          setShowTickAnimation(false);
+          setRecorded(true);
+          toast({ title: "Nice work!", description: "Here's what's coming up tomorrow" });
+        }, 1200);
       }
     }
   }
@@ -394,6 +402,7 @@ export default function Home() {
           <Button
             size="sm"
             variant={todayLog?.dinnerSuccess === true ? "default" : "outline"}
+            className={todayLog?.dinnerSuccess === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
             onClick={() => logMutation.mutate({ dinnerSuccess: true })}
             disabled={logMutation.isPending}
             data-testid="button-dinner-yes"
@@ -402,7 +411,8 @@ export default function Home() {
           </Button>
           <Button
             size="sm"
-            variant={todayLog?.dinnerSuccess === false ? "destructive" : "outline"}
+            variant={todayLog?.dinnerSuccess === false ? "default" : "outline"}
+            className={todayLog?.dinnerSuccess === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
             onClick={() => logMutation.mutate({ dinnerSuccess: false })}
             disabled={logMutation.isPending}
             data-testid="button-dinner-no"
@@ -421,85 +431,83 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    if (bothAnswered) {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Footprints className="w-4 h-4 text-primary" />
-            <p className="text-sm font-medium">{todayPlan?.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
-          </div>
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50" data-testid="section-walk-summary">
-            <div className="flex items-center gap-1.5">
-              {todayLog.walkCompleted ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <X className="w-4 h-4 text-red-400" />
-              )}
-              <span className="text-sm">{todayLog.walkCompleted ? "Walked" : "Skipped"}</span>
-            </div>
-            <span className="text-muted-foreground">·</span>
-            <div className="flex items-center gap-1.5">
-              <Battery className="w-4 h-4 text-amber-500" />
-              <span className="text-sm">{todayLog.walkTired ? "Felt tired" : "Feeling good"}</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Footprints className="w-4 h-4 text-primary" />
           <p className="text-sm font-medium">{todayPlan?.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={todayLog?.walkCompleted === true ? "default" : "outline"}
-            onClick={() => logMutation.mutate({ walkCompleted: true })}
-            disabled={logMutation.isPending}
-            data-testid="button-walk-yes"
-          >
-            Yes
-          </Button>
-          <Button
-            size="sm"
-            variant={todayLog?.walkCompleted === false ? "destructive" : "outline"}
-            onClick={() => logMutation.mutate({ walkCompleted: false })}
-            disabled={logMutation.isPending}
-            data-testid="button-walk-no"
-          >
-            No
-          </Button>
-        </div>
+        {bothAnswered ? (
+          <div className="flex items-center gap-3 text-sm text-muted-foreground" data-testid="section-walk-answered">
+            <div className="flex items-center gap-1.5">
+              {todayLog.walkCompleted ? (
+                <Check className="w-4 h-4 text-green-500" />
+              ) : (
+                <X className="w-4 h-4 text-red-400" />
+              )}
+              <span>{todayLog.walkCompleted ? "Completed" : "Skipped"}</span>
+            </div>
+            <span>·</span>
+            <div className="flex items-center gap-1.5">
+              <Battery className="w-4 h-4 text-amber-500" />
+              <span>{todayLog.walkTired ? "Felt tired" : "Feeling good"}</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={todayLog?.walkCompleted === true ? "default" : todayLog?.walkCompleted === false ? "destructive" : "outline"}
+                className={todayLog?.walkCompleted === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                onClick={() => logMutation.mutate({ walkCompleted: true })}
+                disabled={logMutation.isPending}
+                data-testid="button-walk-yes"
+              >
+                Yes
+              </Button>
+              <Button
+                size="sm"
+                variant={todayLog?.walkCompleted === false ? "default" : "outline"}
+                className={todayLog?.walkCompleted === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
+                onClick={() => logMutation.mutate({ walkCompleted: false })}
+                disabled={logMutation.isPending}
+                data-testid="button-walk-no"
+              >
+                No
+              </Button>
+            </div>
 
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center gap-2">
-            <Battery className="w-4 h-4 text-amber-500" />
-            <p className="text-sm font-medium">Feeling tired today?</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={todayLog?.walkTired === true ? "secondary" : "outline"}
-              onClick={() => logMutation.mutate({ walkTired: true })}
-              disabled={logMutation.isPending}
-              data-testid="button-tired-yes"
-            >
-              Yes
-            </Button>
-            <Button
-              size="sm"
-              variant={todayLog?.walkTired === false ? "secondary" : "outline"}
-              onClick={() => logMutation.mutate({ walkTired: false })}
-              disabled={logMutation.isPending}
-              data-testid="button-tired-no"
-            >
-              No
-            </Button>
-          </div>
-        </div>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <Battery className="w-4 h-4 text-amber-500" />
+                <p className="text-sm font-medium">Feeling tired today?</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={todayLog?.walkTired === true ? "default" : "outline"}
+                  className={todayLog?.walkTired === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                  onClick={() => logMutation.mutate({ walkTired: true })}
+                  disabled={logMutation.isPending}
+                  data-testid="button-tired-yes"
+                >
+                  Yes
+                </Button>
+                <Button
+                  size="sm"
+                  variant={todayLog?.walkTired === false ? "default" : "outline"}
+                  className={todayLog?.walkTired === false ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                  onClick={() => logMutation.mutate({ walkTired: false })}
+                  disabled={logMutation.isPending}
+                  data-testid="button-tired-no"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
 
         {hydrationAdvice && (
           <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg mt-2" data-testid="section-hydration-advice">
@@ -525,40 +533,142 @@ export default function Home() {
   function renderDietCheckIn() {
     if (!plan?.dietTip) return null;
 
+    const dietAnswered = todayLog?.dietResponse !== null && todayLog?.dietResponse !== undefined;
+
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Diet tactic:</p>
-        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{plan.dietTip}"</p>
-        <p className="text-xs text-muted-foreground">Did you get a chance to try this today?</p>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={todayLog?.dietResponse === "yes" ? "default" : "outline"}
-            onClick={() => logMutation.mutate({ dietResponse: "yes" })}
-            disabled={logMutation.isPending}
-            data-testid="button-diet-yes"
-          >
-            Yes
-          </Button>
-          <Button
-            size="sm"
-            variant={todayLog?.dietResponse === "no" ? "destructive" : "outline"}
-            onClick={() => logMutation.mutate({ dietResponse: "no" })}
-            disabled={logMutation.isPending}
-            data-testid="button-diet-no"
-          >
-            No
-          </Button>
-          <Button
-            size="sm"
-            variant={todayLog?.dietResponse === "no_chance" ? "secondary" : "outline"}
-            onClick={() => logMutation.mutate({ dietResponse: "no_chance" })}
-            disabled={logMutation.isPending}
-            data-testid="button-diet-no-chance"
-          >
-            Didn't get the chance
-          </Button>
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-primary" />
+          <p className="text-sm font-medium">Diet tactic</p>
         </div>
+        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{plan.dietTip}"</p>
+        {dietAnswered ? (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="section-diet-answered">
+            {todayLog.dietResponse === "yes" ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : todayLog.dietResponse === "no" ? (
+              <X className="w-4 h-4 text-red-400" />
+            ) : (
+              <Minus className="w-4 h-4 text-gray-400" />
+            )}
+            <span>
+              {todayLog.dietResponse === "yes" ? "Tried it today" :
+               todayLog.dietResponse === "no" ? "Didn't try today" : "Didn't get the chance"}
+            </span>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">Did you get a chance to try this today?</p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={todayLog?.dietResponse === "yes" ? "default" : "outline"}
+                className={todayLog?.dietResponse === "yes" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                onClick={() => logMutation.mutate({ dietResponse: "yes" })}
+                disabled={logMutation.isPending}
+                data-testid="button-diet-yes"
+              >
+                Yes
+              </Button>
+              <Button
+                size="sm"
+                variant={todayLog?.dietResponse === "no" ? "default" : "outline"}
+                className={todayLog?.dietResponse === "no" ? "bg-red-500 hover:bg-red-600 text-white" : ""}
+                onClick={() => logMutation.mutate({ dietResponse: "no" })}
+                disabled={logMutation.isPending}
+                data-testid="button-diet-no"
+              >
+                No
+              </Button>
+              <Button
+                size="sm"
+                variant={todayLog?.dietResponse === "no_chance" ? "default" : "outline"}
+                className={todayLog?.dietResponse === "no_chance" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                onClick={() => logMutation.mutate({ dietResponse: "no_chance" })}
+                disabled={logMutation.isPending}
+                data-testid="button-diet-no-chance"
+              >
+                Didn't get the chance
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function isAllCheckInDone() {
+    if (!todayLog) return false;
+    if (todayPlan?.walkScheduled) {
+      if (todayLog.walkCompleted === null || todayLog.walkCompleted === undefined) return false;
+      if (todayLog.walkTired === null || todayLog.walkTired === undefined) return false;
+    }
+    if (isLateDinnerDay && dinnerLabelSet) {
+      if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
+    }
+    if (plan?.dietTip) {
+      if (todayLog.dietResponse === null || todayLog.dietResponse === undefined) return false;
+    }
+    return true;
+  }
+
+  function renderCheckInSummary() {
+    const items: { label: string; value: string; positive: boolean }[] = [];
+
+    if (todayPlan?.walkScheduled) {
+      items.push({
+        label: "Walk after dinner",
+        value: todayLog?.walkCompleted ? "Completed" : "Skipped",
+        positive: !!todayLog?.walkCompleted,
+      });
+      items.push({
+        label: "Duration",
+        value: `${todayPlan?.walkDuration || plan?.walkDurationGoal} min`,
+        positive: true,
+      });
+      items.push({
+        label: "Feeling tired",
+        value: todayLog?.walkTired ? "Yes" : "No",
+        positive: !todayLog?.walkTired,
+      });
+    }
+
+    if (isLateDinnerDay && dinnerLabelSet) {
+      const tacticName = todayPlan?.dinnerLabel === "move_early"
+        ? "Early dinner"
+        : (DINNER_LABEL_SHORT[todayPlan?.dinnerLabel] || todayPlan?.dinnerLabel);
+      items.push({
+        label: `Late dinner tactic (${tacticName})`,
+        value: todayLog?.dinnerSuccess ? "Followed" : "Not followed",
+        positive: !!todayLog?.dinnerSuccess,
+      });
+    }
+
+    if (plan?.dietTip) {
+      const struggle = plan.dietStruggle?.replace(/_/g, " ") || "diet";
+      const dietVal = todayLog?.dietResponse === "yes" ? "Yes" :
+                      todayLog?.dietResponse === "no" ? "No" : "Didn't get the chance";
+      items.push({
+        label: `Diet tactic for ${struggle}`,
+        value: dietVal,
+        positive: todayLog?.dietResponse === "yes",
+      });
+    }
+
+    return (
+      <div className="space-y-2" data-testid="section-checkin-summary">
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <p className="text-sm font-semibold text-green-700 dark:text-green-400">Today's check-in complete</p>
+        </div>
+        {items.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+            <span className="text-sm text-muted-foreground">{item.label}</span>
+            <span className={`text-sm font-medium ${item.positive ? "text-green-600" : "text-red-500"}`}>
+              {item.value}
+            </span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -566,6 +676,54 @@ export default function Home() {
   function renderCheckInCard() {
     const is2pmOnly = show2pmWindow && !show10pmWindow;
     const is10pm = show10pmWindow;
+    const allDone = is10pm && isAllCheckInDone();
+
+    if (showTickAnimation) {
+      return (
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
+              <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
+            </div>
+            <div className="flex items-center justify-center py-10" data-testid="section-tick-animation">
+              <CheckCircle2 className="w-20 h-20 text-green-500 animate-bounce" />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (allDone) {
+      return (
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
+              <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
+            </div>
+
+            {hydrationAdvice && (
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-summary">
+                <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs mt-1 text-blue-600"
+                    onClick={() => setHydrationAdvice(null)}
+                    data-testid="button-dismiss-hydration-summary"
+                  >
+                    Got it
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {renderCheckInSummary()}
+          </CardContent>
+        </Card>
+      );
+    }
 
     const rawSections: any[] = [];
 
@@ -654,7 +812,36 @@ export default function Home() {
       )}
 
       {recorded ? (
-        renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())
+        <>
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date-summary">
+                <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
+              </div>
+
+              {hydrationAdvice && (
+                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-recorded">
+                  <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs mt-1 text-blue-600"
+                      onClick={() => setHydrationAdvice(null)}
+                      data-testid="button-dismiss-hydration-recorded"
+                    >
+                      Got it
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {renderCheckInSummary()}
+            </CardContent>
+          </Card>
+          {renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
+        </>
       ) : showCheckIn ? (
         renderCheckInCard()
       ) : (
