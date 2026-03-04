@@ -71,7 +71,7 @@ export default function RoadmapPage() {
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-xl font-semibold" data-testid="text-focus-title">
-            Weekly Progress
+            Your Weekly Progress
           </h1>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function RoadmapPage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">Completion rate</span>
+            <span className="text-sm text-muted-foreground">How you're doing</span>
             <span className="text-sm font-medium" data-testid="text-walk-avg">
               {Math.round(walkSuccessAvg)}%
             </span>

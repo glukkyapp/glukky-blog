@@ -390,6 +390,7 @@ export async function registerRoutes(
 
   const DEV_EMAILS = ["yusycyn@gmail.com"];
   const devTimeOverrides = new Map<string, number | null>();
+  const devDayOverrides = new Map<string, number | null>();
 
   const isDevUser = async (req: any, res: any, next: any) => {
     const userId = req.user?.claims?.sub;
@@ -413,7 +414,8 @@ export async function registerRoutes(
         logs = await storage.getDailyLogsByWeek(userId, plan.weekNumber, plan.startDate);
       }
       const timeOverride = devTimeOverrides.get(userId) ?? null;
-      res.json({ profile, plan, days, logs, timeOverride });
+      const dayOverride = devDayOverrides.get(userId) ?? null;
+      res.json({ profile, plan, days, logs, timeOverride, dayOverride });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dev state" });
     }
@@ -461,14 +463,26 @@ export async function registerRoutes(
   app.post("/api/dev/set-time", isAuthenticated, isDevUser, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { hour } = req.body;
-      if (hour === null || hour === undefined) {
-        devTimeOverrides.delete(userId);
-        res.json({ success: true, timeOverride: null });
-      } else {
-        devTimeOverrides.set(userId, hour);
-        res.json({ success: true, timeOverride: hour });
+      const { hour, day } = req.body;
+      if (hour !== undefined) {
+        if (hour === null) {
+          devTimeOverrides.delete(userId);
+        } else {
+          devTimeOverrides.set(userId, hour);
+        }
       }
+      if (day !== undefined) {
+        if (day === null) {
+          devDayOverrides.delete(userId);
+        } else {
+          devDayOverrides.set(userId, day);
+        }
+      }
+      res.json({
+        success: true,
+        timeOverride: devTimeOverrides.get(userId) ?? null,
+        dayOverride: devDayOverrides.get(userId) ?? null,
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to set time override" });
     }
@@ -476,8 +490,10 @@ export async function registerRoutes(
 
   app.get("/api/dev/time", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const override = devTimeOverrides.get(userId) ?? null;
-    res.json({ timeOverride: override });
+    res.json({
+      timeOverride: devTimeOverrides.get(userId) ?? null,
+      dayOverride: devDayOverrides.get(userId) ?? null,
+    });
   });
 
   app.post("/api/dev/generate-history", isAuthenticated, isDevUser, async (req: any, res) => {

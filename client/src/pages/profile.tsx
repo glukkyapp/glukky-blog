@@ -97,7 +97,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="profile-page">
-      <h1 className="text-xl font-bold" data-testid="text-profile-heading">Profile & Insights</h1>
+      <h1 className="text-xl font-bold" data-testid="text-profile-heading">Your Profile</h1>
 
       <Card data-testid="card-diabetes-profile">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
@@ -143,7 +143,7 @@ export default function ProfilePage() {
       <Card data-testid="card-up-next">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
           <List className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">Up Next</CardTitle>
+          <CardTitle className="text-base">Coming Up Next</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {upNextStruggles.length > 0 ? (

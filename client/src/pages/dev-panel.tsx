@@ -47,13 +47,13 @@ export default function DevPanel() {
   });
 
   const setTimeMutation = useMutation({
-    mutationFn: async (hour: number | null) => {
-      const res = await apiRequest("POST", "/api/dev/set-time", { hour });
+    mutationFn: async (params: { hour?: number | null; day?: number | null }) => {
+      const res = await apiRequest("POST", "/api/dev/set-time", params);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Time override updated" });
+      toast({ title: "Override updated" });
     },
   });
 
@@ -123,11 +123,46 @@ export default function DevPanel() {
                 key={opt.label}
                 size="sm"
                 variant={devState?.timeOverride === opt.value ? "default" : "outline"}
-                onClick={() => setTimeMutation.mutate(opt.value)}
+                onClick={() => setTimeMutation.mutate({ hour: opt.value })}
                 disabled={setTimeMutation.isPending}
                 data-testid={`button-time-${opt.value ?? "real"}`}
               >
                 {opt.label}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <p className="text-sm font-semibold">Day Override</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Current: {devState?.dayOverride !== null && devState?.dayOverride !== undefined ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][devState.dayOverride] + " (simulated)" : "Real day"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={devState?.dayOverride === null || devState?.dayOverride === undefined ? "default" : "outline"}
+              onClick={() => setTimeMutation.mutate({ day: null })}
+              disabled={setTimeMutation.isPending}
+              data-testid="button-day-real"
+            >
+              Real day
+            </Button>
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, i) => (
+              <Button
+                key={name}
+                size="sm"
+                variant={devState?.dayOverride === i ? "default" : "outline"}
+                onClick={() => setTimeMutation.mutate({ day: i })}
+                disabled={setTimeMutation.isPending}
+                data-testid={`button-day-${i}`}
+              >
+                {name}
               </Button>
             ))}
           </div>

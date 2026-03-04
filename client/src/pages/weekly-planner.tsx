@@ -223,7 +223,7 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-walk-days-title">
             <Calendar className="w-5 h-5 text-primary" />
-            Select Walk Days
+            Which days work best for a walk?
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -249,7 +249,7 @@ export default function WeeklyPlanner() {
               )}
               {negotiationStep === "ask_day" && walkFreq >= 5 && walkDur >= 20 && (
                 <>
-                  <p className="text-sm font-medium">Great progress! You've maxed out walk days and duration.</p>
+                  <p className="text-sm font-medium">Amazing — you've hit the maximum! Keep it up</p>
                   <p className="text-xs text-muted-foreground">Consider a Standing Reset — add short 2-min standing breaks on rest days to cover the Glycemic Gap.</p>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleStandingReset} data-testid="button-negotiation-standing-reset">Try Standing Reset</Button>
@@ -269,7 +269,7 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">Tap days you'll walk this week</p>
+          <p className="text-sm text-muted-foreground">Tap the days that feel doable this week</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => (
               <button
@@ -302,7 +302,7 @@ export default function WeeklyPlanner() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Which days will you eat out this week?</p>
+          <p className="text-sm text-muted-foreground">Any days you'll be eating out?</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => (
               <button
@@ -335,7 +335,7 @@ export default function WeeklyPlanner() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Which days will you have dinner after 9pm?</p>
+          <p className="text-sm text-muted-foreground">Any nights where dinner will be late (after 9pm)?</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => (
               <button

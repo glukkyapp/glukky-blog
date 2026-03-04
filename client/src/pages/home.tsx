@@ -46,8 +46,19 @@ export default function Home() {
   }, []);
 
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+  const realDayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+  const dayOfWeek = devTime?.dayOverride !== null && devTime?.dayOverride !== undefined
+    ? devTime.dayOverride
+    : realDayOfWeek;
+
+  const todayStr = (() => {
+    if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && plan?.startDate) {
+      const start = new Date(plan.startDate + "T00:00:00");
+      start.setDate(start.getDate() + devTime.dayOverride);
+      return start.toISOString().split("T")[0];
+    }
+    return today.toISOString().split("T")[0];
+  })();
 
   const weekNumber = plan?.weekNumber || profile?.currentWeek || 1;
 
@@ -81,7 +92,7 @@ export default function Home() {
     if (is2pmOnly) {
       if (tp.lateDinnerScheduled && labelSet) {
         setRecorded(true);
-        toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
+        toast({ title: "Nice work!", description: "Here's what's coming up tomorrow" });
       }
       return;
     }
@@ -97,7 +108,7 @@ export default function Home() {
 
       if (allDone) {
         setRecorded(true);
-        toast({ title: "Recorded!", description: "Let's look forward to tomorrow's plan" });
+        toast({ title: "Nice work!", description: "Here's what's coming up tomorrow" });
       }
     }
   }
@@ -211,7 +222,7 @@ export default function Home() {
           </div>
 
           {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Rest day — no tasks scheduled</p>
+            <p className="text-sm text-muted-foreground">It's your rest day — enjoy it!</p>
           ) : (
             <div className="space-y-2">
               {tasks.map((task, idx) => {
@@ -261,7 +272,7 @@ export default function Home() {
     if (showTacticPicker) {
       return (
         <div className="space-y-3" data-testid="section-dinner-tactic">
-          <p className="text-sm font-medium">Pick a dinner tactic for tonight:</p>
+          <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
           {MITIGATION_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -288,9 +299,9 @@ export default function Home() {
             <p className="text-sm font-medium">Late dinner tactic</p>
           </div>
           <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
-            We noticed moving dinner earlier hasn't worked out. Would you like to try an alternative tactic?
+            Moving dinner earlier is tough — no worries, let's try a different approach:
           </p>
-          <p className="text-sm font-medium">Pick a dinner tactic for tonight:</p>
+          <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
           {MITIGATION_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -319,7 +330,7 @@ export default function Home() {
       <div className="space-y-2" data-testid="section-dinner-question">
         <div className="flex items-center gap-2">
           <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-          <p className="text-sm font-medium">Can you move dinner time earlier than 9pm today?</p>
+          <p className="text-sm font-medium">Think you could try eating a bit earlier tonight — before 9pm?</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -423,7 +434,7 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2 pt-1">
-          <p className="text-xs text-muted-foreground">Tired?</p>
+          <p className="text-xs text-muted-foreground">Feeling tired after?</p>
           <Button
             size="sm"
             variant={todayLog?.walkTired === true ? "secondary" : "outline"}
@@ -474,7 +485,7 @@ export default function Home() {
       <div className="space-y-2">
         <p className="text-sm font-medium">Diet tactic:</p>
         <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{plan.dietTip}"</p>
-        <p className="text-xs text-muted-foreground">Completed?</p>
+        <p className="text-xs text-muted-foreground">Did you get a chance to try this today?</p>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -501,7 +512,7 @@ export default function Home() {
             disabled={logMutation.isPending}
             data-testid="button-diet-no-chance"
           >
-            No chance to try
+            Didn't get the chance
           </Button>
         </div>
       </div>
