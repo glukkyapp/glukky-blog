@@ -734,11 +734,17 @@ export default function WeeklyPlanner() {
     );
   }
 
+  const alreadyPlanned = currentPlan && currentPlan.currentWeek && currentPlan.weekNumber === currentPlan.currentWeek - 1;
+
   if (isWeek1 && !isSundayNight) {
     return renderPendingView();
   }
 
   if (!isWeek1 && !isSundayNight) {
+    return renderLastWeekReport();
+  }
+
+  if (isSundayNight && alreadyPlanned) {
     return renderLastWeekReport();
   }
 

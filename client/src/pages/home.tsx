@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -23,6 +24,7 @@ const MITIGATION_OPTIONS = [
 ] as const;
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
@@ -588,6 +590,7 @@ export default function Home() {
   }
 
   const showCheckIn = show2pmWindow || show10pmWindow;
+  const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 18;
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -595,6 +598,27 @@ export default function Home() {
         <Target className="w-5 h-5 text-primary" />
         <h1 className="text-lg font-bold">{formatWeekday()}</h1>
       </div>
+
+      {isSundayEvening && (
+        <Card className="border-primary/30 bg-primary/5" data-testid="card-weekly-report-ready">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              <p className="text-sm font-semibold">Your weekly report is ready!</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Time to review how your week went and plan ahead for next week.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setLocation("/plan")}
+              data-testid="button-go-to-planner"
+            >
+              Review & Plan Next Week
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {recorded ? (
         renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())

@@ -127,6 +127,11 @@ export async function registerRoutes(
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
+      const existingPlan = await storage.getWeeklyPlan(userId, profile.currentWeek);
+      if (existingPlan) {
+        return res.status(409).json({ message: "You've already planned this week" });
+      }
+
       if (!Array.isArray(walkDays) || walkDays.length > 7) {
         return res.status(400).json({ message: "Invalid walk days" });
       }
