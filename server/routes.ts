@@ -388,7 +388,7 @@ export async function registerRoutes(
     }
   });
 
-  const DEV_EMAILS = ["nicholaslaw283@gmail.com", "yusycyn@gmail.com"];
+  const DEV_EMAILS = ["yusycyn@gmail.com"];
   const devTimeOverrides = new Map<string, number | null>();
 
   const isDevUser = async (req: any, res: any, next: any) => {

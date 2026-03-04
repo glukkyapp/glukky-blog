@@ -62,7 +62,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 
 ## Developer Debug Panel
 - Route: `/dev` — only accessible to users whose email is in `DEV_EMAILS` array in `server/routes.ts`
-- Current dev emails: `nicholaslaw283@gmail.com`, `yusycyn@gmail.com`
+- Current dev emails: `yusycyn@gmail.com`
 - Backend endpoints (all protected by `isDevUser` middleware except `/api/dev/check` and `/api/dev/time`):
   - `GET /api/dev/check` — returns `{isDev: boolean}` for current user
   - `GET /api/dev/state` — full profile + plan + logs for inspection
