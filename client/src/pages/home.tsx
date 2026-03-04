@@ -170,17 +170,26 @@ export default function Home() {
   }
 
 
+  const effectiveDate = (() => {
+    if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && plan?.startDate) {
+      const start = new Date(plan.startDate + "T00:00:00");
+      start.setDate(start.getDate() + devTime.dayOverride);
+      return start;
+    }
+    return today;
+  })();
+
   const formatDate = (date?: Date) => {
-    const d = date || today;
+    const d = date || effectiveDate;
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
   const formatWeekday = () => {
-    return today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+    return effectiveDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   };
 
   const formatTomorrowDate = () => {
-    const tmrw = new Date(today);
+    const tmrw = new Date(effectiveDate);
     tmrw.setDate(tmrw.getDate() + 1);
     return formatDate(tmrw);
   };
