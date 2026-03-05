@@ -4,8 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { STRUGGLE_PRIORITY } from "@shared/schema";
-import { Settings, Clock, Calendar, User, Database, ChevronLeft } from "lucide-react";
+import { Settings, Clock, Calendar, Database, ChevronLeft } from "lucide-react";
 import { useLocation } from "wouter";
 
 const TIME_OPTIONS = [
@@ -16,6 +15,19 @@ const TIME_OPTIONS = [
   { label: "10 PM", value: 22 },
   { label: "11 PM", value: 23 },
 ];
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getMondayOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const jsDay = d.getDay();
+  const diff = jsDay === 0 ? 6 : jsDay - 1;
+  d.setDate(d.getDate() - diff);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export default function DevPanel() {
   const { toast } = useToast();
@@ -35,19 +47,8 @@ export default function DevPanel() {
     },
   });
 
-  const setProfileMutation = useMutation({
-    mutationFn: async (fields: any) => {
-      const res = await apiRequest("POST", "/api/dev/set-profile", fields);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-      toast({ title: "Profile updated" });
-    },
-  });
-
   const setTimeMutation = useMutation({
-    mutationFn: async (params: { hour?: number | null; day?: number | null }) => {
+    mutationFn: async (params: { hour?: number | null; date?: string | null }) => {
       const res = await apiRequest("POST", "/api/dev/set-time", params);
       return res.json();
     },
@@ -71,7 +72,7 @@ export default function DevPanel() {
     },
   });
 
-  const [historyWeeks, setHistoryWeeks] = useState(4);
+  const [historyWeeks, setHistoryWeeks] = useState(2);
   const [walkRate, setWalkRate] = useState(70);
   const [dietRate, setDietRate] = useState(60);
 
@@ -98,6 +99,14 @@ export default function DevPanel() {
   const plan = devState?.plan;
   const currentWeek = profile?.currentWeek || 1;
 
+  const currentDateOverride = devState?.dateOverride || null;
+  const dateInfo = currentDateOverride ? (() => {
+    const d = new Date(currentDateOverride + "T00:00:00");
+    const dayName = DAY_NAMES[d.getDay()];
+    const monday = getMondayOfWeek(currentDateOverride);
+    return { dayName, monday };
+  })() : null;
+
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center gap-2">
@@ -115,7 +124,7 @@ export default function DevPanel() {
             <p className="text-sm font-semibold">Time Override</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Current: {devState?.timeOverride !== null ? `${devState?.timeOverride}:00 (simulated)` : "Real time"}
+            Current: {devState?.timeOverride !== null && devState?.timeOverride !== undefined ? `${devState?.timeOverride}:00 (simulated)` : "Real time"}
           </p>
           <div className="flex flex-wrap gap-2">
             {TIME_OPTIONS.map(opt => (
@@ -138,33 +147,30 @@ export default function DevPanel() {
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />
-            <p className="text-sm font-semibold">Day Override</p>
+            <p className="text-sm font-semibold">Date Override</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Current: {devState?.dayOverride !== null && devState?.dayOverride !== undefined ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][devState.dayOverride] + " (simulated)" : "Real day"}
+            {currentDateOverride
+              ? `Simulating: ${currentDateOverride} (${dateInfo?.dayName}) · Plan week starts ${dateInfo?.monday}`
+              : "Using real date"}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm bg-background"
+              value={currentDateOverride || ""}
+              onChange={(e) => setTimeMutation.mutate({ date: e.target.value || null })}
+              data-testid="input-date-override"
+            />
             <Button
               size="sm"
-              variant={devState?.dayOverride === null || devState?.dayOverride === undefined ? "default" : "outline"}
-              onClick={() => setTimeMutation.mutate({ day: null })}
+              variant={!currentDateOverride ? "default" : "outline"}
+              onClick={() => setTimeMutation.mutate({ date: null })}
               disabled={setTimeMutation.isPending}
-              data-testid="button-day-real"
+              data-testid="button-date-real"
             >
-              Real day
+              Real date
             </Button>
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, i) => (
-              <Button
-                key={name}
-                size="sm"
-                variant={devState?.dayOverride === i ? "default" : "outline"}
-                onClick={() => setTimeMutation.mutate({ day: i })}
-                disabled={setTimeMutation.isPending}
-                data-testid={`button-day-${i}`}
-              >
-                {name}
-              </Button>
-            ))}
           </div>
         </CardContent>
       </Card>
@@ -196,158 +202,20 @@ export default function DevPanel() {
       <Card>
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-purple-500" />
-            <p className="text-sm font-semibold">Profile State</p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs">hasLateDinner</p>
-              <Button
-                size="sm"
-                variant={profile?.hasLateDinner ? "default" : "outline"}
-                onClick={() => setProfileMutation.mutate({ hasLateDinner: !profile?.hasLateDinner })}
-                disabled={setProfileMutation.isPending}
-                data-testid="button-toggle-late-dinner"
-              >
-                {profile?.hasLateDinner ? "ON" : "OFF"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">dinnerMastered</p>
-              <Button
-                size="sm"
-                variant={profile?.dinnerMastered ? "default" : "outline"}
-                onClick={() => setProfileMutation.mutate({ dinnerMastered: !profile?.dinnerMastered })}
-                disabled={setProfileMutation.isPending}
-                data-testid="button-toggle-dinner-mastered"
-              >
-                {profile?.dinnerMastered ? "ON" : "OFF"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">walkDuration</p>
-              <div className="flex gap-1">
-                {[2, 5, 10, 15, 20].map(d => (
-                  <Button
-                    key={d}
-                    size="sm"
-                    variant={profile?.walkDuration === d ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setProfileMutation.mutate({ walkDuration: d })}
-                    disabled={setProfileMutation.isPending}
-                    data-testid={`button-walk-dur-${d}`}
-                  >
-                    {d}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">walksPerWeek</p>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5, 6, 7].map(n => (
-                  <Button
-                    key={n}
-                    size="sm"
-                    variant={profile?.walksPerWeek === n ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setProfileMutation.mutate({ walksPerWeek: n })}
-                    disabled={setProfileMutation.isPending}
-                    data-testid={`button-walks-per-${n}`}
-                  >
-                    {n}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs">currentStruggle: {profile?.currentStruggle || "none"}</p>
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  size="sm"
-                  variant={!profile?.currentStruggle ? "default" : "outline"}
-                  className="h-7 text-xs"
-                  onClick={() => setProfileMutation.mutate({ currentStruggle: null })}
-                  disabled={setProfileMutation.isPending}
-                  data-testid="button-struggle-none"
-                >
-                  None
-                </Button>
-                {STRUGGLE_PRIORITY.map(s => (
-                  <Button
-                    key={s}
-                    size="sm"
-                    variant={profile?.currentStruggle === s ? "default" : "outline"}
-                    className="h-7 text-xs"
-                    onClick={() => setProfileMutation.mutate({ currentStruggle: s })}
-                    disabled={setProfileMutation.isPending}
-                    data-testid={`button-struggle-${s}`}
-                  >
-                    {s.replace(/_/g, " ")}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">currentTipIndex: {profile?.currentTipIndex}</p>
-              <div className="flex gap-1">
-                {[0, 1, 2, 3, 4, 5].map(i => (
-                  <Button
-                    key={i}
-                    size="sm"
-                    variant={profile?.currentTipIndex === i ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setProfileMutation.mutate({ currentTipIndex: i })}
-                    disabled={setProfileMutation.isPending}
-                    data-testid={`button-tip-${i}`}
-                  >
-                    {i}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">dinnerSuccessWeeks: {profile?.dinnerSuccessWeeks}</p>
-              <div className="flex gap-1">
-                {[0, 1, 2, 3].map(w => (
-                  <Button
-                    key={w}
-                    size="sm"
-                    variant={profile?.dinnerSuccessWeeks === w ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setProfileMutation.mutate({ dinnerSuccessWeeks: w })}
-                    disabled={setProfileMutation.isPending}
-                    data-testid={`button-dinner-weeks-${w}`}
-                  >
-                    {w}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-orange-500" />
             <p className="text-sm font-semibold">Generate History</p>
           </div>
-          <p className="text-xs text-muted-foreground">Create past weeks of simulated data from current week forward</p>
+          <p className="text-xs text-muted-foreground">
+            {currentDateOverride
+              ? `Generates ${historyWeeks} weeks of history before ${dateInfo?.monday} (Monday of selected week)`
+              : "Set a date override first to anchor history generation"}
+          </p>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs">Weeks to generate</p>
               <div className="flex gap-1">
-                {[1, 2, 4, 8].map(w => (
+                {[2, 3, 4].map(w => (
                   <Button
                     key={w}
                     size="sm"
@@ -401,7 +269,7 @@ export default function DevPanel() {
             <Button
               className="w-full"
               onClick={() => generateHistoryMutation.mutate({ weeks: historyWeeks, walkSuccessRate: walkRate, dietSuccessRate: dietRate })}
-              disabled={generateHistoryMutation.isPending}
+              disabled={generateHistoryMutation.isPending || !currentDateOverride}
               data-testid="button-generate-history"
             >
               {generateHistoryMutation.isPending ? "Generating..." : `Generate ${historyWeeks} weeks`}

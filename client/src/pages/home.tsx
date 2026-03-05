@@ -50,9 +50,6 @@ export default function Home() {
 
   const today = new Date();
   const realDayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
-  const dayOfWeek = devTime?.dayOverride !== null && devTime?.dayOverride !== undefined
-    ? devTime.dayOverride
-    : realDayOfWeek;
 
   const formatLocalDate = (d: Date) => {
     const yyyy = d.getFullYear();
@@ -62,12 +59,19 @@ export default function Home() {
   };
 
   const todayStr = (() => {
-    if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && plan?.startDate) {
-      const start = new Date(plan.startDate + "T00:00:00");
-      start.setDate(start.getDate() + devTime.dayOverride);
-      return formatLocalDate(start);
+    if (devTime?.dateOverride) {
+      return devTime.dateOverride;
     }
     return formatLocalDate(today);
+  })();
+
+  const dayOfWeek = (() => {
+    if (devTime?.dateOverride) {
+      const d = new Date(devTime.dateOverride + "T00:00:00");
+      const jsDay = d.getDay();
+      return jsDay === 0 ? 6 : jsDay - 1;
+    }
+    return realDayOfWeek;
   })();
 
   const weekNumber = plan?.weekNumber || profile?.currentWeek || 1;
@@ -196,10 +200,8 @@ export default function Home() {
 
 
   const effectiveDate = (() => {
-    if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && plan?.startDate) {
-      const start = new Date(plan.startDate + "T00:00:00");
-      start.setDate(start.getDate() + devTime.dayOverride);
-      return start;
+    if (devTime?.dateOverride) {
+      return new Date(devTime.dateOverride + "T00:00:00");
     }
     return today;
   })();
