@@ -913,82 +913,98 @@ export default function Home() {
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
               <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Walk</div>
-              {calendarData?.calendar?.map((d: any, i: number) => (
-                <div key={i} className={`h-7 rounded flex items-center justify-center ${
-                  d.walkCompleted === true ? "bg-green-100 text-green-600" :
-                  d.walkCompleted === false ? "bg-red-50 text-red-400" :
-                  d.walkScheduled ? "bg-muted" : "bg-muted"
-                }`}>
-                  {d.walkCompleted === true ? <Check className="w-3 h-3" /> :
-                   d.walkCompleted === false ? <X className="w-3 h-3" /> :
-                   d.walkScheduled ? <Footprints className="w-3 h-3 text-muted-foreground" /> : null}
-                </div>
-              ))}
+              {calendarData?.calendar?.map((d: any, i: number) => {
+                const isFuture = d.date > todayStr;
+                const answered = !isFuture && d.walkCompleted !== null && d.walkCompleted !== undefined;
+                return (
+                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                    answered && d.walkCompleted ? "bg-green-100 text-green-600" :
+                    answered && !d.walkCompleted ? "bg-red-50 text-red-400" :
+                    "bg-muted"
+                  }`}>
+                    {answered && d.walkCompleted ? <Check className="w-3 h-3" /> :
+                     answered && !d.walkCompleted ? <X className="w-3 h-3" /> :
+                     d.walkScheduled ? <Footprints className="w-3 h-3 text-muted-foreground" /> : null}
+                  </div>
+                );
+              })}
             </div>
 
             {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Late Dinner</div>
-                {calendarData?.calendar?.map((d: any, i: number) => (
-                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
-                    !d.lateDinnerScheduled ? "bg-muted" :
-                    d.dinnerSuccess === true ? "bg-green-100 text-green-600" :
-                    d.dinnerSuccess === false ? "bg-red-50 text-red-400" :
-                    "bg-muted"
-                  }`}>
-                    {!d.lateDinnerScheduled ? null :
-                     d.dinnerSuccess === true ? <Check className="w-3 h-3" /> :
-                     d.dinnerSuccess === false ? <X className="w-3 h-3" /> :
-                     <Soup className="w-3 h-3 text-muted-foreground" />}
-                  </div>
-                ))}
+                {calendarData?.calendar?.map((d: any, i: number) => {
+                  const isFuture = d.date > todayStr;
+                  const answered = !isFuture && d.dinnerSuccess !== null && d.dinnerSuccess !== undefined;
+                  return (
+                    <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                      !d.lateDinnerScheduled ? "bg-muted" :
+                      answered && d.dinnerSuccess ? "bg-green-100 text-green-600" :
+                      answered && !d.dinnerSuccess ? "bg-red-50 text-red-400" :
+                      "bg-muted"
+                    }`}>
+                      {!d.lateDinnerScheduled ? null :
+                       answered && d.dinnerSuccess ? <Check className="w-3 h-3" /> :
+                       answered && !d.dinnerSuccess ? <X className="w-3 h-3" /> :
+                       <Soup className="w-3 h-3 text-muted-foreground" />}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out</div>
-                {calendarData?.calendar?.map((d: any, i: number) => (
-                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
-                    !d.eatOutScheduled ? "bg-muted" :
-                    d.dietResponse === "yes" ? "bg-green-100 text-green-600" :
-                    d.dietResponse === "no" ? "bg-red-50 text-red-400" :
-                    "bg-muted"
-                  }`}>
-                    {!d.eatOutScheduled ? null :
-                     d.dietResponse === "yes" ? <Check className="w-3 h-3" /> :
-                     d.dietResponse === "no" ? <X className="w-3 h-3" /> :
-                     <Wine className="w-3 h-3 text-muted-foreground" />}
-                  </div>
-                ))}
+                {calendarData?.calendar?.map((d: any, i: number) => {
+                  const isFuture = d.date > todayStr;
+                  const answered = !isFuture && d.dietResponse !== null && d.dietResponse !== undefined;
+                  return (
+                    <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                      !d.eatOutScheduled ? "bg-muted" :
+                      answered && d.dietResponse === "yes" ? "bg-green-100 text-green-600" :
+                      answered && d.dietResponse === "no" ? "bg-red-50 text-red-400" :
+                      "bg-muted"
+                    }`}>
+                      {!d.eatOutScheduled ? null :
+                       answered && d.dietResponse === "yes" ? <Check className="w-3 h-3" /> :
+                       answered && d.dietResponse === "no" ? <X className="w-3 h-3" /> :
+                       <Wine className="w-3 h-3 text-muted-foreground" />}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {plan?.dietTip && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Diet</div>
-                {calendarData?.calendar?.map((d: any, i: number) => (
-                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
-                    d.dietResponse === "yes" ? "bg-green-100 text-green-600" :
-                    d.dietResponse === "no" ? "bg-red-50 text-red-400" :
-                    d.dietResponse === "no_chance" ? "bg-gray-100 text-gray-400" :
-                    "bg-muted"
-                  }`}>
-                    {d.dietResponse === "yes" ? <Check className="w-3 h-3" /> :
-                     d.dietResponse === "no" ? <X className="w-3 h-3" /> :
-                     d.dietResponse === "no_chance" ? <Minus className="w-3 h-3" /> : null}
-                  </div>
-                ))}
+                {calendarData?.calendar?.map((d: any, i: number) => {
+                  const isFuture = d.date > todayStr;
+                  const resp = isFuture ? null : d.dietResponse;
+                  return (
+                    <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                      resp === "yes" ? "bg-green-100 text-green-600" :
+                      resp === "no" ? "bg-red-50 text-red-400" :
+                      resp === "no_chance" ? "bg-gray-100 text-gray-400" :
+                      "bg-muted"
+                    }`}>
+                      {resp === "yes" ? <Check className="w-3 h-3" /> :
+                       resp === "no" ? <X className="w-3 h-3" /> :
+                       resp === "no_chance" ? <Minus className="w-3 h-3" /> : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground" data-testid="calendar-legend">
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
-              <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Walk</div>
-              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Dinner</div>
+              <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Planned early dinner</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
-                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Eat Out</div>
+                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned eat out</div>
               )}
             </div>
           </div>
