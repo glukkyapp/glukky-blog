@@ -41,6 +41,7 @@ export const weeklyPlans = pgTable("weekly_plans", {
   dietStruggle: text("diet_struggle"),
   dietTip: text("diet_tip"),
   isDinnerFocus: boolean("is_dinner_focus").notNull().default(false),
+  firstActiveDay: integer("first_active_day").notNull().default(0),
 });
 
 export const weeklyPlanDays = pgTable("weekly_plan_days", {

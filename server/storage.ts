@@ -18,6 +18,7 @@ export interface IStorage {
   getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined>;
   getCurrentWeeklyPlan(userId: string): Promise<WeeklyPlan | undefined>;
   createWeeklyPlan(plan: InsertWeeklyPlan): Promise<WeeklyPlan>;
+  updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined>;
 
   getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]>;
   createWeeklyPlanDay(day: InsertWeeklyPlanDay): Promise<WeeklyPlanDay>;
@@ -72,6 +73,11 @@ export class DatabaseStorage implements IStorage {
   async createWeeklyPlan(plan: InsertWeeklyPlan): Promise<WeeklyPlan> {
     const [created] = await db.insert(weeklyPlans).values(plan).returning();
     return created;
+  }
+
+  async updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined> {
+    const [updated] = await db.update(weeklyPlans).set(data).where(eq(weeklyPlans.id, planId)).returning();
+    return updated;
   }
 
   async getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]> {

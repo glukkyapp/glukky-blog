@@ -40,7 +40,12 @@ function AuthenticatedApp() {
   }
 
   if (!currentPlan) {
-    return <WeeklyPlanner />;
+    return (
+      <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
+        <WeeklyPlanner />
+        <FloatingNavBar />
+      </div>
+    );
   }
 
   return (

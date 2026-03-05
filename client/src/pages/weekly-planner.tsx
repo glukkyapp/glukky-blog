@@ -33,6 +33,21 @@ export default function WeeklyPlanner() {
 
   const isFirstWeek = !reflection;
 
+  const firstActiveDay = (() => {
+    if (!isFirstWeek) return 0;
+    const now = new Date();
+    let todayDow: number;
+    if (devTime?.dateOverride) {
+      const d = new Date(devTime.dateOverride + "T00:00:00");
+      const jsDay = d.getDay();
+      todayDow = jsDay === 0 ? 6 : jsDay - 1;
+    } else {
+      const jsDay = now.getDay();
+      todayDow = jsDay === 0 ? 6 : jsDay - 1;
+    }
+    return todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+  })();
+
   const isDinnerFocus = reflection ? reflection.isDinnerFocus : (!profile?.dinnerMastered && profile?.hasLateDinner);
 
   const steps: string[] = [];
@@ -64,7 +79,8 @@ export default function WeeklyPlanner() {
       setInitialized(true);
     } else if (!reflection) {
       const pw = profile?.walksPerWeek || 3;
-      setWalkDays(Array.from({ length: pw }, (_, i) => i));
+      const availableDays = Array.from({ length: 7 }, (_, i) => i).filter(d => d >= firstActiveDay);
+      setWalkDays(availableDays.slice(0, pw));
       setInitialized(true);
     }
   }, [profile, reflection, initialized]);
@@ -271,21 +287,32 @@ export default function WeeklyPlanner() {
           )}
 
           <p className="text-sm text-muted-foreground">Tap the days that feel doable this week</p>
+          {isFirstWeek && firstActiveDay > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
+              You're joining mid-week — days before {DAY_NAMES[firstActiveDay]} are inactive
+            </p>
+          )}
           <div className="grid grid-cols-7 gap-1">
-            {DAY_NAMES.map((name, i) => (
-              <button
-                key={i}
-                onClick={() => toggleDay(i, walkDays, setWalkDays)}
-                className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
-                  walkDays.includes(i)
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-                data-testid={`button-walk-day-${i}`}
-              >
-                {name}
-              </button>
-            ))}
+            {DAY_NAMES.map((name, i) => {
+              const inactive = isFirstWeek && i < firstActiveDay;
+              return (
+                <button
+                  key={i}
+                  onClick={() => !inactive && toggleDay(i, walkDays, setWalkDays)}
+                  disabled={inactive}
+                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                    inactive
+                      ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                      : walkDays.includes(i)
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`button-walk-day-${i}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{walkDays.length} days selected</p>
         </CardContent>
@@ -305,20 +332,26 @@ export default function WeeklyPlanner() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">Any days you'll be eating out?</p>
           <div className="grid grid-cols-7 gap-1">
-            {DAY_NAMES.map((name, i) => (
-              <button
-                key={i}
-                onClick={() => toggleDay(i, eatOutDays, setEatOutDays)}
-                className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
-                  eatOutDays.includes(i)
-                    ? "bg-orange-500 text-white"
-                    : "bg-muted text-muted-foreground"
-                }`}
-                data-testid={`button-eat-out-day-${i}`}
-              >
-                {name}
-              </button>
-            ))}
+            {DAY_NAMES.map((name, i) => {
+              const inactive = isFirstWeek && i < firstActiveDay;
+              return (
+                <button
+                  key={i}
+                  onClick={() => !inactive && toggleDay(i, eatOutDays, setEatOutDays)}
+                  disabled={inactive}
+                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                    inactive
+                      ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                      : eatOutDays.includes(i)
+                        ? "bg-orange-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`button-eat-out-day-${i}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{eatOutDays.length} days selected</p>
         </CardContent>
@@ -338,20 +371,26 @@ export default function WeeklyPlanner() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">Any nights where dinner will be late (after 9pm)?</p>
           <div className="grid grid-cols-7 gap-1">
-            {DAY_NAMES.map((name, i) => (
-              <button
-                key={i}
-                onClick={() => toggleDay(i, lateDinnerDays, setLateDinnerDays)}
-                className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
-                  lateDinnerDays.includes(i)
-                    ? "bg-amber-500 text-white"
-                    : "bg-muted text-muted-foreground"
-                }`}
-                data-testid={`button-late-dinner-day-${i}`}
-              >
-                {name}
-              </button>
-            ))}
+            {DAY_NAMES.map((name, i) => {
+              const inactive = isFirstWeek && i < firstActiveDay;
+              return (
+                <button
+                  key={i}
+                  onClick={() => !inactive && toggleDay(i, lateDinnerDays, setLateDinnerDays)}
+                  disabled={inactive}
+                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                    inactive
+                      ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                      : lateDinnerDays.includes(i)
+                        ? "bg-amber-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`button-late-dinner-day-${i}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{lateDinnerDays.length} days selected</p>
         </CardContent>
@@ -654,9 +693,13 @@ export default function WeeklyPlanner() {
   const isLastStep = currentStepId === "preview";
 
   const today = new Date();
-  const effectiveDayJS = devTime?.dayOverride !== null && devTime?.dayOverride !== undefined
-    ? (devTime.dayOverride + 1) % 7
-    : today.getDay();
+  const effectiveDayJS = (() => {
+    if (devTime?.dateOverride) {
+      const d = new Date(devTime.dateOverride + "T00:00:00");
+      return d.getDay();
+    }
+    return today.getDay();
+  })();
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
     : today.getHours();
@@ -668,10 +711,8 @@ export default function WeeklyPlanner() {
 
   function renderMonthlyReportMessage() {
     const now = (() => {
-      if (devTime?.dayOverride !== null && devTime?.dayOverride !== undefined && currentPlan?.startDate) {
-        const start = new Date(currentPlan.startDate + "T00:00:00");
-        start.setDate(start.getDate() + devTime.dayOverride);
-        return start;
+      if (devTime?.dateOverride) {
+        return new Date(devTime.dateOverride + "T00:00:00");
       }
       return new Date();
     })();
@@ -736,7 +777,7 @@ export default function WeeklyPlanner() {
 
   const alreadyPlanned = currentPlan && currentPlan.currentWeek && currentPlan.weekNumber === currentPlan.currentWeek - 1;
 
-  if (isWeek1 && !isSundayNight) {
+  if (isWeek1 && currentPlan) {
     return renderPendingView();
   }
 

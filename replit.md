@@ -42,10 +42,11 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
   - **2pm–10pm**: dinner question only (if today is a late dinner day) — "Can you move dinner earlier?" Yes → move_early label; No → pick tactic
   - **After 10pm**: dinner follow-up (did you follow through?) + walk check-in + diet check-in
   - **After recording**: toast "Recorded!" → shows tomorrow's plan (read-only)
-- `/plan` - Weekly planner (time-gated):
-  - **Mon–Sat, Week 1**: Shows "Your first week's report is pending!" (no planning available)
-  - **Mon–Sat, Week 2+**: Shows read-only weekly report for previous week (no planning available)
-  - **Sunday only**: Full planning flow unlocked:
+- `/plan` - Weekly planner:
+  - **Week 1, no plan yet**: Shows "Plan Your First Week" immediately (any day/time). If mid-week, days before tomorrow are grayed out (disabled) in day selection. `firstActiveDay` stored on plan (0=Mon, 6=Sun).
+  - **Week 1, plan exists**: Shows "Your first week's report is pending!"
+  - **Week 2+, Mon–Sat**: Shows read-only weekly report for previous week (no planning available)
+  - **Sunday after 6pm**: Full planning flow unlocked:
     - **First week**: walkDays → eatOutDays → lateDinnerDays → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
     - **Week 2+**: weeklyReport → walkDays (with negotiation + pre-fill) → eatOutDays → lateDinnerDays → [dinnerFocusReview] → [dietReview] → preview
   - **Monthly report message** shown at bottom of planner tab: "Your monthly report will be available on [last day of month]" or "available today!" on last day
@@ -83,7 +84,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `users` - Auth (id, email, hashed password)
 - `sessions` - Express sessions (connect-pg-simple)
 - `user_profiles` - Baseline data, current struggle, dinner state
-- `weekly_plans` - Walk/diet goals per week
+- `weekly_plans` - Walk/diet goals per week, includes `first_active_day` (0=Mon default, for mid-week week-1 signup)
 - `weekly_plan_days` - Per-day walk schedule + eat-out flag + late-dinner flag + dinner labels (set at check-in)
 - `daily_logs` - Daily check-in data
 - `weekly_reports`, `monthly_reports` - Generated reports

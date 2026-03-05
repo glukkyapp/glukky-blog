@@ -160,6 +160,32 @@ export async function registerRoutes(
         lateDinnerDays: lateDinnerDays || [],
       });
 
+      if (profile.currentWeek === 1) {
+        const dateOverride = devDateOverrides.get(userId);
+        const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();
+        const jsDay = effectiveDate.getDay();
+        const todayDow = jsDay === 0 ? 6 : jsDay - 1;
+        const firstActiveDay = todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+
+        if (firstActiveDay > 0) {
+          await storage.updateWeeklyPlan(result.plan.id, { firstActiveDay });
+
+          const days = await storage.getWeeklyPlanDays(result.plan.id);
+          for (const day of days) {
+            if (day.dayOfWeek < firstActiveDay) {
+              await storage.updateWeeklyPlanDay(day.id, {
+                walkScheduled: false,
+                eatOutScheduled: false,
+                lateDinnerScheduled: false,
+                walkDuration: 0,
+              });
+            }
+          }
+
+          result.plan = { ...result.plan, firstActiveDay };
+        }
+      }
+
       await storage.updateProfile(userId, { currentWeek: profile.currentWeek + 1 });
 
       res.json(result);
