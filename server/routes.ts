@@ -160,6 +160,41 @@ export async function registerRoutes(
         lateDinnerDays: lateDinnerDays || [],
       });
 
+      const actualDinnerFocus = (lateDinnerDays || []).length > 0 && !profile.dinnerMastered;
+      if (actualDinnerFocus !== result.plan.isDinnerFocus) {
+        const planUpdate: any = { isDinnerFocus: actualDinnerFocus };
+        const profileUpdate: any = {};
+
+        if (actualDinnerFocus) {
+          planUpdate.dietStruggle = null;
+          planUpdate.dietTip = null;
+          profileUpdate.currentStruggle = null;
+          profileUpdate.currentTipIndex = 0;
+        } else {
+          const freshProfile = await storage.getProfile(userId);
+          const struggles = freshProfile?.struggles || [];
+          if (freshProfile?.currentStruggle) {
+            const ladder = DIET_TIP_LADDERS[freshProfile.currentStruggle];
+            planUpdate.dietStruggle = freshProfile.currentStruggle;
+            planUpdate.dietTip = ladder && freshProfile.currentTipIndex < ladder.length ? ladder[freshProfile.currentTipIndex] : null;
+          } else if (struggles.length > 0) {
+            const sorted = sortStruggles(struggles as string[]);
+            const firstStruggle = sorted[0];
+            profileUpdate.currentStruggle = firstStruggle;
+            profileUpdate.currentTipIndex = 0;
+            const ladder = DIET_TIP_LADDERS[firstStruggle];
+            planUpdate.dietStruggle = firstStruggle;
+            planUpdate.dietTip = ladder && ladder.length > 0 ? ladder[0] : null;
+          }
+        }
+
+        await storage.updateWeeklyPlan(result.plan.id, planUpdate);
+        if (Object.keys(profileUpdate).length > 0) {
+          await storage.updateProfile(userId, profileUpdate);
+        }
+        result.plan = { ...result.plan, ...planUpdate };
+      }
+
       if (profile.currentWeek === 1) {
         const dateOverride = devDateOverrides.get(userId);
         const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();

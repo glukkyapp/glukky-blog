@@ -27,7 +27,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 
 ## Key Algorithm (DO NOT MODIFY without explicit request)
 1. **Walk Negotiation**: Frequency-first (+1 day if <5/7), then duration (+5 min, cap 20), then Standing Reset (2 min)
-2. **Late Dinner Priority**: If user has dinner after 9pm, focus on dinner timing before diet struggles. Labels: Move Early / Fiber Starter / Dusk Prep / Split Dinner. Graduation at >95% over 3 weeks.
+2. **Late Dinner Priority**: Weekly plan selections override profile baseline. If user selects late dinner days → dinner focus (unless mastered). If user selects 0 late dinner days → no dinner focus, diet struggle activates instead. Labels: Move Early / Fiber Starter / Dusk Prep / Split Dinner. Graduation at >95% over 3 weeks. Override logic in routes.ts post-processing (engine.ts untouched).
 3. **Diet Struggle Queue**: Sugary Food/Drink → Oily/Fried Food → Eat Out → Portions → Snacks. Clean Week Rule for tip advancement.
 4. **Bi-Weekly Triggers**: Walking Bridge, Auto-Escalation (100% standing reset for 2 weeks → auto-restore to 5-min walks), Stagnation Pivot
 5. **Fatigue Detection**: Same day "Tired" 3/3 weeks → propose Rest Day

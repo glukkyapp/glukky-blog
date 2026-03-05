@@ -642,7 +642,7 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {isDinnerFocus && !profile?.currentStruggle && (
+          {lateDinnerDays.length > 0 && !profile?.dinnerMastered && (
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1" data-testid="section-preview-dinner-focus">
               <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <UtensilsCrossed className="w-3 h-3" /> Focus: Late Dinner Management
@@ -653,13 +653,24 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {profile?.currentStruggle && (
+          {lateDinnerDays.length === 0 && profile?.currentStruggle && (
             <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
               <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[profile.currentStruggle] || profile.currentStruggle}
               </p>
               <p className="text-xs text-primary font-medium">
                 {(DIET_TIP_LADDERS as Record<string, string[]>)[profile.currentStruggle]?.[profile.currentTipIndex] || ""}
+              </p>
+            </div>
+          )}
+
+          {lateDinnerDays.length === 0 && !profile?.currentStruggle && profile?.struggles && (profile.struggles as string[]).length > 0 && (
+            <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[(profile.struggles as string[])[0]] || (profile.struggles as string[])[0]}
+              </p>
+              <p className="text-xs text-primary font-medium">
+                {(DIET_TIP_LADDERS as Record<string, string[]>)[(profile.struggles as string[])[0]]?.[0] || ""}
               </p>
             </div>
           )}
