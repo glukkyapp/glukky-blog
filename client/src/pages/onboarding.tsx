@@ -45,6 +45,14 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
+    let struggles = selectedStruggles;
+    if (struggles.length === 0) {
+      struggles = ["sugary_food_drink"];
+      toast({
+        title: "Your lifestyle is very healthy!",
+        description: "Let's add a small improvement to keep you on track.",
+      });
+    }
     try {
       await apiRequest("POST", "/api/profile", {
         walksPerWeek,
@@ -52,7 +60,7 @@ export default function Onboarding() {
         dinnerTime,
         sleepPattern,
         eatingOutFrequency,
-        struggles: selectedStruggles,
+        struggles,
         notificationEmail,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });

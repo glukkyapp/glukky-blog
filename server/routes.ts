@@ -6,7 +6,7 @@ import { authStorage } from "./replit_integrations/auth/storage";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData, processDietProgression,
-  processDinnerGraduation, checkBiWeeklyTriggers,
+  processDinnerGraduation, checkBiWeeklyTriggers, getStretchProgression,
   getWeekStartDate,
 } from "./engine";
 import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS } from "@shared/schema";
@@ -21,7 +21,10 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail } = req.body;
 
-      const sortedStruggles = sortStruggles(struggles || []);
+      let sortedStruggles = sortStruggles(struggles || []);
+      if (sortedStruggles.length === 0) {
+        sortedStruggles = ["sugary_food_drink"];
+      }
       const hasLateDinner = dinnerTime === "after_9pm";
       const firstStruggle = !hasLateDinner && sortedStruggles.length > 0 ? sortedStruggles[0] : null;
 
@@ -112,7 +115,19 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const reflection = await getWeeklyReflection(userId);
-      res.json(reflection);
+      if (!reflection) return res.json(null);
+
+      const profile = await storage.getProfile(userId);
+      const biWeekly = await checkBiWeeklyTriggers(userId);
+      const stretchProgression = await getStretchProgression(userId);
+
+      res.json({
+        ...reflection,
+        walkingBridge: biWeekly.walkingBridge,
+        autoEscalation: biWeekly.autoEscalation,
+        isStretchMode: profile?.isStretchMode || false,
+        stretchProgression,
+      });
     } catch (error) {
       console.error("Error fetching reflection:", error);
       res.status(500).json({ message: "Failed to fetch reflection" });
@@ -122,7 +137,7 @@ export async function registerRoutes(
   app.post("/api/plan/weekly", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays } = req.body;
+      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays, stretchOnly } = req.body;
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
@@ -147,8 +162,25 @@ export async function registerRoutes(
           await processDietProgression(userId);
         }
 
+        if (profile.isStretchMode) {
+          const stretchProg = await getStretchProgression(userId);
+          if (stretchProg) {
+            if (stretchProg.allCompleted) {
+              await storage.updateProfile(userId, { stretchSuccessWeeks: profile.stretchSuccessWeeks + 1 });
+            } else {
+              await storage.updateProfile(userId, { stretchSuccessWeeks: 0 });
+            }
+          }
+        }
+
         if (profile.currentWeek % 2 === 0) {
-          await checkBiWeeklyTriggers(userId);
+          const biWeekly = await checkBiWeeklyTriggers(userId);
+          if (biWeekly.walkingBridge && !profile.isStretchMode) {
+            await storage.updateProfile(userId, { isStretchMode: true, stretchSuccessWeeks: 0 });
+          }
+          if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "add_minutes") {
+            await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 5, stretchSuccessWeeks: 0 });
+          }
         }
       }
 
@@ -185,6 +217,13 @@ export async function registerRoutes(
             const ladder = DIET_TIP_LADDERS[firstStruggle];
             planUpdate.dietStruggle = firstStruggle;
             planUpdate.dietTip = ladder && ladder.length > 0 ? ladder[0] : null;
+          } else {
+            profileUpdate.struggles = ["sugary_food_drink"];
+            profileUpdate.currentStruggle = "sugary_food_drink";
+            profileUpdate.currentTipIndex = 0;
+            const ladder = DIET_TIP_LADDERS["sugary_food_drink"];
+            planUpdate.dietStruggle = "sugary_food_drink";
+            planUpdate.dietTip = ladder && ladder.length > 0 ? ladder[0] : null;
           }
         }
 
@@ -193,6 +232,19 @@ export async function registerRoutes(
           await storage.updateProfile(userId, profileUpdate);
         }
         result.plan = { ...result.plan, ...planUpdate };
+      }
+
+      const freshProfileForStretch = await storage.getProfile(userId);
+      const effectiveStretchOnly = stretchOnly || freshProfileForStretch?.isStretchMode;
+      if (effectiveStretchOnly) {
+        await storage.updateWeeklyPlan(result.plan.id, { walkDurationGoal: 2 });
+        const days = await storage.getWeeklyPlanDays(result.plan.id);
+        for (const day of days) {
+          if (day.walkScheduled) {
+            await storage.updateWeeklyPlanDay(day.id, { walkDuration: 2 });
+          }
+        }
+        result.plan = { ...result.plan, walkDurationGoal: 2 };
       }
 
       if (profile.currentWeek === 1) {

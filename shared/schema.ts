@@ -29,6 +29,8 @@ export const userProfiles = pgTable("user_profiles", {
   notificationEmail: text("notification_email"),
   restDay: integer("rest_day"),
   currentWeek: integer("current_week").notNull().default(1),
+  isStretchMode: boolean("is_stretch_mode").notNull().default(false),
+  stretchSuccessWeeks: integer("stretch_success_weeks").notNull().default(0),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

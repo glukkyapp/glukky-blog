@@ -29,11 +29,12 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 1. **Walk Negotiation**: Frequency-first (+1 day if <5/7), then duration (+5 min, cap 20), then Standing Reset (2 min)
 2. **Late Dinner Priority**: Weekly plan selections override profile baseline. If user selects late dinner days → dinner focus (unless mastered). If user selects 0 late dinner days → no dinner focus, diet struggle activates instead. Labels: Move Early / Fiber Starter / Dusk Prep / Split Dinner. Graduation at >95% over 3 weeks. Override logic in routes.ts post-processing (engine.ts untouched).
 3. **Diet Struggle Queue**: Sugary Food/Drink → Oily/Fried Food → Eat Out → Portions → Snacks. Clean Week Rule for tip advancement.
-4. **Bi-Weekly Triggers**: Walking Bridge, Auto-Escalation (100% standing reset for 2 weeks → auto-restore to 5-min walks), Stagnation Pivot
-5. **Fatigue Detection**: Same day "Tired" 3/3 weeks → propose Rest Day
-6. **Bridge Lock**: During standing reset (walkDuration === 2), negotiations (add_day, add_minutes, standing_reset) are disabled; only keep_current and set_rest_day available
-7. **Next-Day Adjustment**: When tired after walk check-in: completed+tired → hydration advice popup; failed+tired+walk tomorrow → reduce tomorrow's walk by 5 min (floor 2); failed+tired+no walk tomorrow → hydration advice only
-8. **Late Dinner Pivot**: When last week's dinner-early success was 0%, 2pm check-in skips "move earlier?" question → shows tactic picker directly with option to try moving early anyway
+4. **Bi-Weekly Triggers**: Walking Bridge (0 walks over 2 weeks → enter stretch mode), Auto-Escalation (100% stretch for 2 weeks → offer 5-min walks), Stagnation Pivot
+5. **Walking Bridge / Stretch Mode**: When `isStretchMode=true`, walk day picker relabels to "stretch days" with 2-min duration. `stretchSuccessWeeks` tracks consecutive 100% stretch weeks. After 2 → auto-escalation offer. Calendar/check-in labels say "stretch" instead of "walk". Empty week offers stretch via `stretchOffer` step. `stretchOnly` flag in plan creation overrides walk durations to 2 without changing profile baseline.
+6. **Fatigue Detection**: Same day "Tired" 3/3 weeks → propose Rest Day
+7. **Bridge Lock**: During standing reset (walkDuration === 2), negotiations (add_day, add_minutes, standing_reset) are disabled; only keep_current and set_rest_day available
+8. **Next-Day Adjustment**: When tired after walk check-in: completed+tired → hydration advice popup; failed+tired+walk tomorrow → reduce tomorrow's walk by 5 min (floor 2); failed+tired+no walk tomorrow → hydration advice only
+9. **Late Dinner Pivot**: When last week's dinner-early success was 0%, 2pm check-in skips "move earlier?" question → shows tactic picker directly with option to try moving early anyway
 
 ## Pages
 - `/` - Landing (login/register tabs when not authenticated)
@@ -83,7 +84,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 ## Database Tables
 - `users` - Auth (id, email, hashed password)
 - `sessions` - Express sessions (connect-pg-simple)
-- `user_profiles` - Baseline data, current struggle, dinner state
+- `user_profiles` - Baseline data, current struggle, dinner state, stretch mode (`is_stretch_mode`, `stretch_success_weeks`)
 - `weekly_plans` - Walk/diet goals per week, includes `first_active_day` (0=Mon default, for mid-week week-1 signup)
 - `weekly_plan_days` - Per-day walk schedule + eat-out flag + late-dinner flag + dinner labels (set at check-in)
 - `daily_logs` - Daily check-in data

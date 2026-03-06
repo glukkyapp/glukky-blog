@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
   Calendar, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus,
+  Wine, Soup, Minus, Activity, Sparkles,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -56,22 +56,31 @@ export default function WeeklyPlanner() {
   const [eatOutDays, setEatOutDays] = useState<number[]>([]);
   const [lateDinnerDays, setLateDinnerDays] = useState<number[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [stretchDays, setStretchDays] = useState<number[]>([]);
+  const [stretchAccepted, setStretchAccepted] = useState(false);
 
   const isDinnerFocus = useMemo(() => {
     return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
   }, [lateDinnerDays, profile?.dinnerMastered]);
 
-  const hasStruggles = !!(profile?.currentStruggle || (profile?.struggles && (profile.struggles as string[]).length > 0));
+  const isEmptyWeek = useMemo(() => {
+    return walkDays.length === 0 && eatOutDays.length === 0 && lateDinnerDays.length === 0;
+  }, [walkDays, eatOutDays, lateDinnerDays]);
+
+  const isStretchMode = profile?.isStretchMode || reflection?.walkingBridge || false;
+  const isEmptyWeekStretch = !isStretchMode && stretchAccepted && stretchDays.length > 0;
+  const isStretchActive = isStretchMode || isEmptyWeekStretch;
 
   const steps = useMemo(() => {
     const s: string[] = [];
     if (!isFirstWeek) s.push("weeklyReport");
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
+    if (isEmptyWeek) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
-    if (!isDinnerFocus && hasStruggles) s.push("dietReview");
+    if (!isDinnerFocus) s.push("dietReview");
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, hasStruggles]);
+  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, isEmptyWeek]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -96,11 +105,13 @@ export default function WeeklyPlanner() {
 
   const createPlanMutation = useMutation({
     mutationFn: async () => {
+      const effectiveWalkDays = isEmptyWeekStretch ? stretchDays : walkDays;
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
-        walkDays,
+        walkDays: effectiveWalkDays,
         eatOutDays,
         lateDinnerDays,
+        stretchOnly: isStretchActive,
       });
       return res.json();
     },
@@ -239,7 +250,7 @@ export default function WeeklyPlanner() {
   }
 
   function renderWalkDays() {
-    const showNegotiation = !isFirstWeek && reflection;
+    const showNegotiation = !isFirstWeek && reflection && !isStretchMode;
     const showNegotiationQuestion = showNegotiation && reflection.suggestedActions && reflection.suggestedActions.length > 0;
     const walkFreq = reflection?.walkDaysScheduled || 0;
     const walkDur = reflection?.walkDuration || 10;
@@ -248,8 +259,8 @@ export default function WeeklyPlanner() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-walk-days-title">
-            <Calendar className="w-5 h-5 text-primary" />
-            Which days work best for a walk?
+            {isStretchMode ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
+            {isStretchMode ? "Pick your stretch days" : "Which days work best for a walk?"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -295,7 +306,34 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">Tap the days that feel doable this week</p>
+          {isStretchMode && reflection?.autoEscalation && (
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 space-y-3" data-testid="section-auto-escalation">
+              <div className="flex items-start gap-2">
+                <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">You've nailed stretching for 2 weeks!</p>
+                  <p className="text-sm text-muted-foreground mt-1">Ready to try 5-minute walks?</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setNegotiationChoice("add_minutes")} data-testid="button-escalation-yes">Yes, let's do it</Button>
+                <Button size="sm" variant="outline" onClick={() => setNegotiationChoice("keep_current")} data-testid="button-escalation-no">Not yet</Button>
+              </div>
+            </div>
+          )}
+
+          {isStretchMode && reflection?.stretchProgression?.allCompleted && !reflection?.autoEscalation && (
+            <div className="bg-primary/5 rounded-lg p-3 flex items-start gap-2" data-testid="section-stretch-suggestion">
+              <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Great job last week! Want to add one more stretch day? (suggested: {(reflection.stretchProgression.lastWeekStretchCount || 1) + 1} days)
+              </p>
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            {isStretchMode ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
+          </p>
           {isFirstWeek && firstActiveDay > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
               You're joining mid-week — days before {DAY_NAMES[firstActiveDay]} are inactive
@@ -407,6 +445,69 @@ export default function WeeklyPlanner() {
     );
   }
 
+  function renderStretchOffer() {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2" data-testid="text-stretch-offer-title">
+            <Activity className="w-5 h-5 text-primary" />
+            One Small Step
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Would you like to do a 2-minute post-dinner stretch on one or more days this week?
+          </p>
+
+          {!stretchAccepted ? (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setStretchAccepted(true)}
+                data-testid="button-stretch-yes"
+              >
+                Yes, let's try it
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => { setStretchAccepted(false); goNext(); }}
+                data-testid="button-stretch-no"
+              >
+                No thanks
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Pick your stretch days:</p>
+              <div className="grid grid-cols-7 gap-1">
+                {DAY_NAMES.map((name, i) => {
+                  const inactive = isFirstWeek && i < firstActiveDay;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => !inactive && toggleDay(i, stretchDays, setStretchDays)}
+                      disabled={inactive}
+                      className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                        inactive
+                          ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                          : stretchDays.includes(i)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                      }`}
+                      data-testid={`button-stretch-day-${i}`}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-center text-sm text-muted-foreground">{stretchDays.length} days selected</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderDinnerFocusReview() {
     const hasReflection = !!reflection;
     const dinnerSuccessPct = reflection?.dinnerSuccessPct || 0;
@@ -494,9 +595,13 @@ export default function WeeklyPlanner() {
 
   function renderDietReview() {
     const struggles = (profile?.struggles as string[]) || [];
-    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s));
-    const effectiveStruggle = profile?.currentStruggle || sortedStruggles[0];
-    if (!effectiveStruggle) return null;
+    const excludedStruggles: string[] = [];
+    if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
+    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
+    const effectiveStruggle = profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle)
+      ? profile.currentStruggle
+      : sortedStruggles[0] || "sugary_food_drink";
+    const isFallback = !struggles.includes(effectiveStruggle);
 
     const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
     const effectiveTipIndex = profile?.currentStruggle ? profile.currentTipIndex : 0;
@@ -538,6 +643,13 @@ export default function WeeklyPlanner() {
           <CardTitle data-testid="text-diet-review-title">This Week's Diet Focus</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isFallback && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-diet-fallback-message">
+              <Sparkles className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">Let's add a small focus this week!</p>
+            </div>
+          )}
+
           <div className="bg-primary/5 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Current struggle</p>
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
@@ -610,16 +722,19 @@ export default function WeeklyPlanner() {
           </div>
 
           <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-            <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Walk</div>
+            <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">
+              {isStretchActive ? "Stretch" : "Walk"}
+            </div>
             {DAY_NAMES.map((_, i) => {
               const inactive = i < firstActiveDay;
+              const previewWalkDays = isEmptyWeekStretch ? stretchDays : walkDays;
               return (
                 <div key={i} className={`h-7 rounded flex items-center justify-center ${
                   inactive ? "bg-muted/30" :
-                  walkDays.includes(i) ? "bg-primary/20 text-primary" : "bg-muted"
+                  previewWalkDays.includes(i) ? "bg-primary/20 text-primary" : "bg-muted"
                 }`}>
                   {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
-                   walkDays.includes(i) ? <Footprints className="w-3 h-3" /> : null}
+                   previewWalkDays.includes(i) ? (isStretchActive ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />) : null}
                 </div>
               );
             })}
@@ -662,7 +777,10 @@ export default function WeeklyPlanner() {
           )}
 
           <div className="flex items-center gap-4 pt-1 text-[10px] text-muted-foreground" data-testid="preview-legend">
-            <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Walk</div>
+            <div className="flex items-center gap-1">
+              {isStretchActive ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
+              {isStretchActive ? "Stretch" : "Walk"}
+            </div>
             {lateDinnerDays.length > 0 && (
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
             )}
@@ -682,12 +800,15 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {lateDinnerDays.length === 0 && (() => {
+          {!isDinnerFocus && (() => {
             const struggles = (profile?.struggles as string[]) || [];
-            const sorted = STRUGGLE_PRIORITY.filter(s => struggles.includes(s));
-            const struggle = profile?.currentStruggle || sorted[0];
-            if (!struggle) return null;
-            const tipIndex = profile?.currentStruggle ? profile.currentTipIndex : 0;
+            const excludedStruggles: string[] = [];
+            if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
+            const sorted = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
+            const struggle = (profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle))
+              ? profile.currentStruggle
+              : sorted[0] || "sugary_food_drink";
+            const tipIndex = profile?.currentStruggle === struggle ? profile.currentTipIndex : 0;
             const tip = (DIET_TIP_LADDERS as Record<string, string[]>)[struggle]?.[tipIndex] || "";
             return (
               <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
@@ -718,6 +839,7 @@ export default function WeeklyPlanner() {
       case "walkDays": return renderWalkDays();
       case "eatOutDays": return renderEatOutDays();
       case "lateDinnerDays": return renderLateDinnerDays();
+      case "stretchOffer": return renderStretchOffer();
       case "dinnerFocusReview": return renderDinnerFocusReview();
       case "dietReview": return renderDietReview();
       case "preview": return renderPreview();

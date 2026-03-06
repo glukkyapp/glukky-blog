@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -239,7 +239,9 @@ export default function Home() {
 
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
-      tasks.push({ icon: Footprints, text: `${dayData.walkDuration || plan?.walkDurationGoal} min walk after dinner`, testId: "text-plan-walk", color: "text-primary" });
+      const dur = dayData.walkDuration || plan?.walkDurationGoal;
+      const isStretch = dur === 2;
+      tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
     }
     if (dayData.lateDinnerScheduled) {
       tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
@@ -449,11 +451,14 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
+    const walkDur = todayPlan?.walkDuration || plan?.walkDurationGoal;
+    const isStretch = walkDur === 2;
+
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Footprints className="w-4 h-4 text-primary" />
-          <p className="text-sm font-medium">{todayPlan?.walkDuration || plan?.walkDurationGoal} min walk after dinner</p>
+          {isStretch ? <Activity className="w-4 h-4 text-primary" /> : <Footprints className="w-4 h-4 text-primary" />}
+          <p className="text-sm font-medium">{walkDur} min {isStretch ? "stretch" : "walk"} after dinner</p>
         </div>
         {bothAnswered ? (
           <div className="flex items-center gap-3 text-sm text-muted-foreground" data-testid="section-walk-answered">
@@ -634,14 +639,16 @@ export default function Home() {
     const items: { label: string; value: string; positive: boolean }[] = [];
 
     if (todayPlan?.walkScheduled) {
+      const chkDur = todayPlan?.walkDuration || plan?.walkDurationGoal;
+      const chkStretch = chkDur === 2;
       items.push({
-        label: "Walk after dinner",
+        label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
         value: todayLog?.walkCompleted ? "Completed" : "Skipped",
         positive: !!todayLog?.walkCompleted,
       });
       items.push({
         label: "Duration",
-        value: `${todayPlan?.walkDuration || plan?.walkDurationGoal} min`,
+        value: `${chkDur} min`,
         positive: true,
       });
       items.push({
@@ -915,7 +922,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Walk</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{plan?.walkDurationGoal === 2 ? "Stretch" : "Walk"}</div>
               {calendarData?.calendar?.map((d: any, i: number) => {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
@@ -930,7 +937,7 @@ export default function Home() {
                     {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                      answered && d.walkCompleted ? <Check className="w-3 h-3" /> :
                      answered && !d.walkCompleted ? <X className="w-3 h-3" /> :
-                     d.walkScheduled ? <Footprints className="w-3 h-3 text-muted-foreground" /> : null}
+                     d.walkScheduled ? (plan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
                   </div>
                 );
               })}
@@ -1016,7 +1023,10 @@ export default function Home() {
             <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground" data-testid="calendar-legend">
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
-              <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
+              <div className="flex items-center gap-1">
+                {plan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
+                {plan?.walkDurationGoal === 2 ? " Planned stretch" : " Planned walk"}
+              </div>
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Planned early dinner</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned eat out</div>

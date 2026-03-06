@@ -257,11 +257,12 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   let walkFrequency = input.walkDays.length;
 
   const biWeeklyTriggers = await checkBiWeeklyTriggers(input.userId);
-  if (biWeeklyTriggers.autoEscalation && walkDuration <= 2) {
+  const autoEscalatedFromStretch = biWeeklyTriggers.autoEscalation && walkDuration <= 2;
+  if (autoEscalatedFromStretch) {
     walkDuration = 5;
   }
 
-  if (input.negotiationChoice === "add_minutes") {
+  if (!autoEscalatedFromStretch && input.negotiationChoice === "add_minutes") {
     walkDuration = Math.min(walkDuration + 5, 20);
   } else if (input.negotiationChoice === "standing_reset") {
     walkDuration = profile.walkDuration;
@@ -553,6 +554,39 @@ export async function generateMonthlyReportData(userId: string) {
     tipPerformance,
     struggleStatus,
     weeksAnalyzed: weeksToAnalyze,
+  };
+}
+
+export async function getStretchProgression(userId: string): Promise<{
+  allCompleted: boolean;
+  lastWeekStretchCount: number;
+} | null> {
+  const profile = await storage.getProfile(userId);
+  if (!profile) return null;
+
+  const lastWeek = profile.currentWeek - 1;
+  if (lastWeek < 1) return null;
+
+  const plan = await storage.getWeeklyPlan(userId, lastWeek);
+  if (!plan) return null;
+
+  const planDays = await storage.getWeeklyPlanDays(plan.id);
+  const stretchDays = planDays.filter(d => d.walkScheduled && d.walkDuration === 2);
+  if (stretchDays.length === 0) return null;
+
+  const logs = await storage.getDailyLogsByWeek(userId, lastWeek, plan.startDate);
+  let completedCount = 0;
+  for (const day of stretchDays) {
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    if (log?.walkCompleted) completedCount++;
+  }
+
+  return {
+    allCompleted: completedCount === stretchDays.length,
+    lastWeekStretchCount: stretchDays.length,
   };
 }
 
