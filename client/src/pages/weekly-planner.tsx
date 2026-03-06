@@ -63,9 +63,7 @@ export default function WeeklyPlanner() {
     return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
   }, [lateDinnerDays, profile?.dinnerMastered]);
 
-  const isEmptyWeek = useMemo(() => {
-    return walkDays.length === 0 && eatOutDays.length === 0 && lateDinnerDays.length === 0;
-  }, [walkDays, eatOutDays, lateDinnerDays]);
+  const noWalkDays = walkDays.length === 0;
 
   const isStretchMode = profile?.isStretchMode || reflection?.walkingBridge || false;
   const isEmptyWeekStretch = !isStretchMode && stretchAccepted && stretchDays.length > 0;
@@ -75,12 +73,12 @@ export default function WeeklyPlanner() {
     const s: string[] = [];
     if (!isFirstWeek) s.push("weeklyReport", "planTransition");
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
-    if (isEmptyWeek) s.push("stretchOffer");
+    if (noWalkDays) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
     if (!isDinnerFocus) s.push("dietReview");
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, isEmptyWeek]);
+  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, noWalkDays]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
