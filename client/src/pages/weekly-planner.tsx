@@ -864,7 +864,7 @@ export default function WeeklyPlanner() {
   const isAfter6pm = effectiveHour >= 18;
   const isSundayNight = isSunday && isAfter6pm;
 
-  const isWeek1 = !currentPlan || currentPlan.weekNumber === 1;
+  const isWeek1 = profile?.currentWeek === 1;
 
   function renderMonthlyReportMessage() {
     const now = (() => {
