@@ -73,7 +73,7 @@ export default function WeeklyPlanner() {
 
   const steps = useMemo(() => {
     const s: string[] = [];
-    if (!isFirstWeek) s.push("weeklyReport");
+    if (!isFirstWeek) s.push("weeklyReport", "planTransition");
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
     if (isEmptyWeek) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
@@ -244,6 +244,24 @@ export default function WeeklyPlanner() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function renderPlanTransition() {
+    return (
+      <Card>
+        <CardContent className="pt-8 pb-8">
+          <div className="flex flex-col items-center text-center gap-3">
+            <Calendar className="w-10 h-10 text-primary" />
+            <h2 className="text-lg font-semibold" data-testid="text-plan-transition-title">
+              Let's do next week's planning!
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Based on last week, let's set up your goals for the coming week.
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -836,6 +854,7 @@ export default function WeeklyPlanner() {
   function renderStep() {
     switch (currentStepId) {
       case "weeklyReport": return renderWeeklyReport();
+      case "planTransition": return renderPlanTransition();
       case "walkDays": return renderWalkDays();
       case "eatOutDays": return renderEatOutDays();
       case "lateDinnerDays": return renderLateDinnerDays();
@@ -932,17 +951,11 @@ export default function WeeklyPlanner() {
     );
   }
 
-  const alreadyPlanned = currentPlan && currentPlan.currentWeek && currentPlan.weekNumber === currentPlan.currentWeek - 1;
-
   if (isWeek1 && currentPlan) {
     return renderPendingView();
   }
 
   if (!isWeek1 && !isSundayNight) {
-    return renderLastWeekReport();
-  }
-
-  if (isSundayNight && alreadyPlanned) {
     return renderLastWeekReport();
   }
 
