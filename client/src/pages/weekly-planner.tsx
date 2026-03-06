@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
   Calendar, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
+  Wine, Soup, Minus,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -48,24 +49,32 @@ export default function WeeklyPlanner() {
     return todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
   })();
 
-  const isDinnerFocus = reflection ? reflection.isDinnerFocus : (!profile?.dinnerMastered && profile?.hasLateDinner);
-
-  const steps: string[] = [];
-  if (!isFirstWeek) steps.push("weeklyReport");
-  steps.push("walkDays", "eatOutDays", "lateDinnerDays");
-  if (isDinnerFocus && !profile?.currentStruggle) steps.push("dinnerFocusReview");
-  if (profile?.currentStruggle) steps.push("dietReview");
-  steps.push("preview");
-
   const [stepIndex, setStepIndex] = useState(0);
-  const currentStepId = steps[stepIndex] || steps[0];
-
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
   const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "done">("ask_day");
   const [walkDays, setWalkDays] = useState<number[]>([]);
   const [eatOutDays, setEatOutDays] = useState<number[]>([]);
   const [lateDinnerDays, setLateDinnerDays] = useState<number[]>([]);
   const [initialized, setInitialized] = useState(false);
+
+  const isDinnerFocus = useMemo(() => {
+    return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
+  }, [lateDinnerDays, profile?.dinnerMastered]);
+
+  const hasStruggles = !!(profile?.currentStruggle || (profile?.struggles && (profile.struggles as string[]).length > 0));
+
+  const steps = useMemo(() => {
+    const s: string[] = [];
+    if (!isFirstWeek) s.push("weeklyReport");
+    s.push("walkDays", "eatOutDays", "lateDinnerDays");
+    if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
+    if (!isDinnerFocus && hasStruggles) s.push("dietReview");
+    s.push("preview");
+    return s;
+  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, hasStruggles]);
+
+  const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
+  const currentStepId = steps[clampedStepIndex] || steps[0];
 
   useEffect(() => {
     if (initialized) return;
@@ -145,14 +154,14 @@ export default function WeeklyPlanner() {
   }
 
   function goNext() {
-    if (stepIndex + 1 < steps.length) {
-      setStepIndex(stepIndex + 1);
+    if (clampedStepIndex + 1 < steps.length) {
+      setStepIndex(clampedStepIndex + 1);
     }
   }
 
   function goBack() {
-    if (stepIndex - 1 >= 0) {
-      setStepIndex(stepIndex - 1);
+    if (clampedStepIndex - 1 >= 0) {
+      setStepIndex(clampedStepIndex - 1);
     }
   }
 
@@ -484,10 +493,14 @@ export default function WeeklyPlanner() {
   }
 
   function renderDietReview() {
-    if (!profile?.currentStruggle) return null;
+    const struggles = (profile?.struggles as string[]) || [];
+    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s));
+    const effectiveStruggle = profile?.currentStruggle || sortedStruggles[0];
+    if (!effectiveStruggle) return null;
 
-    const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[profile.currentStruggle] || [];
-    const currentTip = tipLadder[profile.currentTipIndex] || "";
+    const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
+    const effectiveTipIndex = profile?.currentStruggle ? profile.currentTipIndex : 0;
+    const currentTip = tipLadder[effectiveTipIndex] || "";
     const isCleanWeek = reflection?.dietCleanWeek;
     const hasReflection = !!reflection;
 
@@ -497,11 +510,11 @@ export default function WeeklyPlanner() {
     if (hasReflection) {
       const totalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
       if (totalResponses > 0 && isCleanWeek) {
-        if (profile.currentTipIndex + 1 < tipLadder.length) {
+        if (effectiveTipIndex + 1 < tipLadder.length) {
           statusType = "advance";
-          nextTipLabel = tipLadder[profile.currentTipIndex + 1];
+          nextTipLabel = tipLadder[effectiveTipIndex + 1];
         } else {
-          const currentStruggleIdx = STRUGGLE_PRIORITY.indexOf(profile.currentStruggle as any);
+          const currentStruggleIdx = STRUGGLE_PRIORITY.indexOf(effectiveStruggle as any);
           let nextStruggle: string | null = null;
           if (currentStruggleIdx >= 0 && currentStruggleIdx < STRUGGLE_PRIORITY.length - 1) {
             nextStruggle = STRUGGLE_PRIORITY[currentStruggleIdx + 1];
@@ -528,7 +541,7 @@ export default function WeeklyPlanner() {
           <div className="bg-primary/5 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Current struggle</p>
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
-              {STRUGGLE_NAMES[profile.currentStruggle] || profile.currentStruggle}
+              {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}
             </p>
           </div>
 
@@ -557,7 +570,7 @@ export default function WeeklyPlanner() {
                   <Award className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-primary">
-                      Mastered {STRUGGLE_NAMES[profile.currentStruggle] || profile.currentStruggle}!
+                      Mastered {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}!
                     </p>
                     {nextTipLabel && (
                       <p className="text-sm text-muted-foreground mt-1">Moving to: {nextTipLabel}</p>
@@ -589,58 +602,74 @@ export default function WeeklyPlanner() {
           <CardTitle data-testid="text-preview-title">Your Week at a Glance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-7 gap-1 text-center text-xs">
+          <div className="grid grid-cols-8 gap-1 text-center text-xs">
+            <div />
             {DAY_NAMES.map((name, i) => (
               <div key={i} className="font-medium text-muted-foreground">{name}</div>
             ))}
           </div>
 
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <Footprints className="w-3 h-3" /> Walk
-            </p>
-            <div className="grid grid-cols-7 gap-1">
-              {DAY_NAMES.map((_, i) => (
-                <div key={i} className={`h-8 rounded flex items-center justify-center text-xs ${
+          <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+            <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Walk</div>
+            {DAY_NAMES.map((_, i) => {
+              const inactive = i < firstActiveDay;
+              return (
+                <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                  inactive ? "bg-muted/30" :
                   walkDays.includes(i) ? "bg-primary/20 text-primary" : "bg-muted"
                 }`}>
-                  {walkDays.includes(i) && <Check className="w-3 h-3" />}
+                  {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
+                   walkDays.includes(i) ? <Footprints className="w-3 h-3" /> : null}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <ShoppingBag className="w-3 h-3" /> Eat Out
-            </p>
-            <div className="grid grid-cols-7 gap-1">
-              {DAY_NAMES.map((_, i) => (
-                <div key={i} className={`h-8 rounded flex items-center justify-center text-xs ${
-                  eatOutDays.includes(i) ? "bg-orange-100 text-orange-600" : "bg-muted"
-                }`}>
-                  {eatOutDays.includes(i) && <Check className="w-3 h-3" />}
-                </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           {lateDinnerDays.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <UtensilsCrossed className="w-3 h-3" /> Late Dinner
-              </p>
-              <div className="grid grid-cols-7 gap-1">
-                {DAY_NAMES.map((_, i) => (
-                  <div key={i} className={`h-8 rounded flex items-center justify-center text-xs ${
+            <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Late Dinner</div>
+              {DAY_NAMES.map((_, i) => {
+                const inactive = i < firstActiveDay;
+                return (
+                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                    inactive ? "bg-muted/30" :
                     lateDinnerDays.includes(i) ? "bg-amber-100 text-amber-700" : "bg-muted"
                   }`}>
-                    {lateDinnerDays.includes(i) && <Check className="w-3 h-3" />}
+                    {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
+                     lateDinnerDays.includes(i) ? <Soup className="w-3 h-3" /> : null}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
+
+          {eatOutDays.length > 0 && (
+            <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out</div>
+              {DAY_NAMES.map((_, i) => {
+                const inactive = i < firstActiveDay;
+                return (
+                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                    inactive ? "bg-muted/30" :
+                    eatOutDays.includes(i) ? "bg-orange-100 text-orange-600" : "bg-muted"
+                  }`}>
+                    {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
+                     eatOutDays.includes(i) ? <Wine className="w-3 h-3" /> : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 pt-1 text-[10px] text-muted-foreground" data-testid="preview-legend">
+            <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Walk</div>
+            {lateDinnerDays.length > 0 && (
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
+            )}
+            {eatOutDays.length > 0 && (
+              <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Eat out</div>
+            )}
+          </div>
 
           {lateDinnerDays.length > 0 && !profile?.dinnerMastered && (
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1" data-testid="section-preview-dinner-focus">
@@ -653,27 +682,22 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {lateDinnerDays.length === 0 && profile?.currentStruggle && (
-            <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[profile.currentStruggle] || profile.currentStruggle}
-              </p>
-              <p className="text-xs text-primary font-medium">
-                {(DIET_TIP_LADDERS as Record<string, string[]>)[profile.currentStruggle]?.[profile.currentTipIndex] || ""}
-              </p>
-            </div>
-          )}
-
-          {lateDinnerDays.length === 0 && !profile?.currentStruggle && profile?.struggles && (profile.struggles as string[]).length > 0 && (
-            <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[(profile.struggles as string[])[0]] || (profile.struggles as string[])[0]}
-              </p>
-              <p className="text-xs text-primary font-medium">
-                {(DIET_TIP_LADDERS as Record<string, string[]>)[(profile.struggles as string[])[0]]?.[0] || ""}
-              </p>
-            </div>
-          )}
+          {lateDinnerDays.length === 0 && (() => {
+            const struggles = (profile?.struggles as string[]) || [];
+            const sorted = STRUGGLE_PRIORITY.filter(s => struggles.includes(s));
+            const struggle = profile?.currentStruggle || sorted[0];
+            if (!struggle) return null;
+            const tipIndex = profile?.currentStruggle ? profile.currentTipIndex : 0;
+            const tip = (DIET_TIP_LADDERS as Record<string, string[]>)[struggle]?.[tipIndex] || "";
+            return (
+              <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[struggle] || struggle}
+                </p>
+                <p className="text-xs text-primary font-medium">{tip}</p>
+              </div>
+            );
+          })()}
 
           <Button
             className="w-full mt-4"
@@ -808,10 +832,10 @@ export default function WeeklyPlanner() {
             {isFirstWeek ? "Plan Your First Week" : `Plan Week ${profile?.currentWeek || ""}`}
           </h1>
           <span className="text-sm text-muted-foreground">
-            Step {stepIndex + 1}/{steps.length}
+            Step {clampedStepIndex + 1}/{steps.length}
           </span>
         </div>
-        <Progress value={((stepIndex + 1) / steps.length) * 100} className="h-2" />
+        <Progress value={((clampedStepIndex + 1) / steps.length) * 100} className="h-2" />
       </div>
 
       {renderStep()}
@@ -821,7 +845,7 @@ export default function WeeklyPlanner() {
           variant="outline"
           size="sm"
           onClick={goBack}
-          disabled={stepIndex === 0}
+          disabled={clampedStepIndex === 0}
           data-testid="button-back"
         >
           <ChevronLeft className="w-4 h-4 mr-1" /> Back
