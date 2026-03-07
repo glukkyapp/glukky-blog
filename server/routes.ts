@@ -247,12 +247,26 @@ export async function registerRoutes(
         result.plan = { ...result.plan, walkDurationGoal: 2 };
       }
 
-      if (profile.currentWeek === 1) {
+      {
         const dateOverride = devDateOverrides.get(userId);
         const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();
+        effectiveDate.setHours(0, 0, 0, 0);
         const jsDay = effectiveDate.getDay();
         const todayDow = jsDay === 0 ? 6 : jsDay - 1;
-        const firstActiveDay = todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+
+        let firstActiveDay = 0;
+        if (profile.currentWeek === 1) {
+          firstActiveDay = todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+        } else {
+          const startDateStr = typeof result.plan.startDate === 'string'
+            ? result.plan.startDate
+            : result.plan.startDate.toISOString().split('T')[0];
+          const planStart = new Date(startDateStr + "T00:00:00");
+          planStart.setHours(0, 0, 0, 0);
+          if (effectiveDate.getTime() >= planStart.getTime()) {
+            firstActiveDay = Math.min(todayDow + 1, 6);
+          }
+        }
 
         if (firstActiveDay > 0) {
           await storage.updateWeeklyPlan(result.plan.id, { firstActiveDay });
@@ -375,6 +389,16 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating log:", error);
       res.status(500).json({ message: "Failed to create log" });
+    }
+  });
+
+  app.get("/api/log/:date", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const log = await storage.getDailyLog(userId, req.params.date);
+      res.json(log || null);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch log" });
     }
   });
 

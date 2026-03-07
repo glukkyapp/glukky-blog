@@ -43,11 +43,14 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
   - **2pm–10pm**: dinner question only (if today is a late dinner day) — "Can you move dinner earlier?" Yes → move_early label; No → pick tactic
   - **After 10pm**: dinner follow-up (did you follow through?) + walk check-in + diet check-in
   - **After recording**: toast "Recorded!" → shows tomorrow's plan (read-only)
+  - **Catch-up mode** (Mon+ when Sunday check-in missed): shows retroactive Sunday check-in first, then "Review & Plan" card after completion. `checkInDate`/`checkInDayOfWeek` point to last Sunday. Uses GET `/api/log/:date` to check Sunday log status.
+  - **Sunday 10pm "Review & Plan"**: gated on `isAllCheckInDone()` or `recorded` — check-in must be completed before weekly report card appears
 - `/plan` - Weekly planner:
   - **Week 1, no plan yet**: Shows "Plan Your First Week" immediately (any day/time). If mid-week, days before tomorrow are grayed out (disabled) in day selection. `firstActiveDay` stored on plan (0=Mon, 6=Sun).
   - **Week 1, plan exists**: Shows "Your first week's report is pending!"
-  - **Week 2+, Mon–Sat**: Shows read-only weekly report for previous week (no planning available)
-  - **Sunday after 6pm**: Full planning flow unlocked:
+  - **Week 2+, Mon–Sat (before Sunday 10pm)**: Shows read-only weekly report for previous week (no planning available)
+  - **Late planning (Mon+)**: Uses `canPlan = isSundayNight || isLatePlanning` guard; requires Sunday check-in before planning (gate card with "Go to Home" button); inactive days via `firstActiveDay` same as week 1; planner title shows date range
+  - **Sunday after 10pm** (or catch-up on Mon+): Full planning flow unlocked:
     - **First week**: walkDays → eatOutDays → lateDinnerDays → [dinnerFocusReview if dinner focus] → [dietReview if struggle] → preview
     - **Week 2+**: weeklyReport → walkDays (with negotiation + pre-fill) → eatOutDays → lateDinnerDays → [dinnerFocusReview] → [dietReview] → preview
   - **Monthly report message** shown at bottom of planner tab: "Your monthly report will be available on [last day of month]" or "available today!" on last day

@@ -34,19 +34,79 @@ export default function WeeklyPlanner() {
 
   const isFirstWeek = !reflection;
 
-  const firstActiveDay = (() => {
-    if (!isFirstWeek) return 0;
-    const now = new Date();
-    let todayDow: number;
-    if (devTime?.dateOverride) {
-      const d = new Date(devTime.dateOverride + "T00:00:00");
-      const jsDay = d.getDay();
-      todayDow = jsDay === 0 ? 6 : jsDay - 1;
-    } else {
-      const jsDay = now.getDay();
-      todayDow = jsDay === 0 ? 6 : jsDay - 1;
+  const formatLocalDate = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const effectiveDateStr = devTime?.dateOverride || formatLocalDate(new Date());
+  const effectiveTodayDow = (() => {
+    const d = new Date(effectiveDateStr + "T00:00:00");
+    const jsDay = d.getDay();
+    return jsDay === 0 ? 6 : jsDay - 1;
+  })();
+
+  const planSundayStr = (() => {
+    if (!currentPlan?.startDate) return null;
+    const d = new Date(currentPlan.startDate + "T00:00:00");
+    d.setDate(d.getDate() + 6);
+    return formatLocalDate(d);
+  })();
+
+  const lastSundayStr = (() => {
+    const d = new Date(effectiveDateStr + "T00:00:00");
+    const daysBack = effectiveTodayDow === 6 ? 0 : effectiveTodayDow + 1;
+    d.setDate(d.getDate() - daysBack);
+    return formatLocalDate(d);
+  })();
+
+  const { data: sundayLogData } = useQuery({
+    queryKey: ["/api/log", planSundayStr || lastSundayStr],
+    enabled: !isFirstWeek,
+  });
+
+  const prevWeekNumber = (currentPlan?.weekNumber || profile?.currentWeek || 1) - 1;
+  const { data: prevCalendarData } = useQuery({
+    queryKey: ["/api/calendar", prevWeekNumber],
+    enabled: !isFirstWeek && prevWeekNumber >= 1,
+  });
+
+  const sundayCheckInDone = (() => {
+    if (isFirstWeek) return true;
+    if (!sundayLogData) return false;
+    const sunDate = planSundayStr || lastSundayStr;
+    const sunPlanDay = prevCalendarData?.calendar?.find((d: any) => d.dayOfWeek === 6);
+    const sunLog = prevCalendarData?.calendar?.find((d: any) => d.date === sunDate);
+    if (!sunLog) return false;
+    if (sunPlanDay?.walkScheduled) {
+      if (sunLog.walkCompleted === null || sunLog.walkCompleted === undefined) return false;
     }
-    return todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+    if (sunPlanDay?.lateDinnerScheduled && sunPlanDay?.dinnerLabel && sunPlanDay.dinnerLabel !== "none") {
+      if (sunLog.dinnerSuccess === null || sunLog.dinnerSuccess === undefined) return false;
+    }
+    if (currentPlan?.dietTip) {
+      if (sunLog.dietResponse === null || sunLog.dietResponse === undefined) return false;
+    }
+    return true;
+  })();
+
+  const isSundayEarly = (() => {
+    const d = new Date(effectiveDateStr + "T00:00:00");
+    return d.getDay() === 0;
+  })();
+  const isPastPlanWeekEarly = !!planSundayStr && effectiveDateStr > planSundayStr;
+  const isLatePlanningEarly = isPastPlanWeekEarly && !isSundayEarly;
+
+  const firstActiveDay = (() => {
+    if (isFirstWeek) {
+      return effectiveTodayDow === 0 ? 0 : Math.min(effectiveTodayDow + 1, 6);
+    }
+    if (isLatePlanningEarly) {
+      return Math.min(effectiveTodayDow + 1, 6);
+    }
+    return 0;
   })();
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -89,9 +149,10 @@ export default function WeeklyPlanner() {
 
     if (reflection?.lastWeekSchedule && reflection.lastWeekSchedule.length > 0) {
       const schedule = reflection.lastWeekSchedule;
-      setWalkDays(schedule.filter((d: any) => d.walkScheduled).map((d: any) => d.dayOfWeek));
-      setEatOutDays(schedule.filter((d: any) => d.eatOutScheduled).map((d: any) => d.dayOfWeek));
-      setLateDinnerDays(schedule.filter((d: any) => d.lateDinnerScheduled).map((d: any) => d.dayOfWeek));
+      const filterActive = (days: number[]) => firstActiveDay > 0 ? days.filter(d => d >= firstActiveDay) : days;
+      setWalkDays(filterActive(schedule.filter((d: any) => d.walkScheduled).map((d: any) => d.dayOfWeek)));
+      setEatOutDays(filterActive(schedule.filter((d: any) => d.eatOutScheduled).map((d: any) => d.dayOfWeek)));
+      setLateDinnerDays(filterActive(schedule.filter((d: any) => d.lateDinnerScheduled).map((d: any) => d.dayOfWeek)));
       setInitialized(true);
     } else if (!reflection) {
       const pw = profile?.walksPerWeek || 3;
@@ -350,14 +411,16 @@ export default function WeeklyPlanner() {
           <p className="text-sm text-muted-foreground">
             {isStretchMode ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
           </p>
-          {isFirstWeek && firstActiveDay > 0 && (
+          {firstActiveDay > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
-              You're joining mid-week — days before {DAY_NAMES[firstActiveDay]} are inactive
+              {isFirstWeek
+                ? `You're joining mid-week — days before ${DAY_NAMES[firstActiveDay]} are inactive`
+                : `Planning late — days before ${DAY_NAMES[firstActiveDay]} are inactive`}
             </p>
           )}
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
-              const inactive = isFirstWeek && i < firstActiveDay;
+              const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
               return (
                 <button
                   key={i}
@@ -396,7 +459,7 @@ export default function WeeklyPlanner() {
           <p className="text-sm text-muted-foreground">Any days you'll be eating out?</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
-              const inactive = isFirstWeek && i < firstActiveDay;
+              const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
               return (
                 <button
                   key={i}
@@ -435,7 +498,7 @@ export default function WeeklyPlanner() {
           <p className="text-sm text-muted-foreground">Any nights where dinner will be late (after 9pm)?</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
-              const inactive = isFirstWeek && i < firstActiveDay;
+              const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
               return (
                 <button
                   key={i}
@@ -496,7 +559,7 @@ export default function WeeklyPlanner() {
               <p className="text-sm font-medium">Pick your stretch days:</p>
               <div className="grid grid-cols-7 gap-1">
                 {DAY_NAMES.map((name, i) => {
-                  const inactive = isFirstWeek && i < firstActiveDay;
+                  const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
                   return (
                     <button
                       key={i}
@@ -881,6 +944,10 @@ export default function WeeklyPlanner() {
   const isAfter10pm = effectiveHour >= 22;
   const isSundayNight = isSunday && isAfter10pm;
 
+  const isPastPlanWeek = !!planSundayStr && effectiveDateStr > planSundayStr;
+  const isLatePlanning = isPastPlanWeek && !isSunday;
+  const canPlan = isSundayNight || isLatePlanning;
+
   const isWeek1 = profile?.currentWeek === 1;
 
   function renderMonthlyReportMessage() {
@@ -953,8 +1020,41 @@ export default function WeeklyPlanner() {
     return renderPendingView();
   }
 
-  if (!isWeek1 && !isSundayNight) {
+  if (!isWeek1 && !canPlan) {
     return renderLastWeekReport();
+  }
+
+  if (!isWeek1 && canPlan && !sundayCheckInDone) {
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        <h1 className="text-lg font-bold" data-testid="text-last-week-title">
+          Your statistics last week
+        </h1>
+        {renderWeeklyReport()}
+        <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-sunday-checkin-gate">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-600" />
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Complete your Sunday check-in first
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Finish Sunday's daily check-in before planning next week. Don't forget today's check-in too!
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLocation("/")}
+              data-testid="button-go-home-checkin"
+            >
+              Go to Home
+            </Button>
+          </CardContent>
+        </Card>
+        {renderMonthlyReportMessage()}
+      </div>
+    );
   }
 
   return (
@@ -964,6 +1064,26 @@ export default function WeeklyPlanner() {
           <h1 className="text-lg font-bold" data-testid="text-planner-title">
             {isFirstWeek ? "Plan Your First Week" : `Plan Week ${profile?.currentWeek || ""}`}
           </h1>
+          {!isFirstWeek && (() => {
+            const weekNum = profile?.currentWeek || 1;
+            const baseDate = new Date(effectiveDateStr + "T00:00:00");
+            const jsDay = baseDate.getDay();
+            const daysToMonday = jsDay === 0 ? 1 : (8 - jsDay) % 7 || 7;
+            const nextMon = new Date(baseDate);
+            if (isSunday) {
+              nextMon.setDate(baseDate.getDate() + 1);
+            } else {
+              nextMon.setDate(baseDate.getDate() + daysToMonday);
+            }
+            const nextSun = new Date(nextMon);
+            nextSun.setDate(nextMon.getDate() + 6);
+            const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            return (
+              <p className="text-xs text-muted-foreground" data-testid="text-planner-date-range">
+                {fmt(nextMon)} – {fmt(nextSun)}
+              </p>
+            );
+          })()}
           <span className="text-sm text-muted-foreground">
             Step {clampedStepIndex + 1}/{steps.length}
           </span>
