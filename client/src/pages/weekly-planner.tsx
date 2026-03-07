@@ -878,8 +878,8 @@ export default function WeeklyPlanner() {
     ? devTime.timeOverride
     : today.getHours();
   const isSunday = effectiveDayJS === 0;
-  const isAfter6pm = effectiveHour >= 18;
-  const isSundayNight = isSunday && isAfter6pm;
+  const isAfter10pm = effectiveHour >= 22;
+  const isSundayNight = isSunday && isAfter10pm;
 
   const isWeek1 = profile?.currentWeek === 1;
 
@@ -927,7 +927,7 @@ export default function WeeklyPlanner() {
                 Your first week's report is pending!
               </h2>
               <p className="text-sm text-muted-foreground">
-                Complete your week and check back on Sunday to see your report and plan the next week.
+                Complete your week and check back on Sunday at 10pm to see your report and plan the next week.
               </p>
             </div>
           </CardContent>

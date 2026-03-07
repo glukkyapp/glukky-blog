@@ -806,7 +806,7 @@ export default function Home() {
   }
 
   const showCheckIn = show2pmWindow || show10pmWindow;
-  const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 18;
+  const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 22;
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">

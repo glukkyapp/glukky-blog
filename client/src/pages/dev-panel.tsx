@@ -11,7 +11,7 @@ const TIME_OPTIONS = [
   { label: "Real time", value: null },
   { label: "8 AM", value: 8 },
   { label: "2 PM", value: 14 },
-  { label: "6 PM (Sun planner)", value: 18 },
+  { label: "6 PM", value: 18 },
   { label: "10 PM", value: 22 },
   { label: "11 PM", value: 23 },
 ];
