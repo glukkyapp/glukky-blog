@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -160,10 +160,6 @@ export default function Home() {
     const is2pmOnly = !isCatchUpCheck && effectiveHour >= 14 && effectiveHour < 22 && tp.lateDinnerScheduled;
 
     if (is2pmOnly) {
-      if (tp.lateDinnerScheduled && labelSet) {
-        setRecorded(true);
-        toast({ title: "Nice work!", description: "Here's what's coming up tomorrow" });
-      }
       return;
     }
 
@@ -681,7 +677,8 @@ export default function Home() {
       if (todayLog.walkCompleted === null || todayLog.walkCompleted === undefined) return false;
       if (todayLog.walkTired === null || todayLog.walkTired === undefined) return false;
     }
-    if (isLateDinnerDay && dinnerLabelSet) {
+    if (isLateDinnerDay) {
+      if (!dinnerLabelSet) return false;
       if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
     }
     if (plan?.dietTip) {
@@ -864,8 +861,7 @@ export default function Home() {
 
   const showCheckIn = show2pmWindow || show10pmWindow;
   const checkInDone = recorded
-    || (show10pmWindow && isAllCheckInDone())
-    || (show2pmWindow && dinnerLabelSet);
+    || (show10pmWindow && isAllCheckInDone());
   const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 22;
   const showReviewCard = (isSundayEvening && checkInDone)
     || (isCatchUp && (sundayCheckInDone || recorded));
@@ -1042,18 +1038,21 @@ export default function Home() {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
                   const answered = !isFuture && !inactive && d.dinnerSuccess !== null && d.dinnerSuccess !== undefined;
+                  const hasLabel = d.dinnerLabel && d.dinnerLabel !== "none";
                   return (
-                    <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                    <div key={i} className={`h-7 rounded flex flex-col items-center justify-center ${
                       inactive ? "bg-muted/30" :
                       !d.lateDinnerScheduled ? "bg-muted" :
                       answered && d.dinnerSuccess ? "bg-green-100 text-green-600" :
                       answered && !d.dinnerSuccess ? "bg-red-50 text-red-400" :
+                      hasLabel ? "bg-amber-50 text-amber-600" :
                       "bg-muted"
                     }`}>
                       {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                        !d.lateDinnerScheduled ? null :
                        answered && d.dinnerSuccess ? <Check className="w-3 h-3" /> :
                        answered && !d.dinnerSuccess ? <X className="w-3 h-3" /> :
+                       hasLabel ? <Lightbulb className="w-3 h-3" /> :
                        <Soup className="w-3 h-3 text-muted-foreground" />}
                     </div>
                   );
@@ -1119,7 +1118,8 @@ export default function Home() {
                 {plan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
                 {plan?.walkDurationGoal === 2 ? " Planned stretch" : " Planned walk"}
               </div>
-              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Planned early dinner</div>
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
+              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned eat out</div>
               )}
