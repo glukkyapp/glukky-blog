@@ -16,10 +16,12 @@ export interface IStorage {
   updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
 
   getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined>;
+  getWeeklyPlanById(planId: number): Promise<WeeklyPlan | undefined>;
   getCurrentWeeklyPlan(userId: string): Promise<WeeklyPlan | undefined>;
   createWeeklyPlan(plan: InsertWeeklyPlan): Promise<WeeklyPlan>;
   updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined>;
 
+  getWeeklyPlanDay(planDayId: number): Promise<WeeklyPlanDay | undefined>;
   getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]>;
   createWeeklyPlanDay(day: InsertWeeklyPlanDay): Promise<WeeklyPlanDay>;
   createWeeklyPlanDays(days: InsertWeeklyPlanDay[]): Promise<WeeklyPlanDay[]>;
@@ -62,6 +64,11 @@ export class DatabaseStorage implements IStorage {
     return plan;
   }
 
+  async getWeeklyPlanById(planId: number): Promise<WeeklyPlan | undefined> {
+    const [plan] = await db.select().from(weeklyPlans).where(eq(weeklyPlans.id, planId));
+    return plan;
+  }
+
   async getCurrentWeeklyPlan(userId: string): Promise<WeeklyPlan | undefined> {
     const [plan] = await db.select().from(weeklyPlans)
       .where(eq(weeklyPlans.userId, userId))
@@ -78,6 +85,11 @@ export class DatabaseStorage implements IStorage {
   async updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined> {
     const [updated] = await db.update(weeklyPlans).set(data).where(eq(weeklyPlans.id, planId)).returning();
     return updated;
+  }
+
+  async getWeeklyPlanDay(planDayId: number): Promise<WeeklyPlanDay | undefined> {
+    const [day] = await db.select().from(weeklyPlanDays).where(eq(weeklyPlanDays.id, planDayId));
+    return day;
   }
 
   async getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]> {

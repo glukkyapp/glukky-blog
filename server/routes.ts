@@ -305,17 +305,19 @@ export async function registerRoutes(
       if (!validLabels.includes(label)) {
         return res.status(400).json({ message: "Invalid dinner label" });
       }
-      if (!planDayId) {
+      const id = Number(planDayId);
+      if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({ message: "planDayId required" });
       }
 
-      const currentPlan = await storage.getCurrentWeeklyPlan(userId);
-      if (!currentPlan) return res.status(404).json({ message: "No current plan" });
-      const planDays = await storage.getWeeklyPlanDays(currentPlan.id);
-      const targetDay = planDays.find(d => d.id === planDayId);
-      if (!targetDay) return res.status(403).json({ message: "Plan day does not belong to user" });
+      const targetDay = await storage.getWeeklyPlanDay(id);
+      if (!targetDay) return res.status(404).json({ message: "Plan day not found" });
+      const parentPlan = await storage.getWeeklyPlanById(targetDay.weeklyPlanId);
+      if (!parentPlan || parentPlan.userId !== userId) {
+        return res.status(403).json({ message: "Plan day does not belong to user" });
+      }
 
-      const updated = await storage.updateWeeklyPlanDay(planDayId, { dinnerLabel: label });
+      const updated = await storage.updateWeeklyPlanDay(id, { dinnerLabel: label });
       if (!updated) return res.status(404).json({ message: "Plan day not found" });
 
       res.json(updated);
