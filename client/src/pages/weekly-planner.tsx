@@ -1024,7 +1024,7 @@ export default function WeeklyPlanner() {
     return renderLastWeekReport();
   }
 
-  if (!isWeek1 && canPlan && !sundayCheckInDone) {
+  if (!isWeek1 && canPlan && isLatePlanning && !sundayCheckInDone) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         <h1 className="text-lg font-bold" data-testid="text-last-week-title">
