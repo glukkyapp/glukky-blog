@@ -863,8 +863,11 @@ export default function Home() {
   }
 
   const showCheckIn = show2pmWindow || show10pmWindow;
+  const checkInDone = recorded
+    || (show10pmWindow && isAllCheckInDone())
+    || (show2pmWindow && dinnerLabelSet);
   const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 22;
-  const showReviewCard = (isSundayEvening && (recorded || isAllCheckInDone()))
+  const showReviewCard = (isSundayEvening && checkInDone)
     || (isCatchUp && (sundayCheckInDone || recorded));
 
   const formatCatchUpDate = () => {
@@ -923,7 +926,7 @@ export default function Home() {
         </Card>
       )}
 
-      {recorded ? (
+      {checkInDone ? (
         <>
           <Card>
             <CardContent className="pt-4 space-y-3">
@@ -954,7 +957,7 @@ export default function Home() {
               {renderCheckInSummary()}
             </CardContent>
           </Card>
-          {!isCatchUp && renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
+          {renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
         </>
       ) : showCheckIn ? (
         renderCheckInCard()
