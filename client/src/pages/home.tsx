@@ -104,12 +104,12 @@ export default function Home() {
     }
     return baseWeek;
   })();
-  const planFirstActiveDay = plan?.firstActiveDay ?? 0;
-
   const { data: calendarData } = useQuery({
     queryKey: ["/api/calendar", weekNumber],
     enabled: !!weekNumber,
   });
+  const calendarPlan = calendarData?.plan;
+  const planFirstActiveDay = calendarPlan?.firstActiveDay ?? 0;
 
   const sundayCheckInDone = (() => {
     if (!isCatchUp) return false;
@@ -124,7 +124,7 @@ export default function Home() {
     if (sunPlanDay?.lateDinnerScheduled && sunPlanDay?.dinnerLabel && sunPlanDay.dinnerLabel !== "none") {
       if (sunLog.dinnerSuccess === null || sunLog.dinnerSuccess === undefined) return false;
     }
-    if (plan?.dietTip) {
+    if (calendarPlan?.dietTip) {
       if (sunLog.dietResponse === null || sunLog.dietResponse === undefined) return false;
     }
     return true;
@@ -173,7 +173,7 @@ export default function Home() {
         if (tp.walkCompleted === null) allDone = false;
         if (tp.walkTired === null || tp.walkTired === undefined) allDone = false;
       }
-      if (plan?.dietTip && tp.dietResponse === null) allDone = false;
+      if (calendarPlan?.dietTip && tp.dietResponse === null) allDone = false;
 
       if (allDone) {
         setShowTickAnimation(true);
@@ -290,7 +290,7 @@ export default function Home() {
 
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
-      const dur = dayData.walkDuration || plan?.walkDurationGoal;
+      const dur = dayData.walkDuration || calendarPlan?.walkDurationGoal;
       const isStretch = dur === 2;
       tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
     }
@@ -300,8 +300,8 @@ export default function Home() {
     if (dayData.eatOutScheduled) {
       tasks.push({ icon: ShoppingBag, text: "Eating out", testId: "text-plan-eat-out", color: "text-orange-500" });
     }
-    if (plan?.dietTip) {
-      tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
+    if (calendarPlan?.dietTip) {
+      tasks.push({ icon: TrendingUp, text: `"${calendarPlan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
     }
 
     return (
@@ -502,7 +502,7 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    const walkDur = todayPlan?.walkDuration || plan?.walkDurationGoal;
+    const walkDur = todayPlan?.walkDuration || calendarPlan?.walkDurationGoal;
     const isStretch = walkDur === 2;
 
     return (
@@ -605,7 +605,7 @@ export default function Home() {
   }
 
   function renderDietCheckIn() {
-    if (!plan?.dietTip) return null;
+    if (!calendarPlan?.dietTip) return null;
 
     const dietAnswered = todayLog?.dietResponse !== null && todayLog?.dietResponse !== undefined;
 
@@ -615,7 +615,7 @@ export default function Home() {
           <TrendingUp className="w-4 h-4 text-primary" />
           <p className="text-sm font-medium">Diet tactic</p>
         </div>
-        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{plan.dietTip}"</p>
+        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{calendarPlan.dietTip}"</p>
         {dietAnswered ? (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="section-diet-answered">
             {todayLog.dietResponse === "yes" ? (
@@ -681,7 +681,7 @@ export default function Home() {
       if (!dinnerLabelSet) return false;
       if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
     }
-    if (plan?.dietTip) {
+    if (calendarPlan?.dietTip) {
       if (todayLog.dietResponse === null || todayLog.dietResponse === undefined) return false;
     }
     return true;
@@ -691,7 +691,7 @@ export default function Home() {
     const items: { label: string; value: string; positive: boolean }[] = [];
 
     if (todayPlan?.walkScheduled) {
-      const chkDur = todayPlan?.walkDuration || plan?.walkDurationGoal;
+      const chkDur = todayPlan?.walkDuration || calendarPlan?.walkDurationGoal;
       const chkStretch = chkDur === 2;
       items.push({
         label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
@@ -721,8 +721,8 @@ export default function Home() {
       });
     }
 
-    if (plan?.dietTip) {
-      const struggle = plan.dietStruggle?.replace(/_/g, " ") || "diet";
+    if (calendarPlan?.dietTip) {
+      const struggle = calendarPlan.dietStruggle?.replace(/_/g, " ") || "diet";
       const dietVal = todayLog?.dietResponse === "yes" ? "Yes" :
                       todayLog?.dietResponse === "no" ? "No" : "Didn't get the chance";
       items.push({
@@ -818,7 +818,7 @@ export default function Home() {
       if (todayPlan?.walkScheduled) {
         rawSections.push(renderWalkCheckIn());
       }
-      if (plan?.dietTip) {
+      if (calendarPlan?.dietTip) {
         rawSections.push(renderDietCheckIn());
       }
     }
@@ -961,7 +961,7 @@ export default function Home() {
         renderReadOnlyPlan(todayPlan, "TODAY", formatDate())
       )}
 
-      {plan?.isDinnerFocus && !plan?.dietStruggle && (
+      {calendarPlan?.isDinnerFocus && !calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-dinner-focus">
@@ -986,14 +986,14 @@ export default function Home() {
         </Card>
       )}
 
-      {plan?.dietStruggle && (
+      {calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <p className="text-sm font-semibold">Focus: {plan.dietStruggle.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+              <p className="text-sm font-semibold">Focus: {calendarPlan.dietStruggle.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
             </div>
-            {plan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{plan.dietTip}"</p>}
+            {calendarPlan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{calendarPlan.dietTip}"</p>}
           </CardContent>
         </Card>
       )}
@@ -1010,7 +1010,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{plan?.walkDurationGoal === 2 ? "Stretch" : "Walk"}</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{calendarPlan?.walkDurationGoal === 2 ? "Stretch" : "Walk"}</div>
               {calendarData?.calendar?.map((d: any, i: number) => {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
@@ -1025,7 +1025,7 @@ export default function Home() {
                     {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                      answered && d.walkCompleted ? <Check className="w-3 h-3" /> :
                      answered && !d.walkCompleted ? <X className="w-3 h-3" /> :
-                     d.walkScheduled ? (plan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
+                     d.walkScheduled ? (calendarPlan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
                   </div>
                 );
               })}
@@ -1086,7 +1086,7 @@ export default function Home() {
               </div>
             )}
 
-            {plan?.dietTip && (
+            {calendarPlan?.dietTip && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Diet</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
@@ -1115,8 +1115,8 @@ export default function Home() {
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
               <div className="flex items-center gap-1">
-                {plan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
-                {plan?.walkDurationGoal === 2 ? " Planned stretch" : " Planned walk"}
+                {calendarPlan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
+                {calendarPlan?.walkDurationGoal === 2 ? " Planned stretch" : " Planned walk"}
               </div>
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
               <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
