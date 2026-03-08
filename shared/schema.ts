@@ -31,6 +31,8 @@ export const userProfiles = pgTable("user_profiles", {
   currentWeek: integer("current_week").notNull().default(1),
   isStretchMode: boolean("is_stretch_mode").notNull().default(false),
   stretchSuccessWeeks: integer("stretch_success_weeks").notNull().default(0),
+  tipCycleStartWeek: integer("tip_cycle_start_week").notNull().default(0),
+  tipStayCycles: integer("tip_stay_cycles").notNull().default(0),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

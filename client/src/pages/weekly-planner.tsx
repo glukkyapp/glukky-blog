@@ -119,6 +119,8 @@ export default function WeeklyPlanner() {
   const [initialized, setInitialized] = useState(false);
   const [stretchDays, setStretchDays] = useState<number[]>([]);
   const [stretchAccepted, setStretchAccepted] = useState(false);
+  const [selectedTip, setSelectedTip] = useState<string | null>(null);
+  const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
 
   const isDinnerFocus = useMemo(() => {
     return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
@@ -136,7 +138,7 @@ export default function WeeklyPlanner() {
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
     if (noWalkDays) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
-    if (!isDinnerFocus) s.push("dietReview");
+    if (!isDinnerFocus) s.push("dietReview", "dietTipSelection");
     s.push("preview");
     return s;
   }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, noWalkDays]);
@@ -172,6 +174,7 @@ export default function WeeklyPlanner() {
         eatOutDays,
         lateDinnerDays,
         stretchOnly: isStretchActive,
+        selectedTip: selectedTip || undefined,
       });
       return res.json();
     },
@@ -299,15 +302,20 @@ export default function WeeklyPlanner() {
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
                 Tip: {reflection.dietTip}
               </p>
+              {reflection.weekInCycle > 0 && (
+                <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
+                  Week {reflection.weekInCycle} of 3 on this struggle
+                </p>
+              )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
                 {reflection.dietYesCount > 0 && (
-                  <p className="text-green-600">Completed tip {reflection.dietYesCount} time{reflection.dietYesCount !== 1 ? "s" : ""}</p>
+                  <p className="text-green-600">Followed tip {reflection.dietYesCount} day{reflection.dietYesCount !== 1 ? "s" : ""}</p>
                 )}
                 {reflection.dietNoChanceCount > 0 && (
-                  <p className="text-muted-foreground">No chance to practice {reflection.dietNoChanceCount} time{reflection.dietNoChanceCount !== 1 ? "s" : ""}</p>
+                  <p className="text-muted-foreground">No chance to practice {reflection.dietNoChanceCount} day{reflection.dietNoChanceCount !== 1 ? "s" : ""}</p>
                 )}
                 {reflection.dietNoCount > 0 && (
-                  <p className="text-amber-600">Unable to complete {reflection.dietNoCount} time{reflection.dietNoCount !== 1 ? "s" : ""}</p>
+                  <p className="text-amber-600">Didn't follow tip {reflection.dietNoCount} day{reflection.dietNoCount !== 1 ? "s" : ""}</p>
                 )}
               </div>
             </div>
@@ -691,38 +699,28 @@ export default function WeeklyPlanner() {
       : sortedStruggles[0] || "sugary_food_drink";
     const isFallback = !struggles.includes(effectiveStruggle);
 
-    const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
-    const effectiveTipIndex = profile?.currentStruggle ? profile.currentTipIndex : 0;
-    const currentTip = tipLadder[effectiveTipIndex] || "";
-    const isCleanWeek = reflection?.dietCleanWeek;
     const hasReflection = !!reflection;
+    const weekInCycle = reflection?.weekInCycle || 0;
 
-    let nextTipLabel = "";
-    let statusType: "advance" | "repeat" | "mastered" = "repeat";
+    let evalType: "mastered" | "skipped" | "stay" | "moved_on" | "in_cycle" = "in_cycle";
+    let nextStruggleLabel = "";
 
-    if (hasReflection) {
+    if (hasReflection && weekInCycle >= 3) {
       const totalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
-      if (totalResponses > 0 && isCleanWeek) {
-        if (effectiveTipIndex + 1 < tipLadder.length) {
-          statusType = "advance";
-          nextTipLabel = tipLadder[effectiveTipIndex + 1];
+      if (totalResponses > 0) {
+        if (reflection.dietYesCount >= 16) {
+          evalType = "mastered";
+        } else if (reflection.dietNoChanceCount >= 11) {
+          evalType = "skipped";
+        } else if ((reflection.tipStayCycles || 0) >= 1) {
+          evalType = "moved_on";
         } else {
-          const currentStruggleIdx = STRUGGLE_PRIORITY.indexOf(effectiveStruggle as any);
-          let nextStruggle: string | null = null;
-          if (currentStruggleIdx >= 0 && currentStruggleIdx < STRUGGLE_PRIORITY.length - 1) {
-            nextStruggle = STRUGGLE_PRIORITY[currentStruggleIdx + 1];
-          }
-          if (nextStruggle) {
-            statusType = "mastered";
-            nextTipLabel = STRUGGLE_NAMES[nextStruggle] || nextStruggle;
-          } else {
-            statusType = "mastered";
-            nextTipLabel = "";
-          }
+          evalType = "stay";
         }
-      } else {
-        statusType = "repeat";
       }
+      const nextIdx = struggles.indexOf(effectiveStruggle);
+      const ns = nextIdx < struggles.length - 1 ? struggles[nextIdx + 1] : null;
+      if (ns) nextStruggleLabel = STRUGGLE_NAMES[ns] || ns;
     }
 
     return (
@@ -743,53 +741,165 @@ export default function WeeklyPlanner() {
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
               {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}
             </p>
+            {hasReflection && weekInCycle > 0 && weekInCycle < 3 && (
+              <p className="text-xs text-muted-foreground mt-1">Week {weekInCycle} of 3</p>
+            )}
           </div>
 
-          {hasReflection && (
+          {hasReflection && weekInCycle >= 3 && (
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-progression">
-              {statusType === "advance" && (
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Clean week! Moving to next tip</p>
-                    <p className="text-sm text-muted-foreground mt-1">{nextTipLabel}</p>
-                  </div>
-                </div>
-              )}
-              {statusType === "repeat" && (
-                <div className="flex items-start gap-2">
-                  <RotateCcw className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-600">Repeating same tip this week</p>
-                    <p className="text-sm text-muted-foreground mt-1">{currentTip}</p>
-                  </div>
-                </div>
-              )}
-              {statusType === "mastered" && (
+              {evalType === "mastered" && (
                 <div className="flex items-start gap-2">
                   <Award className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-primary">
-                      Mastered {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}!
+                      Great job! You've mastered {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}!
                     </p>
-                    {nextTipLabel && (
-                      <p className="text-sm text-muted-foreground mt-1">Moving to: {nextTipLabel}</p>
-                    )}
-                    {!nextTipLabel && (
+                    {nextStruggleLabel ? (
+                      <p className="text-sm text-muted-foreground mt-1">Moving to: {nextStruggleLabel}</p>
+                    ) : (
                       <p className="text-sm text-muted-foreground mt-1">All diet struggles completed!</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {evalType === "skipped" && (
+                <div className="flex items-start gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">
+                      It seems you don't have many chances to try this, let's move to the next one!
+                    </p>
+                    {nextStruggleLabel && (
+                      <p className="text-sm text-muted-foreground mt-1">Next focus: {nextStruggleLabel}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {evalType === "stay" && (
+                <div className="flex items-start gap-2">
+                  <RotateCcw className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-600">
+                      You're almost there! Let's keep at it for 3 more weeks.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {evalType === "moved_on" && (
+                <div className="flex items-start gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">
+                      You're doing good enough! Let's try another focus.
+                    </p>
+                    {nextStruggleLabel && (
+                      <p className="text-sm text-muted-foreground mt-1">Next focus: {nextStruggleLabel}</p>
                     )}
                   </div>
                 </div>
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+    );
+  }
 
-          <div className="bg-card border rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">This week's tip</p>
-            <p className="font-medium text-primary" data-testid="text-current-tip">
-              {statusType === "advance" ? nextTipLabel : currentTip}
+  function renderDietTipSelection() {
+    const struggles = (profile?.struggles as string[]) || [];
+    const excludedStruggles: string[] = [];
+    if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
+    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
+    const effectiveStruggle = profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle)
+      ? profile.currentStruggle
+      : sortedStruggles[0] || "sugary_food_drink";
+    const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
+    const lastWeekTip = reflection?.dietTip || null;
+    const hasLastWeekTip = !!lastWeekTip && tipLadder.includes(lastWeekTip);
+
+    if (tipLadder.length === 1) {
+      if (!selectedTip) setTimeout(() => setSelectedTip(tipLadder[0]), 0);
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle data-testid="text-tip-selection-title">Your Tip This Week</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-primary/5 rounded-lg p-4 text-center">
+              <p className="font-medium text-primary" data-testid="text-auto-tip">{tipLadder[0]}</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (hasLastWeekTip && keepSameTip === null) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle data-testid="text-tip-selection-title">Choose Your Tip</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Last week you practiced:
             </p>
-          </div>
+            <div className="bg-primary/5 rounded-lg p-3 text-center">
+              <p className="font-medium text-primary text-sm">{lastWeekTip}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Would you like to keep practicing this tip?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="default"
+                className="flex-1"
+                data-testid="button-keep-tip"
+                onClick={() => {
+                  setKeepSameTip(true);
+                  setSelectedTip(lastWeekTip);
+                  goNext();
+                }}
+              >
+                Yes, keep it
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                data-testid="button-change-tip"
+                onClick={() => setKeepSameTip(false)}
+              >
+                Try a different one
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle data-testid="text-tip-selection-title">Pick a Tip to Practice</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Choose the tip that feels most manageable for you this week:
+          </p>
+          {tipLadder.map((tip, i) => (
+            <button
+              key={i}
+              data-testid={`button-tip-${i}`}
+              className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                selectedTip === tip
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:border-primary/50"
+              }`}
+              onClick={() => setSelectedTip(tip)}
+            >
+              <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{tip}</p>
+            </button>
+          ))}
         </CardContent>
       </Card>
     );
@@ -896,8 +1006,7 @@ export default function WeeklyPlanner() {
             const struggle = (profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle))
               ? profile.currentStruggle
               : sorted[0] || "sugary_food_drink";
-            const tipIndex = profile?.currentStruggle === struggle ? profile.currentTipIndex : 0;
-            const tip = (DIET_TIP_LADDERS as Record<string, string[]>)[struggle]?.[tipIndex] || "";
+            const tip = selectedTip || (DIET_TIP_LADDERS as Record<string, string[]>)[struggle]?.[0] || "";
             return (
               <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -931,6 +1040,7 @@ export default function WeeklyPlanner() {
       case "stretchOffer": return renderStretchOffer();
       case "dinnerFocusReview": return renderDinnerFocusReview();
       case "dietReview": return renderDietReview();
+      case "dietTipSelection": return renderDietTipSelection();
       case "preview": return renderPreview();
       default: return null;
     }
@@ -1141,6 +1251,7 @@ export default function WeeklyPlanner() {
           <Button
             size="sm"
             onClick={goNext}
+            disabled={currentStepId === "dietTipSelection" && !selectedTip}
             data-testid="button-next"
           >
             Next <ChevronRight className="w-4 h-4 ml-1" />
