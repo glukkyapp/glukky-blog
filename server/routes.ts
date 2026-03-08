@@ -511,33 +511,18 @@ export async function registerRoutes(
         const isTired = finalLog.walkTired === true;
         const todayIsStretch = !!todayPlanDay?.adjustedToStretch;
 
-        let todayWasFatigueReduced = false;
-        if (!todayIsStretch && todayDow > 0 && todayPlanDay && todayPlanDay.walkScheduled) {
-          const prevDow = todayDow - 1;
-          const prevPlanDay = planDays.find(d => d.dayOfWeek === prevDow);
-          if (prevPlanDay && prevPlanDay.walkScheduled && !prevPlanDay.adjustedToStretch) {
-            const prevDate = new Date(planStart);
-            prevDate.setDate(prevDate.getDate() + prevDow);
-            const prevDateStr = prevDate.toISOString().split("T")[0];
-            const prevLog = await storage.getDailyLog(userId, prevDateStr);
-            if (prevLog && prevLog.walkCompleted === false && prevLog.walkTired === true) {
-              todayWasFatigueReduced = true;
-            }
-          }
-        }
-
         if (tomorrowDow < 7) {
           const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
           if (tomorrowDay && tomorrowDay.walkScheduled) {
-            if (todayIsStretch && !walkDone && isTired) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
-              nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
-            } else if (todayIsStretch && walkDone) {
+            if (todayIsStretch && walkDone) {
               await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: plan.walkDurationGoal, adjustedToStretch: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
-            } else if (todayWasFatigueReduced) {
+            } else if (todayIsStretch && !walkDone && !isTired) {
               await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: plan.walkDurationGoal, adjustedToStretch: false });
-              nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: walkDone };
+              nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
+            } else if (todayIsStretch && !walkDone && isTired) {
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
+              nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
             } else if (!walkDone && isTired) {
               let shouldStretchAdjust = false;
               if (todayDow > 0) {
@@ -557,12 +542,10 @@ export async function registerRoutes(
               if (shouldStretchAdjust) {
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
                 nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
-              } else if (plan.walkDurationGoal > 5) {
-                const newDuration = tomorrowDay.walkDuration - 5;
+              } else {
+                const newDuration = plan.walkDurationGoal - 5;
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
                 nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
-              } else {
-                nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
               }
             } else {
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: walkDone };
