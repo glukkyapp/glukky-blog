@@ -204,7 +204,9 @@ export default function Home() {
 
         if (walkDone && tiredDone) {
           const adj = data.nextDayAdjustment;
-          if (adj.walkCompleted) {
+          if (adj.adjustedToStretch) {
+            setHydrationAdvice("We've switched tomorrow to a 2 min stretch instead. Rest well tonight!");
+          } else if (adj.walkCompleted) {
             setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
           } else if (adj.reduced && adj.newDuration) {
             setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
@@ -291,8 +293,8 @@ export default function Home() {
 
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
-      const dur = dayData.walkDuration || calendarPlan?.walkDurationGoal;
-      const isStretch = dur === 2;
+      const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || calendarPlan?.walkDurationGoal);
+      const isStretch = dayData.adjustedToStretch || dur === 2;
       tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
     }
     if (dayData.lateDinnerScheduled) {
@@ -565,8 +567,8 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    const walkDur = todayPlan?.walkDuration || calendarPlan?.walkDurationGoal;
-    const isStretch = walkDur === 2;
+    const walkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
+    const isStretch = todayPlan?.adjustedToStretch || walkDur === 2;
 
     return (
       <div className="space-y-2">
@@ -754,8 +756,8 @@ export default function Home() {
     const items: { label: string; value: string; positive: boolean }[] = [];
 
     if (todayPlan?.walkScheduled) {
-      const chkDur = todayPlan?.walkDuration || calendarPlan?.walkDurationGoal;
-      const chkStretch = chkDur === 2;
+      const chkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
+      const chkStretch = todayPlan?.adjustedToStretch || chkDur === 2;
       items.push({
         label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
         value: todayLog?.walkCompleted ? "Completed" : "Skipped",

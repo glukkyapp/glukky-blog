@@ -260,6 +260,14 @@ export default function WeeklyPlanner() {
             <p className="text-center text-sm text-muted-foreground">
               {reflection.walkSuccessPct}% completion
             </p>
+            {reflection.stretchAdjustedDays > 0 && (
+              <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-stretch-remark">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <p className="text-sm text-muted-foreground">
+                  Stretching: {reflection.stretchAdjustedDays} day{reflection.stretchAdjustedDays > 1 ? "s" : ""}
+                </p>
+              </div>
+            )}
           </div>
 
           {(reflection.dinnerEarlyTotal > 0 || reflection.dinnerTacticTotal > 0) && (

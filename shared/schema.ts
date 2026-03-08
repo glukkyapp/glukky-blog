@@ -55,6 +55,7 @@ export const weeklyPlanDays = pgTable("weekly_plan_days", {
   lateDinnerScheduled: boolean("late_dinner_scheduled").notNull().default(false),
   dinnerLabel: dinnerLabelEnum("dinner_label").notNull().default("none"),
   walkDuration: integer("walk_duration").notNull().default(10),
+  adjustedToStretch: boolean("adjusted_to_stretch").notNull().default(false),
 });
 
 export const dailyLogs = pgTable("daily_logs", {

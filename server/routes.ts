@@ -128,8 +128,43 @@ export async function registerRoutes(
       const biWeekly = await checkBiWeeklyTriggers(userId);
       const stretchProgression = await getStretchProgression(userId);
 
+      const reflectionPlan = await storage.getWeeklyPlan(userId, reflection.weekNumber);
+      let stretchAdjustedDays = 0;
+      if (reflectionPlan) {
+        const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
+        stretchAdjustedDays = reflectionPlanDays.filter(d => d.adjustedToStretch).length;
+      }
+
+      let adjustedWalkDaysScheduled = reflection.walkDaysScheduled - stretchAdjustedDays;
+      if (adjustedWalkDaysScheduled < 0) adjustedWalkDaysScheduled = 0;
+      let adjustedWalkDaysCompleted = reflection.walkDaysCompleted;
+      if (reflectionPlan && stretchAdjustedDays > 0) {
+        const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
+        const stretchDows = reflectionPlanDays.filter(d => d.adjustedToStretch).map(d => d.dayOfWeek);
+        const logs = await storage.getDailyLogsByWeek(userId, reflection.weekNumber, reflectionPlan.startDate);
+        let stretchCompleted = 0;
+        for (const dow of stretchDows) {
+          const dayDate = new Date(reflectionPlan.startDate + "T00:00:00");
+          dayDate.setDate(dayDate.getDate() + dow);
+          const dateStr = dayDate.toISOString().split("T")[0];
+          const log = logs.find(l => l.date === dateStr);
+          if (log?.walkCompleted === true) {
+            stretchCompleted++;
+          }
+        }
+        adjustedWalkDaysCompleted = reflection.walkDaysCompleted - stretchCompleted;
+        if (adjustedWalkDaysCompleted < 0) adjustedWalkDaysCompleted = 0;
+      }
+      const adjustedWalkSuccessPct = adjustedWalkDaysScheduled > 0
+        ? Math.round((adjustedWalkDaysCompleted / adjustedWalkDaysScheduled) * 100)
+        : 0;
+
       res.json({
         ...reflection,
+        walkDaysScheduled: adjustedWalkDaysScheduled,
+        walkDaysCompleted: adjustedWalkDaysCompleted,
+        walkSuccessPct: adjustedWalkSuccessPct,
+        stretchAdjustedDays,
         walkingBridge: biWeekly.walkingBridge,
         autoEscalation: biWeekly.autoEscalation,
         isStretchMode: profile?.isStretchMode || false,
@@ -359,7 +394,7 @@ export async function registerRoutes(
         });
       }
 
-      let nextDayAdjustment: { reduced: boolean; newDuration?: number; tomorrowWalkScheduled: boolean; walkCompleted: boolean } | null = null;
+      let nextDayAdjustment: { reduced: boolean; newDuration?: number; tomorrowWalkScheduled: boolean; walkCompleted: boolean; adjustedToStretch?: boolean } | null = null;
       const finalLog = await storage.getDailyLog(userId, date);
       if (finalLog && finalLog.walkTired === true) {
         const walkDone = finalLog.walkCompleted === true;
@@ -375,12 +410,32 @@ export async function registerRoutes(
             const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
             if (tomorrowDay && tomorrowDay.walkScheduled) {
               if (!walkDone) {
-                const newDuration = Math.max(tomorrowDay.walkDuration - 5, 2);
-                if (newDuration < tomorrowDay.walkDuration) {
-                  await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
-                  nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
+                let shouldStretchAdjust = false;
+                if (todayDow > 0) {
+                  const yesterdayDow = todayDow - 1;
+                  const yesterdayPlanDay = planDays.find(d => d.dayOfWeek === yesterdayDow);
+                  if (yesterdayPlanDay && yesterdayPlanDay.walkScheduled) {
+                    const yesterdayDate = new Date(planStart);
+                    yesterdayDate.setDate(yesterdayDate.getDate() + yesterdayDow);
+                    const yesterdayDateStr = yesterdayDate.toISOString().split("T")[0];
+                    const yesterdayLog = await storage.getDailyLog(userId, yesterdayDateStr);
+                    if (yesterdayLog && yesterdayLog.walkCompleted === false && yesterdayLog.walkTired === true) {
+                      shouldStretchAdjust = true;
+                    }
+                  }
+                }
+
+                if (shouldStretchAdjust) {
+                  await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
+                  nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
                 } else {
-                  nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
+                  const newDuration = Math.max(tomorrowDay.walkDuration - 5, 2);
+                  if (newDuration < tomorrowDay.walkDuration) {
+                    await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
+                    nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
+                  } else {
+                    nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
+                  }
                 }
               } else {
                 nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
@@ -448,6 +503,7 @@ export async function registerRoutes(
           lateDinnerScheduled: day.lateDinnerScheduled,
           walkCompleted: log?.walkCompleted ?? null,
           walkDuration: day.walkDuration,
+          adjustedToStretch: day.adjustedToStretch,
           dinnerLabel: day.dinnerLabel,
           dinnerSuccess: log?.dinnerSuccess ?? null,
           dietResponse: log?.dietResponse ?? null,
