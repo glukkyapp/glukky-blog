@@ -426,10 +426,27 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
   for (const plan of recentPlans) {
     const logs = await storage.getDailyLogsByWeek(userId, plan.weekNumber, plan.startDate);
     const planDays = await storage.getWeeklyPlanDays(plan.id);
-    totalWalks += logs.filter(l => l.walkCompleted === true).length;
+
+    const fatigueStretchDows = new Set<number>();
+    for (const day of planDays) {
+      if (day.adjustedToStretch) {
+        fatigueStretchDows.add(day.dayOfWeek);
+      }
+    }
+
+    for (const log of logs) {
+      if (log.walkCompleted === true) {
+        const logDate = new Date(log.date + "T00:00:00");
+        const planStart = new Date(plan.startDate + "T00:00:00");
+        const dow = Math.round((logDate.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+        if (!fatigueStretchDows.has(dow)) {
+          totalWalks++;
+        }
+      }
+    }
 
     for (const day of planDays) {
-      if (day.walkDuration === 2) {
+      if (day.walkDuration === 2 && !day.adjustedToStretch) {
         totalStandingDays++;
         const dayDate = new Date(plan.startDate);
         dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
