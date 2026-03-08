@@ -294,7 +294,7 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
       const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || calendarPlan?.walkDurationGoal);
-      const isStretch = dayData.adjustedToStretch || dur === 2;
+      const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
       tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
     }
     if (dayData.lateDinnerScheduled) {
@@ -568,7 +568,7 @@ export default function Home() {
     const bothAnswered = walkAnswered && tiredAnswered;
 
     const walkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
-    const isStretch = todayPlan?.adjustedToStretch || walkDur === 2;
+    const isStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
 
     return (
       <div className="space-y-2">
@@ -757,7 +757,7 @@ export default function Home() {
 
     if (todayPlan?.walkScheduled) {
       const chkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
-      const chkStretch = todayPlan?.adjustedToStretch || chkDur === 2;
+      const chkStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
       items.push({
         label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
         value: todayLog?.walkCompleted ? "Completed" : "Skipped",
@@ -981,13 +981,14 @@ export default function Home() {
             const dayData = {
               walkScheduled: tmrwDay.walkScheduled,
               walkDuration: tmrwDay.walkDuration,
+              adjustedToStretch: tmrwDay.adjustedToStretch,
               lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
               eatOutScheduled: tmrwDay.eatOutScheduled,
             };
             const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
             if (dayData.walkScheduled) {
-              const dur = dayData.walkDuration || plan?.walkDurationGoal;
-              const isStretch = dur === 2;
+              const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || plan?.walkDurationGoal);
+              const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
               tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
             }
             if (dayData.lateDinnerScheduled) {
@@ -1145,7 +1146,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{calendarPlan?.walkDurationGoal === 2 ? "Stretch" : "Walk"}</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{profile?.isStretchMode ? "Stretch" : "Walk"}</div>
               {calendarData?.calendar?.map((d: any, i: number) => {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
@@ -1160,7 +1161,7 @@ export default function Home() {
                     {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                      answered && d.walkCompleted ? <Check className="w-3 h-3" /> :
                      answered && !d.walkCompleted ? <X className="w-3 h-3" /> :
-                     d.walkScheduled ? (calendarPlan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
+                     d.walkScheduled ? ((d.adjustedToStretch || profile?.isStretchMode) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
                   </div>
                 );
               })}
@@ -1250,8 +1251,8 @@ export default function Home() {
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
               <div className="flex items-center gap-1">
-                {calendarPlan?.walkDurationGoal === 2 ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
-                {calendarPlan?.walkDurationGoal === 2 ? " Planned stretch" : " Planned walk"}
+                {profile?.isStretchMode ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
+                {profile?.isStretchMode ? " Planned stretch" : " Planned walk"}
               </div>
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
               <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
