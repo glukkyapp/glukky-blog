@@ -425,6 +425,7 @@ export default function Home() {
         <div className="flex gap-2">
           <Button
             size="sm"
+            variant="outline"
             onClick={() => handleDinnerMoveEarly(true)}
             disabled={dinnerLabelMutation.isPending}
             data-testid="button-dinner-move-yes"
@@ -532,7 +533,7 @@ export default function Home() {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                variant={todayLog?.walkCompleted === true ? "default" : todayLog?.walkCompleted === false ? "destructive" : "outline"}
+                variant={todayLog?.walkCompleted === true ? "default" : "outline"}
                 className={todayLog?.walkCompleted === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                 onClick={() => logMutation.mutate({ walkCompleted: true })}
                 disabled={logMutation.isPending}

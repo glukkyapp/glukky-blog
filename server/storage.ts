@@ -105,7 +105,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]> {
-    return db.select().from(weeklyPlanDays).where(eq(weeklyPlanDays.weeklyPlanId, weeklyPlanId));
+    return db.select().from(weeklyPlanDays).where(eq(weeklyPlanDays.weeklyPlanId, weeklyPlanId)).orderBy(weeklyPlanDays.dayOfWeek);
   }
 
   async createWeeklyPlanDay(day: InsertWeeklyPlanDay): Promise<WeeklyPlanDay> {
