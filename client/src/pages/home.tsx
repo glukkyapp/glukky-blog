@@ -137,6 +137,7 @@ export default function Home() {
   const todayLog = calendarData?.calendar?.find((d: any) => d.date === checkInDate);
   const tomorrowDow = (dayOfWeek + 1) % 7;
   const tomorrowPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === tomorrowDow);
+  const tomorrowInPlanWeek = planSundayStr ? todayStr < planSundayStr : false;
 
   const isLateDinnerDay = todayPlan?.lateDinnerScheduled === true;
   const dinnerLabelSet = todayPlan?.dinnerLabel && todayPlan.dinnerLabel !== "none";
@@ -379,9 +380,70 @@ export default function Home() {
       );
     }
 
-    const shouldPivot = plan?.lastWeekDinnerEarlyPct === 0 && plan?.currentWeek > 1;
+    const shouldPivot = plan?.lastWeekDinnerEarlyPct === 0 && plan?.prevPrevWeekDinnerEarlyPct === 0 && plan?.currentWeek > 2;
 
     if (shouldPivot) {
+      const firstLateDinnerDow = calendarData?.calendar
+        ?.filter((d: any) => d.lateDinnerScheduled)
+        ?.sort((a: any, b: any) => a.dayOfWeek - b.dayOfWeek)?.[0]?.dayOfWeek;
+      const isFirstLateDinnerDay = checkInDayOfWeek === firstLateDinnerDow;
+
+      const firstLateDinnerDayData = calendarData?.calendar?.find((d: any) => d.dayOfWeek === firstLateDinnerDow);
+      const firstDayLabel = firstLateDinnerDayData?.dinnerLabel;
+      const firstDayChoseEarly = firstDayLabel === "move_early";
+      const firstDayChoseTactic = firstDayLabel && firstDayLabel !== "none" && firstDayLabel !== "move_early";
+
+      if (!isFirstLateDinnerDay && firstDayChoseEarly) {
+        return (
+          <div className="space-y-2" data-testid="section-dinner-question">
+            <div className="flex items-center gap-2">
+              <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-medium">Think you could try eating a bit earlier tonight — before 9pm?</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDinnerMoveEarly(true)}
+                disabled={dinnerLabelMutation.isPending}
+                data-testid="button-dinner-move-yes"
+              >
+                Yes
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDinnerMoveEarly(false)}
+                disabled={dinnerLabelMutation.isPending}
+                data-testid="button-dinner-move-no"
+              >
+                No
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!isFirstLateDinnerDay && (firstDayChoseTactic || !firstDayLabel || firstDayLabel === "none")) {
+        return (
+          <div className="space-y-3" data-testid="section-dinner-tactic">
+            <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
+            {MITIGATION_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => handleTacticPick(opt.value)}
+                className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
+                data-testid={`button-tactic-${opt.value}`}
+                disabled={dinnerLabelMutation.isPending}
+              >
+                <span className="font-medium">{opt.label}</span>
+                <span className="text-muted-foreground"> — {opt.desc}</span>
+              </button>
+            ))}
+          </div>
+        );
+      }
+
       return (
         <div className="space-y-3" data-testid="section-dinner-pivot">
           <div className="flex items-center gap-2">
@@ -389,7 +451,7 @@ export default function Home() {
             <p className="text-sm font-medium">Late dinner tactic</p>
           </div>
           <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
-            Moving dinner earlier is tough — no worries, let's try a different approach:
+            I've noticed you found it difficult to move dinner earlier over the past 2 weeks. That's okay — let's try a different approach instead:
           </p>
           <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
           {MITIGATION_OPTIONS.map(opt => (
@@ -1023,7 +1085,7 @@ export default function Home() {
                 {renderCheckInSummary()}
               </CardContent>
             </Card>
-            {renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
+            {tomorrowInPlanWeek && renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
           renderCheckInCard()

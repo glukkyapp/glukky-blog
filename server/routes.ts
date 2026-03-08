@@ -76,25 +76,31 @@ export async function registerRoutes(
       const profile = await storage.getProfile(userId);
 
       let lastWeekDinnerEarlyPct: number | null = null;
-      if (profile && profile.currentWeek > 1) {
-        const lastWeekNum = plan.weekNumber - 1;
-        const lastPlan = await storage.getWeeklyPlan(userId, lastWeekNum);
-        if (lastPlan) {
-          const lastDays = await storage.getWeeklyPlanDays(lastPlan.id);
-          const earlyDays = lastDays.filter(d => d.dinnerLabel === "move_early");
-          if (earlyDays.length > 0) {
-            const lastLogs = await storage.getDailyLogsByWeek(userId, lastWeekNum, lastPlan.startDate);
-            let earlySuccess = 0;
-            for (const day of earlyDays) {
-              const dayDate = new Date(lastPlan.startDate);
-              dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
-              const dateStr = dayDate.toISOString().split("T")[0];
-              const log = lastLogs.find(l => l.date === dateStr);
-              if (log?.dinnerSuccess === true) earlySuccess++;
-            }
-            lastWeekDinnerEarlyPct = Math.round((earlySuccess / earlyDays.length) * 100);
-          }
+      let prevPrevWeekDinnerEarlyPct: number | null = null;
+
+      async function computeEarlyPct(weekNum: number): Promise<number | null> {
+        const wPlan = await storage.getWeeklyPlan(userId, weekNum);
+        if (!wPlan) return null;
+        const wDays = await storage.getWeeklyPlanDays(wPlan.id);
+        const earlyDays = wDays.filter(d => d.dinnerLabel === "move_early");
+        if (earlyDays.length === 0) return null;
+        const wLogs = await storage.getDailyLogsByWeek(userId, weekNum, wPlan.startDate);
+        let earlySuccess = 0;
+        for (const day of earlyDays) {
+          const dayDate = new Date(wPlan.startDate);
+          dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+          const dateStr = dayDate.toISOString().split("T")[0];
+          const log = wLogs.find(l => l.date === dateStr);
+          if (log?.dinnerSuccess === true) earlySuccess++;
         }
+        return Math.round((earlySuccess / earlyDays.length) * 100);
+      }
+
+      if (profile && profile.currentWeek > 1) {
+        lastWeekDinnerEarlyPct = await computeEarlyPct(plan.weekNumber - 1);
+      }
+      if (profile && profile.currentWeek > 2) {
+        prevPrevWeekDinnerEarlyPct = await computeEarlyPct(plan.weekNumber - 2);
       }
 
       res.json({
@@ -104,6 +110,7 @@ export async function registerRoutes(
         mitigationLabels: MITIGATION_TRIO_LABELS,
         currentWeek: profile?.currentWeek,
         lastWeekDinnerEarlyPct,
+        prevPrevWeekDinnerEarlyPct,
       });
     } catch (error) {
       console.error("Error fetching plan:", error);

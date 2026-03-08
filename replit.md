@@ -34,7 +34,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 6. **Fatigue Detection**: Same day "Tired" 3/3 weeks → propose Rest Day
 7. **Bridge Lock**: During standing reset (walkDuration === 2), negotiations (add_day, add_minutes, standing_reset) are disabled; only keep_current and set_rest_day available
 8. **Next-Day Adjustment**: When tired after walk check-in: completed+tired → hydration advice popup; failed+tired+walk tomorrow → reduce tomorrow's walk by 5 min (floor 2); failed+tired+no walk tomorrow → hydration advice only
-9. **Late Dinner Pivot**: When last week's dinner-early success was 0%, 2pm check-in skips "move earlier?" question → shows tactic picker directly with option to try moving early anyway
+9. **Late Dinner Pivot**: Requires 2 consecutive weeks of 0% move-early success (currentWeek > 2). On first late dinner day of the pivot week: empathetic message ("I've noticed you found it difficult...") + tactic picker + opt-out ("try to move dinner earlier today"). On subsequent late dinner days: if first day chose a tactic → tactic picker directly; if first day chose move_early → normal "eat earlier?" flow. After any successful tactic week, `prevPrevWeekDinnerEarlyPct` resets (null or >0), so pivot deactivates. Re-triggers if 2 more consecutive weeks of move-early failure occur. Backend computes both `lastWeekDinnerEarlyPct` and `prevPrevWeekDinnerEarlyPct` in `/api/plan/current`.
 
 ## Pages
 - `/` - Landing (login/register tabs when not authenticated)
