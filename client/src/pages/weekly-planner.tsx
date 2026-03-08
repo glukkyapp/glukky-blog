@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
-  Calendar, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
+  Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
   Wine, Soup, Minus, Activity, Sparkles,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
@@ -1018,6 +1018,30 @@ export default function WeeklyPlanner() {
 
   if (isWeek1 && currentPlan) {
     return renderPendingView();
+  }
+
+  const nextWeekPlanned = !!(currentPlan?.startDate && effectiveDateStr < currentPlan.startDate);
+
+  if (nextWeekPlanned) {
+    const planWeekNum = currentPlan?.weekNumber || (profile?.currentWeek ? profile.currentWeek - 1 : 1);
+    return (
+      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        <Card data-testid="card-plan-ready">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex flex-col items-center text-center gap-3">
+              <CalendarDays className="w-10 h-10 text-primary" />
+              <h2 className="text-lg font-semibold" data-testid="text-plan-ready-title">
+                Week {planWeekNum} plan is set!
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your plan starts tomorrow. Check back on Sunday at 10pm for your weekly report.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        {renderMonthlyReportMessage()}
+      </div>
+    );
   }
 
   if (!isWeek1 && !canPlan) {

@@ -863,8 +863,11 @@ export default function Home() {
   const checkInDone = recorded
     || (show10pmWindow && isAllCheckInDone());
   const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 22;
-  const showReviewCard = (isSundayEvening && checkInDone)
-    || (isCatchUp && (sundayCheckInDone || recorded));
+  const nextWeekPlanned = !!(plan?.startDate && todayStr < plan.startDate);
+  const showReviewCard = !nextWeekPlanned && (
+    (isSundayEvening && checkInDone)
+    || (isCatchUp && (sundayCheckInDone || recorded))
+  );
 
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
@@ -895,7 +898,72 @@ export default function Home() {
         </Card>
       )}
 
-      {showReviewCard && (
+      {nextWeekPlanned && (
+        <>
+          <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <p className="text-sm font-semibold" data-testid="text-all-set">You're all set for next week!</p>
+              </div>
+              <p className="text-sm text-muted-foreground">Your plan is ready. Get some rest tonight.</p>
+            </CardContent>
+          </Card>
+          {(() => {
+            const tmrwDow = (dayOfWeek + 1) % 7;
+            const tmrwDay = plan?.days?.find((d: any) => d.dayOfWeek === tmrwDow);
+            if (!tmrwDay) return null;
+            const dayData = {
+              walkScheduled: tmrwDay.walkScheduled,
+              walkDuration: tmrwDay.walkDuration,
+              lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
+              eatOutScheduled: tmrwDay.eatOutScheduled,
+            };
+            const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
+            if (dayData.walkScheduled) {
+              const dur = dayData.walkDuration || plan?.walkDurationGoal;
+              const isStretch = dur === 2;
+              tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+            }
+            if (dayData.lateDinnerScheduled) {
+              tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
+            }
+            if (dayData.eatOutScheduled) {
+              tasks.push({ icon: ShoppingBag, text: "Eating out", testId: "text-plan-eat-out", color: "text-orange-500" });
+            }
+            if (plan?.dietTip) {
+              tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
+            }
+            return (
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
+                    <span className="font-semibold text-foreground">TOMORROW</span> — {formatTomorrowDate()}
+                  </div>
+                  {tasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">It's your rest day — enjoy it!</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {tasks.map((task, idx) => {
+                        const Icon = task.icon;
+                        return (
+                          <div key={idx} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3" data-testid={task.testId}>
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">{idx + 1}</div>
+                            <Icon className={`w-4 h-4 ${task.color} shrink-0`} />
+                            <p className="text-sm">{task.text}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+        </>
+      )}
+
+      {!nextWeekPlanned && showReviewCard && (
         <Card className="border-primary/30 bg-primary/5" data-testid="card-weekly-report-ready">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -922,46 +990,48 @@ export default function Home() {
         </Card>
       )}
 
-      {checkInDone ? (
-        <>
-          <Card>
-            <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date-summary">
-                <span className="font-semibold text-foreground">
-                  {isCatchUp ? "SUNDAY" : "TODAY"}
-                </span> — {isCatchUp ? formatCatchUpDate() : formatDate()}
-              </div>
-
-              {hydrationAdvice && (
-                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-recorded">
-                  <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs mt-1 text-blue-600"
-                      onClick={() => setHydrationAdvice(null)}
-                      data-testid="button-dismiss-hydration-recorded"
-                    >
-                      Got it
-                    </Button>
-                  </div>
+      {!nextWeekPlanned && (
+        checkInDone ? (
+          <>
+            <Card>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date-summary">
+                  <span className="font-semibold text-foreground">
+                    {isCatchUp ? "SUNDAY" : "TODAY"}
+                  </span> — {isCatchUp ? formatCatchUpDate() : formatDate()}
                 </div>
-              )}
 
-              {renderCheckInSummary()}
-            </CardContent>
-          </Card>
-          {renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
-        </>
-      ) : showCheckIn ? (
-        renderCheckInCard()
-      ) : (
-        renderReadOnlyPlan(todayPlan, "TODAY", formatDate())
+                {hydrationAdvice && (
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-recorded">
+                    <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs mt-1 text-blue-600"
+                        onClick={() => setHydrationAdvice(null)}
+                        data-testid="button-dismiss-hydration-recorded"
+                      >
+                        Got it
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {renderCheckInSummary()}
+              </CardContent>
+            </Card>
+            {renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
+          </>
+        ) : showCheckIn ? (
+          renderCheckInCard()
+        ) : (
+          renderReadOnlyPlan(todayPlan, "TODAY", formatDate())
+        )
       )}
 
-      {calendarPlan?.isDinnerFocus && !calendarPlan?.dietStruggle && (
+      {!nextWeekPlanned && calendarPlan?.isDinnerFocus && !calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-dinner-focus">
@@ -986,7 +1056,7 @@ export default function Home() {
         </Card>
       )}
 
-      {calendarPlan?.dietStruggle && (
+      {!nextWeekPlanned && calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
@@ -998,7 +1068,7 @@ export default function Home() {
         </Card>
       )}
 
-      <Card>
+      {!nextWeekPlanned && (<Card>
         <CardContent className="pt-4">
           <p className="text-sm font-semibold mb-3" data-testid="text-calendar-title">Weekly Calendar</p>
           <div className="space-y-2">
@@ -1126,7 +1196,7 @@ export default function Home() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>)}
     </div>
   );
 }
