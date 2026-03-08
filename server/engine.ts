@@ -10,6 +10,8 @@ export interface LastWeekDaySchedule {
   eatOutScheduled: boolean;
   lateDinnerScheduled: boolean;
   dinnerLabel: string;
+  standingTap: boolean;
+  walkDuration: number;
 }
 
 export interface WeeklyReflection {
@@ -35,10 +37,12 @@ export interface WeeklyReflection {
   fatigueDetected: { dayOfWeek: number; count: number } | null;
   suggestedActions: SuggestedAction[];
   lastWeekSchedule: LastWeekDaySchedule[];
+  standingTapDaysScheduled: number;
+  standingTapDaysCompleted: number;
 }
 
 export interface SuggestedAction {
-  type: "add_day" | "add_minutes" | "keep_current" | "standing_reset" | "set_rest_day";
+  type: "add_day" | "add_minutes" | "keep_current" | "standing_reset" | "set_rest_day" | "standing_tap";
   label: string;
   description: string;
 }
@@ -72,9 +76,26 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
   const planDays = await storage.getWeeklyPlanDays(plan.id);
   const logs = await storage.getDailyLogsByWeek(userId, lastWeek, plan.startDate);
 
-  const walkDaysScheduled = planDays.filter(d => d.walkScheduled).length;
-  const walkDaysCompleted = logs.filter(l => l.walkCompleted === true).length;
+  const walkDaysScheduled = planDays.filter(d => d.walkScheduled && !d.standingTap).length;
+  const walkDaysCompleted = planDays.filter(d => {
+    if (!d.walkScheduled || d.standingTap) return false;
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + d.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    return log?.walkCompleted === true;
+  }).length;
   const walkSuccessPct = walkDaysScheduled > 0 ? Math.round((walkDaysCompleted / walkDaysScheduled) * 100) : 0;
+
+  const standingTapDays = planDays.filter(d => d.standingTap);
+  const standingTapDaysScheduled = standingTapDays.length;
+  const standingTapDaysCompleted = standingTapDays.filter(d => {
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + d.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    return log?.walkCompleted === true;
+  }).length;
 
   const dinnerDays = planDays.filter(d => d.dinnerLabel !== "none");
   const dinnerDaysTracked = dinnerDays.length;
@@ -123,14 +144,19 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     eatOutScheduled: d.eatOutScheduled,
     lateDinnerScheduled: d.lateDinnerScheduled,
     dinnerLabel: d.dinnerLabel,
+    standingTap: d.standingTap,
+    walkDuration: d.walkDuration,
   }));
+
+  const walkDayDurations = planDays.filter(d => d.walkScheduled && !d.standingTap).map(d => d.walkDuration);
+  const maxWalkDuration = walkDayDurations.length > 0 ? Math.max(...walkDayDurations) : plan.walkDurationGoal;
 
   return {
     weekNumber: lastWeek,
     walkDaysScheduled,
     walkDaysCompleted,
     walkSuccessPct,
-    walkDuration: plan.walkDurationGoal,
+    walkDuration: maxWalkDuration,
     dinnerDaysTracked,
     dinnerDaysSuccessful,
     dinnerSuccessPct,
@@ -148,6 +174,8 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     fatigueDetected,
     suggestedActions,
     lastWeekSchedule,
+    standingTapDaysScheduled,
+    standingTapDaysCompleted,
   };
 }
 
@@ -240,10 +268,12 @@ async function checkFatiguePattern(userId: string, currentWeek: number): Promise
 
 export interface CreatePlanInput {
   userId: string;
-  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "standing_reset" | "set_rest_day";
+  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "standing_reset" | "set_rest_day" | "standing_tap";
   walkDays: number[];
   eatOutDays: number[];
   lateDinnerDays: number[];
+  standingTapDay?: number;
+  walkDayDurations?: Record<string, number>;
 }
 
 export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: WeeklyPlan; days: WeeklyPlanDay[] }> {
@@ -262,7 +292,7 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
     walkDuration = 5;
   }
 
-  if (!autoEscalatedFromStretch && input.negotiationChoice === "add_minutes") {
+  if (!autoEscalatedFromStretch && input.negotiationChoice === "add_minutes" && !input.walkDayDurations) {
     walkDuration = Math.min(walkDuration + 5, 20);
   } else if (input.negotiationChoice === "standing_reset") {
     walkDuration = profile.walkDuration;
@@ -301,15 +331,30 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
     const walkScheduled = input.walkDays.includes(d);
     const eatOutScheduled = input.eatOutDays.includes(d);
     const lateDinnerScheduled = input.lateDinnerDays.includes(d);
+    const isStandingTapDay = input.standingTapDay === d;
+
+    let dayDuration = 0;
+    if (walkScheduled) {
+      if (input.walkDayDurations && input.walkDayDurations[String(d)] !== undefined) {
+        dayDuration = input.walkDayDurations[String(d)];
+      } else {
+        dayDuration = walkDuration;
+      }
+    } else if (input.negotiationChoice === "standing_reset" && !walkScheduled) {
+      dayDuration = 2;
+    } else if (isStandingTapDay) {
+      dayDuration = 1;
+    }
 
     dayEntries.push({
       weeklyPlanId: plan.id,
       dayOfWeek: d,
-      walkScheduled: walkScheduled || (input.negotiationChoice === "standing_reset" && !walkScheduled),
+      walkScheduled: walkScheduled || isStandingTapDay || (input.negotiationChoice === "standing_reset" && !walkScheduled),
       eatOutScheduled,
       lateDinnerScheduled,
       dinnerLabel: "none" as const,
-      walkDuration: walkScheduled ? walkDuration : (input.negotiationChoice === "standing_reset" ? 2 : 0),
+      walkDuration: dayDuration,
+      standingTap: isStandingTapDay,
     });
   }
 
@@ -475,8 +520,15 @@ export async function generateWeeklyReportData(userId: string, weekNumber: numbe
   const planDays = await storage.getWeeklyPlanDays(plan.id);
   const logs = await storage.getDailyLogsByWeek(userId, weekNumber, plan.startDate);
 
-  const walkDaysScheduled = planDays.filter(d => d.walkScheduled).length;
-  const walkDaysCompleted = logs.filter(l => l.walkCompleted === true).length;
+  const walkDaysScheduled = planDays.filter(d => d.walkScheduled && !d.standingTap).length;
+  const walkDaysCompleted = planDays.filter(d => {
+    if (!d.walkScheduled || d.standingTap) return false;
+    const dayDate = new Date(plan.startDate);
+    dayDate.setDate(dayDate.getDate() + d.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    return log?.walkCompleted === true;
+  }).length;
   const walkPct = walkDaysScheduled > 0 ? Math.round((walkDaysCompleted / walkDaysScheduled) * 100) : 0;
 
   const dinnerDays = planDays.filter(d => d.dinnerLabel !== "none");

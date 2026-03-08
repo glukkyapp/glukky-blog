@@ -184,7 +184,7 @@ export async function registerRoutes(
   app.post("/api/plan/weekly", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays, stretchOnly, selectedTip } = req.body;
+      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays, stretchOnly, selectedTip, standingTapDay, walkDayDurations } = req.body;
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
@@ -197,7 +197,7 @@ export async function registerRoutes(
       if (!Array.isArray(walkDays) || walkDays.length > 7) {
         return res.status(400).json({ message: "Invalid walk days" });
       }
-      const validChoices = ["keep_current", "add_day", "add_minutes", "standing_reset", "set_rest_day"];
+      const validChoices = ["keep_current", "add_day", "add_minutes", "standing_reset", "set_rest_day", "standing_tap"];
       if (negotiationChoice && !validChoices.includes(negotiationChoice)) {
         return res.status(400).json({ message: "Invalid negotiation choice" });
       }
@@ -311,6 +311,8 @@ export async function registerRoutes(
         walkDays: walkDays || [],
         eatOutDays: eatOutDays || [],
         lateDinnerDays: lateDinnerDays || [],
+        standingTapDay: standingTapDay !== undefined ? standingTapDay : undefined,
+        walkDayDurations: walkDayDurations || undefined,
       });
 
       {
@@ -510,10 +512,11 @@ export async function registerRoutes(
         const walkDone = finalLog.walkCompleted === true;
         const isTired = finalLog.walkTired === true;
         const todayIsStretch = !!todayPlanDay?.adjustedToStretch;
+        const todayIsStandingTap = !!todayPlanDay?.standingTap;
 
-        if (tomorrowDow < 7) {
+        if (tomorrowDow < 7 && !todayIsStandingTap) {
           const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
-          if (tomorrowDay && tomorrowDay.walkScheduled) {
+          if (tomorrowDay && tomorrowDay.walkScheduled && !tomorrowDay.standingTap) {
             if (todayIsStretch && walkDone) {
               await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: plan.walkDurationGoal, adjustedToStretch: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
@@ -543,7 +546,8 @@ export async function registerRoutes(
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
                 nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
               } else {
-                const newDuration = plan.walkDurationGoal - 5;
+                const tomorrowCurrentDuration = tomorrowDay.walkDuration || plan.walkDurationGoal;
+                const newDuration = Math.max(tomorrowCurrentDuration - 5, 5);
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
                 nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
               }
@@ -613,6 +617,7 @@ export async function registerRoutes(
           walkCompleted: log?.walkCompleted ?? null,
           walkDuration: day.walkDuration,
           adjustedToStretch: day.adjustedToStretch,
+          standingTap: day.standingTap,
           dinnerLabel: day.dinnerLabel,
           dinnerSuccess: log?.dinnerSuccess ?? null,
           dietResponse: log?.dietResponse ?? null,

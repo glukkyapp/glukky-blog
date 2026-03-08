@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb } from "lucide-react";
+import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -172,7 +172,7 @@ export default function Home() {
       }
       if (tp.walkScheduled) {
         if (tp.walkCompleted === null) allDone = false;
-        if (tp.walkTired === null || tp.walkTired === undefined) allDone = false;
+        if (!tp.standingTap && (tp.walkTired === null || tp.walkTired === undefined)) allDone = false;
       }
       if (calendarPlan?.dietTip && tp.dietResponse === null) allDone = false;
 
@@ -293,9 +293,13 @@ export default function Home() {
 
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
-      const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || calendarPlan?.walkDurationGoal);
-      const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
-      tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+      if (dayData.standingTap) {
+        tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
+      } else {
+        const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || calendarPlan?.walkDurationGoal);
+        const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+      }
     }
     if (dayData.lateDinnerScheduled) {
       tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
@@ -560,8 +564,60 @@ export default function Home() {
     );
   }
 
+  function renderStandingTapCheckIn() {
+    if (!todayPlan?.standingTap) return null;
+
+    const tapAnswered = todayLog?.walkCompleted !== null && todayLog?.walkCompleted !== undefined;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Timer className="w-4 h-4 text-amber-500" />
+          <p className="text-sm font-medium">1 min standing tap after dinner</p>
+        </div>
+        {tapAnswered ? (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="section-standing-tap-answered">
+            {todayLog.walkCompleted ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <X className="w-4 h-4 text-red-400" />
+            )}
+            <span>{todayLog.walkCompleted ? "Completed" : "Skipped"}</span>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">Did you do your 1-minute standing tap after dinner?</p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={todayLog?.walkCompleted === true ? "default" : "outline"}
+                className={todayLog?.walkCompleted === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                onClick={() => logMutation.mutate({ walkCompleted: true, walkTired: false })}
+                disabled={logMutation.isPending}
+                data-testid="button-standing-tap-yes"
+              >
+                Yes
+              </Button>
+              <Button
+                size="sm"
+                variant={todayLog?.walkCompleted === false ? "default" : "outline"}
+                className={todayLog?.walkCompleted === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
+                onClick={() => logMutation.mutate({ walkCompleted: false, walkTired: false })}
+                disabled={logMutation.isPending}
+                data-testid="button-standing-tap-no"
+              >
+                No
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   function renderWalkCheckIn() {
     if (!todayPlan?.walkScheduled) return null;
+    if (todayPlan?.standingTap) return renderStandingTapCheckIn();
 
     const walkAnswered = todayLog?.walkCompleted !== null && todayLog?.walkCompleted !== undefined;
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
@@ -740,7 +796,9 @@ export default function Home() {
     if (!todayLog) return false;
     if (todayPlan?.walkScheduled) {
       if (todayLog.walkCompleted === null || todayLog.walkCompleted === undefined) return false;
-      if (todayLog.walkTired === null || todayLog.walkTired === undefined) return false;
+      if (!todayPlan?.standingTap) {
+        if (todayLog.walkTired === null || todayLog.walkTired === undefined) return false;
+      }
     }
     if (isLateDinnerDay) {
       if (!dinnerLabelSet) return false;
@@ -756,23 +814,36 @@ export default function Home() {
     const items: { label: string; value: string; positive: boolean }[] = [];
 
     if (todayPlan?.walkScheduled) {
-      const chkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
-      const chkStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
-      items.push({
-        label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
-        value: todayLog?.walkCompleted ? "Completed" : "Skipped",
-        positive: !!todayLog?.walkCompleted,
-      });
-      items.push({
-        label: "Duration",
-        value: `${chkDur} min`,
-        positive: true,
-      });
-      items.push({
-        label: "Feeling tired",
-        value: todayLog?.walkTired ? "Yes" : "No",
-        positive: !todayLog?.walkTired,
-      });
+      if (todayPlan?.standingTap) {
+        items.push({
+          label: "Standing tap after dinner",
+          value: todayLog?.walkCompleted ? "Completed" : "Skipped",
+          positive: !!todayLog?.walkCompleted,
+        });
+        items.push({
+          label: "Duration",
+          value: "1 min",
+          positive: true,
+        });
+      } else {
+        const chkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
+        const chkStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
+        items.push({
+          label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
+          value: todayLog?.walkCompleted ? "Completed" : "Skipped",
+          positive: !!todayLog?.walkCompleted,
+        });
+        items.push({
+          label: "Duration",
+          value: `${chkDur} min`,
+          positive: true,
+        });
+        items.push({
+          label: "Feeling tired",
+          value: todayLog?.walkTired ? "Yes" : "No",
+          positive: !todayLog?.walkTired,
+        });
+      }
     }
 
     if (isLateDinnerDay && dinnerLabelSet) {
@@ -984,12 +1055,17 @@ export default function Home() {
               adjustedToStretch: tmrwDay.adjustedToStretch,
               lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
               eatOutScheduled: tmrwDay.eatOutScheduled,
+              standingTap: tmrwDay.standingTap,
             };
             const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
             if (dayData.walkScheduled) {
-              const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || plan?.walkDurationGoal);
-              const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
-              tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+              if (dayData.standingTap) {
+                tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
+              } else {
+                const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || plan?.walkDurationGoal);
+                const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
+                tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+              }
             }
             if (dayData.lateDinnerScheduled) {
               tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
@@ -1151,17 +1227,43 @@ export default function Home() {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
                 const answered = !isFuture && !inactive && d.walkCompleted !== null && d.walkCompleted !== undefined;
+                const isStandingTap = !!d.standingTap;
+                const dur = isStandingTap ? 1 : (d.adjustedToStretch ? 2 : d.walkDuration);
                 return (
-                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
-                    inactive ? "bg-muted/30" :
-                    answered && d.walkCompleted ? "bg-green-100 text-green-600" :
-                    answered && !d.walkCompleted ? "bg-red-50 text-red-400" :
-                    "bg-muted"
+                  <div key={i} className={`rounded flex flex-col items-center justify-center ${
+                    inactive ? "bg-muted/30 h-7" :
+                    isStandingTap && answered && d.walkCompleted ? "bg-amber-100 text-amber-600 h-10" :
+                    isStandingTap && answered && !d.walkCompleted ? "bg-red-50 text-red-400 h-10" :
+                    isStandingTap ? "bg-amber-50 text-amber-500 h-10" :
+                    answered && d.walkCompleted ? "bg-green-100 text-green-600 h-10" :
+                    answered && !d.walkCompleted ? "bg-red-50 text-red-400 h-10" :
+                    d.walkScheduled ? "bg-muted h-10" : "bg-muted h-7"
                   }`}>
                     {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
-                     answered && d.walkCompleted ? <Check className="w-3 h-3" /> :
-                     answered && !d.walkCompleted ? <X className="w-3 h-3" /> :
-                     d.walkScheduled ? ((d.adjustedToStretch || profile?.isStretchMode) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />) : null}
+                     isStandingTap ? (
+                       <>
+                         {answered ? (d.walkCompleted ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />) : <Timer className="w-3 h-3" />}
+                         <span className="text-[9px] leading-none mt-0.5">1m</span>
+                       </>
+                     ) :
+                     answered && d.walkCompleted ? (
+                       <>
+                         <Check className="w-3 h-3" />
+                         {dur && <span className="text-[9px] leading-none mt-0.5">{dur}m</span>}
+                       </>
+                     ) :
+                     answered && !d.walkCompleted ? (
+                       <>
+                         <X className="w-3 h-3" />
+                         {dur && <span className="text-[9px] leading-none mt-0.5">{dur}m</span>}
+                       </>
+                     ) :
+                     d.walkScheduled ? (
+                       <>
+                         {(d.adjustedToStretch || profile?.isStretchMode) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
+                         {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{dur}m</span>}
+                       </>
+                     ) : null}
                   </div>
                 );
               })}
@@ -1247,13 +1349,16 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground" data-testid="calendar-legend">
+            <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground flex-wrap" data-testid="calendar-legend">
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
               <div className="flex items-center gap-1">
                 {profile?.isStretchMode ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
                 {profile?.isStretchMode ? " Planned stretch" : " Planned walk"}
               </div>
+              {calendarData?.calendar?.some((d: any) => d.standingTap) && (
+                <div className="flex items-center gap-1"><Timer className="w-3 h-3 text-amber-500" /> Standing tap</div>
+              )}
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
               <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (

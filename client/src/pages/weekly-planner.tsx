@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles,
+  Wine, Soup, Minus, Activity, Sparkles, Timer,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -112,7 +112,7 @@ export default function WeeklyPlanner() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
-  const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "done">("ask_day");
+  const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "glycemic_gap" | "ask_day_again" | "ask_standing_tap" | "pick_standing_tap_day" | "done">("ask_day");
   const [walkDays, setWalkDays] = useState<number[]>([]);
   const [eatOutDays, setEatOutDays] = useState<number[]>([]);
   const [lateDinnerDays, setLateDinnerDays] = useState<number[]>([]);
@@ -121,6 +121,10 @@ export default function WeeklyPlanner() {
   const [stretchAccepted, setStretchAccepted] = useState(false);
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
+  const [standingTapDay, setStandingTapDay] = useState<number | null>(null);
+  const [walkDayDurations, setWalkDayDurations] = useState<Record<number, number>>({});
+  const [negotiationAgreedMinutes, setNegotiationAgreedMinutes] = useState(false);
+  const [negotiationInitialized, setNegotiationInitialized] = useState(false);
 
   const isDinnerFocus = useMemo(() => {
     return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
@@ -153,21 +157,60 @@ export default function WeeklyPlanner() {
     if (reflection?.lastWeekSchedule && reflection.lastWeekSchedule.length > 0) {
       const schedule = reflection.lastWeekSchedule;
       const filterActive = (days: number[]) => firstActiveDay > 0 ? days.filter(d => d >= firstActiveDay) : days;
-      setWalkDays(filterActive(schedule.filter((d: any) => d.walkScheduled).map((d: any) => d.dayOfWeek)));
+      const lastWeekWalkDays = schedule.filter((d: any) => d.walkScheduled && !d.standingTap).map((d: any) => d.dayOfWeek);
+      setWalkDays(filterActive(lastWeekWalkDays));
       setEatOutDays(filterActive(schedule.filter((d: any) => d.eatOutScheduled).map((d: any) => d.dayOfWeek)));
       setLateDinnerDays(filterActive(schedule.filter((d: any) => d.lateDinnerScheduled).map((d: any) => d.dayOfWeek)));
+
+      const durations: Record<number, number> = {};
+      for (const d of schedule) {
+        if (d.walkScheduled && !d.standingTap && d.walkDuration > 0) {
+          durations[d.dayOfWeek] = d.walkDuration;
+        }
+      }
+      setWalkDayDurations(durations);
+
+      const lastWeekStandingTapDay = schedule.find((d: any) => d.standingTap);
+      if (lastWeekStandingTapDay) {
+        setStandingTapDay(lastWeekStandingTapDay.dayOfWeek);
+      }
+
       setInitialized(true);
     } else if (!reflection) {
       const pw = profile?.walksPerWeek || 3;
       const availableDays = Array.from({ length: 7 }, (_, i) => i).filter(d => d >= firstActiveDay);
-      setWalkDays(availableDays.slice(0, pw));
+      const initialWalkDays = availableDays.slice(0, pw);
+      setWalkDays(initialWalkDays);
+      const durations: Record<number, number> = {};
+      for (const d of initialWalkDays) {
+        durations[d] = profile.walkDuration || 10;
+      }
+      setWalkDayDurations(durations);
       setInitialized(true);
     }
   }, [profile, reflection, initialized]);
 
+  useEffect(() => {
+    if (negotiationInitialized || !reflection || isStretchMode || isFirstWeek) return;
+    const walkFreq = reflection.walkDaysScheduled || 0;
+    const walkDur = reflection.walkDuration || 10;
+    if (walkFreq >= 5 && walkDur < 20) {
+      setNegotiationStep("ask_minutes");
+    } else if (walkFreq >= 5 && walkDur >= 20) {
+      setNegotiationStep("done");
+    }
+    setNegotiationInitialized(true);
+  }, [reflection, isStretchMode, isFirstWeek, negotiationInitialized]);
+
   const createPlanMutation = useMutation({
     mutationFn: async () => {
       const effectiveWalkDays = isEmptyWeekStretch ? stretchDays : walkDays;
+      const durationsPayload: Record<string, number> = {};
+      for (const d of effectiveWalkDays) {
+        if (walkDayDurations[d]) {
+          durationsPayload[String(d)] = walkDayDurations[d];
+        }
+      }
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
         walkDays: effectiveWalkDays,
@@ -175,6 +218,8 @@ export default function WeeklyPlanner() {
         lateDinnerDays,
         stretchOnly: isStretchActive,
         selectedTip: selectedTip || undefined,
+        standingTapDay: standingTapDay !== null ? standingTapDay : undefined,
+        walkDayDurations: Object.keys(durationsPayload).length > 0 ? durationsPayload : undefined,
       });
       return res.json();
     },
@@ -189,28 +234,63 @@ export default function WeeklyPlanner() {
     },
   });
 
+  function addOneWalkDay() {
+    const days = [...walkDays];
+    for (let i = 0; i < 7; i++) {
+      if (!days.includes(i) && i >= firstActiveDay) { 
+        days.push(i);
+        setWalkDayDurations(prev => ({ ...prev, [i]: profile?.walkDuration || 10 }));
+        break; 
+      }
+    }
+    setWalkDays(days);
+  }
+
   function handleNegotiationAnswer(answer: "yes" | "no") {
+    const walkFreq = reflection?.walkDaysScheduled || 0;
+    const walkDur = reflection?.walkDuration || 10;
+
     if (negotiationStep === "ask_day") {
       if (answer === "yes") {
         setNegotiationChoice("add_day");
-        let days = [...walkDays];
-        for (let i = 0; i < 7; i++) {
-          if (!days.includes(i)) { days.push(i); break; }
-        }
-        setWalkDays(days);
+        addOneWalkDay();
         setNegotiationStep("done");
       } else {
-        if (reflection && reflection.walkDuration < 20) {
+        if (walkDur < 20) {
           setNegotiationStep("ask_minutes");
         } else {
-          setNegotiationStep("done");
+          setNegotiationStep("glycemic_gap");
         }
       }
     } else if (negotiationStep === "ask_minutes") {
       if (answer === "yes") {
         setNegotiationChoice("add_minutes");
+        setNegotiationAgreedMinutes(true);
+        setWalkDayDurations(prev => {
+          const updated = { ...prev };
+          for (const day of walkDays) {
+            const current = updated[day] || profile?.walkDuration || 10;
+            updated[day] = Math.min(current + 5, 20);
+          }
+          return updated;
+        });
       }
       setNegotiationStep("done");
+    } else if (negotiationStep === "ask_day_again") {
+      if (answer === "yes") {
+        setNegotiationChoice("add_day");
+        addOneWalkDay();
+        setNegotiationStep("done");
+      } else {
+        setNegotiationStep("ask_standing_tap");
+      }
+    } else if (negotiationStep === "ask_standing_tap") {
+      if (answer === "yes") {
+        setNegotiationChoice("standing_tap");
+        setNegotiationStep("pick_standing_tap_day");
+      } else {
+        setNegotiationStep("done");
+      }
     }
   }
 
@@ -269,6 +349,14 @@ export default function WeeklyPlanner() {
                 <Activity className="w-3.5 h-3.5 text-primary" />
                 <p className="text-sm text-muted-foreground">
                   Stretching: {reflection.stretchAdjustedDays} day{reflection.stretchAdjustedDays > 1 ? "s" : ""}
+                </p>
+              </div>
+            )}
+            {reflection.standingTapDaysScheduled > 0 && (
+              <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-standing-tap-report">
+                <Timer className="w-3.5 h-3.5 text-amber-500" />
+                <p className="text-sm text-muted-foreground">
+                  Standing Tap: {reflection.standingTapDaysCompleted}/{reflection.standingTapDaysScheduled} completed
                 </p>
               </div>
             )}
@@ -343,11 +431,52 @@ export default function WeeklyPlanner() {
     );
   }
 
+  function getLastWeekDuration(dayOfWeek: number): number | null {
+    if (!reflection?.lastWeekSchedule) return null;
+    const dayEntry = reflection.lastWeekSchedule.find((d: any) => d.dayOfWeek === dayOfWeek && d.walkScheduled && !d.standingTap);
+    return dayEntry ? dayEntry.walkDuration : null;
+  }
+
+  function getMinDuration(dayOfWeek: number): number {
+    const lastWeekDur = getLastWeekDuration(dayOfWeek);
+    let base = (lastWeekDur && lastWeekDur >= 10) ? lastWeekDur : 10;
+    if (negotiationAgreedMinutes) {
+      base = Math.min(base + 5, 20);
+    }
+    return base;
+  }
+
+  function getDurationOptions(dayOfWeek: number): number[] {
+    const min = getMinDuration(dayOfWeek);
+    return [10, 15, 20].filter(v => v >= min);
+  }
+
+  function handleToggleWalkDay(day: number) {
+    if (walkDays.includes(day)) {
+      setWalkDays(walkDays.filter(d => d !== day));
+      if (standingTapDay === day) {
+        setStandingTapDay(null);
+      }
+    } else {
+      setWalkDays([...walkDays, day]);
+      if (!(day in walkDayDurations)) {
+        const lastWeekDur = getLastWeekDuration(day);
+        setWalkDayDurations(prev => ({ ...prev, [day]: lastWeekDur && lastWeekDur >= 10 ? lastWeekDur : (profile?.walkDuration || 10) }));
+      }
+      if (standingTapDay === day) {
+        setStandingTapDay(null);
+      }
+    }
+  }
+
   function renderWalkDays() {
     const showNegotiation = !isFirstWeek && reflection && !isStretchMode;
-    const showNegotiationQuestion = showNegotiation && reflection.suggestedActions && reflection.suggestedActions.length > 0;
     const walkFreq = reflection?.walkDaysScheduled || 0;
     const walkDur = reflection?.walkDuration || 10;
+
+    const isScenarioD = walkFreq >= 5 && walkDur >= 20;
+    const isScenarioB = walkFreq >= 5 && walkDur < 20;
+    const isScenarioC = walkFreq < 5 && walkDur >= 20;
 
     return (
       <Card>
@@ -358,44 +487,106 @@ export default function WeeklyPlanner() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {showNegotiationQuestion && negotiationStep !== "done" && (
+          {showNegotiation && isScenarioD && (
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 space-y-2" data-testid="section-negotiation-congrats">
+              <div className="flex items-start gap-2">
+                <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                  {walkFreq === 7
+                    ? "Congratulations! You're walking every day — that's incredible!"
+                    : "Amazing — you've hit a very good target — in fact better than most of us! Keep it up — you can still add walking days at your wish."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {showNegotiation && !isScenarioD && negotiationStep !== "done" && (
             <div className="bg-primary/5 rounded-lg p-4 space-y-3 mb-2" data-testid="section-negotiation">
-              {negotiationStep === "ask_day" && walkFreq < 5 && (
+              {negotiationStep === "ask_day" && (
                 <>
-                  <p className="text-sm font-medium">Would you like to add 1 more walk day this week?</p>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day">Would you like to add 1 more walk day?</p>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-day-yes">Yes</Button>
                     <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-day-no">No</Button>
                   </div>
                 </>
               )}
-              {negotiationStep === "ask_day" && walkFreq >= 5 && walkDur < 20 && (
-                <>
-                  <p className="text-sm font-medium">Would you like to add 5 more minutes to your walks?</p>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => { setNegotiationChoice("add_minutes"); setNegotiationStep("done"); }} data-testid="button-negotiation-add-minutes-yes">Yes</Button>
-                    <Button size="sm" variant="outline" onClick={() => setNegotiationStep("done")} data-testid="button-negotiation-add-minutes-no">No</Button>
-                  </div>
-                </>
-              )}
-              {negotiationStep === "ask_day" && walkFreq >= 5 && walkDur >= 20 && (
-                <>
-                  <p className="text-sm font-medium">Amazing — you've hit the maximum! Keep it up</p>
-                  <p className="text-xs text-muted-foreground">Consider a Standing Reset — add short 2-min standing breaks on rest days to cover the Glycemic Gap.</p>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleStandingReset} data-testid="button-negotiation-standing-reset">Try Standing Reset</Button>
-                    <Button size="sm" variant="outline" onClick={() => setNegotiationStep("done")} data-testid="button-negotiation-keep">Keep Current</Button>
-                  </div>
-                </>
-              )}
               {negotiationStep === "ask_minutes" && (
                 <>
-                  <p className="text-sm font-medium">Would you like to add 5 more minutes to your walks?</p>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-minutes">Would you like to add 5 more minutes to your walks?</p>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-minutes-yes">Yes</Button>
                     <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-minutes-no">No</Button>
                   </div>
                 </>
+              )}
+              {negotiationStep === "glycemic_gap" && (
+                <div className="space-y-3" data-testid="section-glycemic-gap">
+                  <p className="text-sm text-muted-foreground italic">
+                    A 40-minute walk on Monday can't clear the glucose spike from a sedentary Tuesday dinner. Each meal creates its own blood sugar response — covering more days matters more than longer walks.
+                  </p>
+                  <Button size="sm" onClick={() => setNegotiationStep("ask_day_again")} data-testid="button-glycemic-gap-continue">I understand</Button>
+                </div>
+              )}
+              {negotiationStep === "ask_day_again" && (
+                <>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day-again">Would you reconsider adding one more walk day?</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-reconsider-yes">Yes</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-reconsider-no">No</Button>
+                  </div>
+                </>
+              )}
+              {negotiationStep === "ask_standing_tap" && (
+                <>
+                  <div className="flex items-start gap-2">
+                    <Timer className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                    <p className="text-sm font-medium" data-testid="text-negotiation-standing-tap">
+                      How about a Standing Tap? Stand up after a meal and tap your feet for just 1 minute on a non-walk day.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-standing-tap-yes">Yes</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-standing-tap-no">No</Button>
+                  </div>
+                </>
+              )}
+              {negotiationStep === "pick_standing_tap_day" && (
+                <div className="space-y-3" data-testid="section-pick-standing-tap-day">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-medium">Pick a non-walk day for your Standing Tap:</p>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DAY_NAMES.map((name, i) => {
+                      const isWalkDay = walkDays.includes(i);
+                      const inactive = isWalkDay || ((isFirstWeek || isLatePlanningEarly) && i < firstActiveDay);
+                      const isSelected = standingTapDay === i;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => !inactive && setStandingTapDay(isSelected ? null : i)}
+                          disabled={inactive}
+                          className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                            inactive
+                              ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                              : isSelected
+                                ? "bg-amber-500 text-white"
+                                : "bg-muted text-muted-foreground"
+                          }`}
+                          data-testid={`button-standing-tap-day-${i}`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {standingTapDay !== null && (
+                    <Button size="sm" onClick={() => setNegotiationStep("done")} data-testid="button-standing-tap-confirm">
+                      Confirm Standing Tap on {DAY_NAMES[standingTapDay]}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -438,26 +629,77 @@ export default function WeeklyPlanner() {
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
+              const isStandingTap = standingTapDay === i;
               return (
                 <button
                   key={i}
-                  onClick={() => !inactive && toggleDay(i, walkDays, setWalkDays)}
+                  onClick={() => !inactive && handleToggleWalkDay(i)}
                   disabled={inactive}
                   className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : walkDays.includes(i)
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        : isStandingTap
+                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 ring-1 ring-amber-300"
+                          : "bg-muted text-muted-foreground"
                   }`}
                   data-testid={`button-walk-day-${i}`}
                 >
-                  {name}
+                  <span>{name}</span>
+                  {isStandingTap && !walkDays.includes(i) && (
+                    <Timer className="w-3 h-3 mx-auto mt-0.5" />
+                  )}
                 </button>
               );
             })}
           </div>
-          <p className="text-center text-sm text-muted-foreground">{walkDays.length} days selected</p>
+          <p className="text-center text-sm text-muted-foreground">
+            {walkDays.length} walk day{walkDays.length !== 1 ? "s" : ""} selected
+            {standingTapDay !== null && !walkDays.includes(standingTapDay) && " + 1 standing tap"}
+          </p>
+
+          {!isStretchMode && walkDays.length > 0 && (
+            <div className="space-y-2 pt-2 border-t" data-testid="section-walk-durations">
+              <p className="text-xs font-medium text-muted-foreground">Walk duration per day:</p>
+              <div className="space-y-1.5">
+                {walkDays.sort((a, b) => a - b).map(day => {
+                  const options = getDurationOptions(day);
+                  const currentDur = walkDayDurations[day] || options[0] || 10;
+                  return (
+                    <div key={day} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2" data-testid={`duration-row-${day}`}>
+                      <span className="text-sm font-medium">{DAY_NAMES[day]}</span>
+                      <div className="flex gap-1">
+                        {options.map(dur => (
+                          <button
+                            key={dur}
+                            onClick={() => setWalkDayDurations(prev => ({ ...prev, [day]: dur }))}
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                              currentDur === dur
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-background text-muted-foreground hover:bg-primary/10"
+                            }`}
+                            data-testid={`button-duration-${day}-${dur}`}
+                          >
+                            {dur}m
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {standingTapDay !== null && !walkDays.includes(standingTapDay) && (
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3" data-testid="section-standing-tap-summary">
+              <Timer className="w-4 h-4 text-amber-600" />
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Standing Tap on {DAY_NAMES[standingTapDay]} — 1 min
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
