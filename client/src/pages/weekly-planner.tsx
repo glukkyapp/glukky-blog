@@ -101,6 +101,7 @@ export default function WeeklyPlanner() {
 
   const firstActiveDay = (() => {
     if (isFirstWeek) {
+      if (effectiveTodayDow === 6) return 0;
       return effectiveTodayDow === 0 ? 0 : Math.min(effectiveTodayDow + 1, 6);
     }
     if (isLatePlanningEarly) {

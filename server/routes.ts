@@ -298,7 +298,16 @@ export async function registerRoutes(
 
         let firstActiveDay = 0;
         if (profile.currentWeek === 1) {
-          firstActiveDay = todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+          if (todayDow === 6) {
+            const nextMonday = new Date(effectiveDate);
+            nextMonday.setDate(nextMonday.getDate() + 1);
+            const nextMondayStr = nextMonday.toISOString().split('T')[0];
+            await storage.updateWeeklyPlan(result.plan.id, { startDate: nextMondayStr });
+            result.plan = { ...result.plan, startDate: nextMondayStr };
+            firstActiveDay = 0;
+          } else {
+            firstActiveDay = todayDow === 0 ? 0 : Math.min(todayDow + 1, 6);
+          }
         } else {
           const startDateStr = typeof result.plan.startDate === 'string'
             ? result.plan.startDate
