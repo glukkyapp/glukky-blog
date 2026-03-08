@@ -90,7 +90,7 @@ A mobile-responsive web app that helps diabetes patients manage post-meal walks 
 - `user_profiles` - Baseline data, current struggle, dinner state, stretch mode (`is_stretch_mode`, `stretch_success_weeks`)
 - `weekly_plans` - Walk/diet goals per week, includes `first_active_day` (0=Mon default, for mid-week week-1 signup)
 - `weekly_plan_days` - Per-day walk schedule + eat-out flag + late-dinner flag + dinner labels (set at check-in)
-- `daily_logs` - Daily check-in data
+- `daily_logs` - Daily check-in data (walkTired is nullable — null means unanswered, false/true means explicitly answered)
 - `weekly_reports`, `monthly_reports` - Generated reports
 
 ## Color Theme

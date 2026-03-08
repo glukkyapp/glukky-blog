@@ -62,7 +62,7 @@ export const dailyLogs = pgTable("daily_logs", {
   userId: varchar("user_id").notNull(),
   date: date("date").notNull(),
   walkCompleted: boolean("walk_completed"),
-  walkTired: boolean("walk_tired").notNull().default(false),
+  walkTired: boolean("walk_tired"),
   dietResponse: dietResponseEnum("diet_response"),
   dinnerSuccess: boolean("dinner_success"),
 });

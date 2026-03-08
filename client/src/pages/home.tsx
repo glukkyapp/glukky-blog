@@ -1038,21 +1038,21 @@ export default function Home() {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
                   const answered = !isFuture && !inactive && d.dinnerSuccess !== null && d.dinnerSuccess !== undefined;
-                  const hasLabel = d.dinnerLabel && d.dinnerLabel !== "none";
+                  const isMitigation = d.dinnerLabel && ["fiber_starter", "dusk_prep", "split_dinner"].includes(d.dinnerLabel);
                   return (
                     <div key={i} className={`h-7 rounded flex flex-col items-center justify-center ${
                       inactive ? "bg-muted/30" :
                       !d.lateDinnerScheduled ? "bg-muted" :
                       answered && d.dinnerSuccess ? "bg-green-100 text-green-600" :
                       answered && !d.dinnerSuccess ? "bg-red-50 text-red-400" :
-                      hasLabel ? "bg-amber-50 text-amber-600" :
+                      isMitigation ? "bg-amber-50 text-amber-600" :
                       "bg-muted"
                     }`}>
                       {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                        !d.lateDinnerScheduled ? null :
                        answered && d.dinnerSuccess ? <Check className="w-3 h-3" /> :
                        answered && !d.dinnerSuccess ? <X className="w-3 h-3" /> :
-                       hasLabel ? <Lightbulb className="w-3 h-3" /> :
+                       isMitigation ? <Lightbulb className="w-3 h-3" /> :
                        <Soup className="w-3 h-3 text-muted-foreground" />}
                     </div>
                   );

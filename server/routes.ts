@@ -346,7 +346,7 @@ export async function registerRoutes(
           userId,
           date,
           walkCompleted: walkCompleted !== undefined ? walkCompleted : null,
-          walkTired: walkTired !== undefined ? walkTired : false,
+          walkTired: walkTired !== undefined ? walkTired : null,
           dietResponse: dietResponse || null,
           dinnerSuccess: dinnerSuccess !== undefined ? dinnerSuccess : null,
         });
@@ -356,7 +356,7 @@ export async function registerRoutes(
       const finalLog = await storage.getDailyLog(userId, date);
       if (finalLog && finalLog.walkTired === true) {
         const walkDone = finalLog.walkCompleted === true;
-        const plan = await storage.getCurrentWeeklyPlan(userId);
+        const plan = await storage.getWeeklyPlanForDate(userId, date);
         if (plan) {
           const planDays = await storage.getWeeklyPlanDays(plan.id);
           const logDate = new Date(date + "T00:00:00");
@@ -444,7 +444,7 @@ export async function registerRoutes(
           dinnerLabel: day.dinnerLabel,
           dinnerSuccess: log?.dinnerSuccess ?? null,
           dietResponse: log?.dietResponse ?? null,
-          walkTired: log?.walkTired ?? false,
+          walkTired: log?.walkTired ?? null,
           planDayId: day.id,
         };
       });
