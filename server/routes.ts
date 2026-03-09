@@ -208,17 +208,18 @@ export async function registerRoutes(
         if (profile.hasLateDinner && !profile.dinnerMastered) {
           await processDinnerGraduation(userId);
         } else if (profile.currentStruggle) {
-          const weeksOnStruggle = (profile.currentWeek - 1) - profile.tipCycleStartWeek;
-          if (weeksOnStruggle >= 3) {
-            const cycleWeekNumbers: number[] = [];
-            for (let w = profile.tipCycleStartWeek + 1; w <= profile.tipCycleStartWeek + 3; w++) {
-              cycleWeekNumbers.push(w);
+          const dietActiveWeeks: { weekNumber: number; plan: any }[] = [];
+          for (let w = profile.tipCycleStartWeek + 1; w <= profile.currentWeek - 1; w++) {
+            const wp = await storage.getWeeklyPlan(userId, w);
+            if (wp && wp.dietStruggle === profile.currentStruggle) {
+              dietActiveWeeks.push({ weekNumber: w, plan: wp });
             }
+          }
+          if (dietActiveWeeks.length >= 3) {
+            const evalWeeks = dietActiveWeeks.slice(-3);
             let yesDays = 0;
             let noChanceDays = 0;
-            for (const wn of cycleWeekNumbers) {
-              const wp = await storage.getWeeklyPlan(userId, wn);
-              if (!wp) continue;
+            for (const { weekNumber: wn, plan: wp } of evalWeeks) {
               const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
               for (const log of logs) {
                 if (log.dietResponse === "yes") yesDays++;
