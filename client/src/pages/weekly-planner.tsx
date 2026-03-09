@@ -266,14 +266,6 @@ export default function WeeklyPlanner() {
       if (answer === "yes") {
         setNegotiationChoice("add_minutes");
         setNegotiationAgreedMinutes(true);
-        setWalkDayDurations(prev => {
-          const updated = { ...prev };
-          for (const day of walkDays) {
-            const current = updated[day] || profile?.walkDuration || 10;
-            updated[day] = Math.min(current + 5, 20);
-          }
-          return updated;
-        });
       }
       setNegotiationStep("done");
     } else if (negotiationStep === "ask_day_again") {
@@ -438,12 +430,11 @@ export default function WeeklyPlanner() {
   }
 
   function getMinDuration(dayOfWeek: number): number {
-    const lastWeekDur = getLastWeekDuration(dayOfWeek);
-    let base = (lastWeekDur && lastWeekDur >= 10) ? lastWeekDur : 10;
     if (negotiationAgreedMinutes) {
-      base = Math.min(base + 5, 20);
+      const lastWeekDur = getLastWeekDuration(dayOfWeek);
+      if (lastWeekDur && lastWeekDur >= 10) return lastWeekDur;
     }
-    return base;
+    return 10;
   }
 
   function getDurationOptions(dayOfWeek: number): number[] {
