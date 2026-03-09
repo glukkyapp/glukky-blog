@@ -112,6 +112,7 @@ export default function WeeklyPlanner() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
+  const [acceptedEscalation, setAcceptedEscalation] = useState<boolean | null>(null);
   const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "glycemic_gap" | "ask_day_again" | "ask_standing_tap" | "pick_standing_tap_day" | "done">("ask_day");
   const [walkDays, setWalkDays] = useState<number[]>([]);
   const [eatOutDays, setEatOutDays] = useState<number[]>([]);
@@ -216,7 +217,7 @@ export default function WeeklyPlanner() {
         walkDays: effectiveWalkDays,
         eatOutDays,
         lateDinnerDays,
-        stretchOnly: isStretchActive,
+        stretchOnly: acceptedEscalation === true ? false : isStretchActive,
         selectedTip: selectedTip || undefined,
         standingTapDay: standingTapDay !== null ? standingTapDay : undefined,
         walkDayDurations: Object.keys(durationsPayload).length > 0 ? durationsPayload : undefined,
@@ -331,7 +332,11 @@ export default function WeeklyPlanner() {
               <p className="font-semibold text-sm">Physical</p>
             </div>
             <p className="text-2xl font-bold text-center text-primary" data-testid="text-walk-report">
-              {reflection.walkDaysCompleted}/{reflection.walkDaysScheduled} walk days
+              {reflection.walkDaysScheduled > 0
+                ? `${reflection.walkDaysCompleted}/${reflection.walkDaysScheduled} walk days`
+                : reflection.stretchAdjustedDays > 0
+                  ? `${reflection.stretchAdjustedDays} stretch day${reflection.stretchAdjustedDays > 1 ? "s" : ""}`
+                  : "No walk days"}
             </p>
             <p className="text-center text-sm text-muted-foreground">
               {reflection.walkSuccessPct}% completion
@@ -452,7 +457,8 @@ export default function WeeklyPlanner() {
       setWalkDays([...walkDays, day]);
       if (!(day in walkDayDurations)) {
         const lastWeekDur = getLastWeekDuration(day);
-        setWalkDayDurations(prev => ({ ...prev, [day]: lastWeekDur && lastWeekDur >= 10 ? lastWeekDur : (profile?.walkDuration || 10) }));
+        const defaultDur = acceptedEscalation === true ? 10 : (profile?.walkDuration || 10);
+        setWalkDayDurations(prev => ({ ...prev, [day]: lastWeekDur && lastWeekDur >= 10 ? lastWeekDur : defaultDur }));
       }
       if (standingTapDay === day) {
         setStandingTapDay(null);
@@ -473,8 +479,8 @@ export default function WeeklyPlanner() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-walk-days-title">
-            {isStretchMode ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
-            {isStretchMode ? "Pick your stretch days" : "Which days work best for a walk?"}
+            {isStretchMode && acceptedEscalation !== true ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
+            {isStretchMode && acceptedEscalation !== true ? "Pick your stretch days" : "Which days work best for a walk?"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -582,19 +588,26 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {isStretchMode && reflection?.autoEscalation && (
+          {isStretchMode && reflection?.autoEscalation && acceptedEscalation === null && (
             <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 space-y-3" data-testid="section-auto-escalation">
               <div className="flex items-start gap-2">
                 <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-green-700 dark:text-green-400">You've nailed stretching for 2 weeks!</p>
-                  <p className="text-sm text-muted-foreground mt-1">Ready to try 5-minute walks?</p>
+                  <p className="text-sm text-muted-foreground mt-1">Ready to try 10-minute walks?</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => setNegotiationChoice("add_minutes")} data-testid="button-escalation-yes">Yes, let's do it</Button>
-                <Button size="sm" variant="outline" onClick={() => setNegotiationChoice("keep_current")} data-testid="button-escalation-no">Not yet</Button>
+                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("add_minutes"); }} data-testid="button-escalation-yes">Yes, let's do it</Button>
+                <Button size="sm" variant="outline" onClick={() => { setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">Not yet</Button>
               </div>
+            </div>
+          )}
+
+          {acceptedEscalation === true && (
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-escalation-confirmed">
+              <Award className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-green-700 dark:text-green-400">Great! Pick your walk days below — each day will be a 10-minute walk.</p>
             </div>
           )}
 
@@ -608,7 +621,7 @@ export default function WeeklyPlanner() {
           )}
 
           <p className="text-sm text-muted-foreground">
-            {isStretchMode ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
+            {isStretchMode && acceptedEscalation !== true ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
           </p>
           {firstActiveDay > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
@@ -646,11 +659,11 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">
-            {walkDays.length} walk day{walkDays.length !== 1 ? "s" : ""} selected
+            {walkDays.length} {isStretchMode && acceptedEscalation !== true ? "stretch" : "walk"} day{walkDays.length !== 1 ? "s" : ""} selected
             {standingTapDay !== null && !walkDays.includes(standingTapDay) && " + 1 standing tap"}
           </p>
 
-          {!isStretchMode && walkDays.length > 0 && (
+          {(!isStretchMode || acceptedEscalation === true) && walkDays.length > 0 && (
             <div className="space-y-2 pt-2 border-t" data-testid="section-walk-durations">
               <p className="text-xs font-medium text-muted-foreground">Walk duration per day:</p>
               <div className="space-y-1.5">
@@ -1154,7 +1167,7 @@ export default function WeeklyPlanner() {
 
           <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
             <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">
-              {isStretchActive ? "Stretch" : "Walk"}
+              {isStretchActive && acceptedEscalation !== true ? "Stretch" : "Walk"}
             </div>
             {DAY_NAMES.map((_, i) => {
               const inactive = i < firstActiveDay;
@@ -1165,7 +1178,7 @@ export default function WeeklyPlanner() {
                   previewWalkDays.includes(i) ? "bg-primary/20 text-primary" : "bg-muted"
                 }`}>
                   {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
-                   previewWalkDays.includes(i) ? (isStretchActive ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />) : null}
+                   previewWalkDays.includes(i) ? (isStretchActive && acceptedEscalation !== true ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />) : null}
                 </div>
               );
             })}
@@ -1209,8 +1222,8 @@ export default function WeeklyPlanner() {
 
           <div className="flex items-center gap-4 pt-1 text-[10px] text-muted-foreground" data-testid="preview-legend">
             <div className="flex items-center gap-1">
-              {isStretchActive ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
-              {isStretchActive ? "Stretch" : "Walk"}
+              {isStretchActive && acceptedEscalation !== true ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
+              {isStretchActive && acceptedEscalation !== true ? "Stretch" : "Walk"}
             </div>
             {lateDinnerDays.length > 0 && (
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>

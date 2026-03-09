@@ -195,7 +195,7 @@ function buildSuggestedActions(
     type: "keep_current",
     label: isStandingReset ? "Continue standing reset" : "Keep current schedule",
     description: isStandingReset
-      ? "Keep doing 2-min standing breaks — complete 2 weeks at 100% to unlock 5-min walks"
+      ? "Keep doing 2-min standing breaks — complete 2 weeks at 100% to unlock 10-min walks"
       : `Stay at ${currentWalkDays} days, ${currentDuration} min`,
   });
 
@@ -291,7 +291,7 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   const biWeeklyTriggers = await checkBiWeeklyTriggers(input.userId);
   const autoEscalatedFromStretch = biWeeklyTriggers.autoEscalation && walkDuration <= 2;
   if (autoEscalatedFromStretch) {
-    walkDuration = 5;
+    walkDuration = 10;
   }
 
   if (!autoEscalatedFromStretch && input.negotiationChoice === "add_minutes" && !input.walkDayDurations) {

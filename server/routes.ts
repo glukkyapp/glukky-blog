@@ -130,9 +130,15 @@ export async function registerRoutes(
 
       const reflectionPlan = await storage.getWeeklyPlan(userId, reflection.weekNumber);
       let stretchAdjustedDays = 0;
+      let isStretchModeWeek = false;
       if (reflectionPlan) {
         const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
         stretchAdjustedDays = reflectionPlanDays.filter(d => d.adjustedToStretch).length;
+        const walkDays = reflectionPlanDays.filter(d => d.walkScheduled && !d.standingTap);
+        isStretchModeWeek = walkDays.length > 0 && walkDays.every(d => d.walkDuration === 2 || d.adjustedToStretch);
+        if (isStretchModeWeek) {
+          stretchAdjustedDays = walkDays.length;
+        }
       }
 
       let adjustedWalkDaysScheduled = reflection.walkDaysScheduled - stretchAdjustedDays;
@@ -140,7 +146,9 @@ export async function registerRoutes(
       let adjustedWalkDaysCompleted = reflection.walkDaysCompleted;
       if (reflectionPlan && stretchAdjustedDays > 0) {
         const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
-        const stretchDows = reflectionPlanDays.filter(d => d.adjustedToStretch).map(d => d.dayOfWeek);
+        const stretchDows = isStretchModeWeek
+          ? reflectionPlanDays.filter(d => d.walkScheduled && !d.standingTap).map(d => d.dayOfWeek)
+          : reflectionPlanDays.filter(d => d.adjustedToStretch).map(d => d.dayOfWeek);
         const logs = await storage.getDailyLogsByWeek(userId, reflection.weekNumber, reflectionPlan.startDate);
         let stretchCompleted = 0;
         for (const dow of stretchDows) {
@@ -169,7 +177,7 @@ export async function registerRoutes(
         walkSuccessPct: adjustedWalkSuccessPct,
         stretchAdjustedDays,
         walkingBridge: biWeekly.walkingBridge,
-        autoEscalation: biWeekly.autoEscalation,
+        autoEscalation: biWeekly.autoEscalation && (profile?.stretchSuccessWeeks || 0) >= 2,
         isStretchMode: profile?.isStretchMode || false,
         stretchProgression,
         weekInCycle,
@@ -284,12 +292,15 @@ export async function registerRoutes(
           }
         }
 
+        let updatedStretchSuccessWeeks = profile.stretchSuccessWeeks;
         if (profile.isStretchMode) {
           const stretchProg = await getStretchProgression(userId);
           if (stretchProg) {
             if (stretchProg.allCompleted) {
-              await storage.updateProfile(userId, { stretchSuccessWeeks: profile.stretchSuccessWeeks + 1 });
+              updatedStretchSuccessWeeks = profile.stretchSuccessWeeks + 1;
+              await storage.updateProfile(userId, { stretchSuccessWeeks: updatedStretchSuccessWeeks });
             } else {
+              updatedStretchSuccessWeeks = 0;
               await storage.updateProfile(userId, { stretchSuccessWeeks: 0 });
             }
           }
@@ -300,8 +311,8 @@ export async function registerRoutes(
           if (biWeekly.walkingBridge && !profile.isStretchMode) {
             await storage.updateProfile(userId, { isStretchMode: true, stretchSuccessWeeks: 0 });
           }
-          if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "add_minutes") {
-            await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 5, stretchSuccessWeeks: 0 });
+          if (biWeekly.autoEscalation && profile.isStretchMode && updatedStretchSuccessWeeks >= 2 && negotiationChoice === "add_minutes") {
+            await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 10, stretchSuccessWeeks: 0 });
           }
         }
       }
