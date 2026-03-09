@@ -500,9 +500,10 @@ export async function registerRoutes(
       }
 
       let nextDayAdjustment: { reduced: boolean; newDuration?: number; tomorrowWalkScheduled: boolean; walkCompleted: boolean; adjustedToStretch?: boolean } | null = null;
+      const isWalkRelatedUpdate = walkCompleted !== undefined || walkTired !== undefined;
       const finalLog = await storage.getDailyLog(userId, date);
       const plan = await storage.getWeeklyPlanForDate(userId, date);
-      if (plan && finalLog) {
+      if (plan && finalLog && isWalkRelatedUpdate) {
         const planDays = await storage.getWeeklyPlanDays(plan.id);
         const logDate = new Date(date + "T00:00:00");
         const planStart = new Date(plan.startDate + "T00:00:00");
