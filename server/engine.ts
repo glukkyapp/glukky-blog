@@ -136,7 +136,9 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
 
   const fatigueDetected = await checkFatiguePattern(userId, profile.currentWeek);
 
-  const suggestedActions = buildSuggestedActions(profile, walkDaysScheduled, plan.walkDurationGoal, fatigueDetected);
+  const walkDayDurationsForActions = planDays.filter(d => d.walkScheduled && !d.standingTap).map(d => d.walkDuration);
+  const maxDurationForActions = walkDayDurationsForActions.length > 0 ? Math.max(...walkDayDurationsForActions) : plan.walkDurationGoal;
+  const suggestedActions = buildSuggestedActions(profile, walkDaysScheduled, maxDurationForActions, fatigueDetected);
 
   const lastWeekSchedule: LastWeekDaySchedule[] = planDays.map(d => ({
     dayOfWeek: d.dayOfWeek,
@@ -315,17 +317,6 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
     }
   }
 
-  const plan = await storage.createWeeklyPlan({
-    userId: input.userId,
-    weekNumber,
-    startDate,
-    walkFrequencyGoal: walkFrequency,
-    walkDurationGoal: walkDuration,
-    dietStruggle,
-    dietTip,
-    isDinnerFocus,
-  });
-
   const dayEntries: any[] = [];
   for (let d = 0; d < 7; d++) {
     const walkScheduled = input.walkDays.includes(d);
@@ -347,7 +338,6 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
     }
 
     dayEntries.push({
-      weeklyPlanId: plan.id,
       dayOfWeek: d,
       walkScheduled: walkScheduled || isStandingTapDay || (input.negotiationChoice === "standing_reset" && !walkScheduled),
       eatOutScheduled,
@@ -358,10 +348,28 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
     });
   }
 
+  const walkDayDurationsForGoal = dayEntries.filter(d => d.walkScheduled && !d.standingTap && d.walkDuration > 0).map(d => d.walkDuration);
+  const walkDayMaxDuration = walkDayDurationsForGoal.length > 0 ? Math.max(...walkDayDurationsForGoal) : walkDuration;
+
+  const plan = await storage.createWeeklyPlan({
+    userId: input.userId,
+    weekNumber,
+    startDate,
+    walkFrequencyGoal: walkFrequency,
+    walkDurationGoal: walkDayMaxDuration,
+    dietStruggle,
+    dietTip,
+    isDinnerFocus,
+  });
+
+  for (const entry of dayEntries) {
+    entry.weeklyPlanId = plan.id;
+  }
+
   const days = await storage.createWeeklyPlanDays(dayEntries);
 
   await storage.updateProfile(input.userId, {
-    walkDuration,
+    walkDuration: walkDayMaxDuration,
     walksPerWeek: walkFrequency,
   });
 

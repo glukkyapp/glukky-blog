@@ -296,7 +296,7 @@ export default function Home() {
       if (dayData.standingTap) {
         tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
       } else {
-        const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || calendarPlan?.walkDurationGoal);
+        const dur = dayData.adjustedToStretch ? 2 : dayData.walkDuration;
         const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
         tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
       }
@@ -623,7 +623,7 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    const walkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
+    const walkDur = todayPlan?.adjustedToStretch ? 2 : todayPlan?.walkDuration;
     const isStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
 
     return (
@@ -826,7 +826,7 @@ export default function Home() {
           positive: true,
         });
       } else {
-        const chkDur = todayPlan?.adjustedToStretch ? 2 : (todayPlan?.walkDuration || calendarPlan?.walkDurationGoal);
+        const chkDur = todayPlan?.adjustedToStretch ? 2 : todayPlan?.walkDuration;
         const chkStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
         items.push({
           label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
@@ -1062,7 +1062,7 @@ export default function Home() {
               if (dayData.standingTap) {
                 tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
               } else {
-                const dur = dayData.adjustedToStretch ? 2 : (dayData.walkDuration || plan?.walkDurationGoal);
+                const dur = dayData.adjustedToStretch ? 2 : dayData.walkDuration;
                 const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
                 tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
               }

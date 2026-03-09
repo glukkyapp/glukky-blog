@@ -518,10 +518,10 @@ export async function registerRoutes(
           const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
           if (tomorrowDay && tomorrowDay.walkScheduled && !tomorrowDay.standingTap) {
             if (todayIsStretch && walkDone) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: plan.walkDurationGoal, adjustedToStretch: false });
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
             } else if (todayIsStretch && !walkDone && !isTired) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: plan.walkDurationGoal, adjustedToStretch: false });
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
             } else if (todayIsStretch && !walkDone && isTired) {
               await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
@@ -546,8 +546,7 @@ export async function registerRoutes(
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
                 nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
               } else {
-                const tomorrowCurrentDuration = tomorrowDay.walkDuration || plan.walkDurationGoal;
-                const newDuration = Math.max(tomorrowCurrentDuration - 5, 5);
+                const newDuration = Math.max(tomorrowDay.walkDuration - 5, 5);
                 await storage.updateWeeklyPlanDay(tomorrowDay.id, { walkDuration: newDuration });
                 nextDayAdjustment = { reduced: true, newDuration, tomorrowWalkScheduled: true, walkCompleted: false };
               }
