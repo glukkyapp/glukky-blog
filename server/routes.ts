@@ -7,7 +7,7 @@ import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData, processDietProgression,
   processDinnerGraduation, checkBiWeeklyTriggers, getStretchProgression,
-  getWeekStartDate,
+  getWeekStartDate, evaluateDietStruggle,
 } from "./engine";
 import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS } from "@shared/schema";
 
@@ -170,6 +170,8 @@ export async function registerRoutes(
       const weeksOnStruggle = profile ? (profile.currentWeek - 1) - profile.tipCycleStartWeek : 0;
       const weekInCycle = weeksOnStruggle > 0 ? Math.min(weeksOnStruggle, 3) : 0;
 
+      const dietEvaluation = await evaluateDietStruggle(userId);
+
       res.json({
         ...reflection,
         walkDaysScheduled: adjustedWalkDaysScheduled,
@@ -182,6 +184,7 @@ export async function registerRoutes(
         stretchProgression,
         weekInCycle,
         tipStayCycles: profile?.tipStayCycles || 0,
+        dietEvaluation,
       });
     } catch (error) {
       console.error("Error fetching reflection:", error);
@@ -216,79 +219,35 @@ export async function registerRoutes(
         if (profile.hasLateDinner && !profile.dinnerMastered) {
           await processDinnerGraduation(userId);
         } else if (profile.currentStruggle) {
-          const dietActiveWeeks: { weekNumber: number; plan: any }[] = [];
-          for (let w = profile.tipCycleStartWeek + 1; w <= profile.currentWeek - 1; w++) {
-            const wp = await storage.getWeeklyPlan(userId, w);
-            if (wp && wp.dietStruggle === profile.currentStruggle) {
-              dietActiveWeeks.push({ weekNumber: w, plan: wp });
-            }
-          }
-          if (dietActiveWeeks.length >= 3) {
-            const evalWeeks = dietActiveWeeks.slice(-3);
-            let yesDays = 0;
-            let noChanceDays = 0;
-            for (const { weekNumber: wn, plan: wp } of evalWeeks) {
-              const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
-              for (const log of logs) {
-                if (log.dietResponse === "yes") yesDays++;
-                else if (log.dietResponse === "no_chance") noChanceDays++;
-              }
-            }
+          dietEvaluation = await evaluateDietStruggle(userId);
 
+          if (dietEvaluation.type === "mastered") {
+            await storage.updateProfile(userId, {
+              currentStruggle: dietEvaluation.nextStruggle || null,
+              currentTipIndex: 0,
+              tipCycleStartWeek: profile.currentWeek - 1,
+              tipStayCycles: 0,
+            });
+          } else if (dietEvaluation.type === "skipped" || dietEvaluation.type === "moved_on") {
             const struggles = [...(profile.struggles || [])] as string[];
-            const currentStruggle = profile.currentStruggle;
-            const currentIdx = struggles.indexOf(currentStruggle);
-
-            if (yesDays >= 16) {
-              dietEvaluation = { type: "mastered" };
-              const nextStruggle = currentIdx < struggles.length - 1 ? struggles[currentIdx + 1] : null;
-              await storage.updateProfile(userId, {
-                currentStruggle: nextStruggle,
-                currentTipIndex: 0,
-                tipCycleStartWeek: profile.currentWeek - 1,
-                tipStayCycles: 0,
-              });
-              dietEvaluation.nextStruggle = nextStruggle || undefined;
-            } else if (noChanceDays >= 11) {
-              dietEvaluation = { type: "skipped" };
-              if (currentIdx >= 0) {
-                struggles.splice(currentIdx, 1);
-                struggles.push(currentStruggle);
-              }
-              const nextStruggle = struggles.find(s => s !== currentStruggle) || null;
-              await storage.updateProfile(userId, {
-                struggles,
-                currentStruggle: nextStruggle,
-                currentTipIndex: 0,
-                tipCycleStartWeek: profile.currentWeek - 1,
-                tipStayCycles: 0,
-              });
-              dietEvaluation.nextStruggle = nextStruggle || undefined;
-            } else {
-              const newStayCycles = profile.tipStayCycles + 1;
-              if (newStayCycles >= 2) {
-                dietEvaluation = { type: "moved_on" };
-                if (currentIdx >= 0) {
-                  struggles.splice(currentIdx, 1);
-                  struggles.push(currentStruggle);
-                }
-                const nextStruggle = struggles.find(s => s !== currentStruggle) || null;
-                await storage.updateProfile(userId, {
-                  struggles,
-                  currentStruggle: nextStruggle,
-                  currentTipIndex: 0,
-                  tipCycleStartWeek: profile.currentWeek - 1,
-                  tipStayCycles: 0,
-                });
-                dietEvaluation.nextStruggle = nextStruggle || undefined;
-              } else {
-                dietEvaluation = { type: "stay" };
-                await storage.updateProfile(userId, {
-                  tipCycleStartWeek: profile.currentWeek - 1,
-                  tipStayCycles: newStayCycles,
-                });
-              }
+            const currentIdx = struggles.indexOf(profile.currentStruggle);
+            if (currentIdx >= 0) {
+              struggles.splice(currentIdx, 1);
+              struggles.push(profile.currentStruggle);
             }
+            const nextStruggle = dietEvaluation.nextStruggle || profile.currentStruggle;
+            await storage.updateProfile(userId, {
+              struggles,
+              currentStruggle: nextStruggle,
+              currentTipIndex: 0,
+              tipCycleStartWeek: profile.currentWeek - 1,
+              tipStayCycles: 0,
+            });
+          } else if (dietEvaluation.type === "stay") {
+            await storage.updateProfile(userId, {
+              tipCycleStartWeek: profile.currentWeek - 1,
+              tipStayCycles: profile.tipStayCycles + 1,
+            });
           }
         }
 

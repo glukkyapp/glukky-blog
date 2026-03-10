@@ -376,6 +376,62 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   return { plan, days };
 }
 
+export async function evaluateDietStruggle(userId: string): Promise<{ type: string; nextStruggle?: string; yesDays?: number; noChanceDays?: number }> {
+  const profile = await storage.getProfile(userId);
+  if (!profile || !profile.currentStruggle) return { type: "in_cycle" };
+
+  const dietActiveWeeks: { weekNumber: number; plan: any }[] = [];
+  for (let w = profile.tipCycleStartWeek + 1; w <= profile.currentWeek - 1; w++) {
+    const wp = await storage.getWeeklyPlan(userId, w);
+    if (wp && wp.dietStruggle === profile.currentStruggle) {
+      dietActiveWeeks.push({ weekNumber: w, plan: wp });
+    }
+  }
+
+  if (dietActiveWeeks.length < 3) return { type: "in_cycle" };
+
+  const evalWeeks = dietActiveWeeks.slice(-3);
+  let yesDays = 0;
+  let noChanceDays = 0;
+  for (const { weekNumber: wn, plan: wp } of evalWeeks) {
+    const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
+    for (const log of logs) {
+      if (log.dietResponse === "yes") yesDays++;
+      else if (log.dietResponse === "no_chance") noChanceDays++;
+    }
+  }
+
+  const struggles = [...(profile.struggles || [])] as string[];
+  const currentStruggle = profile.currentStruggle;
+  const currentIdx = struggles.indexOf(currentStruggle);
+
+  if (yesDays >= 16) {
+    const nextStruggle = currentIdx < struggles.length - 1 ? struggles[currentIdx + 1] : null;
+    return { type: "mastered", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+  } else if (noChanceDays >= 11) {
+    const reordered = [...struggles];
+    if (currentIdx >= 0) {
+      reordered.splice(currentIdx, 1);
+      reordered.push(currentStruggle);
+    }
+    const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
+    return { type: "skipped", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+  } else {
+    const newStayCycles = profile.tipStayCycles + 1;
+    if (newStayCycles >= 2) {
+      const reordered = [...struggles];
+      if (currentIdx >= 0) {
+        reordered.splice(currentIdx, 1);
+        reordered.push(currentStruggle);
+      }
+      const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
+      return { type: "moved_on", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+    } else {
+      return { type: "stay", yesDays, noChanceDays };
+    }
+  }
+}
+
 export async function processDietProgression(userId: string): Promise<{ advanced: boolean; graduated: boolean; nextStruggle?: string }> {
   const profile = await storage.getProfile(userId);
   if (!profile || !profile.currentStruggle) return { advanced: false, graduated: false };

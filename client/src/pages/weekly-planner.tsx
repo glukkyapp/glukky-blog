@@ -948,26 +948,9 @@ export default function WeeklyPlanner() {
     const hasReflection = !!reflection;
     const weekInCycle = reflection?.weekInCycle || 0;
 
-    let evalType: "mastered" | "skipped" | "stay" | "moved_on" | "in_cycle" = "in_cycle";
-    let nextStruggleLabel = "";
-
-    if (hasReflection && weekInCycle >= 3) {
-      const totalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
-      if (totalResponses > 0) {
-        if (reflection.dietYesCount >= 16) {
-          evalType = "mastered";
-        } else if (reflection.dietNoChanceCount >= 11) {
-          evalType = "skipped";
-        } else if ((reflection.tipStayCycles || 0) >= 1) {
-          evalType = "moved_on";
-        } else {
-          evalType = "stay";
-        }
-      }
-      const nextIdx = struggles.indexOf(effectiveStruggle);
-      const ns = nextIdx < struggles.length - 1 ? struggles[nextIdx + 1] : null;
-      if (ns) nextStruggleLabel = STRUGGLE_NAMES[ns] || ns;
-    }
+    const serverEval = reflection?.dietEvaluation;
+    const evalType: "mastered" | "skipped" | "stay" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
+    const nextStruggleLabel = serverEval?.nextStruggle ? (STRUGGLE_NAMES[serverEval.nextStruggle] || serverEval.nextStruggle) : "";
 
     return (
       <Card>
@@ -992,7 +975,7 @@ export default function WeeklyPlanner() {
             )}
           </div>
 
-          {hasReflection && weekInCycle >= 3 && (
+          {hasReflection && evalType !== "in_cycle" && (
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-progression">
               {evalType === "mastered" && (
                 <div className="flex items-start gap-2">
