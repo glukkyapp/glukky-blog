@@ -935,15 +935,26 @@ export default function WeeklyPlanner() {
     );
   }
 
-  function renderDietReview() {
+  function getEffectiveStruggle() {
     const struggles = (profile?.struggles as string[]) || [];
     const excludedStruggles: string[] = [];
     if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
     const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
+
+    const serverEval = reflection?.dietEvaluation;
+    const isTransition = serverEval?.type === "mastered" || serverEval?.type === "skipped" || serverEval?.type === "moved_on";
+    if (isTransition && serverEval?.nextStruggle && !excludedStruggles.includes(serverEval.nextStruggle)) {
+      return { effectiveStruggle: serverEval.nextStruggle, isFallback: !struggles.includes(serverEval.nextStruggle), isTransition: true, previousStruggle: profile?.currentStruggle || null };
+    }
+
     const effectiveStruggle = profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle)
       ? profile.currentStruggle
       : sortedStruggles[0] || "sugary_food_drink";
-    const isFallback = !struggles.includes(effectiveStruggle);
+    return { effectiveStruggle, isFallback: !struggles.includes(effectiveStruggle), isTransition: false, previousStruggle: null };
+  }
+
+  function renderDietReview() {
+    const { effectiveStruggle, isFallback, isTransition, previousStruggle } = getEffectiveStruggle();
 
     const hasReflection = !!reflection;
     const weekInCycle = reflection?.weekInCycle || 0;
@@ -982,7 +993,7 @@ export default function WeeklyPlanner() {
                   <Award className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-primary">
-                      Great job! You've mastered {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}!
+                      Great job! You've mastered {previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}!
                     </p>
                     {nextStruggleLabel ? (
                       <p className="text-sm text-muted-foreground mt-1">Moving to: {nextStruggleLabel}</p>
@@ -1036,16 +1047,10 @@ export default function WeeklyPlanner() {
   }
 
   function renderDietTipSelection() {
-    const struggles = (profile?.struggles as string[]) || [];
-    const excludedStruggles: string[] = [];
-    if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
-    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
-    const effectiveStruggle = profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle)
-      ? profile.currentStruggle
-      : sortedStruggles[0] || "sugary_food_drink";
+    const { effectiveStruggle, isTransition } = getEffectiveStruggle();
     const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
     const lastWeekTip = reflection?.dietTip || null;
-    const hasLastWeekTip = !!lastWeekTip && tipLadder.includes(lastWeekTip);
+    const hasLastWeekTip = !isTransition && !!lastWeekTip && tipLadder.includes(lastWeekTip);
 
     if (tipLadder.length === 1) {
       if (!selectedTip) setTimeout(() => setSelectedTip(tipLadder[0]), 0);
@@ -1228,13 +1233,7 @@ export default function WeeklyPlanner() {
           )}
 
           {!isDinnerFocus && (() => {
-            const struggles = (profile?.struggles as string[]) || [];
-            const excludedStruggles: string[] = [];
-            if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
-            const sorted = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
-            const struggle = (profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle))
-              ? profile.currentStruggle
-              : sorted[0] || "sugary_food_drink";
+            const { effectiveStruggle: struggle } = getEffectiveStruggle();
             const tip = selectedTip || (DIET_TIP_LADDERS as Record<string, string[]>)[struggle]?.[0] || "";
             return (
               <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
