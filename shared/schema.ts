@@ -58,6 +58,7 @@ export const weeklyPlanDays = pgTable("weekly_plan_days", {
   dinnerLabel: dinnerLabelEnum("dinner_label").notNull().default("none"),
   walkDuration: integer("walk_duration").notNull().default(10),
   adjustedToStretch: boolean("adjusted_to_stretch").notNull().default(false),
+  isStretchDay: boolean("is_stretch_day").notNull().default(false),
   standingTap: boolean("standing_tap").notNull().default(false),
 });
 

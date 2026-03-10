@@ -135,7 +135,7 @@ export async function registerRoutes(
         const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
         stretchAdjustedDays = reflectionPlanDays.filter(d => d.adjustedToStretch).length;
         const walkDays = reflectionPlanDays.filter(d => d.walkScheduled && !d.standingTap);
-        isStretchModeWeek = walkDays.length > 0 && walkDays.every(d => d.walkDuration === 2 || d.adjustedToStretch);
+        isStretchModeWeek = walkDays.length > 0 && walkDays.every(d => d.isStretchDay);
         if (isStretchModeWeek) {
           stretchAdjustedDays = walkDays.length;
         }
@@ -350,7 +350,7 @@ export async function registerRoutes(
         const days = await storage.getWeeklyPlanDays(result.plan.id);
         for (const day of days) {
           if (day.walkScheduled) {
-            await storage.updateWeeklyPlanDay(day.id, { walkDuration: 2 });
+            await storage.updateWeeklyPlanDay(day.id, { walkDuration: 2, isStretchDay: true });
           }
         }
         result.plan = { ...result.plan, walkDurationGoal: 2 };
@@ -483,20 +483,20 @@ export async function registerRoutes(
         const todayPlanDay = planDays.find(d => d.dayOfWeek === todayDow);
         const walkDone = finalLog.walkCompleted === true;
         const isTired = finalLog.walkTired === true;
-        const todayIsStretch = !!todayPlanDay?.adjustedToStretch;
+        const todayIsStretch = !!todayPlanDay?.isStretchDay;
         const todayIsStandingTap = !!todayPlanDay?.standingTap;
 
         if (tomorrowDow < 7 && !todayIsStandingTap) {
           const tomorrowDay = planDays.find(d => d.dayOfWeek === tomorrowDow);
           if (tomorrowDay && tomorrowDay.walkScheduled && !tomorrowDay.standingTap) {
             if (todayIsStretch && walkDone) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false });
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false, isStretchDay: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: true };
             } else if (todayIsStretch && !walkDone && !isTired) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false });
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: false, isStretchDay: false });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false };
             } else if (todayIsStretch && !walkDone && isTired) {
-              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
+              await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true, isStretchDay: true });
               nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
             } else if (!walkDone && isTired) {
               let shouldStretchAdjust = false;
@@ -515,7 +515,7 @@ export async function registerRoutes(
               }
 
               if (shouldStretchAdjust) {
-                await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true });
+                await storage.updateWeeklyPlanDay(tomorrowDay.id, { adjustedToStretch: true, isStretchDay: true });
                 nextDayAdjustment = { reduced: false, tomorrowWalkScheduled: true, walkCompleted: false, adjustedToStretch: true };
               } else {
                 const newDuration = Math.max(tomorrowDay.walkDuration - 5, 5);
@@ -588,6 +588,7 @@ export async function registerRoutes(
           walkCompleted: log?.walkCompleted ?? null,
           walkDuration: day.walkDuration,
           adjustedToStretch: day.adjustedToStretch,
+          isStretchDay: day.isStretchDay,
           standingTap: day.standingTap,
           dinnerLabel: day.dinnerLabel,
           dinnerSuccess: log?.dinnerSuccess ?? null,

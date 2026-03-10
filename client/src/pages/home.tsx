@@ -296,8 +296,8 @@ export default function Home() {
       if (dayData.standingTap) {
         tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
       } else {
-        const dur = dayData.adjustedToStretch ? 2 : dayData.walkDuration;
-        const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
+        const dur = dayData.isStretchDay ? 2 : dayData.walkDuration;
+        const isStretch = !!dayData.isStretchDay;
         tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
       }
     }
@@ -623,8 +623,8 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    const walkDur = todayPlan?.adjustedToStretch ? 2 : todayPlan?.walkDuration;
-    const isStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
+    const walkDur = todayPlan?.isStretchDay ? 2 : todayPlan?.walkDuration;
+    const isStretch = !!todayPlan?.isStretchDay;
 
     return (
       <div className="space-y-2">
@@ -826,8 +826,8 @@ export default function Home() {
           positive: true,
         });
       } else {
-        const chkDur = todayPlan?.adjustedToStretch ? 2 : todayPlan?.walkDuration;
-        const chkStretch = !!todayPlan?.adjustedToStretch || !!profile?.isStretchMode;
+        const chkDur = todayPlan?.isStretchDay ? 2 : todayPlan?.walkDuration;
+        const chkStretch = !!todayPlan?.isStretchDay;
         items.push({
           label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
           value: todayLog?.walkCompleted ? "Completed" : "Skipped",
@@ -1053,6 +1053,7 @@ export default function Home() {
               walkScheduled: tmrwDay.walkScheduled,
               walkDuration: tmrwDay.walkDuration,
               adjustedToStretch: tmrwDay.adjustedToStretch,
+              isStretchDay: tmrwDay.isStretchDay,
               lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
               eatOutScheduled: tmrwDay.eatOutScheduled,
               standingTap: tmrwDay.standingTap,
@@ -1062,8 +1063,8 @@ export default function Home() {
               if (dayData.standingTap) {
                 tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
               } else {
-                const dur = dayData.adjustedToStretch ? 2 : dayData.walkDuration;
-                const isStretch = !!dayData.adjustedToStretch || !!profile?.isStretchMode;
+                const dur = dayData.isStretchDay ? 2 : dayData.walkDuration;
+                const isStretch = !!dayData.isStretchDay;
                 tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
               }
             }
@@ -1228,7 +1229,7 @@ export default function Home() {
                 const isFuture = d.date > todayStr;
                 const answered = !isFuture && !inactive && d.walkCompleted !== null && d.walkCompleted !== undefined;
                 const isStandingTap = !!d.standingTap;
-                const dur = isStandingTap ? 1 : (d.adjustedToStretch ? 2 : d.walkDuration);
+                const dur = isStandingTap ? 1 : (d.isStretchDay ? 2 : d.walkDuration);
                 return (
                   <div key={i} className={`rounded flex flex-col items-center justify-center ${
                     inactive ? "bg-muted/30 h-7" :
@@ -1260,7 +1261,7 @@ export default function Home() {
                      ) :
                      d.walkScheduled ? (
                        <>
-                         {(d.adjustedToStretch || profile?.isStretchMode) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
+                         {d.isStretchDay ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
                          {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{dur}m</span>}
                        </>
                      ) : null}

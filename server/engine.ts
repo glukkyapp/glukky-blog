@@ -289,7 +289,7 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
   let walkFrequency = input.walkDays.length;
 
   const biWeeklyTriggers = await checkBiWeeklyTriggers(input.userId);
-  const autoEscalatedFromStretch = biWeeklyTriggers.autoEscalation && walkDuration <= 2;
+  const autoEscalatedFromStretch = biWeeklyTriggers.autoEscalation && profile.isStretchMode;
   if (autoEscalatedFromStretch) {
     walkDuration = 10;
   }
@@ -555,7 +555,7 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
     }
 
     for (const day of planDays) {
-      if (day.walkDuration === 2 && !day.adjustedToStretch) {
+      if (day.isStretchDay && !day.adjustedToStretch) {
         totalStandingDays++;
         const dayDate = new Date(plan.startDate);
         dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
@@ -704,7 +704,7 @@ export async function getStretchProgression(userId: string): Promise<{
   if (!plan) return null;
 
   const planDays = await storage.getWeeklyPlanDays(plan.id);
-  const stretchDays = planDays.filter(d => d.walkScheduled && d.walkDuration === 2);
+  const stretchDays = planDays.filter(d => d.walkScheduled && d.isStretchDay);
   if (stretchDays.length === 0) return null;
 
   const logs = await storage.getDailyLogsByWeek(userId, lastWeek, plan.startDate);
