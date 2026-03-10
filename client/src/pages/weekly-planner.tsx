@@ -979,7 +979,7 @@ export default function WeeklyPlanner() {
           <div className="bg-primary/5 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Current struggle</p>
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
-              {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}
+              {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
             </p>
             {hasReflection && weekInCycle > 0 && weekInCycle < 3 && (
               <p className="text-xs text-muted-foreground mt-1">Week {weekInCycle} of 3</p>
