@@ -265,7 +265,7 @@ export async function registerRoutes(
           }
         }
 
-        if (profile.currentWeek % 2 === 0) {
+        if (profile.currentWeek >= 3) {
           const biWeekly = await checkBiWeeklyTriggers(userId);
           if (biWeekly.walkingBridge && !profile.isStretchMode) {
             await storage.updateProfile(userId, { isStretchMode: true, stretchSuccessWeeks: 0 });

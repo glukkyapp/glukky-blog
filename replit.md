@@ -21,7 +21,7 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Standing Tap:** A unique 1-minute foot-tapping exercise for non-walk days to mitigate glucose spikes.
 - **Late Dinner Priority:** A system to encourage earlier dinners or provide tactics for managing late meals, with graduation based on consistent success.
 - **Diet Struggle System:** A progressive mastery program for dietary challenges (e.g., sugary foods, portions), involving 3-week cycles and tip ladders.
-- **Bi-Weekly Triggers:** Includes "Walking Bridge" for inactive users, "Auto-Escalation" for consistent stretch success, and "Stagnation Pivot" for diet.
+- **Bi-Weekly Triggers** (checked every week when `currentWeek >= 3`): Includes "Walking Bridge" for inactive users, "Auto-Escalation" for consistent stretch success, and "Stagnation Pivot" for diet.
 - **Fatigue Detection:** Proposes rest days after consistent "tired" feedback.
 - **Next-Day Adjustment:** Dynamically alters tomorrow's walk plan based on today's performance and fatigue.
 
