@@ -278,7 +278,7 @@ export interface CreatePlanInput {
   walkDayDurations?: Record<string, number>;
 }
 
-export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: WeeklyPlan; days: WeeklyPlanDay[] }> {
+export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?: boolean }): Promise<{ plan: WeeklyPlan; days: WeeklyPlanDay[] }> {
   const profile = await storage.getProfile(input.userId);
   if (!profile) throw new Error("Profile not found");
 
@@ -337,13 +337,15 @@ export async function createWeeklyPlan(input: CreatePlanInput): Promise<{ plan: 
       dayDuration = 1;
     }
 
+    const effectiveWalkScheduled = walkScheduled || isStandingTapDay || (input.negotiationChoice === "standing_reset" && !walkScheduled);
     dayEntries.push({
       dayOfWeek: d,
-      walkScheduled: walkScheduled || isStandingTapDay || (input.negotiationChoice === "standing_reset" && !walkScheduled),
+      walkScheduled: effectiveWalkScheduled,
       eatOutScheduled,
       lateDinnerScheduled,
       dinnerLabel: "none" as const,
       walkDuration: dayDuration,
+      isStretchDay: input.isStretchMode && effectiveWalkScheduled && !isStandingTapDay,
       standingTap: isStandingTapDay,
     });
   }

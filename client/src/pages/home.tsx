@@ -9,6 +9,12 @@ import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingB
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function isDayStretch(day: any, profile: any): boolean {
+  if (day?.isStretchDay) return true;
+  if (profile?.isStretchMode && day?.walkScheduled && !day?.standingTap && day?.walkDuration === 2) return true;
+  return false;
+}
+
 const DINNER_LABEL_SHORT: Record<string, string> = {
   move_early: "Early",
   fiber_starter: "Fiber",
@@ -296,8 +302,8 @@ export default function Home() {
       if (dayData.standingTap) {
         tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
       } else {
-        const dur = dayData.isStretchDay ? 2 : dayData.walkDuration;
-        const isStretch = !!dayData.isStretchDay;
+        const isStretch = isDayStretch(dayData, profile);
+        const dur = isStretch ? 2 : dayData.walkDuration;
         tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
       }
     }
@@ -623,8 +629,8 @@ export default function Home() {
     const tiredAnswered = todayLog?.walkTired !== null && todayLog?.walkTired !== undefined;
     const bothAnswered = walkAnswered && tiredAnswered;
 
-    const walkDur = todayPlan?.isStretchDay ? 2 : todayPlan?.walkDuration;
-    const isStretch = !!todayPlan?.isStretchDay;
+    const isStretch = isDayStretch(todayPlan, profile);
+    const walkDur = isStretch ? 2 : todayPlan?.walkDuration;
 
     return (
       <div className="space-y-2">
@@ -826,8 +832,8 @@ export default function Home() {
           positive: true,
         });
       } else {
-        const chkDur = todayPlan?.isStretchDay ? 2 : todayPlan?.walkDuration;
-        const chkStretch = !!todayPlan?.isStretchDay;
+        const chkStretch = isDayStretch(todayPlan, profile);
+        const chkDur = chkStretch ? 2 : todayPlan?.walkDuration;
         items.push({
           label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
           value: todayLog?.walkCompleted ? "Completed" : "Skipped",
@@ -1063,8 +1069,8 @@ export default function Home() {
               if (dayData.standingTap) {
                 tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
               } else {
-                const dur = dayData.isStretchDay ? 2 : dayData.walkDuration;
-                const isStretch = !!dayData.isStretchDay;
+                const isStretch = isDayStretch(dayData, profile);
+                const dur = isStretch ? 2 : dayData.walkDuration;
                 tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
               }
             }
@@ -1229,7 +1235,8 @@ export default function Home() {
                 const isFuture = d.date > todayStr;
                 const answered = !isFuture && !inactive && d.walkCompleted !== null && d.walkCompleted !== undefined;
                 const isStandingTap = !!d.standingTap;
-                const dur = isStandingTap ? 1 : (d.isStretchDay ? 2 : d.walkDuration);
+                const calStretch = isDayStretch(d, profile);
+                const dur = isStandingTap ? 1 : (calStretch ? 2 : d.walkDuration);
                 return (
                   <div key={i} className={`rounded flex flex-col items-center justify-center ${
                     inactive ? "bg-muted/30 h-7" :
@@ -1261,7 +1268,7 @@ export default function Home() {
                      ) :
                      d.walkScheduled ? (
                        <>
-                         {d.isStretchDay ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
+                         {isDayStretch(d, profile) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
                          {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{dur}m</span>}
                        </>
                      ) : null}

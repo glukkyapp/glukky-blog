@@ -276,6 +276,9 @@ export async function registerRoutes(
         }
       }
 
+      const freshProfileForStretch = await storage.getProfile(userId);
+      const effectiveStretchOnly = stretchOnly || freshProfileForStretch?.isStretchMode;
+
       const result = await createWeeklyPlan({
         userId,
         negotiationChoice: negotiationChoice || "keep_current",
@@ -284,6 +287,7 @@ export async function registerRoutes(
         lateDinnerDays: lateDinnerDays || [],
         standingTapDay: standingTapDay !== undefined ? standingTapDay : undefined,
         walkDayDurations: walkDayDurations || undefined,
+        isStretchMode: !!effectiveStretchOnly,
       });
 
       {
@@ -343,13 +347,11 @@ export async function registerRoutes(
         result.plan = { ...result.plan, ...planUpdate };
       }
 
-      const freshProfileForStretch = await storage.getProfile(userId);
-      const effectiveStretchOnly = stretchOnly || freshProfileForStretch?.isStretchMode;
       if (effectiveStretchOnly) {
         await storage.updateWeeklyPlan(result.plan.id, { walkDurationGoal: 2 });
         const days = await storage.getWeeklyPlanDays(result.plan.id);
         for (const day of days) {
-          if (day.walkScheduled) {
+          if (day.walkScheduled && !day.standingTap) {
             await storage.updateWeeklyPlanDay(day.id, { walkDuration: 2, isStretchDay: true });
           }
         }
