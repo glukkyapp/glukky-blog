@@ -18,7 +18,7 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const STRUGGLE_NAMES: Record<string, string> = {
   sugary_food_drink: "Sugary Food & Drinks",
   oily_fried_food: "Oily/Fried Food",
-  eat_out: "Eating Out",
+  eat_out: "Eating Out / Takeaway",
   portions: "Portion Control",
   snacks: "Snacking",
 };
@@ -620,6 +620,15 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
+          {isStretchMode && reflection?.walkingBridge && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-stretch-week-explanation">
+              <Activity className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Walking has been tough these past 2 weeks — that's okay! We're switching to gentle 2-minute stretches to keep the habit going without the pressure.
+              </p>
+            </div>
+          )}
+
           <p className="text-sm text-muted-foreground">
             {isStretchMode && acceptedEscalation !== true ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
           </p>
@@ -715,11 +724,11 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-eat-out-days-title">
             <ShoppingBag className="w-5 h-5 text-primary" />
-            Eating Out Days
+            Eating Out / Takeaway Days
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Any days you'll be eating out?</p>
+          <p className="text-sm text-muted-foreground">Any days you'll be eating out or getting takeaway?</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
@@ -1036,7 +1045,7 @@ export default function WeeklyPlanner() {
                   <RotateCcw className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-amber-600">
-                      You're almost there! Let's keep at it for 3 more weeks.
+                      You're at {Math.round(((serverEval?.yesDays || 0) / 21) * 100)}% — almost there! Let's keep at it for 3 more weeks.
                     </p>
                   </div>
                 </div>

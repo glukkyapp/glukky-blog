@@ -14,7 +14,7 @@ const TOTAL_STEPS = 6;
 const struggles = [
   { value: "sugary_food_drink", label: "Sugary Food & Drinks" },
   { value: "oily_fried_food", label: "Oily/Fried Food" },
-  { value: "eat_out", label: "Eating Out" },
+  { value: "eat_out", label: "Eating Out / Takeaway" },
   { value: "portions", label: "Portion Control" },
   { value: "snacks", label: "Snacking" },
 ];

@@ -39,6 +39,7 @@ export default function Home() {
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
+  const [pivotStep, setPivotStep] = useState<"ask" | "ask_move_early" | "show_tactics" | null>(null);
   const [hydrationAdvice, setHydrationAdvice] = useState<string | null>(null);
   const [showTickAnimation, setShowTickAnimation] = useState(false);
   const userInteracted = useRef(false);
@@ -211,13 +212,16 @@ export default function Home() {
         if (walkDone && tiredDone) {
           const adj = data.nextDayAdjustment;
           if (adj.convertedToStretch) {
-            setHydrationAdvice("We've switched tomorrow to a 2 min stretch instead. Rest well tonight!");
-          } else if (adj.walkCompleted) {
-            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
-          } else if (adj.reduced && adj.newDuration) {
-            setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
+            const isConsecutiveStretch = todayPlan?.isStretchDay;
+            setHydrationAdvice(isConsecutiveStretch
+              ? "Let's keep tomorrow as a stretch day to restore your energy! Rest well tonight."
+              : "We've switched tomorrow to a 2 min stretch instead. Rest well tonight!");
           } else if (!adj.tomorrowWalkScheduled) {
             setHydrationAdvice("Stay hydrated tomorrow! Rest well tonight.");
+          } else if (adj.reduced && adj.newDuration) {
+            setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
+          } else if (adj.walkCompleted) {
+            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
           } else {
             setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
           }
@@ -311,7 +315,7 @@ export default function Home() {
       tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
     }
     if (dayData.eatOutScheduled) {
-      tasks.push({ icon: ShoppingBag, text: "Eating out", testId: "text-plan-eat-out", color: "text-orange-500" });
+      tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
     }
     if (calendarPlan?.dietTip) {
       tasks.push({ icon: TrendingUp, text: `"${calendarPlan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
@@ -456,15 +460,44 @@ export default function Home() {
         );
       }
 
-      return (
-        <div className="space-y-3" data-testid="section-dinner-pivot">
-          <div className="flex items-center gap-2">
-            <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-            <p className="text-sm font-medium">Late dinner tactic</p>
+      const effectivePivotStep = pivotStep || "ask";
+
+      if (effectivePivotStep === "ask") {
+        return (
+          <div className="space-y-3" data-testid="section-dinner-pivot">
+            <div className="flex items-center gap-2">
+              <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-medium">Late dinner</p>
+            </div>
+            <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
+              I've noticed that it seemed hard for you to move dinner early in the past two weeks. Would you like to try a helpful dinner tactic tonight?
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-tactic-yes">Yes</Button>
+              <Button size="sm" variant="outline" onClick={() => setPivotStep("ask_move_early")} data-testid="button-pivot-tactic-no">No</Button>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
-            I've noticed you found it difficult to move dinner earlier over the past 2 weeks. That's okay — let's try a different approach instead:
-          </p>
+        );
+      }
+
+      if (effectivePivotStep === "ask_move_early") {
+        return (
+          <div className="space-y-3" data-testid="section-dinner-pivot-move-early">
+            <div className="flex items-center gap-2">
+              <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-medium">Late dinner</p>
+            </div>
+            <p className="text-sm text-muted-foreground">Would you like to try moving dinner earlier tonight?</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => handleDinnerMoveEarly(true)} disabled={dinnerLabelMutation.isPending} data-testid="button-pivot-move-early-yes">Yes</Button>
+              <Button size="sm" variant="outline" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-move-early-no">No</Button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-3" data-testid="section-dinner-pivot-tactics">
           <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
           {MITIGATION_OPTIONS.map(opt => (
             <button
@@ -478,14 +511,6 @@ export default function Home() {
               <span className="text-muted-foreground"> — {opt.desc}</span>
             </button>
           ))}
-          <button
-            onClick={() => handleDinnerMoveEarly(true)}
-            className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
-            data-testid="button-try-move-early-anyway"
-            disabled={dinnerLabelMutation.isPending}
-          >
-            <span className="font-medium">No, I will try to move dinner earlier today</span>
-          </button>
         </div>
       );
     }
@@ -1077,7 +1102,7 @@ export default function Home() {
               tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
             }
             if (dayData.eatOutScheduled) {
-              tasks.push({ icon: ShoppingBag, text: "Eating out", testId: "text-plan-eat-out", color: "text-orange-500" });
+              tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
             }
             if (plan?.dietTip) {
               tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
@@ -1369,7 +1394,7 @@ export default function Home() {
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
               <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
-                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned eat out</div>
+                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned Eating Out / Takeaway</div>
               )}
             </div>
           </div>
