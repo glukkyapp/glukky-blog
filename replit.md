@@ -19,7 +19,7 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Walk Negotiation:** Implements a 4-scenario system for adapting walk goals based on user performance and engagement, including concepts like "Glycemic Gap" education and "Standing Tap" suggestions.
 - **Per-Day Walk Duration:** Allows for flexible daily walk durations with minimum enforcement based on previous week's performance.
 - **Standing Tap:** A unique 1-minute foot-tapping exercise for non-walk days to mitigate glucose spikes.
-- **Late Dinner Priority:** A system to encourage earlier dinners or provide tactics for managing late meals, with graduation based on consistent success.
+- **Late Dinner Priority:** A system to encourage earlier dinners or provide tactics for managing late meals. Graduation uses a 3-week window evaluation (matching the diet struggle strategy): scans the last 3 weeks with dinner data, aggregates success across all of them, and graduates at 80%+ success. Non-consecutive — switching to a different focus does not reset progress.
 - **Diet Struggle System:** A progressive mastery program for dietary challenges (e.g., sugary foods, portions), involving 3-week cycles and tip ladders.
 - **Bi-Weekly Triggers** (checked every week when `currentWeek >= 3`): Includes "Walking Bridge" for inactive users, "Auto-Escalation" for consistent stretch success, and "Stagnation Pivot" for diet.
 - **Fatigue Detection:** Proposes rest days after consistent "tired" feedback.

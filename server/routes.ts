@@ -6,7 +6,7 @@ import { authStorage } from "./replit_integrations/auth/storage";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData, processDietProgression,
-  processDinnerGraduation, checkBiWeeklyTriggers, getStretchProgression,
+  processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
   getWeekStartDate, evaluateDietStruggle,
 } from "./engine";
 import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS } from "@shared/schema";
@@ -172,6 +172,7 @@ export async function registerRoutes(
       const weekInCycle = weeksOnStruggle > 0 ? Math.min(weeksOnStruggle, 3) : 0;
 
       const dietEvaluation = await evaluateDietStruggle(userId);
+      const dinnerGraduation = await getDinnerGraduationData(userId);
 
       res.json({
         ...reflection,
@@ -186,6 +187,7 @@ export async function registerRoutes(
         weekInCycle,
         tipStayCycles: profile?.tipStayCycles || 0,
         dietEvaluation,
+        dinnerGraduation,
       });
     } catch (error) {
       console.error("Error fetching reflection:", error);

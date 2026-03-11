@@ -476,45 +476,79 @@ export async function processDietProgression(userId: string): Promise<{ advanced
   return { advanced: true, graduated: false };
 }
 
+export async function getDinnerGraduationData(userId: string): Promise<{
+  ready: boolean;
+  successPct: number;
+  totalDays: number;
+  totalSuccess: number;
+  weeksFound: number;
+}> {
+  const profile = await storage.getProfile(userId);
+  if (!profile || !profile.hasLateDinner || profile.dinnerMastered) {
+    return { ready: false, successPct: 0, totalDays: 0, totalSuccess: 0, weeksFound: 0 };
+  }
+
+  const dinnerWeeks: { weekNumber: number; plan: any }[] = [];
+  for (let w = 1; w <= profile.currentWeek - 1; w++) {
+    const wp = await storage.getWeeklyPlan(userId, w);
+    if (!wp) continue;
+    const days = await storage.getWeeklyPlanDays(wp.id);
+    const hasDinnerDays = days.some(d => d.dinnerLabel !== "none");
+    if (hasDinnerDays) {
+      dinnerWeeks.push({ weekNumber: w, plan: wp });
+    }
+  }
+
+  if (dinnerWeeks.length < 3) {
+    return { ready: false, successPct: 0, totalDays: 0, totalSuccess: 0, weeksFound: dinnerWeeks.length };
+  }
+
+  const evalWeeks = dinnerWeeks.slice(-3);
+  let totalDays = 0;
+  let totalSuccess = 0;
+
+  for (const { weekNumber: wn, plan: wp } of evalWeeks) {
+    const days = await storage.getWeeklyPlanDays(wp.id);
+    const dinnerDays = days.filter(d => d.dinnerLabel !== "none");
+    totalDays += dinnerDays.length;
+
+    const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
+    for (const dd of dinnerDays) {
+      const dayDate = new Date(wp.startDate + "T00:00:00");
+      dayDate.setDate(dayDate.getDate() + dd.dayOfWeek);
+      const dateStr = dayDate.toISOString().split("T")[0];
+      const log = logs.find(l => l.date === dateStr);
+      if (log?.dinnerSuccess === true) totalSuccess++;
+    }
+  }
+
+  const successPct = totalDays > 0 ? Math.round((totalSuccess / totalDays) * 100) : 0;
+
+  return { ready: true, successPct, totalDays, totalSuccess, weeksFound: dinnerWeeks.length };
+}
+
 export async function processDinnerGraduation(userId: string): Promise<{ graduated: boolean; successPct: number }> {
   const profile = await storage.getProfile(userId);
   if (!profile || !profile.hasLateDinner || profile.dinnerMastered) {
     return { graduated: false, successPct: 0 };
   }
 
-  const lastWeek = profile.currentWeek - 1;
-  const plan = await storage.getWeeklyPlan(userId, lastWeek);
-  if (!plan) return { graduated: false, successPct: 0 };
-
-  const planDays = await storage.getWeeklyPlanDays(plan.id);
-  const dinnerDays = planDays.filter(d => d.dinnerLabel !== "none");
-
-  if (dinnerDays.length === 0) return { graduated: false, successPct: 0 };
-
-  const logs = await storage.getDailyLogsByWeek(userId, lastWeek, plan.startDate);
-  const dinnerLogs = logs.filter(l => l.dinnerSuccess !== null);
-  const successCount = dinnerLogs.filter(l => l.dinnerSuccess === true).length;
-  const successPct = Math.round((successCount / dinnerDays.length) * 100);
-
-  if (successPct >= 95) {
-    const newSuccessWeeks = profile.dinnerSuccessWeeks + 1;
-    if (newSuccessWeeks >= 3) {
-      const firstStruggle = profile.struggles.length > 0 ? profile.struggles[0] : null;
-      await storage.updateProfile(userId, {
-        dinnerMastered: true,
-        dinnerSuccessWeeks: newSuccessWeeks,
-        currentStruggle: firstStruggle,
-        currentTipIndex: 0,
-      });
-      return { graduated: true, successPct };
-    } else {
-      await storage.updateProfile(userId, { dinnerSuccessWeeks: newSuccessWeeks });
-    }
-  } else {
-    await storage.updateProfile(userId, { dinnerSuccessWeeks: 0 });
+  const gradData = await getDinnerGraduationData(userId);
+  if (!gradData.ready) {
+    return { graduated: false, successPct: gradData.successPct };
   }
 
-  return { graduated: false, successPct };
+  if (gradData.successPct >= 80) {
+    const firstStruggle = profile.struggles.length > 0 ? profile.struggles[0] : null;
+    await storage.updateProfile(userId, {
+      dinnerMastered: true,
+      currentStruggle: firstStruggle,
+      currentTipIndex: 0,
+    });
+    return { graduated: true, successPct: gradData.successPct };
+  }
+
+  return { graduated: false, successPct: gradData.successPct };
 }
 
 export async function checkBiWeeklyTriggers(userId: string): Promise<{

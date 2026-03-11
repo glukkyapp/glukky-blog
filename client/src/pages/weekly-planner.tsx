@@ -852,8 +852,11 @@ export default function WeeklyPlanner() {
 
   function renderDinnerFocusReview() {
     const hasReflection = !!reflection;
-    const dinnerSuccessPct = reflection?.dinnerSuccessPct || 0;
-    const successWeeks = profile?.dinnerSuccessWeeks || 0;
+    const dinnerGrad = reflection?.dinnerGraduation;
+    const aggPct = dinnerGrad?.successPct || 0;
+    const weeksFound = dinnerGrad?.weeksFound || 0;
+    const totalDays = dinnerGrad?.totalDays || 0;
+    const totalSuccess = dinnerGrad?.totalSuccess || 0;
 
     return (
       <Card>
@@ -869,43 +872,52 @@ export default function WeeklyPlanner() {
             <p className="font-semibold text-lg" data-testid="text-dinner-focus-label">Late Dinner Management</p>
           </div>
 
-          {hasReflection && (
+          {hasReflection && dinnerGrad && (
             <div className="rounded-lg border p-4 space-y-3" data-testid="section-dinner-graduation-progress">
               <p className="text-sm font-medium">Graduation progress</p>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Last week: {dinnerSuccessPct}% success</span>
-                    <span>Goal: 95%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 95 ? "bg-green-500" : "bg-amber-500"}`}
-                      style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="flex gap-1">
-                  {[0, 1, 2].map(i => (
-                    <div
-                      key={i}
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                        i < successWeeks
-                          ? "bg-green-100 text-green-600 border border-green-300"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                      data-testid={`indicator-success-week-${i}`}
-                    >
-                      {i < successWeeks ? <Check className="w-3 h-3" /> : i + 1}
+              {dinnerGrad.ready ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>{totalSuccess}/{totalDays} days across last 3 weeks</span>
+                        <span>Goal: 80%</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${aggPct >= 80 ? "bg-green-500" : "bg-amber-500"}`}
+                          style={{ width: `${Math.min(aggPct, 100)}%` }}
+                          data-testid="bar-dinner-graduation"
+                        />
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct">
+                    {aggPct}% success across last 3 weeks — {aggPct >= 80 ? "ready to graduate!" : `need 80% to graduate`}
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map(i => (
+                      <div
+                        key={i}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                          i < weeksFound
+                            ? "bg-green-100 text-green-600 border border-green-300"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                        data-testid={`indicator-dinner-week-${i}`}
+                      >
+                        {i < weeksFound ? <Check className="w-3 h-3" /> : i + 1}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground text-xs">
+                    {weeksFound}/3 weeks tracked — need 3 weeks to evaluate
+                  </span>
                 </div>
-                <span className="text-muted-foreground text-xs">
-                  {successWeeks}/3 successful weeks (95%+ each)
-                </span>
-              </div>
+              )}
             </div>
           )}
 
@@ -927,7 +939,7 @@ export default function WeeklyPlanner() {
           {!hasReflection && (
             <p className="text-xs text-center text-muted-foreground" data-testid="text-dinner-focus-first-week">
               Each day you mark as "late dinner," you'll choose a tactic during your daily check-in.
-              Reach 95% success for 3 weeks to graduate!
+              Reach 80% success across 3 weeks to graduate!
             </p>
           )}
         </CardContent>
