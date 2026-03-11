@@ -1223,7 +1223,7 @@ export default function WeeklyPlanner() {
 
           {eatOutDays.length > 0 && (
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out / Takeaway</div>
               {DAY_NAMES.map((_, i) => {
                 const inactive = i < firstActiveDay;
                 return (
@@ -1248,7 +1248,7 @@ export default function WeeklyPlanner() {
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
             )}
             {eatOutDays.length > 0 && (
-              <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Eat out</div>
+              <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Eating Out / Takeaway</div>
             )}
           </div>
 

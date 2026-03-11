@@ -1332,7 +1332,7 @@ export default function Home() {
 
             {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out</div>
+                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out / Takeaway</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
