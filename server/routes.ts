@@ -5,7 +5,7 @@ import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
-  generateWeeklyReportData, generateMonthlyReportData, processDietProgression,
+  generateWeeklyReportData, generateMonthlyReportData,
   processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
   getWeekStartDate, evaluateDietStruggle,
 } from "./engine";

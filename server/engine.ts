@@ -379,7 +379,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   return { plan, days };
 }
 
-export async function evaluateDietStruggle(userId: string): Promise<{ type: string; nextStruggle?: string; yesDays?: number; noChanceDays?: number }> {
+export async function evaluateDietStruggle(userId: string): Promise<{ type: string; nextStruggle?: string; yesDays?: number; noChanceDays?: number; bestTip?: string; bestTipYes?: number }> {
   const profile = await storage.getProfile(userId);
   if (!profile || !profile.currentStruggle) return { type: "in_cycle" };
 
@@ -404,13 +404,30 @@ export async function evaluateDietStruggle(userId: string): Promise<{ type: stri
     }
   }
 
+  const tipYesCounts: Record<string, number> = {};
+  for (const { weekNumber: wn, plan: wp } of dietActiveWeeks) {
+    if (!wp.dietTip) continue;
+    const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
+    const yesCount = logs.filter(l => l.dietResponse === "yes").length;
+    tipYesCounts[wp.dietTip] = (tipYesCounts[wp.dietTip] || 0) + yesCount;
+  }
+
+  let bestTip: string | undefined;
+  let bestTipYes = 0;
+  for (const [tip, count] of Object.entries(tipYesCounts)) {
+    if (count > bestTipYes) {
+      bestTip = tip;
+      bestTipYes = count;
+    }
+  }
+
   const struggles = [...(profile.struggles || [])] as string[];
   const currentStruggle = profile.currentStruggle;
   const currentIdx = struggles.indexOf(currentStruggle);
 
   if (yesDays >= 16) {
     const nextStruggle = currentIdx < struggles.length - 1 ? struggles[currentIdx + 1] : null;
-    return { type: "mastered", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+    return { type: "mastered", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
   } else if (noChanceDays >= 11) {
     const reordered = [...struggles];
     if (currentIdx >= 0) {
@@ -418,7 +435,7 @@ export async function evaluateDietStruggle(userId: string): Promise<{ type: stri
       reordered.push(currentStruggle);
     }
     const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
-    return { type: "skipped", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+    return { type: "skipped", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
   } else {
     const newStayCycles = profile.tipStayCycles + 1;
     if (newStayCycles >= 2) {
@@ -428,52 +445,11 @@ export async function evaluateDietStruggle(userId: string): Promise<{ type: stri
         reordered.push(currentStruggle);
       }
       const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
-      return { type: "moved_on", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays };
+      return { type: "moved_on", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
     } else {
       return { type: "stay", yesDays, noChanceDays };
     }
   }
-}
-
-export async function processDietProgression(userId: string): Promise<{ advanced: boolean; graduated: boolean; nextStruggle?: string }> {
-  const profile = await storage.getProfile(userId);
-  if (!profile || !profile.currentStruggle) return { advanced: false, graduated: false };
-
-  const lastWeek = profile.currentWeek - 1;
-  const plan = await storage.getWeeklyPlan(userId, lastWeek);
-  if (!plan) return { advanced: false, graduated: false };
-
-  const logs = await storage.getDailyLogsByWeek(userId, lastWeek, plan.startDate);
-
-  const hasNo = logs.some(l => l.dietResponse === "no");
-  const hasAnyResponse = logs.some(l => l.dietResponse !== null);
-
-  if (!hasAnyResponse) return { advanced: false, graduated: false };
-
-  if (hasNo) {
-    return { advanced: false, graduated: false };
-  }
-
-  const ladder = DIET_TIP_LADDERS[profile.currentStruggle];
-  if (!ladder) return { advanced: false, graduated: false };
-
-  const nextTipIndex = profile.currentTipIndex + 1;
-
-  if (nextTipIndex >= ladder.length) {
-    const struggles = profile.struggles || [];
-    const currentIdx = struggles.indexOf(profile.currentStruggle);
-    const nextStruggle = currentIdx < struggles.length - 1 ? struggles[currentIdx + 1] : null;
-
-    await storage.updateProfile(userId, {
-      currentStruggle: nextStruggle,
-      currentTipIndex: 0,
-    });
-
-    return { advanced: true, graduated: true, nextStruggle: nextStruggle || undefined };
-  }
-
-  await storage.updateProfile(userId, { currentTipIndex: nextTipIndex });
-  return { advanced: true, graduated: false };
 }
 
 export async function getDinnerGraduationData(userId: string): Promise<{

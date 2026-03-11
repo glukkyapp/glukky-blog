@@ -974,6 +974,9 @@ export default function WeeklyPlanner() {
     const serverEval = reflection?.dietEvaluation;
     const evalType: "mastered" | "skipped" | "stay" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
     const nextStruggleLabel = serverEval?.nextStruggle ? (STRUGGLE_NAMES[serverEval.nextStruggle] || serverEval.nextStruggle) : "";
+    const bestTip = serverEval?.bestTip;
+    const bestTipYes = serverEval?.bestTipYes || 0;
+    const isTransitionType = evalType === "mastered" || evalType === "skipped" || evalType === "moved_on";
 
     return (
       <Card>
@@ -1049,6 +1052,13 @@ export default function WeeklyPlanner() {
                       <p className="text-sm text-muted-foreground mt-1">Next focus: {nextStruggleLabel}</p>
                     )}
                   </div>
+                </div>
+              )}
+              {isTransitionType && bestTip && bestTipYes > 0 && (
+                <div className="bg-primary/5 rounded-lg p-3 mt-2" data-testid="section-best-tip">
+                  <p className="text-xs text-muted-foreground mb-1">Your most successful tip</p>
+                  <p className="text-sm font-medium" data-testid="text-best-tip">"{bestTip}"</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{bestTipYes} day{bestTipYes !== 1 ? "s" : ""} followed successfully</p>
                 </div>
               )}
             </div>
