@@ -362,6 +362,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
     dietStruggle,
     dietTip,
     isDinnerFocus,
+    isStretchWeek: !!input.isStretchMode,
   });
 
   for (const entry of dayEntries) {
@@ -539,9 +540,11 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
     const planDays = await storage.getWeeklyPlanDays(plan.id);
 
     const fatigueStretchDows = new Set<number>();
-    for (const day of planDays) {
-      if (day.adjustedToStretch) {
-        fatigueStretchDows.add(day.dayOfWeek);
+    if (!plan.isStretchWeek) {
+      for (const day of planDays) {
+        if (day.isStretchDay) {
+          fatigueStretchDows.add(day.dayOfWeek);
+        }
       }
     }
 
@@ -557,7 +560,7 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
     }
 
     for (const day of planDays) {
-      if (day.isStretchDay && !day.adjustedToStretch) {
+      if (plan.isStretchWeek && day.isStretchDay) {
         totalStandingDays++;
         const dayDate = new Date(plan.startDate);
         dayDate.setDate(dayDate.getDate() + day.dayOfWeek);

@@ -210,7 +210,7 @@ export default function Home() {
 
         if (walkDone && tiredDone) {
           const adj = data.nextDayAdjustment;
-          if (adj.adjustedToStretch) {
+          if (adj.convertedToStretch) {
             setHydrationAdvice("We've switched tomorrow to a 2 min stretch instead. Rest well tonight!");
           } else if (adj.walkCompleted) {
             setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
@@ -1058,7 +1058,6 @@ export default function Home() {
             const dayData = {
               walkScheduled: tmrwDay.walkScheduled,
               walkDuration: tmrwDay.walkDuration,
-              adjustedToStretch: tmrwDay.adjustedToStretch,
               isStretchDay: tmrwDay.isStretchDay,
               lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
               eatOutScheduled: tmrwDay.eatOutScheduled,

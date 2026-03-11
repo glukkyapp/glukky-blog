@@ -46,6 +46,7 @@ export const weeklyPlans = pgTable("weekly_plans", {
   dietTip: text("diet_tip"),
   isDinnerFocus: boolean("is_dinner_focus").notNull().default(false),
   firstActiveDay: integer("first_active_day").notNull().default(0),
+  isStretchWeek: boolean("is_stretch_week").notNull().default(false),
 });
 
 export const weeklyPlanDays = pgTable("weekly_plan_days", {
@@ -57,7 +58,6 @@ export const weeklyPlanDays = pgTable("weekly_plan_days", {
   lateDinnerScheduled: boolean("late_dinner_scheduled").notNull().default(false),
   dinnerLabel: dinnerLabelEnum("dinner_label").notNull().default("none"),
   walkDuration: integer("walk_duration").notNull().default(10),
-  adjustedToStretch: boolean("adjusted_to_stretch").notNull().default(false),
   isStretchDay: boolean("is_stretch_day").notNull().default(false),
   standingTap: boolean("standing_tap").notNull().default(false),
 });
