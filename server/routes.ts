@@ -170,8 +170,16 @@ export async function registerRoutes(
         ? Math.round((adjustedWalkDaysCompleted / adjustedWalkDaysScheduled) * 100)
         : 0;
 
-      const weeksOnStruggle = profile ? (profile.currentWeek - 1) - profile.tipCycleStartWeek : 0;
-      const weekInCycle = weeksOnStruggle > 0 ? Math.min(weeksOnStruggle, 3) : 0;
+      let dietActiveWeekCount = 0;
+      if (profile?.currentStruggle) {
+        for (let w = profile.tipCycleStartWeek + 1; w <= profile.currentWeek - 1; w++) {
+          const wp = await storage.getWeeklyPlan(userId, w);
+          if (wp && wp.dietStruggle === profile.currentStruggle) {
+            dietActiveWeekCount++;
+          }
+        }
+      }
+      const weekInCycle = Math.min(dietActiveWeekCount, 3);
 
       const dietEvaluation = await evaluateDietStruggle(userId);
       const dinnerGraduation = await getDinnerGraduationData(userId);
@@ -184,7 +192,7 @@ export async function registerRoutes(
         stretchAdjustedDays,
         stretchSuccessPct,
         walkingBridge: biWeekly.walkingBridge,
-        autoEscalation: biWeekly.autoEscalation && (profile?.stretchSuccessWeeks || 0) >= 2,
+        autoEscalation: biWeekly.autoEscalation,
         isStretchMode: profile?.isStretchMode || false,
         stretchProgression,
         weekInCycle,
@@ -222,7 +230,8 @@ export async function registerRoutes(
       let dietEvaluation: { type: string; nextStruggle?: string } = { type: "in_cycle" };
 
       if (profile.currentWeek > 1) {
-        if (profile.hasLateDinner && !profile.dinnerMastered) {
+        const dinnerCheckData = await getDinnerGraduationData(userId);
+        if (!profile.dinnerMastered && dinnerCheckData.weeksFound > 0) {
           await processDinnerGraduation(userId);
         } else if (profile.currentStruggle) {
           dietEvaluation = await evaluateDietStruggle(userId);
@@ -276,7 +285,7 @@ export async function registerRoutes(
           if (biWeekly.walkingBridge && !profile.isStretchMode) {
             await storage.updateProfile(userId, { isStretchMode: true, stretchSuccessWeeks: 0 });
           }
-          if (biWeekly.autoEscalation && profile.isStretchMode && updatedStretchSuccessWeeks >= 2 && negotiationChoice === "add_minutes") {
+          if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "add_minutes") {
             await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 10, stretchSuccessWeeks: 0 });
           }
         }

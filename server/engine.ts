@@ -460,7 +460,7 @@ export async function getDinnerGraduationData(userId: string): Promise<{
   weeksFound: number;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile || !profile.hasLateDinner || profile.dinnerMastered) {
+  if (!profile || profile.dinnerMastered) {
     return { ready: false, successPct: 0, totalDays: 0, totalSuccess: 0, weeksFound: 0 };
   }
 
@@ -505,7 +505,7 @@ export async function getDinnerGraduationData(userId: string): Promise<{
 
 export async function processDinnerGraduation(userId: string): Promise<{ graduated: boolean; successPct: number }> {
   const profile = await storage.getProfile(userId);
-  if (!profile || !profile.hasLateDinner || profile.dinnerMastered) {
+  if (!profile || profile.dinnerMastered) {
     return { graduated: false, successPct: 0 };
   }
 
