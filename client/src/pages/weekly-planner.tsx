@@ -128,8 +128,9 @@ export default function WeeklyPlanner() {
   const [negotiationInitialized, setNegotiationInitialized] = useState(false);
 
   const isDinnerFocus = useMemo(() => {
-    return lateDinnerDays.length > 0 && !profile?.dinnerMastered;
-  }, [lateDinnerDays, profile?.dinnerMastered]);
+    const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
+    return lateDinnerDays.length > 0 && !effectiveDinnerMastered;
+  }, [lateDinnerDays, profile?.dinnerMastered, reflection?.dinnerMastered]);
 
   const noWalkDays = walkDays.length === 0;
 
@@ -595,7 +596,7 @@ export default function WeeklyPlanner() {
               <div className="flex items-start gap-2">
                 <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">You've nailed stretching for 2 weeks!</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">You've nailed stretching for {reflection?.stretchSuccessWeeks || 2} week{(reflection?.stretchSuccessWeeks || 2) !== 1 ? "s" : ""}!</p>
                   <p className="text-sm text-muted-foreground mt-1">Ready to try 10-minute walks?</p>
                 </div>
               </div>

@@ -181,6 +181,9 @@ export async function registerRoutes(
       }
       const weekInCycle = Math.min(dietActiveWeekCount, 3);
 
+      await processDinnerGraduation(userId);
+      const freshProfile = await storage.getProfile(userId);
+
       const dietEvaluation = await evaluateDietStruggle(userId);
       const dinnerGraduation = await getDinnerGraduationData(userId);
 
@@ -195,10 +198,12 @@ export async function registerRoutes(
         autoEscalation: biWeekly.autoEscalation,
         isStretchMode: profile?.isStretchMode || false,
         stretchProgression,
+        stretchSuccessWeeks: profile?.stretchSuccessWeeks || 0,
         weekInCycle,
         tipStayCycles: profile?.tipStayCycles || 0,
         dietEvaluation,
         dinnerGraduation,
+        dinnerMastered: freshProfile?.dinnerMastered || false,
       });
     } catch (error) {
       console.error("Error fetching reflection:", error);
