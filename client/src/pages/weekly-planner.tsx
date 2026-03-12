@@ -339,7 +339,9 @@ export default function WeeklyPlanner() {
                   : "No walk days"}
             </p>
             <p className="text-center text-sm text-muted-foreground">
-              {reflection.walkSuccessPct}% completion
+              {(reflection.walkDaysScheduled === 0 && reflection.stretchAdjustedDays > 0)
+                ? `${reflection.stretchSuccessPct ?? 0}% stretch completion`
+                : `${reflection.walkSuccessPct}% walk completion`}
             </p>
             {reflection.stretchAdjustedDays > 0 && (
               <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-stretch-remark">

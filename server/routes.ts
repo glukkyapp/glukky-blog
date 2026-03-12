@@ -145,6 +145,7 @@ export async function registerRoutes(
       let adjustedWalkDaysScheduled = reflection.walkDaysScheduled - stretchAdjustedDays;
       if (adjustedWalkDaysScheduled < 0) adjustedWalkDaysScheduled = 0;
       let adjustedWalkDaysCompleted = reflection.walkDaysCompleted;
+      let stretchSuccessPct: number | null = null;
       if (reflectionPlan && stretchAdjustedDays > 0) {
         const reflectionPlanDays = await storage.getWeeklyPlanDays(reflectionPlan.id);
         const stretchDows = isStretchModeWeek
@@ -163,6 +164,7 @@ export async function registerRoutes(
         }
         adjustedWalkDaysCompleted = reflection.walkDaysCompleted - stretchCompleted;
         if (adjustedWalkDaysCompleted < 0) adjustedWalkDaysCompleted = 0;
+        stretchSuccessPct = Math.round((stretchCompleted / stretchAdjustedDays) * 100);
       }
       const adjustedWalkSuccessPct = adjustedWalkDaysScheduled > 0
         ? Math.round((adjustedWalkDaysCompleted / adjustedWalkDaysScheduled) * 100)
@@ -180,6 +182,7 @@ export async function registerRoutes(
         walkDaysCompleted: adjustedWalkDaysCompleted,
         walkSuccessPct: adjustedWalkSuccessPct,
         stretchAdjustedDays,
+        stretchSuccessPct,
         walkingBridge: biWeekly.walkingBridge,
         autoEscalation: biWeekly.autoEscalation && (profile?.stretchSuccessWeeks || 0) >= 2,
         isStretchMode: profile?.isStretchMode || false,
