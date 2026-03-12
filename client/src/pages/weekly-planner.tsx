@@ -177,7 +177,7 @@ export default function WeeklyPlanner() {
       }
 
       setInitialized(true);
-    } else if (!reflection) {
+    } else if (reflection === null) {
       const pw = profile?.walksPerWeek || 3;
       const availableDays = Array.from({ length: 7 }, (_, i) => i).filter(d => d >= firstActiveDay);
       const initialWalkDays = availableDays.slice(0, pw);
