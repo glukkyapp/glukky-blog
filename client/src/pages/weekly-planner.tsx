@@ -138,16 +138,23 @@ export default function WeeklyPlanner() {
   const isEmptyWeekStretch = !isStretchMode && stretchAccepted && stretchDays.length > 0;
   const isStretchActive = isStretchMode || isEmptyWeekStretch;
 
+  const isDietTransition = reflection?.dietEvaluation?.type === "mastered" || reflection?.dietEvaluation?.type === "skipped" || reflection?.dietEvaluation?.type === "moved_on";
+
   const steps = useMemo(() => {
     const s: string[] = [];
     if (!isFirstWeek) s.push("weeklyReport", "planTransition");
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
+    if (reflection?.dinnerJustGraduated) s.push("dinnerGraduationCelebration");
     if (noWalkDays) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
-    if (!isDinnerFocus) s.push("dietReview", "dietTipSelection");
+    if (!isDinnerFocus) {
+      s.push("dietReview");
+      if (isDietTransition) s.push("dietGraduationCelebration");
+      s.push("dietTipSelection");
+    }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, noWalkDays]);
+  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, noWalkDays, reflection?.dinnerJustGraduated, isDietTransition]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -317,6 +324,8 @@ export default function WeeklyPlanner() {
     if (!reflection) return null;
 
     const dietTotalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
+    const dietDenominator = reflection.dietDaysTotal || dietTotalResponses;
+    const dietSuccessPct = dietDenominator > 0 ? Math.round(((reflection.dietYesCount + reflection.dietNoChanceCount) / dietDenominator) * 100) : null;
 
     return (
       <Card>
@@ -364,10 +373,20 @@ export default function WeeklyPlanner() {
 
           {(reflection.dinnerEarlyTotal > 0 || reflection.dinnerTacticTotal > 0) && (
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-late-dinner">
-              <div className="flex items-center gap-2 mb-2">
-                <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-                <p className="font-semibold text-sm">Late Dinner</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+                  <p className="font-semibold text-sm">Late Dinner</p>
+                </div>
+                {reflection.dinnerJustGraduated && (
+                  <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full" data-testid="badge-dinner-mastered">Mastered!</span>
+                )}
               </div>
+              {reflection.dinnerSuccessPct !== null && reflection.dinnerSuccessPct !== undefined && (
+                <p className="text-2xl font-bold text-center text-amber-500" data-testid="text-dinner-success-pct">
+                  {reflection.dinnerSuccessPct}% dinner success
+                </p>
+              )}
               {reflection.dinnerEarlyTotal > 0 && (
                 <p className="text-sm" data-testid="text-dinner-early-report">
                   You moved dinner early <span className="font-semibold">{reflection.dinnerEarlyCount}/{reflection.dinnerEarlyTotal}</span> days
@@ -387,6 +406,11 @@ export default function WeeklyPlanner() {
                 <TrendingUp className="w-4 h-4 text-green-500" />
                 <p className="font-semibold text-sm">Diet — {STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle}</p>
               </div>
+              {dietSuccessPct !== null && (
+                <p className="text-2xl font-bold text-center text-green-600" data-testid="text-diet-success-pct">
+                  {dietSuccessPct}% diet success
+                </p>
+              )}
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
                 Tip: {reflection.dietTip}
               </p>
@@ -406,6 +430,13 @@ export default function WeeklyPlanner() {
                   <p className="text-amber-600">Didn't follow tip {reflection.dietNoCount} day{reflection.dietNoCount !== 1 ? "s" : ""}</p>
                 )}
               </div>
+            </div>
+          )}
+          {reflection.missedCheckInDays >= 2 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-missed-checkins">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                You missed a few check-ins this week — that's okay! Try to check in daily next week for more accurate tracking.
+              </p>
             </div>
           )}
         </CardContent>
@@ -1080,6 +1111,65 @@ export default function WeeklyPlanner() {
     );
   }
 
+  function renderDinnerGraduationCelebration() {
+    const pct = reflection?.dinnerGraduationSuccessPct || 0;
+    return (
+      <Card>
+        <CardContent className="pt-8 pb-8">
+          <div className="flex flex-col items-center text-center gap-4">
+            <Award className="w-12 h-12 text-amber-500" />
+            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">Dinner Mastered!</h2>
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg px-6 py-3">
+              <p className="text-3xl font-bold text-green-600" data-testid="text-dinner-grad-pct">{pct}%</p>
+              <p className="text-sm text-muted-foreground">dinner success over the last 3 weeks</p>
+            </div>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Amazing work! Your late dinner routine is now under control. We'll keep tracking dinner days for scheduling — you've earned it.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function renderDietGraduationCelebration() {
+    const serverEval = reflection?.dietEvaluation;
+    const evalType = serverEval?.type;
+    const bestTip = serverEval?.bestTip;
+    const bestTipYes = serverEval?.bestTipYes || 0;
+    const { effectiveStruggle, previousStruggle } = getEffectiveStruggle();
+    const nextStruggleLabel = serverEval?.nextStruggle ? (STRUGGLE_NAMES[serverEval.nextStruggle] || serverEval.nextStruggle) : "";
+    const struggleName = previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle);
+    return (
+      <Card>
+        <CardContent className="pt-8 pb-8">
+          <div className="flex flex-col items-center text-center gap-4">
+            {evalType === "mastered" && <Award className="w-12 h-12 text-primary" />}
+            {(evalType === "skipped" || evalType === "moved_on") && <TrendingUp className="w-12 h-12 text-green-500" />}
+            <h2 className="text-xl font-bold" data-testid="text-diet-graduation-title">
+              {evalType === "mastered" ? `${struggleName} Mastered!` : `Moving On from ${struggleName}`}
+            </h2>
+            {evalType === "mastered" && <p className="text-sm text-muted-foreground">Great job sticking with it!</p>}
+            {evalType === "skipped" && <p className="text-sm text-muted-foreground">It seems you didn't have many chances to try this — that's completely fine!</p>}
+            {evalType === "moved_on" && <p className="text-sm text-muted-foreground">You're doing well enough — let's try another focus.</p>}
+            {bestTip && bestTipYes > 0 && (
+              <div className="bg-primary/5 rounded-lg p-4 w-full max-w-sm" data-testid="section-diet-grad-best-tip">
+                <p className="text-xs text-muted-foreground mb-1">Your most successful tip</p>
+                <p className="text-sm font-medium">"{bestTip}"</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{bestTipYes} day{bestTipYes !== 1 ? "s" : ""} followed successfully</p>
+              </div>
+            )}
+            {nextStruggleLabel && (
+              <p className="text-sm text-muted-foreground">
+                {evalType === "mastered" ? "Next focus:" : "Moving to:"} <span className="font-medium">{nextStruggleLabel}</span>
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderDietTipSelection() {
     const { effectiveStruggle, isTransition } = getEffectiveStruggle();
     const tipLadder = (DIET_TIP_LADDERS as Record<string, string[]>)[effectiveStruggle] || [];
@@ -1301,7 +1391,9 @@ export default function WeeklyPlanner() {
       case "lateDinnerDays": return renderLateDinnerDays();
       case "stretchOffer": return renderStretchOffer();
       case "dinnerFocusReview": return renderDinnerFocusReview();
+      case "dinnerGraduationCelebration": return renderDinnerGraduationCelebration();
       case "dietReview": return renderDietReview();
+      case "dietGraduationCelebration": return renderDietGraduationCelebration();
       case "dietTipSelection": return renderDietTipSelection();
       case "preview": return renderPreview();
       default: return null;

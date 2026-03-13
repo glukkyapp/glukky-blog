@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -43,6 +43,11 @@ export default function Home() {
   const [hydrationAdvice, setHydrationAdvice] = useState<string | null>(null);
   const [showTickAnimation, setShowTickAnimation] = useState(false);
   const userInteracted = useRef(false);
+  const [catchupCompleted, setCatchupCompleted] = useState(false);
+  const [catchupWalkDone, setCatchupWalkDone] = useState<boolean | null>(null);
+  const [catchupWalkTired, setCatchupWalkTired] = useState<boolean | null>(null);
+  const [catchupDinnerDone, setCatchupDinnerDone] = useState<boolean | null>(null);
+  const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
@@ -140,6 +145,18 @@ export default function Home() {
   const checkInDate = isCatchUp && !sundayCheckInDone ? (planSundayStr || todayStr) : todayStr;
   const checkInDayOfWeek = isCatchUp && !sundayCheckInDone ? 6 : dayOfWeek;
 
+  const missedScheduledDays = useMemo(() => {
+    if (!calendarData?.calendar || isCatchUp) return [];
+    return calendarData.calendar.filter((d: any) => {
+      if (!d.date || d.date >= todayStr) return false;
+      if (!d.walkScheduled && !d.lateDinnerScheduled) return false;
+      if (d.walkScheduled && (d.walkCompleted === null || d.walkCompleted === undefined)) return true;
+      return false;
+    });
+  }, [calendarData, todayStr, isCatchUp]);
+  const missedDayCount = missedScheduledDays.length;
+  const singleMissedDay = !catchupCompleted && missedDayCount === 1 ? missedScheduledDays[0] : null;
+
   const todayPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === checkInDayOfWeek);
   const todayLog = calendarData?.calendar?.find((d: any) => d.date === checkInDate);
   const tomorrowDow = (dayOfWeek + 1) % 7;
@@ -229,6 +246,29 @@ export default function Home() {
       }
 
       await checkAllDoneAfterInteraction();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const catchupMutation = useMutation({
+    mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null }) => {
+      return await apiRequest("POST", "/api/log", data);
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
+      if (data?.nextDayAdjustment) {
+        const adj = data.nextDayAdjustment;
+        if (adj.convertedToStretch) {
+          setCatchupAdjMsg("We've switched today's walk to a 2 min stretch. Rest well!");
+        } else if (adj.reduced && adj.newDuration) {
+          setCatchupAdjMsg(`We've reduced today's walk to ${adj.newDuration} min. Rest well!`);
+        } else if (adj.tomorrowWalkScheduled) {
+          setCatchupAdjMsg("You're all set for today's walk!");
+        }
+      }
+      setCatchupCompleted(true);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1061,6 +1101,73 @@ export default function Home() {
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-1">
               Finish Sunday's check-in ({formatCatchUpDate()}) before viewing your weekly report.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {singleMissedDay && !isCatchUp && (
+        <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-missed-day-catchup">
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600" />
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Log {DAY_NAMES[singleMissedDay.dayOfWeek]}'s check-in
+              </p>
+            </div>
+            <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
+              You missed {DAY_NAMES[singleMissedDay.dayOfWeek]}'s check-in — let's quickly catch up.
+            </p>
+            {singleMissedDay.walkScheduled && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Did you complete your walk?</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">Yes</Button>
+                  <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">No</Button>
+                </div>
+                {catchupWalkDone === false && (
+                  <div className="space-y-2 pl-1">
+                    <p className="text-sm text-muted-foreground">Were you tired?</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">Yes</Button>
+                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">No</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {singleMissedDay.lateDinnerScheduled && singleMissedDay.dinnerLabel && singleMissedDay.dinnerLabel !== "none" && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Did you manage late dinner?</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
+                  <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                </div>
+              </div>
+            )}
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => catchupMutation.mutate({
+                date: singleMissedDay.date,
+                walkCompleted: singleMissedDay.walkScheduled ? catchupWalkDone : undefined,
+                walkTired: singleMissedDay.walkScheduled && catchupWalkDone === false ? catchupWalkTired : undefined,
+                dinnerSuccess: singleMissedDay.lateDinnerScheduled && singleMissedDay.dinnerLabel && singleMissedDay.dinnerLabel !== "none" ? catchupDinnerDone : undefined,
+              })}
+              disabled={
+                catchupMutation.isPending ||
+                (singleMissedDay.walkScheduled && catchupWalkDone === null) ||
+                (singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null)
+              }
+              data-testid="button-catchup-submit"
+            >
+              {catchupMutation.isPending ? "Saving..." : `Log ${DAY_NAMES[singleMissedDay.dayOfWeek]}`}
+            </Button>
+            {catchupAdjMsg && (
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">
+                <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-blue-700 dark:text-blue-300">{catchupAdjMsg}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

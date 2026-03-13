@@ -133,6 +133,18 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     else if (log.dietResponse === "no_chance") dietNoChanceCount++;
   }
   const dietCleanWeek = dietNoCount === 0 && (dietYesCount + dietNoChanceCount) > 0;
+  const dietDaysTotal = planDays.length;
+
+  const missedCheckInDays = planDays.filter(d => {
+    if (!d.walkScheduled && !d.lateDinnerScheduled) return false;
+    const dayDate = new Date(plan.startDate + "T00:00:00");
+    dayDate.setDate(dayDate.getDate() + d.dayOfWeek);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const log = logs.find(l => l.date === dateStr);
+    if (!log) return true;
+    if (d.walkScheduled && (log.walkCompleted === null || log.walkCompleted === undefined)) return true;
+    return false;
+  }).length;
 
   const fatigueDetected = await checkFatiguePattern(userId, profile.currentWeek);
 
@@ -172,6 +184,8 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     dietYesCount,
     dietNoChanceCount,
     dietCleanWeek,
+    dietDaysTotal,
+    missedCheckInDays,
     isDinnerFocus: plan.isDinnerFocus,
     fatigueDetected,
     suggestedActions,
@@ -531,14 +545,16 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
   walkingBridge: boolean;
   autoEscalation: boolean;
   stagnationPivot: boolean;
+  consecutiveStretchWeeks: number;
 }> {
   const profile = await storage.getProfile(userId);
   if (!profile || profile.currentWeek < 3) {
-    return { walkingBridge: false, autoEscalation: false, stagnationPivot: false };
+    return { walkingBridge: false, autoEscalation: false, stagnationPivot: false, consecutiveStretchWeeks: 0 };
   }
 
-  const result = { walkingBridge: false, autoEscalation: false, stagnationPivot: false };
-  const recentPlans = await storage.getRecentWeeklyPlans(userId, 2);
+  const result = { walkingBridge: false, autoEscalation: false, stagnationPivot: false, consecutiveStretchWeeks: 0 };
+  const allRecentPlans = await storage.getRecentWeeklyPlans(userId, 20);
+  const recentPlans = allRecentPlans.slice(0, 2);
   if (recentPlans.length < 2) return result;
 
   let totalWalks = 0;
@@ -588,6 +604,26 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
   if (totalStandingDays > 0 && standingSuccessDays === totalStandingDays) {
     result.autoEscalation = true;
   }
+
+  let consecutiveCount = 0;
+  for (const plan of allRecentPlans) {
+    if (!plan.isStretchWeek) break;
+    const planDays = await storage.getWeeklyPlanDays(plan.id);
+    const stretchDays = planDays.filter(d => d.isStretchDay);
+    if (stretchDays.length === 0) break;
+    const logs = await storage.getDailyLogsByWeek(userId, plan.weekNumber, plan.startDate);
+    let allCompleted = true;
+    for (const day of stretchDays) {
+      const dayDate = new Date(plan.startDate + "T00:00:00");
+      dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+      const dateStr = dayDate.toISOString().split("T")[0];
+      const log = logs.find(l => l.date === dateStr);
+      if (log?.walkCompleted !== true) { allCompleted = false; break; }
+    }
+    if (!allCompleted) break;
+    consecutiveCount++;
+  }
+  result.consecutiveStretchWeeks = consecutiveCount;
 
   return result;
 }
