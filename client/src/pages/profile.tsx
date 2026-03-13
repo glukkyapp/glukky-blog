@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { User, Lock, Target, List, Download, LogOut } from "lucide-react";
+import { useLocation } from "wouter";
+import { User, Lock, Target, List, Download, LogOut, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,12 +72,18 @@ function ProfileSkeleton() {
 }
 
 export default function ProfilePage() {
+  const [, setLocation] = useLocation();
+
   const { data: profile, isLoading: profileLoading } = useQuery<ProfileData>({
     queryKey: ["/api/profile"],
   });
 
   const { data: roadmap, isLoading: roadmapLoading } = useQuery<RoadmapData>({
     queryKey: ["/api/roadmap"],
+  });
+
+  const { data: devCheck } = useQuery<{ isDev: boolean }>({
+    queryKey: ["/api/dev/check"],
   });
 
   const isLoading = profileLoading || roadmapLoading;
@@ -176,6 +183,20 @@ export default function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      {devCheck?.isDev && (
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            className="w-full border-red-200 text-red-600 hover:bg-red-50"
+            data-testid="button-dev-panel"
+            onClick={() => setLocation("/dev")}
+          >
+            <Settings className="w-4 h-4" />
+            Dev Panel
+          </Button>
+        </div>
+      )}
 
       <div className="pt-4">
         <Button
