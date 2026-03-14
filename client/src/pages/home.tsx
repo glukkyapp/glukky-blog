@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FULL_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 function isDayStretch(day: any, profile: any): boolean {
   if (day?.isStretchDay) return true;
@@ -144,6 +145,8 @@ export default function Home() {
 
   const checkInDate = isCatchUp && !sundayCheckInDone ? (planSundayStr || todayStr) : todayStr;
   const checkInDayOfWeek = isCatchUp && !sundayCheckInDone ? 6 : dayOfWeek;
+  const isCatchUpCheckIn = isCatchUp && !sundayCheckInDone;
+  const catchUpDayName = isCatchUpCheckIn ? FULL_DAY_NAMES[checkInDayOfWeek] : null;
 
   const missedScheduledDays = useMemo(() => {
     if (!calendarData?.calendar || isCatchUp) return [];
@@ -191,8 +194,12 @@ export default function Home() {
     if (isCatchUpCheck || effectiveHour >= 22) {
       let allDone = true;
       if (tp.lateDinnerScheduled) {
-        if (!labelSet) allDone = false;
-        if (labelSet && tp.dinnerSuccess === null) allDone = false;
+        if (isCatchUpCheck) {
+          if (tp.dinnerSuccess === null || tp.dinnerSuccess === undefined) allDone = false;
+        } else {
+          if (!labelSet) allDone = false;
+          if (labelSet && tp.dinnerSuccess === null) allDone = false;
+        }
       }
       if (tp.walkScheduled) {
         if (tp.walkCompleted === null) allDone = false;
@@ -206,6 +213,11 @@ export default function Home() {
           setShowTickAnimation(false);
           setRecorded(true);
           toast({ title: "Nice work!", description: isCatchUpCheck ? "Sunday check-in done!" : "Here's what's coming up tomorrow" });
+          if (isCatchUpCheck) {
+            queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/log"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
+          }
         }, 1200);
       }
     }
@@ -301,6 +313,9 @@ export default function Home() {
     if (!todayPlan?.planDayId) return;
     dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: tactic });
     setShowTacticPicker(false);
+    if (isCatchUpCheckIn) {
+      logMutation.mutate({ dinnerSuccess: true });
+    }
   }
 
 
@@ -419,7 +434,7 @@ export default function Home() {
     if (showTacticPicker) {
       return (
         <div className="space-y-3" data-testid="section-dinner-tactic">
-          <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
+          <p className="text-sm font-medium">{catchUpDayName ? `Which tactic did you use on ${catchUpDayName}?` : "Let's pick a game plan for dinner tonight:"}</p>
           {MITIGATION_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -432,6 +447,53 @@ export default function Home() {
               <span className="text-muted-foreground"> — {opt.desc}</span>
             </button>
           ))}
+        </div>
+      );
+    }
+
+    if (isCatchUpCheckIn) {
+      return (
+        <div className="space-y-3" data-testid="section-dinner-catchup">
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+            <p className="text-sm font-medium">What happened with dinner on {catchUpDayName}?</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (todayPlan?.planDayId) {
+                  dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
+                }
+                logMutation.mutate({ dinnerSuccess: true });
+              }}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-catchup-dinner-early"
+            >
+              Moved it early
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowTacticPicker(true)}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-catchup-dinner-tactic"
+            >
+              Used a dinner tactic
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                logMutation.mutate({ dinnerSuccess: false });
+              }}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-catchup-dinner-no"
+            >
+              I didn't manage it
+            </Button>
+          </div>
         </div>
       );
     }
@@ -600,8 +662,8 @@ export default function Home() {
 
     const label = todayPlan?.dinnerLabel;
     const question = label === "move_early"
-      ? "Did you manage to eat before 9pm?"
-      : `Did you follow the ${DINNER_LABEL_SHORT[label] || label} tip?`;
+      ? (catchUpDayName ? `Did you manage to eat before 9pm on ${catchUpDayName}?` : "Did you manage to eat before 9pm?")
+      : (catchUpDayName ? `Did you follow the ${DINNER_LABEL_SHORT[label] || label} tip on ${catchUpDayName}?` : `Did you follow the ${DINNER_LABEL_SHORT[label] || label} tip?`);
 
     return (
       <div className="space-y-2" data-testid="section-dinner-followup">
@@ -657,7 +719,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">Did you do your 1-minute standing tap after dinner?</p>
+            <p className="text-xs text-muted-foreground">{catchUpDayName ? `Did you do your 1-minute standing tap after dinner on ${catchUpDayName}?` : "Did you do your 1-minute standing tap after dinner?"}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -747,7 +809,7 @@ export default function Home() {
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2">
                 <Battery className="w-4 h-4 text-amber-500" />
-                <p className="text-sm font-medium">Feeling tired today?</p>
+                <p className="text-sm font-medium">{catchUpDayName ? `Feeling tired on ${catchUpDayName}?` : "Feeling tired today?"}</p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -818,13 +880,13 @@ export default function Home() {
               <Minus className="w-4 h-4 text-gray-400" />
             )}
             <span>
-              {todayLog.dietResponse === "yes" ? "Tried it today" :
-               todayLog.dietResponse === "no" ? "Didn't try today" : "Didn't get the chance"}
+              {todayLog.dietResponse === "yes" ? (catchUpDayName ? `Tried it on ${catchUpDayName}` : "Tried it today") :
+               todayLog.dietResponse === "no" ? (catchUpDayName ? `Didn't try on ${catchUpDayName}` : "Didn't try today") : "Didn't get the chance"}
             </span>
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">Did you get a chance to try this today?</p>
+            <p className="text-xs text-muted-foreground">{catchUpDayName ? `Did you get a chance to try this on ${catchUpDayName}?` : "Did you get a chance to try this today?"}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -872,8 +934,12 @@ export default function Home() {
       }
     }
     if (isLateDinnerDay) {
-      if (!dinnerLabelSet) return false;
-      if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
+      if (isCatchUpCheckIn) {
+        if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
+      } else {
+        if (!dinnerLabelSet) return false;
+        if (todayLog.dinnerSuccess === null || todayLog.dinnerSuccess === undefined) return false;
+      }
     }
     if (calendarPlan?.dietTip) {
       if (todayLog.dietResponse === null || todayLog.dietResponse === undefined) return false;

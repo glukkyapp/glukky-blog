@@ -1517,17 +1517,13 @@ export default function WeeklyPlanner() {
     );
   }
 
-  if (!isWeek1 && !canPlan) {
+  if (isPastPlanWeek && !canPlan) {
     return renderLastWeekReport();
   }
 
   if (!isWeek1 && canPlan && isLatePlanning && !sundayCheckInDone) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
-        <h1 className="text-lg font-bold" data-testid="text-last-week-title">
-          Your statistics last week
-        </h1>
-        {renderWeeklyReport()}
         <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-sunday-checkin-gate">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2">
