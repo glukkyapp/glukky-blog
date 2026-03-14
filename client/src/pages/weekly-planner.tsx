@@ -82,8 +82,9 @@ export default function WeeklyPlanner() {
     if (!sunLog) return false;
     if (sunPlanDay?.walkScheduled) {
       if (sunLog.walkCompleted === null || sunLog.walkCompleted === undefined) return false;
+      if (!sunPlanDay.standingTap && sunLog.walkCompleted === false && (sunLog.walkTired === null || sunLog.walkTired === undefined)) return false;
     }
-    if (sunPlanDay?.lateDinnerScheduled && sunPlanDay?.dinnerLabel && sunPlanDay.dinnerLabel !== "none") {
+    if (sunPlanDay?.lateDinnerScheduled) {
       if (sunLog.dinnerSuccess === null || sunLog.dinnerSuccess === undefined) return false;
     }
     if (currentPlan?.dietTip) {
