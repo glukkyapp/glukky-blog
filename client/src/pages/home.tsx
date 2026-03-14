@@ -48,6 +48,9 @@ export default function Home() {
   const [catchupWalkDone, setCatchupWalkDone] = useState<boolean | null>(null);
   const [catchupWalkTired, setCatchupWalkTired] = useState<boolean | null>(null);
   const [catchupDinnerDone, setCatchupDinnerDone] = useState<boolean | null>(null);
+  const [catchupDinnerChoice, setCatchupDinnerChoice] = useState<"early" | "tactic" | "none" | null>(null);
+  const [catchupTacticPick, setCatchupTacticPick] = useState<string | null>(null);
+  const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
@@ -265,7 +268,7 @@ export default function Home() {
   });
 
   const catchupMutation = useMutation({
-    mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null }) => {
+    mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null; dietResponse?: string | null }) => {
       return await apiRequest("POST", "/api/log", data);
     },
     onSuccess: async (data: any) => {
@@ -273,11 +276,11 @@ export default function Home() {
       if (data?.nextDayAdjustment) {
         const adj = data.nextDayAdjustment;
         if (adj.convertedToStretch) {
-          setCatchupAdjMsg("We've switched today's walk to a 2 min stretch. Rest well!");
+          setCatchupAdjMsg("We've switched your next scheduled walk to a 2 min stretch. Rest well!");
         } else if (adj.reduced && adj.newDuration) {
-          setCatchupAdjMsg(`We've reduced today's walk to ${adj.newDuration} min. Rest well!`);
+          setCatchupAdjMsg(`We've reduced your next scheduled walk to ${adj.newDuration} min. Rest well!`);
         } else if (adj.tomorrowWalkScheduled) {
-          setCatchupAdjMsg("You're all set for today's walk!");
+          setCatchupAdjMsg("You're all set for your next scheduled walk!");
         }
       }
       setCatchupCompleted(true);
@@ -1185,14 +1188,14 @@ export default function Home() {
             </p>
             {singleMissedDay.walkScheduled && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Did you complete your walk?</p>
+                <p className="text-sm font-medium">Did you complete your walk on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
                 <div className="flex gap-2">
                   <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">Yes</Button>
                   <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">No</Button>
                 </div>
                 {catchupWalkDone === false && (
                   <div className="space-y-2 pl-1">
-                    <p className="text-sm text-muted-foreground">Were you tired?</p>
+                    <p className="text-sm text-muted-foreground">Were you tired on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
                     <div className="flex gap-2">
                       <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">Yes</Button>
                       <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">No</Button>
@@ -1201,32 +1204,95 @@ export default function Home() {
                 )}
               </div>
             )}
-            {singleMissedDay.lateDinnerScheduled && singleMissedDay.dinnerLabel && singleMissedDay.dinnerLabel !== "none" && (
+            {singleMissedDay.lateDinnerScheduled && (() => {
+              const missedDayName = FULL_DAY_NAMES[singleMissedDay.dayOfWeek];
+              const label = singleMissedDay.dinnerLabel;
+              const hasLabel = label && label !== "none";
+              if (hasLabel && label === "move_early") {
+                return (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Did you manage to eat before 9pm on {missedDayName}?</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                    </div>
+                  </div>
+                );
+              }
+              if (hasLabel) {
+                return (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Did you follow the {DINNER_LABEL_SHORT[label] || label} tip on {missedDayName}?</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">What happened with dinner on {missedDayName}?</p>
+                  <div className="flex flex-col gap-2">
+                    <Button size="sm" variant={catchupDinnerChoice === "early" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("early"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-early">Moved it early</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "tactic" ? "default" : "outline"} onClick={() => setCatchupDinnerChoice("tactic")} data-testid="button-catchup-dinner-tactic">Used a dinner tactic</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "none" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("none"); setCatchupDinnerDone(false); setCatchupTacticPick(null); }} data-testid="button-catchup-dinner-none">I didn't manage it</Button>
+                  </div>
+                  {catchupDinnerChoice === "tactic" && (
+                    <div className="space-y-2 pl-1">
+                      <p className="text-xs text-muted-foreground">Which tactic did you use?</p>
+                      <div className="flex flex-col gap-1">
+                        {MITIGATION_OPTIONS.map(opt => (
+                          <Button key={opt.value} size="sm" variant={catchupTacticPick === opt.value ? "default" : "outline"} onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }} data-testid={`button-catchup-tactic-${opt.value}`}>
+                            {opt.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {calendarPlan?.dietTip && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Did you manage late dinner?</p>
+                <p className="text-sm font-medium">Did you get a chance to try the diet tip on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
                 <div className="flex gap-2">
-                  <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
-                  <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                  <Button size="sm" variant={catchupDietResponse === "yes" ? "default" : "outline"} onClick={() => setCatchupDietResponse("yes")} data-testid="button-catchup-diet-yes">Yes</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no")} data-testid="button-catchup-diet-no">No</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no_chance" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no_chance")} data-testid="button-catchup-diet-no-chance">Didn't get the chance</Button>
                 </div>
               </div>
             )}
             <Button
               size="sm"
               className="w-full"
-              onClick={() => catchupMutation.mutate({
-                date: singleMissedDay.date,
-                walkCompleted: singleMissedDay.walkScheduled ? catchupWalkDone : undefined,
-                walkTired: singleMissedDay.walkScheduled && catchupWalkDone === false ? catchupWalkTired : undefined,
-                dinnerSuccess: singleMissedDay.lateDinnerScheduled && singleMissedDay.dinnerLabel && singleMissedDay.dinnerLabel !== "none" ? catchupDinnerDone : undefined,
-              })}
+              onClick={async () => {
+                if (singleMissedDay.lateDinnerScheduled && (!singleMissedDay.dinnerLabel || singleMissedDay.dinnerLabel === "none")) {
+                  if (catchupDinnerChoice === "early" && singleMissedDay.planDayId) {
+                    await dinnerLabelMutation.mutateAsync({ planDayId: singleMissedDay.planDayId, label: "move_early" });
+                  } else if (catchupDinnerChoice === "tactic" && catchupTacticPick && singleMissedDay.planDayId) {
+                    await dinnerLabelMutation.mutateAsync({ planDayId: singleMissedDay.planDayId, label: catchupTacticPick });
+                  }
+                }
+                catchupMutation.mutate({
+                  date: singleMissedDay.date,
+                  walkCompleted: singleMissedDay.walkScheduled ? catchupWalkDone : undefined,
+                  walkTired: singleMissedDay.walkScheduled && catchupWalkDone === false ? catchupWalkTired : undefined,
+                  dinnerSuccess: singleMissedDay.lateDinnerScheduled ? catchupDinnerDone : undefined,
+                  dietResponse: calendarPlan?.dietTip ? catchupDietResponse : undefined,
+                });
+              }}
               disabled={
-                catchupMutation.isPending ||
+                catchupMutation.isPending || dinnerLabelMutation.isPending ||
                 (singleMissedDay.walkScheduled && catchupWalkDone === null) ||
-                (singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null)
+                (singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null) ||
+                (singleMissedDay.lateDinnerScheduled && catchupDinnerDone === null && catchupDinnerChoice === null) ||
+                (singleMissedDay.lateDinnerScheduled && (!singleMissedDay.dinnerLabel || singleMissedDay.dinnerLabel === "none") && catchupDinnerChoice === "tactic" && !catchupTacticPick) ||
+                (calendarPlan?.dietTip && catchupDietResponse === null)
               }
               data-testid="button-catchup-submit"
             >
-              {catchupMutation.isPending ? "Saving..." : `Log ${DAY_NAMES[singleMissedDay.dayOfWeek]}`}
+              {catchupMutation.isPending || dinnerLabelMutation.isPending ? "Saving..." : `Log ${DAY_NAMES[singleMissedDay.dayOfWeek]}`}
             </Button>
             {catchupAdjMsg && (
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">

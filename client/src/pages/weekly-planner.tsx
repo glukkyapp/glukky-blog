@@ -1421,7 +1421,7 @@ export default function WeeklyPlanner() {
   const isLatePlanning = isPastPlanWeek && !isSunday;
   const canPlan = isSundayNight || isLatePlanning;
 
-  const isWeek1 = profile?.currentWeek === 1;
+  const isWeek1 = !isPastPlanWeek && (profile?.currentWeek === 1 || currentPlan?.weekNumber === 1);
 
   function renderMonthlyReportMessage() {
     const now = (() => {
