@@ -272,17 +272,22 @@ export default function Home() {
     mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null; dietResponse?: string | null }) => {
       return await apiRequest("POST", "/api/log", data);
     },
-    onSuccess: async (data: any) => {
+    onSuccess: async (data: any, variables: any) => {
       await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
+      const wasTiredMiss = variables.walkCompleted === false && variables.walkTired === true;
       if (data?.nextDayAdjustment) {
         const adj = data.nextDayAdjustment;
         if (adj.convertedToStretch) {
-          setCatchupAdjMsg("We've switched your next scheduled walk to a 2 min stretch. Rest well!");
+          setCatchupAdjMsg("Since you were tired, we've eased your next walk to a 2-minute stretch. Rest well!");
         } else if (adj.reduced && adj.newDuration) {
-          setCatchupAdjMsg(`We've reduced your next scheduled walk to ${adj.newDuration} min. Rest well!`);
+          setCatchupAdjMsg(`Since you were tired, we've reduced your next walk to ${adj.newDuration} min. Rest well!`);
+        } else if (wasTiredMiss) {
+          setCatchupAdjMsg("Since you were tired, we'll ease your next scheduled walk. Rest well!");
         } else if (adj.tomorrowWalkScheduled) {
           setCatchupAdjMsg("You're all set for your next scheduled walk!");
         }
+      } else if (wasTiredMiss) {
+        setCatchupAdjMsg("Since you were tired, we'll ease your next scheduled walk. Rest well!");
       }
       setCatchupCompleted(true);
     },
