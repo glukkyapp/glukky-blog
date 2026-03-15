@@ -45,3 +45,22 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Wouter:** For client-side routing in the React application.
 - **Tailwind CSS & Shadcn UI:** For styling and UI components.
 - **Framer Motion:** For animations in the frontend.
+
+## Gamification: Piggy Bank
+A coin-based reward system displayed on the Roadmap page. Users earn coins for health achievements; when 60 coins are collected the user claims a self-set personal reward and a new bank starts.
+
+**DB additions:**
+- `user_profiles`: `piggy_bank_coins` (int, default 0), `piggy_bank_reward` (text), `piggy_bank_needs_reward_setup` (bool, default true)
+- `daily_logs`: `is_backfill` (bool) — true if log was submitted after the logged date (catch-up)
+- New table `piggy_bank_events`: id, userId, achievementType, coinsAwarded, description, weekNumber, eventDate, createdAt
+
+**Achievement triggers (server/achievements.ts):**
+- *Daily* (fired in POST /api/log): walk complete (2), diet yes (2), dinner success (2), standing tap (1), walked longer than last week (1 per day)
+- *Weekly* (fired in POST /api/plan/weekly): perfect walk week (2), diet clean week (2), no missed same-day check-ins (1), all stretch days completed (1)
+- *Milestones*: dinner graduation (5), struggle graduation (5)
+
+**API:** GET /api/piggybank, POST /api/piggybank/reward, POST /api/piggybank/claim
+
+**Frontend:**
+- `client/src/components/piggy-bank-svg.tsx` — inline SVG cartoon teal pig, 5 fill states (0–9, 10–24, 25–39, 40–54, 55–60 coins), sparkles when full; plain HTML SVG (compatible with web + Capacitor/WebView wrapper)
+- Roadmap page: piggy bank card at top, CSS coin-drop animation on coin award, reward-setup modal (auto-shown when needsRewardSetup=true), congratulations modal when full

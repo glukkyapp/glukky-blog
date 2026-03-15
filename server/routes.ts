@@ -10,6 +10,12 @@ import {
   getWeekStartDate, evaluateDietStruggle,
 } from "./engine";
 import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS, type InsertUserProfile } from "@shared/schema";
+import {
+  evaluateDailyAchievements,
+  evaluateWeeklyAchievements,
+  awardDinnerGraduationCoin,
+  awardStruggleGraduationCoin,
+} from "./achievements";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -278,9 +284,11 @@ export async function registerRoutes(
       let dietEvaluation: { type: string; nextStruggle?: string } = { type: "in_cycle" };
 
       if (profile.currentWeek > 1) {
+        const planWeekEventDate = new Date().toISOString().split("T")[0];
         const dinnerCheckData = await getDinnerGraduationData(userId);
         if (!profile.dinnerMastered && dinnerCheckData.weeksFound > 0) {
           await processDinnerGraduation(userId);
+          try { await awardDinnerGraduationCoin(userId, planWeekEventDate); } catch {}
         } else if (profile.currentStruggle) {
           dietEvaluation = await evaluateDietStruggle(userId);
 
@@ -291,6 +299,7 @@ export async function registerRoutes(
               tipCycleStartWeek: profile.currentWeek - 1,
               tipStayCycles: 0,
             });
+            try { await awardStruggleGraduationCoin(userId, profile.currentStruggle, planWeekEventDate); } catch {}
           } else if (dietEvaluation.type === "skipped" || dietEvaluation.type === "moved_on") {
             const struggles = [...(profile.struggles || [])] as string[];
             const currentIdx = struggles.indexOf(profile.currentStruggle);
@@ -336,6 +345,21 @@ export async function registerRoutes(
           if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "add_minutes") {
             await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 10, stretchSuccessWeeks: 0 });
           }
+        }
+
+        try {
+          const completedWeekNum = profile.currentWeek - 1;
+          const completedPlan = await storage.getWeeklyPlan(userId, completedWeekNum);
+          if (completedPlan) {
+            const completedPlanDays = await storage.getWeeklyPlanDays(completedPlan.id);
+            const completedPlanStart = typeof completedPlan.startDate === "string"
+              ? completedPlan.startDate
+              : (completedPlan.startDate as any).toISOString().split("T")[0];
+            const completedLogs = await storage.getDailyLogsByWeek(userId, completedWeekNum, completedPlanStart);
+            await evaluateWeeklyAchievements(userId, completedWeekNum, completedPlan, completedPlanDays, completedLogs);
+          }
+        } catch (weeklyAchErr) {
+          console.error("Weekly achievement evaluation error:", weeklyAchErr);
         }
       }
 
@@ -515,6 +539,10 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const { date, walkCompleted, walkTired, dietResponse, dinnerSuccess } = req.body;
 
+      const now = new Date();
+      const todayStrForLog = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const logIsBackfill = date < todayStrForLog;
+
       let result;
       const existing = await storage.getDailyLog(userId, date);
       if (existing) {
@@ -532,6 +560,7 @@ export async function registerRoutes(
           walkTired: walkTired !== undefined ? walkTired : null,
           dietResponse: dietResponse || null,
           dinnerSuccess: dinnerSuccess !== undefined ? dinnerSuccess : null,
+          isBackfill: logIsBackfill,
         });
       }
 
@@ -600,10 +629,29 @@ export async function registerRoutes(
         }
       }
 
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      const isBackfill = date < todayStr;
-      res.json({ ...result, nextDayAdjustment, isBackfill });
+      let coinsAwarded = 0;
+      try {
+        if (plan && finalLog) {
+          const achievePlanDays = await storage.getWeeklyPlanDays(plan.id);
+          const logDate2 = new Date(date + "T00:00:00");
+          const planStart2 = new Date(plan.startDate + "T00:00:00");
+          const todayDow2 = Math.round((logDate2.getTime() - planStart2.getTime()) / (1000 * 60 * 60 * 24));
+          const achieveTodayPlanDay = achievePlanDays.find(d => d.dayOfWeek === todayDow2);
+          let prevWeekPlanDay: any = undefined;
+          if (plan.weekNumber > 1) {
+            const prevPlan = await storage.getWeeklyPlan(userId, plan.weekNumber - 1);
+            if (prevPlan) {
+              const prevPlanDays = await storage.getWeeklyPlanDays(prevPlan.id);
+              prevWeekPlanDay = prevPlanDays.find(d => d.dayOfWeek === todayDow2);
+            }
+          }
+          coinsAwarded = await evaluateDailyAchievements(userId, date, finalLog, plan, achieveTodayPlanDay, prevWeekPlanDay);
+        }
+      } catch (achErr) {
+        console.error("Daily achievement evaluation error:", achErr);
+      }
+
+      res.json({ ...result, nextDayAdjustment, isBackfill: logIsBackfill, coinsAwarded });
     } catch (error) {
       console.error("Error creating log:", error);
       res.status(500).json({ message: "Failed to create log" });
@@ -747,6 +795,51 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch roadmap" });
+    }
+  });
+
+  app.get("/api/piggybank", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({
+        coins: profile.piggyBankCoins,
+        capacity: 60,
+        reward: profile.piggyBankReward ?? null,
+        needsRewardSetup: profile.piggyBankNeedsRewardSetup,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch piggy bank" });
+    }
+  });
+
+  app.post("/api/piggybank/reward", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { reward } = req.body;
+      if (!reward || typeof reward !== "string" || reward.trim().length === 0) {
+        return res.status(400).json({ message: "Reward text is required" });
+      }
+      const profile = await storage.setPiggyBankReward(userId, reward.trim());
+      res.json({ reward: profile?.piggyBankReward, needsRewardSetup: false });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to set reward" });
+    }
+  });
+
+  app.post("/api/piggybank/claim", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if (profile.piggyBankCoins < 60) {
+        return res.status(400).json({ message: "Piggy bank is not full yet" });
+      }
+      await storage.claimPiggyBank(userId);
+      res.json({ claimed: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to claim reward" });
     }
   });
 

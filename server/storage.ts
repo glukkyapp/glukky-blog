@@ -5,7 +5,8 @@ import {
   type DailyLog, type InsertDailyLog,
   type WeeklyReport, type InsertWeeklyReport,
   type MonthlyReport, type InsertMonthlyReport,
-  userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports,
+  type PiggyBankEvent, type InsertPiggyBankEvent,
+  userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
@@ -41,6 +42,12 @@ export interface IStorage {
   createMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport>;
 
   getRecentWeeklyPlans(userId: string, limit: number): Promise<WeeklyPlan[]>;
+
+  getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined>;
+  createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
+  addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
+  setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
+  claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -182,6 +189,50 @@ export class DatabaseStorage implements IStorage {
       .where(eq(weeklyPlans.userId, userId))
       .orderBy(desc(weeklyPlans.weekNumber))
       .limit(limit);
+  }
+
+  async getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined> {
+    const conditions = [
+      eq(piggyBankEvents.userId, userId),
+      eq(piggyBankEvents.achievementType, achievementType),
+    ];
+    if (weekNumber != null) {
+      conditions.push(eq(piggyBankEvents.weekNumber, weekNumber));
+    }
+    if (eventDate != null) {
+      conditions.push(eq(piggyBankEvents.eventDate, eventDate));
+    }
+    const [event] = await db.select().from(piggyBankEvents).where(and(...conditions)).limit(1);
+    return event;
+  }
+
+  async createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent> {
+    const [created] = await db.insert(piggyBankEvents).values(event).returning();
+    return created;
+  }
+
+  async addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles)
+      .set({ piggyBankCoins: sql`LEAST(piggy_bank_coins + ${coins}, 60)` })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles)
+      .set({ piggyBankReward: reward, piggyBankNeedsRewardSetup: false })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async claimPiggyBank(userId: string): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles)
+      .set({ piggyBankCoins: 0, piggyBankNeedsRewardSetup: true })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return updated;
   }
 }
 

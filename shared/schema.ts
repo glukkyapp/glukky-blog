@@ -35,6 +35,9 @@ export const userProfiles = pgTable("user_profiles", {
   tipStayCycles: integer("tip_stay_cycles").notNull().default(0),
   hba1cLevel: real("hba1c_level"),
   bloodTestDate: date("blood_test_date"),
+  piggyBankCoins: integer("piggy_bank_coins").notNull().default(0),
+  piggyBankReward: text("piggy_bank_reward"),
+  piggyBankNeedsRewardSetup: boolean("piggy_bank_needs_reward_setup").notNull().default(true),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
@@ -72,6 +75,7 @@ export const dailyLogs = pgTable("daily_logs", {
   walkTired: boolean("walk_tired"),
   dietResponse: dietResponseEnum("diet_response"),
   dinnerSuccess: boolean("dinner_success"),
+  isBackfill: boolean("is_backfill").notNull().default(false),
 });
 
 export const weeklyReports = pgTable("weekly_reports", {
@@ -96,12 +100,24 @@ export const monthlyReports = pgTable("monthly_reports", {
   generatedAt: timestamp("generated_at").defaultNow(),
 });
 
+export const piggyBankEvents = pgTable("piggy_bank_events", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  achievementType: text("achievement_type").notNull(),
+  coinsAwarded: integer("coins_awarded").notNull(),
+  description: text("description").notNull(),
+  weekNumber: integer("week_number"),
+  eventDate: date("event_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true });
 export const insertWeeklyPlanDaySchema = createInsertSchema(weeklyPlanDays).omit({ id: true });
 export const insertDailyLogSchema = createInsertSchema(dailyLogs).omit({ id: true });
 export const insertWeeklyReportSchema = createInsertSchema(weeklyReports).omit({ id: true });
 export const insertMonthlyReportSchema = createInsertSchema(monthlyReports).omit({ id: true });
+export const insertPiggyBankEventSchema = createInsertSchema(piggyBankEvents).omit({ id: true, createdAt: true });
 
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -115,6 +131,8 @@ export type InsertWeeklyReport = z.infer<typeof insertWeeklyReportSchema>;
 export type WeeklyReport = typeof weeklyReports.$inferSelect;
 export type InsertMonthlyReport = z.infer<typeof insertMonthlyReportSchema>;
 export type MonthlyReport = typeof monthlyReports.$inferSelect;
+export type InsertPiggyBankEvent = z.infer<typeof insertPiggyBankEventSchema>;
+export type PiggyBankEvent = typeof piggyBankEvents.$inferSelect;
 
 export const STRUGGLE_PRIORITY = [
   "sugary_food_drink",
