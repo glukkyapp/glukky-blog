@@ -1,9 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Lock, Target, List, Download, LogOut, Settings } from "lucide-react";
+import { User, Target, Download, LogOut, Settings, Heart, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const STRUGGLE_NAMES: Record<string, string> = {
   sugary_food_drink: "Sugary Food & Drinks",
@@ -11,6 +15,13 @@ const STRUGGLE_NAMES: Record<string, string> = {
   eat_out: "Eating Out",
   portions: "Portion Control",
   snacks: "Snacking",
+};
+
+const SLEEP_LABELS: Record<string, string> = {
+  regular_10_6: "Regular (10pm–6am)",
+  other_regular: "Other regular schedule",
+  night_shifts: "Night shifts",
+  irregular: "Irregular",
 };
 
 interface ProfileData {
@@ -24,6 +35,8 @@ interface ProfileData {
   hasLateDinner: boolean;
   dinnerMastered: boolean;
   notificationEmail: string;
+  hba1cLevel: number | null;
+  bloodTestDate: string | null;
 }
 
 interface RoadmapData {
@@ -71,6 +84,117 @@ function ProfileSkeleton() {
   );
 }
 
+function formatEatingOut(value: string): string {
+  const num = parseInt(value, 10);
+  if (isNaN(num) || num === 0) return "Rarely / never";
+  if (num === 1) return "About once a week";
+  return `About ${num} times a week`;
+}
+
+function formatWalkDuration(duration: number): string {
+  if (duration < 5) return "Not set";
+  return `${duration} min each`;
+}
+
+function HealthMarkersCard({ profile }: { profile: ProfileData }) {
+  const { toast } = useToast();
+  const [editingHba1c, setEditingHba1c] = useState(false);
+  const [editingDate, setEditingDate] = useState(false);
+  const [hba1cValue, setHba1cValue] = useState(profile.hba1cLevel?.toString() ?? "");
+  const [dateValue, setDateValue] = useState(profile.bloodTestDate ?? "");
+
+  const mutation = useMutation({
+    mutationFn: async (data: { hba1cLevel?: number | null; bloodTestDate?: string | null }) => {
+      const res = await apiRequest("PATCH", "/api/profile/health-markers", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "Health markers saved" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save", variant: "destructive" });
+    },
+  });
+
+  const saveHba1c = () => {
+    if (!editingHba1c) return;
+    setEditingHba1c(false);
+    const parsed = parseFloat(hba1cValue);
+    const value = isNaN(parsed) ? null : parsed;
+    mutation.mutate({ hba1cLevel: value });
+  };
+
+  const saveDate = () => {
+    if (!editingDate) return;
+    setEditingDate(false);
+    const value = dateValue || null;
+    mutation.mutate({ bloodTestDate: value });
+  };
+
+  return (
+    <Card data-testid="card-health-markers">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <Heart className="w-5 h-5 text-muted-foreground" />
+        <CardTitle className="text-base">Health Markers</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">HbA1c level</span>
+          {editingHba1c ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="0.1"
+                className="w-20 h-7 text-sm"
+                value={hba1cValue}
+                onChange={(e) => setHba1cValue(e.target.value)}
+                onBlur={saveHba1c}
+                onKeyDown={(e) => e.key === "Enter" && saveHba1c()}
+                autoFocus
+                data-testid="input-hba1c"
+              />
+              <span className="text-xs">%</span>
+            </div>
+          ) : (
+            <button
+              className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
+              onClick={() => { setEditingHba1c(true); setHba1cValue(profile.hba1cLevel?.toString() ?? ""); }}
+              data-testid="button-edit-hba1c"
+            >
+              {profile.hba1cLevel != null ? `${profile.hba1cLevel}%` : "Tap to add"}
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Last blood test</span>
+          {editingDate ? (
+            <Input
+              type="date"
+              className="w-36 h-7 text-sm"
+              value={dateValue}
+              onChange={(e) => setDateValue(e.target.value)}
+              onBlur={saveDate}
+              autoFocus
+              data-testid="input-blood-test-date"
+            />
+          ) : (
+            <button
+              className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
+              onClick={() => { setEditingDate(true); setDateValue(profile.bloodTestDate ?? ""); }}
+              data-testid="button-edit-blood-test-date"
+            >
+              {profile.bloodTestDate ?? "Tap to add"}
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
 
@@ -92,15 +216,9 @@ export default function ProfilePage() {
     return <ProfileSkeleton />;
   }
 
-  const upNextStruggles: string[] = [];
-  if (roadmap?.struggles && roadmap.currentStruggle) {
-    const currentIndex = roadmap.struggles.indexOf(roadmap.currentStruggle);
-    if (currentIndex >= 0 && currentIndex < roadmap.struggles.length - 1) {
-      upNextStruggles.push(...roadmap.struggles.slice(currentIndex + 1));
-    }
-  }
-
-  const dinnerLabel = profile?.hasLateDinner ? "After 9pm" : "Before 9pm";
+  const dinnerLabel = profile?.hasLateDinner ? "After 9pm (working on it!)" : "Before 9pm";
+  const walkDurationDisplay = formatWalkDuration(profile?.walkDuration ?? 0);
+  const walksPerWeek = profile?.walksPerWeek ?? 0;
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="profile-page">
@@ -113,20 +231,26 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p data-testid="text-walks">
-            <span className="text-muted-foreground">Activity:</span>{" "}
-            Walks {profile?.walksPerWeek ?? 0}x/week at {profile?.walkDuration ?? 0} min
+            <span className="text-muted-foreground">Post-meal walks:</span>{" "}
+            {walksPerWeek > 0
+              ? `${walksPerWeek}× per week, ${walkDurationDisplay}`
+              : "None yet"}
           </p>
           <p data-testid="text-dinner-time">
-            <span className="text-muted-foreground">Dinner time:</span> {dinnerLabel}
+            <span className="text-muted-foreground">Usual dinner time:</span> {dinnerLabel}
           </p>
           <p data-testid="text-sleep-pattern">
-            <span className="text-muted-foreground">Sleep:</span> {profile?.sleepPattern ?? "N/A"}
+            <span className="text-muted-foreground">Sleep pattern:</span>{" "}
+            {SLEEP_LABELS[profile?.sleepPattern ?? ""] ?? profile?.sleepPattern ?? "N/A"}
           </p>
           <p data-testid="text-eating-out">
-            <span className="text-muted-foreground">Eating out:</span> {profile?.eatingOutFrequency ?? "N/A"}
+            <span className="text-muted-foreground">Eating out:</span>{" "}
+            {formatEatingOut(profile?.eatingOutFrequency ?? "0")}
           </p>
         </CardContent>
       </Card>
+
+      {profile && <HealthMarkersCard profile={profile} />}
 
       <Card data-testid="card-current-focus">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
@@ -142,31 +266,6 @@ export default function ProfilePage() {
           {roadmap?.currentTip && (
             <p data-testid="text-current-tip" className="text-muted-foreground">
               {roadmap.currentTip}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card data-testid="card-up-next">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-          <List className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">Coming Up Next</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {upNextStruggles.length > 0 ? (
-            upNextStruggles.map((struggle, index) => (
-              <div
-                key={struggle}
-                className="flex items-center gap-2 text-muted-foreground"
-                data-testid={`text-up-next-${index}`}
-              >
-                <Lock className="w-4 h-4" />
-                <span>{STRUGGLE_NAMES[struggle] ?? struggle}</span>
-              </div>
-            ))
-          ) : (
-            <p data-testid="text-all-covered" className="text-muted-foreground">
-              All areas covered!
             </p>
           )}
         </CardContent>

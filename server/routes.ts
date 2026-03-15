@@ -9,7 +9,7 @@ import {
   processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
   getWeekStartDate, evaluateDietStruggle,
 } from "./engine";
-import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS } from "@shared/schema";
+import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS, type InsertUserProfile } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -63,6 +63,47 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.patch("/api/profile/health-markers", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { hba1cLevel, bloodTestDate } = req.body;
+
+      const updateData: Partial<InsertUserProfile> = {};
+      if (hba1cLevel !== undefined) {
+        if (hba1cLevel === null) {
+          updateData.hba1cLevel = null;
+        } else {
+          const parsed = parseFloat(hba1cLevel);
+          if (isNaN(parsed) || parsed < 0 || parsed > 20) {
+            return res.status(400).json({ message: "Invalid HbA1c level. Must be a number between 0 and 20." });
+          }
+          updateData.hba1cLevel = parsed;
+        }
+      }
+      if (bloodTestDate !== undefined) {
+        if (bloodTestDate === null) {
+          updateData.bloodTestDate = null;
+        } else {
+          if (typeof bloodTestDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(bloodTestDate)) {
+            return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+          }
+          const dateObj = new Date(bloodTestDate + "T00:00:00Z");
+          if (isNaN(dateObj.getTime())) {
+            return res.status(400).json({ message: "Invalid date." });
+          }
+          updateData.bloodTestDate = bloodTestDate;
+        }
+      }
+
+      const profile = await storage.updateProfile(userId, updateData);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating health markers:", error);
+      res.status(500).json({ message: "Failed to update health markers" });
     }
   });
 

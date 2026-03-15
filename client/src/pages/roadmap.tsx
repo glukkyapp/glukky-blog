@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Check, Lock } from "lucide-react";
+import { TrendingUp, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,7 +63,8 @@ export default function RoadmapPage() {
     tipLadders,
   } = data;
 
-  const currentStruggleIndex = struggles.indexOf(currentStruggle);
+  const rawIndex = struggles.indexOf(currentStruggle);
+  const currentStruggleIndex = rawIndex >= 0 ? rawIndex : 0;
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -91,7 +92,7 @@ export default function RoadmapPage() {
         </CardContent>
       </Card>
 
-      {(isDinnerFocus || dinnerMastered) && (
+      {isDinnerFocus && (
         <Card data-testid="card-dinner-progress">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Early Dinner</CardTitle>
@@ -132,8 +133,7 @@ export default function RoadmapPage() {
           Struggle Queue
         </h2>
         <div className="space-y-2">
-          {struggles.map((struggle, index) => {
-            const isCompleted = index < currentStruggleIndex;
+          {struggles.filter((_, index) => index >= currentStruggleIndex).map((struggle) => {
             const isCurrent = struggle === currentStruggle;
             const label = STRUGGLE_LABELS[struggle] || struggle;
 
@@ -144,14 +144,10 @@ export default function RoadmapPage() {
                 className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground font-medium"
-                    : isCompleted
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground opacity-60"
+                    : "text-muted-foreground opacity-60"
                 }`}
               >
-                {isCompleted ? (
-                  <Check className="h-4 w-4 shrink-0" />
-                ) : isCurrent ? (
+                {isCurrent ? (
                   <TrendingUp className="h-4 w-4 shrink-0" />
                 ) : (
                   <Lock className="h-4 w-4 shrink-0" />

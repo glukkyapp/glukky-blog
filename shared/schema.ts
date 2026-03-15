@@ -33,6 +33,8 @@ export const userProfiles = pgTable("user_profiles", {
   stretchSuccessWeeks: integer("stretch_success_weeks").notNull().default(0),
   tipCycleStartWeek: integer("tip_cycle_start_week").notNull().default(0),
   tipStayCycles: integer("tip_stay_cycles").notNull().default(0),
+  hba1cLevel: real("hba1c_level"),
+  bloodTestDate: date("blood_test_date"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

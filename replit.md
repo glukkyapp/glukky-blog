@@ -22,6 +22,7 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Late Dinner Priority:** A system to encourage earlier dinners or provide tactics for managing late meals. Graduation uses a 3-week window evaluation (matching the diet struggle strategy): scans the last 3 weeks with dinner data, aggregates success across all of them, and graduates at 80%+ success. Non-consecutive — switching to a different focus does not reset progress.
 - **Diet Struggle System:** A progressive mastery program for dietary challenges (e.g., sugary foods, portions), involving 3-week cycles and tip ladders.
 - **Bi-Weekly Triggers** (checked every week when `currentWeek >= 3`): Includes "Walking Bridge" for inactive users, "Auto-Escalation" for consistent stretch success, and "Stagnation Pivot" for diet.
+- **Health Markers:** The `user_profiles` table includes nullable `hba1cLevel` (real) and `bloodTestDate` (date) fields. These are editable from the profile page via PATCH `/api/profile/health-markers`.
 - **Fatigue Detection:** Proposes rest days after consistent "tired" feedback.
 - **Next-Day Adjustment:** Dynamically alters tomorrow's walk plan based on today's performance and fatigue. Only applies in walk weeks — stretch weeks are never modified by fatigue logic.
 - **Stretch Week Detection:** `isStretchWeek` boolean on `weekly_plans` table, set at plan creation from `profile.isStretchMode`. This is a historical snapshot — changing stretch mode later does not alter past plans. Replaces the old `adjustedToStretch` column (removed).
