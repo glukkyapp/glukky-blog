@@ -50,16 +50,10 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
       `}</style>
       <div
         style={{
-          background: "rgba(255,255,255,0.95)",
-          borderRadius: "20px",
-          padding: "16px 24px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: "4px",
-          border: "2px solid #14A085",
-          minWidth: "160px",
         }}
       >
         <div style={{ width: 110, height: 110 }}>
@@ -77,6 +71,7 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
             fontSize: "15px",
             color: "#14A085",
             letterSpacing: "0.01em",
+            textShadow: "0 1px 4px rgba(255,255,255,0.9)",
           }}
           data-testid="text-coin-saved-count"
         >
