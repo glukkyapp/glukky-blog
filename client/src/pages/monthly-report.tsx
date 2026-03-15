@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PieChart, Pie, Cell } from "recharts";
 import {
   Dumbbell, Droplets, Apple, Flame, Cookie, Clock,
   UtensilsCrossed, ShoppingBag, Leaf, Check, Coffee, LucideIcon,
+  Star, Heart, Zap,
 } from "lucide-react";
 
 interface TipPerformance {
@@ -33,30 +33,24 @@ const STRUGGLE_NAMES: Record<string, string> = {
   snacks: "Snacking",
 };
 
-const PIE_COLORS = ["#14A085", "#22c55e", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#ec4899"];
+const ICON_POOL: LucideIcon[] = [
+  Apple, Droplets, Flame, Cookie, Clock, UtensilsCrossed,
+  ShoppingBag, Coffee, Leaf, Star, Heart, Zap,
+];
 
-function getTipIcon(tip: string): LucideIcon {
-  const lower = tip.toLowerCase();
-  if (lower.includes("juice") || lower.includes("water") || lower.includes("dilute") || lower.includes("drink")) return Droplets;
-  if (lower.includes("yogurt") || lower.includes("berr") || lower.includes("fruit") || lower.includes("dessert") || lower.includes("apple")) return Apple;
-  if (lower.includes("fried") || lower.includes("oil") || lower.includes("steam") || lower.includes("grill")) return Flame;
-  if (lower.includes("snack") || lower.includes("nuts") || lower.includes("edamame") || lower.includes("cookie")) return Cookie;
-  if (lower.includes("dinner") || lower.includes("kitchen") || lower.includes("closure") || lower.includes("dusk")) return Clock;
-  if (lower.includes("plate") || lower.includes("portion") || lower.includes("vegg") || lower.includes("sides") || lower.includes("method")) return UtensilsCrossed;
-  if (lower.includes("decouple") || lower.includes("share") || lower.includes("takeaway") || lower.includes("eat out")) return ShoppingBag;
-  if (lower.includes("coffee") || lower.includes("tea")) return Coffee;
-  return Leaf;
-}
+const BUBBLE_COLORS = ["#14A085", "#22c55e", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#ec4899"];
+
+const MIN_BUBBLE = 36;
+const MAX_BUBBLE = 72;
 
 export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportData; monthName: string }) {
   const sortedTips = Object.entries(data.tipPerformance).sort(([, a], [, b]) => b.yes - a.yes);
-  const tipsWithSuccess = sortedTips.filter(([, perf]) => perf.yes > 0);
+  const maxYes = sortedTips.length > 0 ? Math.max(...sortedTips.map(([, p]) => p.yes)) : 0;
 
-  const pieData = tipsWithSuccess.map(([name, perf], i) => ({
-    name,
-    value: perf.yes,
-    color: PIE_COLORS[i % PIE_COLORS.length],
-  }));
+  function getBubbleSize(yes: number): number {
+    if (maxYes === 0) return MIN_BUBBLE;
+    return MIN_BUBBLE + (yes / maxYes) * (MAX_BUBBLE - MIN_BUBBLE);
+  }
 
   return (
     <div className="space-y-5">
@@ -73,42 +67,51 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
             <p className="text-sm text-muted-foreground">No diet tips tracked this month.</p>
           ) : (
             <>
-              {pieData.length > 0 && (
-                <div className="flex justify-center mb-5" data-testid="pie-chart-tips">
-                  <PieChart width={180} height={180}>
-                    <Pie
-                      data={pieData}
-                      cx={90}
-                      cy={90}
-                      outerRadius={85}
-                      dataKey="value"
-                      strokeWidth={2}
-                      stroke="white"
-                    >
-                      {pieData.map((entry, i) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </div>
-              )}
+              <div className="flex flex-wrap items-end justify-center gap-3 mb-5" data-testid="bubble-row-tips">
+                {sortedTips.map(([tip, perf], i) => {
+                  const Icon = ICON_POOL[i % ICON_POOL.length];
+                  const color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
+                  const size = getBubbleSize(perf.yes);
+                  const iconSize = Math.round(size * 0.45);
+
+                  return (
+                    <div key={tip} className="flex flex-col items-center gap-1" data-testid={`bubble-${tip}`}>
+                      <div
+                        className="rounded-full flex items-center justify-center"
+                        style={{
+                          width: size,
+                          height: size,
+                          backgroundColor: color + "20",
+                          border: `2px solid ${color}`,
+                        }}
+                      >
+                        <Icon style={{ width: iconSize, height: iconSize, color }} />
+                      </div>
+                      <span
+                        className="text-[10px] text-muted-foreground text-center leading-tight max-w-[72px] truncate"
+                        title={tip}
+                      >
+                        {tip}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
               <div className="space-y-3">
-                {sortedTips.map(([tip, perf]) => {
-                  const Icon = getTipIcon(tip);
-                  const pieEntry = pieData.find((p) => p.name === tip);
-                  const color = pieEntry?.color ?? "#94a3b8";
-                  const hasSuccess = perf.yes > 0;
+                {sortedTips.map(([tip, perf], i) => {
+                  const Icon = ICON_POOL[i % ICON_POOL.length];
+                  const color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
 
                   return (
                     <div key={tip} className="flex items-start gap-2.5" data-testid={`tip-item-${tip}`}>
                       <div
                         className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
-                        style={{ backgroundColor: hasSuccess ? color + "25" : undefined }}
+                        style={{ backgroundColor: color + "25" }}
                       >
                         <Icon
                           className="w-4 h-4"
-                          style={{ color: hasSuccess ? color : undefined }}
+                          style={{ color }}
                           data-testid={`tip-icon-${tip}`}
                         />
                       </div>
@@ -162,7 +165,8 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
                   <ul className="space-y-1.5 ml-1">
                     {sortedStruggleTips.map((tip) => {
                       const perf = data.tipPerformance[tip];
-                      const Icon = getTipIcon(tip);
+                      const tipIdx = sortedTips.findIndex(([t]) => t === tip);
+                      const Icon = tipIdx >= 0 ? ICON_POOL[tipIdx % ICON_POOL.length] : Leaf;
                       return (
                         <li key={tip} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`struggle-tip-${tip}`}>
                           <Icon className="w-3.5 h-3.5 flex-shrink-0" />
