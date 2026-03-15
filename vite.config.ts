@@ -24,6 +24,7 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "react-native-svg": "react-native-svg/src/ReactNativeSVG.web.ts",
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
