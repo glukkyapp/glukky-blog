@@ -260,6 +260,33 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/plan/weekly/report-seen", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      let coinsAwarded = 0;
+      const completedWeekNum = profile.currentWeek - 1;
+      if (completedWeekNum > 0) {
+        const completedPlan = await storage.getWeeklyPlan(userId, completedWeekNum);
+        if (completedPlan) {
+          const completedPlanDays = await storage.getWeeklyPlanDays(completedPlan.id);
+          const completedPlanStart = typeof completedPlan.startDate === "string"
+            ? completedPlan.startDate
+            : (completedPlan.startDate as any).toISOString().split("T")[0];
+          const completedLogs = await storage.getDailyLogsByWeek(userId, completedWeekNum, completedPlanStart);
+          coinsAwarded = await evaluateWeeklyAchievements(userId, completedWeekNum, completedPlan, completedPlanDays, completedLogs);
+        }
+      }
+
+      res.json({ coinsAwarded });
+    } catch (error) {
+      console.error("Error in report-seen:", error);
+      res.status(500).json({ message: "Failed to evaluate weekly achievements" });
+    }
+  });
+
   app.post("/api/plan/weekly", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -347,20 +374,6 @@ export async function registerRoutes(
           }
         }
 
-        try {
-          const completedWeekNum = profile.currentWeek - 1;
-          const completedPlan = await storage.getWeeklyPlan(userId, completedWeekNum);
-          if (completedPlan) {
-            const completedPlanDays = await storage.getWeeklyPlanDays(completedPlan.id);
-            const completedPlanStart = typeof completedPlan.startDate === "string"
-              ? completedPlan.startDate
-              : (completedPlan.startDate as any).toISOString().split("T")[0];
-            const completedLogs = await storage.getDailyLogsByWeek(userId, completedWeekNum, completedPlanStart);
-            await evaluateWeeklyAchievements(userId, completedWeekNum, completedPlan, completedPlanDays, completedLogs);
-          }
-        } catch (weeklyAchErr) {
-          console.error("Weekly achievement evaluation error:", weeklyAchErr);
-        }
       }
 
       const freshProfileForStretch = await storage.getProfile(userId);

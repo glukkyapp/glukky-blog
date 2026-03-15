@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -121,6 +122,8 @@ export default function WeeklyPlanner() {
   })();
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [coinPopupCoins, setCoinPopupCoins] = useState(0);
+  const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
   const [acceptedEscalation, setAcceptedEscalation] = useState<boolean | null>(null);
   const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "glycemic_gap" | "ask_day_again" | "ask_standing_tap" | "pick_standing_tap_day" | "done">("ask_day");
@@ -327,6 +330,18 @@ export default function WeeklyPlanner() {
     if (clampedStepIndex + 1 < steps.length) {
       setStepIndex(clampedStepIndex + 1);
     }
+  }
+
+  async function handleWeeklyReportNext() {
+    try {
+      const res = await apiRequest("POST", "/api/plan/weekly/report-seen", {});
+      const data = await res.json();
+      if (data?.coinsAwarded > 0) {
+        setCoinPopupCoins(data.coinsAwarded);
+      }
+    } catch {
+    }
+    goNext();
   }
 
   function goBack() {
@@ -1594,6 +1609,7 @@ export default function WeeklyPlanner() {
   }
 
   return (
+    <>
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -1643,7 +1659,7 @@ export default function WeeklyPlanner() {
         {!isLastStep && (
           <Button
             size="sm"
-            onClick={goNext}
+            onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
             disabled={currentStepId === "dietTipSelection" && !selectedTip}
             data-testid="button-next"
           >
@@ -1654,5 +1670,7 @@ export default function WeeklyPlanner() {
 
       {renderMonthlyReportMessage()}
     </div>
+    <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
+    </>
   );
 }

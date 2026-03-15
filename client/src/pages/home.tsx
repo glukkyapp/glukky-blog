@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -52,6 +53,8 @@ export default function Home() {
   const [catchupTacticPick, setCatchupTacticPick] = useState<string | null>(null);
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
+  const [coinPopupCoins, setCoinPopupCoins] = useState(0);
+  const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
@@ -240,6 +243,10 @@ export default function Home() {
     onSuccess: async (data: any, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
 
+      if (data?.coinsAwarded > 0) {
+        setCoinPopupCoins(data.coinsAwarded);
+      }
+
       if (data?.nextDayAdjustment && (variables.walkTired !== undefined || variables.walkCompleted !== undefined)) {
         await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
         const freshData = queryClient.getQueryData<any>(["/api/calendar", weekNumber]);
@@ -275,10 +282,16 @@ export default function Home() {
 
   const catchupMutation = useMutation({
     mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null; dietResponse?: string | null }) => {
-      return await apiRequest("POST", "/api/log", data);
+      const res = await apiRequest("POST", "/api/log", data);
+      return res.json();
     },
     onSuccess: async (data: any, variables: any) => {
       await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
+
+      if (data?.coinsAwarded > 0) {
+        setCoinPopupCoins(data.coinsAwarded);
+      }
+
       const wasTiredMiss = variables.walkCompleted === false && variables.walkTired === true;
       if (data?.nextDayAdjustment) {
         const adj = data.nextDayAdjustment;
@@ -1208,6 +1221,7 @@ export default function Home() {
   };
 
   return (
+    <>
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center gap-2" data-testid="text-week-header">
         <Target className="w-5 h-5 text-primary" />
@@ -1696,5 +1710,7 @@ export default function Home() {
         </CardContent>
       </Card>)}
     </div>
+    <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
+    </>
   );
 }
