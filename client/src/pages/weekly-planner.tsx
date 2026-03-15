@@ -9,9 +9,10 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles, Timer, Dumbbell, ExternalLink,
+  Wine, Soup, Minus, Activity, Sparkles, Timer,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
+import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -31,12 +32,7 @@ export default function WeeklyPlanner() {
   const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"] });
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
-  const { data: monthlyReport, isLoading: monthlyReportLoading } = useQuery<{
-    totalMinutes: number;
-    tipPerformance: Record<string, { yes: number; no: number; noChance: number }>;
-    struggleStatus: Record<string, { tips: string[]; completed: boolean }>;
-    weeksAnalyzed: number;
-  }>({
+  const { data: monthlyReport, isLoading: monthlyReportLoading } = useQuery<MonthlyReportData>({
     queryKey: ["/api/report/monthly", "0"],
     enabled: (() => {
       const now = devTime?.dateOverride ? new Date(devTime.dateOverride + "T00:00:00") : new Date();
@@ -1453,95 +1449,7 @@ export default function WeeklyPlanner() {
     })();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const isLastDayOfMonth = now.getDate() === lastDay;
-    const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const monthName = lastDayDate.toLocaleDateString("en-US", { month: "long" });
-
-    if (isLastDayOfMonth && monthlyReport && monthlyReport.weeksAnalyzed >= 4) {
-      const sortedTips = Object.entries(monthlyReport.tipPerformance).sort(
-        ([, a], [, b]) => a.yes - b.yes
-      );
-      const bestTipName = sortedTips.length > 0 ? sortedTips[sortedTips.length - 1][0] : null;
-
-      return (
-        <Card className="mt-4" data-testid="card-monthly-report-status">
-          <CardContent className="pt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold">Monthly Deep Dive</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs gap-1"
-                onClick={() => setLocation("/monthly")}
-                data-testid="button-view-full-monthly"
-              >
-                Full Report <ExternalLink className="w-3 h-3" />
-              </Button>
-            </div>
-
-            <div data-testid="inline-struggle-status">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">Diet Struggle Status</span>
-              </div>
-              <div className="space-y-2">
-                {Object.entries(monthlyReport.struggleStatus).map(([struggle, info]) => (
-                  <div key={struggle} className="space-y-0.5" data-testid={`inline-struggle-${struggle}`}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {info.completed && <Check className="w-3.5 h-3.5 text-green-500" />}
-                      <span className={`text-sm font-medium ${info.completed ? "line-through text-muted-foreground" : ""}`}>
-                        {struggle}
-                      </span>
-                    </div>
-                    <ul className="ml-5 space-y-0.5">
-                      {info.tips.map((tip, i) => (
-                        <li key={i} className="text-xs text-muted-foreground">{tip}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div data-testid="inline-tip-performance">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-4 h-4" />
-                <span className="text-sm font-medium">Diet Tip Performance</span>
-              </div>
-              <div className="space-y-1.5">
-                {sortedTips.map(([tip, perf]) => (
-                  <div key={tip} className="flex items-center justify-between gap-2 flex-wrap" data-testid={`inline-perf-${tip}`}>
-                    <span className="flex items-center gap-1 text-xs font-medium">
-                      {tip === bestTipName && <Award className="w-3.5 h-3.5 text-yellow-500" />}
-                      {tip}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {perf.yes}Y|{perf.no}N|{perf.noChance}NC
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div data-testid="inline-physical-tank">
-              <div className="flex items-center gap-2 mb-2">
-                <Dumbbell className="w-4 h-4" />
-                <span className="text-sm font-medium">Physical Tank</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold" data-testid="inline-total-minutes">{monthlyReport.totalMinutes}</span>
-                <span className="text-xs text-muted-foreground">total minutes</span>
-                <span className="text-sm font-semibold" data-testid="inline-avg-per-week">
-                  {Math.round(monthlyReport.totalMinutes / monthlyReport.weeksAnalyzed)} min/week avg
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
+    const monthName = now.toLocaleDateString("en-US", { month: "long" });
 
     if (isLastDayOfMonth && monthlyReportLoading) {
       return (
@@ -1560,6 +1468,14 @@ export default function WeeklyPlanner() {
       );
     }
 
+    if (isLastDayOfMonth && monthlyReport && monthlyReport.weeksAnalyzed >= 4) {
+      return (
+        <div className="mt-4" data-testid="card-monthly-report-status">
+          <MonthlyReportContent data={monthlyReport} monthName={monthName} />
+        </div>
+      );
+    }
+
     return (
       <Card className="mt-4" data-testid="card-monthly-report-status">
         <CardContent className="pt-4">
@@ -1568,26 +1484,9 @@ export default function WeeklyPlanner() {
             <p className="text-sm font-semibold">Monthly Report</p>
           </div>
           {isLastDayOfMonth ? (
-            monthlyReport && monthlyReport.weeksAnalyzed < 4 ? (
-              <p className="text-sm text-muted-foreground" data-testid="text-monthly-not-enough-data">
-                Complete at least 4 weeks to see your monthly report.
-              </p>
-            ) : (
-              <div>
-                <p className="text-sm text-primary font-medium" data-testid="text-monthly-available">
-                  Your monthly report is available today!
-                </p>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="px-0 text-xs"
-                  onClick={() => setLocation("/monthly")}
-                  data-testid="button-go-monthly"
-                >
-                  View Full Report <ExternalLink className="w-3 h-3 ml-1" />
-                </Button>
-              </div>
-            )
+            <p className="text-sm text-muted-foreground" data-testid="text-monthly-not-enough-data">
+              Complete at least 4 weeks to see your monthly report.
+            </p>
           ) : (
             <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
               Your monthly report will be available on {monthName} {lastDay}
