@@ -143,9 +143,12 @@ export default function WeeklyPlanner() {
 
   const steps = useMemo(() => {
     const s: string[] = [];
-    if (!isFirstWeek) s.push("weeklyReport", "planTransition");
+    if (!isFirstWeek) {
+      s.push("weeklyReport");
+      if (reflection?.dinnerJustGraduated) s.push("dinnerGraduationCelebration");
+      s.push("planTransition");
+    }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
-    if (reflection?.dinnerJustGraduated) s.push("dinnerGraduationCelebration");
     if (noWalkDays) s.push("stretchOffer");
     if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
@@ -659,7 +662,9 @@ export default function WeeklyPlanner() {
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-stretch-week-explanation">
               <Activity className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-sm text-muted-foreground">
-                Walking has been tough these past 2 weeks — that's okay! We're switching to gentle 2-minute stretches to keep the habit going without the pressure.
+                {profile?.isStretchMode
+                  ? "Let's take a bit more time to get comfortable with stretching before heading back to walks — you're building a great habit!"
+                  : "Walking has been tough these past 2 weeks — that's okay! We're switching to gentle 2-minute stretches to keep the habit going without the pressure."}
               </p>
             </div>
           )}
@@ -1119,13 +1124,13 @@ export default function WeeklyPlanner() {
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-col items-center text-center gap-4">
             <Award className="w-12 h-12 text-amber-500" />
-            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">Dinner Mastered!</h2>
+            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">Late Dinner Improvement Mastered!</h2>
             <div className="bg-green-50 dark:bg-green-950/30 rounded-lg px-6 py-3">
               <p className="text-3xl font-bold text-green-600" data-testid="text-dinner-grad-pct">{pct}%</p>
               <p className="text-sm text-muted-foreground">dinner success over the last 3 weeks</p>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Amazing work! Your late dinner routine is now under control. We'll keep tracking dinner days for scheduling — you've earned it.
+              Amazing work! Your late dinner routine is now under control. We'll move on to the next focus for now, but you can always come back to late dinner if you prefer.
             </p>
           </div>
         </CardContent>

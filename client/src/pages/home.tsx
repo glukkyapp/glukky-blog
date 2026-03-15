@@ -378,7 +378,7 @@ export default function Home() {
     if (dayData.lateDinnerScheduled) {
       tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
     }
-    if (dayData.eatOutScheduled) {
+    if (dayData.eatOutScheduled && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out')) {
       tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
     }
     if (calendarPlan?.dietTip) {
@@ -1346,7 +1346,7 @@ export default function Home() {
             if (dayData.lateDinnerScheduled) {
               tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
             }
-            if (dayData.eatOutScheduled) {
+            if (dayData.eatOutScheduled && !plan?.isDinnerFocus && (!plan?.dietStruggle || plan?.dietStruggle === 'eat_out')) {
               tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
             }
             if (plan?.dietTip) {
@@ -1575,7 +1575,7 @@ export default function Home() {
               </div>
             )}
 
-            {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
+            {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out / Takeaway</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
@@ -1638,7 +1638,7 @@ export default function Home() {
               )}
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
               <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
-              {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && (
+              {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned Eating Out / Takeaway</div>
               )}
             </div>
