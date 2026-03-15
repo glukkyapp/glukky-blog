@@ -271,6 +271,8 @@ export default function WeeklyPlanner() {
       } else {
         if (walkDur < 20) {
           setNegotiationStep("ask_minutes");
+        } else if (walkFreq >= 5) {
+          setNegotiationStep("ask_day_again");
         } else {
           setNegotiationStep("glycemic_gap");
         }
