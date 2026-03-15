@@ -67,7 +67,7 @@ export default function WeeklyPlanner() {
     enabled: !isFirstWeek,
   });
 
-  const prevWeekNumber = (currentPlan?.weekNumber || profile?.currentWeek || 1) - 1;
+  const prevWeekNumber = (profile?.currentWeek || 1) - 1;
   const { data: prevCalendarData } = useQuery({
     queryKey: ["/api/calendar", prevWeekNumber],
     enabled: !isFirstWeek && prevWeekNumber >= 1,
