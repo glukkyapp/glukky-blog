@@ -10,6 +10,7 @@ Ask before making major changes.
 Do not make changes to the `server/engine.ts` file without explicit request.
 I prefer to be asked before any significant modifications are made to the core algorithms, especially those related to walk negotiation and diet struggle systems.
 I prefer clear communication regarding the purpose and impact of any proposed changes.
+When adding new diet tips to DIET_TIP_LADDERS in shared/schema.ts, also add an icon entry to TIP_ICON_MAP in client/src/pages/monthly-report.tsx and ask the product owner to assign a lucide icon.
 
 ## System Architecture
 The application is built with a React + TypeScript frontend, utilizing Wouter for routing, TanStack React Query for data fetching, Tailwind CSS and Shadcn UI for styling, and Framer Motion for animations. The backend is an Express.js application, with data persistence handled by PostgreSQL via Drizzle ORM. User authentication is managed through an email/password system using bcrypt and express-session.

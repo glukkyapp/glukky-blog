@@ -126,7 +126,7 @@ export const STRUGGLE_PRIORITY = [
 
 export const DIET_TIP_LADDERS: Record<string, string[]> = {
   sugary_food_drink: ["Dilute juice 1:1 with water", "Swap dessert for yogurt + berries", "Limit fruit to 1x per week"],
-  oily_fried_food: ["Try Steam Burst Hack (steam then quick sear)", "Choose grilled over fried"],
+  oily_fried_food: ["Steam your food first, then sear briefly", "Choose grilled over fried"],
   eat_out: ["Decouple (eat at home first, socialize out)", "Share main dishes", "Swap sides for vegetables"],
   portions: ["Use the plate method (½ veggies, ¼ protein, ¼ carbs)"],
   snacks: ["Kitchen Closure after dinner", "Switch to edamame or nuts"],
