@@ -201,8 +201,13 @@ export default function Home() {
         if (isCatchUpCheck) {
           if (tp.dinnerSuccess === null || tp.dinnerSuccess === undefined) allDone = false;
         } else {
-          if (!labelSet) allDone = false;
-          if (labelSet && tp.dinnerSuccess === null) allDone = false;
+          if (tp.dinnerSuccess === false) {
+            // Recorded as failed — complete without requiring a label
+          } else if (!labelSet) {
+            allDone = false;
+          } else if (tp.dinnerSuccess === null) {
+            allDone = false;
+          }
         }
       }
       if (tp.walkScheduled) {
@@ -499,6 +504,51 @@ export default function Home() {
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-catchup-dinner-no"
+            >
+              I didn't manage it
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!isCatchUpCheckIn && effectiveHour >= 22 && !dinnerLabelSet) {
+      return (
+        <div className="space-y-3" data-testid="section-dinner-late-checkin">
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+            <p className="text-sm font-medium">What happened with dinner tonight?</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (todayPlan?.planDayId) {
+                  dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
+                }
+                logMutation.mutate({ dinnerSuccess: true });
+              }}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-dinner-late-early"
+            >
+              Moved it early
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowTacticPicker(true)}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-dinner-late-tactic"
+            >
+              Used a dinner tactic
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => logMutation.mutate({ dinnerSuccess: false })}
+              disabled={dinnerLabelMutation.isPending || logMutation.isPending}
+              data-testid="button-dinner-late-no"
             >
               I didn't manage it
             </Button>
