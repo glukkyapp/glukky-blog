@@ -132,7 +132,8 @@
     "didnt_try_today": "Didn't try today",
     "didnt_try_day": "Didn't try on {{day}}",
     "diet_chance_today": "Did you get a chance to try this today?",
-    "diet_chance_day": "Did you get a chance to try this on {{day}}?"
+    "diet_chance_day": "Did you get a chance to try this on {{day}}?",
+    "duration_min_short": "{{duration}}m"
   },
   "mitigation": {
     "fiber_starter_label": "Fiber Starter",
@@ -425,7 +426,8 @@
     "stats_last_week": "Your statistics last week",
     "week_plan_set": "Week {{week}} plan is set!",
     "plan_set_sunday": "Great work this week! You've already reviewed your report — your next plan is ready to go!",
-    "plan_set_other": "Your plan starts tomorrow. Check back on Sunday at 10pm for your weekly report."
+    "plan_set_other": "Your plan starts tomorrow. Check back on Sunday at 10pm for your weekly report.",
+    "duration_min_short": "{{duration}}m"
   },
   "profile": {
     "title": "Your Profile",

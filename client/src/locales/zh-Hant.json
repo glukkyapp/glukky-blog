@@ -132,7 +132,8 @@
     "didnt_try_today": "今天沒有試",
     "didnt_try_day": "在{{day}}沒有試",
     "diet_chance_today": "今天有機會試嗎？",
-    "diet_chance_day": "你在{{day}}有機會嘗試嗎？"
+    "diet_chance_day": "你在{{day}}有機會嘗試嗎？",
+    "duration_min_short": "{{duration}}分"
   },
   "mitigation": {
     "fiber_starter_label": "纖維優先",
@@ -425,7 +426,8 @@
     "stats_last_week": "你上週的統計",
     "week_plan_set": "第{{week}}週計劃已設定！",
     "plan_set_sunday": "本週做得好！你已回顧報告——下週計劃已準備好！",
-    "plan_set_other": "你的計劃從明天開始。週日晚上10點回來查看每週報告。"
+    "plan_set_other": "你的計劃從明天開始。週日晚上10點回來查看每週報告。",
+    "duration_min_short": "{{duration}}分"
   },
   "profile": {
     "title": "你的個人資料",

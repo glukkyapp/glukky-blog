@@ -757,7 +757,7 @@ export default function WeeklyPlanner() {
                             }`}
                             data-testid={`button-duration-${day}-${dur}`}
                           >
-                            {dur}m
+                            {t("planner.duration_min_short", { duration: dur })}
                           </button>
                         ))}
                       </div>

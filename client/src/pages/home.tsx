@@ -1585,25 +1585,25 @@ export default function Home() {
                      isStandingTap ? (
                        <>
                          {answered ? (d.walkCompleted ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />) : <Timer className="w-3 h-3" />}
-                         <span className="text-[9px] leading-none mt-0.5">1m</span>
+                         <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: 1 })}</span>
                        </>
                      ) :
                      answered && d.walkCompleted ? (
                        <>
                          <Check className="w-3 h-3" />
-                         {dur && <span className="text-[9px] leading-none mt-0.5">{dur}m</span>}
+                         {dur && <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) :
                      answered && !d.walkCompleted ? (
                        <>
                          <X className="w-3 h-3" />
-                         {dur && <span className="text-[9px] leading-none mt-0.5">{dur}m</span>}
+                         {dur && <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) :
                      d.walkScheduled ? (
                        <>
                          {isDayStretch(d, profile) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
-                         {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{dur}m</span>}
+                         {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) : null}
                   </div>
