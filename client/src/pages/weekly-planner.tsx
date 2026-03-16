@@ -17,7 +17,7 @@ import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 
 export default function WeeklyPlanner() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
@@ -1460,7 +1460,8 @@ export default function WeeklyPlanner() {
     })();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const isLastDayOfMonth = now.getDate() === lastDay;
-    const monthName = now.toLocaleDateString("en-US", { month: "long" });
+    const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
+    const monthName = now.toLocaleDateString(dateLocale, { month: "long" });
 
     if (isLastDayOfMonth && monthlyReportLoading) {
       return (
@@ -1625,7 +1626,8 @@ export default function WeeklyPlanner() {
             }
             const nextSun = new Date(nextMon);
             nextSun.setDate(nextMon.getDate() + 6);
-            const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const fmtLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
+            const fmt = (d: Date) => d.toLocaleDateString(fmtLocale, { month: "short", day: "numeric" });
             return (
               <p className="text-xs text-muted-foreground" data-testid="text-planner-date-range">
                 {fmt(nextMon)} – {fmt(nextSun)}

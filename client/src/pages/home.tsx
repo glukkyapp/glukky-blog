@@ -588,7 +588,7 @@ export default function Home() {
           <div className="space-y-2" data-testid="section-dinner-question">
             <div className="flex items-center gap-2">
               <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-medium">Think you could try eating a bit earlier tonight — before 9pm?</p>
+              <p className="text-sm font-medium">{t("home.try_eating_earlier")}</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -598,7 +598,7 @@ export default function Home() {
                 disabled={dinnerLabelMutation.isPending}
                 data-testid="button-dinner-move-yes"
               >
-                Yes
+                {t("common.yes")}
               </Button>
               <Button
                 size="sm"
@@ -607,7 +607,7 @@ export default function Home() {
                 disabled={dinnerLabelMutation.isPending}
                 data-testid="button-dinner-move-no"
               >
-                No
+                {t("common.no")}
               </Button>
             </div>
           </div>
@@ -641,14 +641,14 @@ export default function Home() {
           <div className="space-y-3" data-testid="section-dinner-pivot">
             <div className="flex items-center gap-2">
               <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-medium">Late dinner</p>
+              <p className="text-sm font-medium">{t("home.late_dinner_row")}</p>
             </div>
             <p className="text-sm text-muted-foreground" data-testid="text-dinner-pivot-message">
-              I've noticed that it seemed hard for you to move dinner early in the past two weeks. Would you like to try a helpful dinner tactic tonight?
+              {t("home.dinner_pivot_message")}
             </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-tactic-yes">Yes</Button>
-              <Button size="sm" variant="outline" onClick={() => setPivotStep("ask_move_early")} data-testid="button-pivot-tactic-no">No</Button>
+              <Button size="sm" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-tactic-yes">{t("common.yes")}</Button>
+              <Button size="sm" variant="outline" onClick={() => setPivotStep("ask_move_early")} data-testid="button-pivot-tactic-no">{t("common.no")}</Button>
             </div>
           </div>
         );
@@ -659,12 +659,12 @@ export default function Home() {
           <div className="space-y-3" data-testid="section-dinner-pivot-move-early">
             <div className="flex items-center gap-2">
               <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-medium">Late dinner</p>
+              <p className="text-sm font-medium">{t("home.late_dinner_row")}</p>
             </div>
-            <p className="text-sm text-muted-foreground">Would you like to try moving dinner earlier tonight?</p>
+            <p className="text-sm text-muted-foreground">{t("home.try_moving_dinner")}</p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => handleDinnerMoveEarly(true)} disabled={dinnerLabelMutation.isPending} data-testid="button-pivot-move-early-yes">Yes</Button>
-              <Button size="sm" variant="outline" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-move-early-no">No</Button>
+              <Button size="sm" onClick={() => handleDinnerMoveEarly(true)} disabled={dinnerLabelMutation.isPending} data-testid="button-pivot-move-early-yes">{t("common.yes")}</Button>
+              <Button size="sm" variant="outline" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-move-early-no">{t("common.no")}</Button>
             </div>
           </div>
         );
@@ -693,7 +693,7 @@ export default function Home() {
       <div className="space-y-2" data-testid="section-dinner-question">
         <div className="flex items-center gap-2">
           <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-          <p className="text-sm font-medium">Think you could try eating a bit earlier tonight — before 9pm?</p>
+          <p className="text-sm font-medium">{t("home.try_eating_earlier")}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -703,7 +703,7 @@ export default function Home() {
             disabled={dinnerLabelMutation.isPending}
             data-testid="button-dinner-move-yes"
           >
-            Yes
+            {t("common.yes")}
           </Button>
           <Button
             size="sm"
@@ -712,7 +712,7 @@ export default function Home() {
             disabled={dinnerLabelMutation.isPending}
             data-testid="button-dinner-move-no"
           >
-            No
+            {t("common.no")}
           </Button>
         </div>
       </div>
@@ -733,9 +733,10 @@ export default function Home() {
     }
 
     const label = todayPlan?.dinnerLabel;
+    const tacticShort = t(`mitigation.${label}_short`, { defaultValue: DINNER_LABEL_SHORT[label] || label });
     const question = label === "move_early"
-      ? (catchUpDayName ? `Did you manage to eat before 9pm on ${catchUpDayName}?` : "Did you manage to eat before 9pm?")
-      : (catchUpDayName ? `Did you follow the ${DINNER_LABEL_SHORT[label] || label} tip on ${catchUpDayName}?` : `Did you follow the ${DINNER_LABEL_SHORT[label] || label} tip?`);
+      ? (catchUpDayName ? t("home.eat_before_9pm", { day: catchUpDayName }) : t("home.eat_before_9pm_today"))
+      : (catchUpDayName ? t("home.follow_tip_on", { tip: tacticShort, day: catchUpDayName }) : t("home.follow_tip_today", { tip: tacticShort }));
 
     return (
       <div className="space-y-2" data-testid="section-dinner-followup">
@@ -752,7 +753,7 @@ export default function Home() {
             disabled={logMutation.isPending}
             data-testid="button-dinner-yes"
           >
-            Yes
+            {t("common.yes")}
           </Button>
           <Button
             size="sm"
@@ -762,7 +763,7 @@ export default function Home() {
             disabled={logMutation.isPending}
             data-testid="button-dinner-no"
           >
-            No
+            {t("common.no")}
           </Button>
         </div>
       </div>
@@ -778,7 +779,7 @@ export default function Home() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Timer className="w-4 h-4 text-amber-500" />
-          <p className="text-sm font-medium">1 min standing tap after dinner</p>
+          <p className="text-sm font-medium">{t("home.standing_tap_task")}</p>
         </div>
         {tapAnswered ? (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="section-standing-tap-answered">
@@ -791,7 +792,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">{catchUpDayName ? `Did you do your 1-minute standing tap after dinner on ${catchUpDayName}?` : "Did you do your 1-minute standing tap after dinner?"}</p>
+            <p className="text-xs text-muted-foreground">{catchUpDayName ? t("home.standing_tap_question_day", { day: catchUpDayName }) : t("home.standing_tap_question")}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -801,7 +802,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-standing-tap-yes"
               >
-                Yes
+                {t("common.yes")}
               </Button>
               <Button
                 size="sm"
@@ -811,7 +812,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-standing-tap-no"
               >
-                No
+                {t("common.no")}
               </Button>
             </div>
           </>
@@ -835,7 +836,7 @@ export default function Home() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           {isStretch ? <Activity className="w-4 h-4 text-primary" /> : <Footprints className="w-4 h-4 text-primary" />}
-          <p className="text-sm font-medium">{walkDur} min {isStretch ? "stretch" : "walk"} after dinner</p>
+          <p className="text-sm font-medium">{isStretch ? t("home.stretch_task", { duration: walkDur }) : t("home.walk_task", { duration: walkDur })}</p>
         </div>
         {bothAnswered ? (
           <div className="flex items-center gap-3 text-sm text-muted-foreground" data-testid="section-walk-answered">
@@ -864,7 +865,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-walk-yes"
               >
-                Yes
+                {t("common.yes")}
               </Button>
               <Button
                 size="sm"
@@ -874,14 +875,14 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-walk-no"
               >
-                No
+                {t("common.no")}
               </Button>
             </div>
 
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2">
                 <Battery className="w-4 h-4 text-amber-500" />
-                <p className="text-sm font-medium">{catchUpDayName ? `Feeling tired on ${catchUpDayName}?` : "Feeling tired today?"}</p>
+                <p className="text-sm font-medium">{catchUpDayName ? t("home.feeling_tired_day", { day: catchUpDayName }) : t("home.feeling_tired_today")}</p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -892,7 +893,7 @@ export default function Home() {
                   disabled={logMutation.isPending}
                   data-testid="button-tired-yes"
                 >
-                  Yes
+                  {t("common.yes")}
                 </Button>
                 <Button
                   size="sm"
@@ -902,7 +903,7 @@ export default function Home() {
                   disabled={logMutation.isPending}
                   data-testid="button-tired-no"
                 >
-                  No
+                  {t("common.no")}
                 </Button>
               </div>
             </div>
@@ -921,7 +922,7 @@ export default function Home() {
                 onClick={() => setHydrationAdvice(null)}
                 data-testid="button-dismiss-hydration"
               >
-                Got it
+                {t("home.got_it")}
               </Button>
             </div>
           </div>
@@ -939,7 +940,7 @@ export default function Home() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-primary" />
-          <p className="text-sm font-medium">Diet tactic</p>
+          <p className="text-sm font-medium">{t("home.diet_tactic_label")}</p>
         </div>
         <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{calendarPlan.dietTip}"</p>
         {dietAnswered ? (
@@ -952,13 +953,13 @@ export default function Home() {
               <Minus className="w-4 h-4 text-gray-400" />
             )}
             <span>
-              {todayLog.dietResponse === "yes" ? (catchUpDayName ? `Tried it on ${catchUpDayName}` : "Tried it today") :
-               todayLog.dietResponse === "no" ? (catchUpDayName ? `Didn't try on ${catchUpDayName}` : "Didn't try today") : "Didn't get the chance"}
+              {todayLog.dietResponse === "yes" ? (catchUpDayName ? t("home.tried_on_day", { day: catchUpDayName }) : t("home.tried_today")) :
+               todayLog.dietResponse === "no" ? (catchUpDayName ? t("home.didnt_try_day", { day: catchUpDayName }) : t("home.didnt_try_today")) : t("home.didnt_get_chance")}
             </span>
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">{catchUpDayName ? `Did you get a chance to try this on ${catchUpDayName}?` : "Did you get a chance to try this today?"}</p>
+            <p className="text-xs text-muted-foreground">{catchUpDayName ? t("home.diet_chance_day", { day: catchUpDayName }) : t("home.diet_chance_today")}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -968,7 +969,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-diet-yes"
               >
-                Yes
+                {t("common.yes")}
               </Button>
               <Button
                 size="sm"
@@ -978,7 +979,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-diet-no"
               >
-                No
+                {t("common.no")}
               </Button>
               <Button
                 size="sm"
@@ -988,7 +989,7 @@ export default function Home() {
                 disabled={logMutation.isPending}
                 data-testid="button-diet-no-chance"
               >
-                Didn't get the chance
+                {t("home.didnt_get_chance")}
               </Button>
             </div>
           </>
