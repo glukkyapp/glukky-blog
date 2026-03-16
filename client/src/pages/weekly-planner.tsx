@@ -255,7 +255,7 @@ export default function WeeklyPlanner() {
       setLocation("/");
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 

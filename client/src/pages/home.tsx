@@ -22,9 +22,10 @@ const MITIGATION_OPTION_KEYS = [
 ] as const;
 
 export default function Home() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
   const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
   const FULL_DAY_NAMES = [t("negotiation.day.monday"), t("negotiation.day.tuesday"), t("negotiation.day.wednesday"), t("negotiation.day.thursday"), t("negotiation.day.friday"), t("negotiation.day.saturday"), t("negotiation.day.sunday")];
   const DINNER_LABEL_SHORT: Record<string, string> = {
@@ -276,7 +277,7 @@ export default function Home() {
       await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -310,7 +311,7 @@ export default function Home() {
       setCatchupCompleted(true);
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -323,7 +324,7 @@ export default function Home() {
       await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -355,11 +356,11 @@ export default function Home() {
 
   const formatDate = (date?: Date) => {
     const d = date || effectiveDate;
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    return d.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" });
   };
 
   const formatWeekday = () => {
-    return effectiveDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+    return effectiveDate.toLocaleDateString(dateLocale, { weekday: "long", month: "short", day: "numeric" });
   };
 
   const formatTomorrowDate = () => {
@@ -1218,7 +1219,7 @@ export default function Home() {
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
     const d = new Date(planSundayStr + "T00:00:00");
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    return d.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" });
   };
 
   return (

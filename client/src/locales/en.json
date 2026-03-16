@@ -450,7 +450,8 @@
   },
   "common": {
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "error": "Error"
   },
   "landing": {
     "description": "Manage your diabetes with daily walks and healthy diet habits. Plan your week, track your progress, and stay on top of your health.",
