@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
+import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -145,6 +146,10 @@ export default function WeeklyPlanner() {
   const [negotiationAgreedMinutes, setNegotiationAgreedMinutes] = useState(false);
   const [negotiationInitialized, setNegotiationInitialized] = useState(false);
 
+  const cardDietFocus = useInfoCard("diet_focus");
+  const cardWalkEscalation = useInfoCard("walk_escalation");
+  const cardGlycemicGap = useInfoCard("glycemic_gap");
+
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
     return lateDinnerDays.length > 0 && !effectiveDinnerMastered;
@@ -179,6 +184,10 @@ export default function WeeklyPlanner() {
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
+
+  useEffect(() => { if (currentStepId === "dietTipSelection") cardDietFocus.trigger(); }, [currentStepId]);
+  useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
+  useEffect(() => { if (negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep]);
 
   useEffect(() => {
     if (initialized) return;
@@ -1674,6 +1683,9 @@ export default function WeeklyPlanner() {
       {renderMonthlyReportMessage()}
     </div>
     <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
+    <InfoCardPopup visible={cardDietFocus.visible} onDismiss={cardDietFocus.dismiss} icon={TrendingUp} titleKey="info_card.diet_focus.title" panelKeys={["info_card.diet_focus.p1","info_card.diet_focus.p2","info_card.diet_focus.p3"]} testId="dialog-card-diet-focus" />
+    <InfoCardPopup visible={cardWalkEscalation.visible} onDismiss={cardWalkEscalation.dismiss} icon={Footprints} titleKey="info_card.walk_escalation.title" panelKeys={["info_card.walk_escalation.p1","info_card.walk_escalation.p2","info_card.walk_escalation.p3"]} testId="dialog-card-walk-escalation" />
+    <InfoCardPopup visible={cardGlycemicGap.visible} onDismiss={cardGlycemicGap.dismiss} icon={Activity} titleKey="info_card.glycemic_gap.title" panelKeys={["info_card.glycemic_gap.p1","info_card.glycemic_gap.p2"]} testId="dialog-card-glycemic-gap" />
     </>
   );
 }

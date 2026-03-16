@@ -492,5 +492,63 @@
     "plate_method": "Use the plate method (½ veggies, ¼ protein, ¼ carbs)",
     "kitchen_closure": "Kitchen Closure after dinner",
     "switch_edamame_nuts": "Switch to edamame or nuts"
+  },
+  "info_card": {
+    "got_it": "Got it",
+    "next": "Next",
+    "welcome": {
+      "title": "Welcome to Glukky",
+      "p1": "Glukky helps you manage blood sugar through two daily habits.",
+      "p2": "A short walk after dinner. One small diet change each week.",
+      "p3": "The app adapts to how you're doing. You stay in control."
+    },
+    "diet_focus": {
+      "title": "How your diet focus works",
+      "p1": "We focus on one diet area at a time — for 3 weeks.",
+      "p2": "Each week, one simple tip to try. No full diet overhaul.",
+      "p3": "Reach 80% follow-through over 3 weeks and you've mastered it — then we move to the next."
+    },
+    "dinner_timing": {
+      "title": "Why dinner timing matters",
+      "p1": "Late at night, your body's insulin response weakens.",
+      "p2": "The same meal at 10pm raises blood sugar more than at 7pm.",
+      "p3": "We prioritise dinner timing over other diet habits — it has the biggest impact.",
+      "p4": "On nights you can't eat early, we'll give you tactics to soften the effect."
+    },
+    "stretch_switch": {
+      "title": "Switching to gentle stretching",
+      "p1": "Walking has been tough recently — that's normal.",
+      "p2": "We're switching to a 2-minute post-dinner stretch to keep the habit alive.",
+      "p3": "Once you're ready, we'll ease back into walks gradually."
+    },
+    "walk_escalation": {
+      "title": "Building back to walks",
+      "p1": "Great consistency with stretching — that's the hard part.",
+      "p2": "Walking has a stronger effect on blood sugar than stretching.",
+      "p3": "We'll start you back at 10 minutes. You can always say \"not yet\"."
+    },
+    "glycemic_gap": {
+      "title": "The glycemic gap",
+      "p1": "A long walk on Monday doesn't protect you from a spike on Tuesday.",
+      "p2": "More days of walking — even short ones — matters more than longer walks on fewer days."
+    },
+    "roadmap_progress": {
+      "title": "Reading your progress",
+      "p1": "Your roadmap tracks walks, dinner timing, and diet tips.",
+      "p2": "A 70% rate is genuinely good progress.",
+      "p3": "The trend over weeks matters far more than any single week."
+    },
+    "piggy_bank": {
+      "title": "Your piggy bank",
+      "p1": "Complete walks and follow diet tips to earn coins.",
+      "p2": "Reach 60 coins and claim the reward you set for yourself.",
+      "p3": "Pick something you genuinely want — it works better that way."
+    },
+    "dinner_tactics": {
+      "title": "Your three dinner tactics",
+      "p1": "Fiber Starter — eat your vegetables first. Fibre slows glucose absorption.",
+      "p2": "Dusk Prep — small snack at 5pm means a smaller, less impactful late dinner.",
+      "p3": "Split Dinner — two smaller meals are easier on your blood sugar than one large one."
+    }
   }
 }

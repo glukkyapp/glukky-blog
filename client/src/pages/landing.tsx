@@ -80,7 +80,7 @@ export default function Landing() {
           <div className="flex items-center gap-2" data-testid="text-app-title">
             <Activity className="w-7 h-7" style={{ color: "#14A085" }} />
             <h1 className="text-3xl font-bold" style={{ color: "#14A085" }}>
-              GlucoPlanner
+              Glukky
             </h1>
           </div>
 

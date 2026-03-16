@@ -1,7 +1,7 @@
-# GlucoPlanner - Diabetes-Aware Life Planner
+# Glukky - Diabetes-Aware Life Planner
 
 ## Overview
-GlucoPlanner is a mobile-responsive web application designed to assist individuals with diabetes in managing post-meal walks and dietary habits. It utilizes a weekly goal system featuring automated negotiation, escalation/de-escalation mechanisms, and a progressive diet mastery program. The project aims to empower users to better control their blood sugar levels through structured and adaptive lifestyle planning.
+Glukky is a mobile-responsive web application designed to assist individuals with diabetes in managing post-meal walks and dietary habits. It utilizes a weekly goal system featuring automated negotiation, escalation/de-escalation mechanisms, and a progressive diet mastery program. The project aims to empower users to better control their blood sugar levels through structured and adaptive lifestyle planning.
 
 ## User Preferences
 I want iterative development.
@@ -29,6 +29,7 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Stretch Week Detection:** `isStretchWeek` boolean on `weekly_plans` table, set at plan creation from `profile.isStretchMode`. This is a historical snapshot — changing stretch mode later does not alter past plans. Replaces the old `adjustedToStretch` column (removed).
 
 **UI/UX Decisions:**
+- **Info Card Popups:** 9 contextual educational cards that appear once at key moments in the user journey (first home visit, diet tip selection, dinner focus, stretch switch, walk escalation, glycemic gap, roadmap visit, piggy bank, dinner tactics). Managed via `useInfoCard(id)` hook with localStorage dismissal. Component: `client/src/components/info-card-popup.tsx`. i18n keys under `info_card.*` namespace in all 3 locale files.
 - **Color Scheme:** Primary teal green (#14A085), soft mint cream background, warm amber accents, and a soft teal pill-shaped floating navigation bar.
 - **Homepage:** Time-gated daily check-ins (before 2pm, 2pm-10pm, after 10pm) with dynamic prompts for dinner questions, walk check-ins, and diet check-ins. Includes a "Catch-up mode" for missed Sunday check-ins.
 - **Weekly Planner (`/plan`):** Guides users through setting weekly goals, displaying previous week's reports, and offering detailed customization for walk durations and diet tips. Includes specific review sections for dinner focus and diet struggles.

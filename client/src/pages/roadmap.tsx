@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { TrendingUp, Lock, Gift } from "lucide-react";
+import { TrendingUp, Lock, Gift, BarChart2, PiggyBank } from "lucide-react";
+import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -197,6 +198,9 @@ export default function RoadmapPage() {
   const [rewardInput, setRewardInput] = useState("");
   const [congratsShown, setCongratsShown] = useState(false);
 
+  const cardRoadmapProgress = useInfoCard("roadmap_progress");
+  const cardPiggyBank = useInfoCard("piggy_bank");
+
   useEffect(() => {
     if (piggy?.needsRewardSetup) {
       setShowRewardSetup(true);
@@ -209,6 +213,9 @@ export default function RoadmapPage() {
       setShowCongrats(true);
     }
   }, [piggy?.coins, piggy?.needsRewardSetup]);
+
+  useEffect(() => { if (data) cardRoadmapProgress.trigger(); }, [!!data]);
+  useEffect(() => { if (piggy) cardPiggyBank.trigger(); }, [!!piggy]);
 
   const rewardMutation = useMutation({
     mutationFn: (reward: string) =>
@@ -417,6 +424,8 @@ export default function RoadmapPage() {
           </Button>
         </DialogContent>
       </Dialog>
+    <InfoCardPopup visible={cardRoadmapProgress.visible} onDismiss={cardRoadmapProgress.dismiss} icon={BarChart2} titleKey="info_card.roadmap_progress.title" panelKeys={["info_card.roadmap_progress.p1","info_card.roadmap_progress.p2","info_card.roadmap_progress.p3"]} testId="dialog-card-roadmap-progress" />
+    <InfoCardPopup visible={cardPiggyBank.visible} onDismiss={cardPiggyBank.dismiss} icon={PiggyBank} titleKey="info_card.piggy_bank.title" panelKeys={["info_card.piggy_bank.p1","info_card.piggy_bank.p2","info_card.piggy_bank.p3"]} testId="dialog-card-piggy-bank" />
     </div>
   );
 }
