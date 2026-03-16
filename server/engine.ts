@@ -42,9 +42,10 @@ export interface WeeklyReflection {
 }
 
 export interface SuggestedAction {
-  type: "add_day" | "add_minutes" | "keep_current" | "standing_reset" | "set_rest_day" | "standing_tap";
-  label: string;
-  description: string;
+  type: "add_day" | "add_minutes" | "keep_current" | "set_rest_day" | "standing_tap";
+  labelKey: string;
+  descKey: string;
+  descParams?: Record<string, string | number>;
 }
 
 export function getWeekStartDate(weekNumber: number, baseDate?: Date): string {
@@ -203,46 +204,38 @@ function buildSuggestedActions(
 ): SuggestedAction[] {
   const actions: SuggestedAction[] = [];
 
-  const isStandingReset = currentDuration === 2;
-
   actions.push({
     type: "keep_current",
-    label: isStandingReset ? "Continue standing reset" : "Keep current schedule",
-    description: isStandingReset
-      ? "Keep doing 2-min standing breaks — complete 2 weeks at 100% to unlock 10-min walks"
-      : `Stay at ${currentWalkDays} days, ${currentDuration} min`,
+    labelKey: "negotiation.option.keep_current",
+    descKey: "negotiation.option.keep_current_desc",
+    descParams: { days: currentWalkDays, duration: currentDuration },
   });
 
-  if (!isStandingReset && currentWalkDays < 5) {
+  if (currentWalkDays < 5) {
     actions.push({
       type: "add_day",
-      label: "Add 1 more walk day",
-      description: `Go from ${currentWalkDays} to ${currentWalkDays + 1} days this week`,
+      labelKey: "negotiation.option.add_walk_day",
+      descKey: "negotiation.option.add_walk_day_desc",
+      descParams: { from: currentWalkDays, to: currentWalkDays + 1 },
     });
   }
 
-  if (!isStandingReset && currentDuration < 20) {
+  if (currentDuration < 20) {
     actions.push({
       type: "add_minutes",
-      label: "Add 5 more minutes",
-      description: `Go from ${currentDuration} to ${currentDuration + 5} min walks`,
-    });
-  }
-
-  if (!isStandingReset && currentDuration >= 20 && currentWalkDays < 7) {
-    actions.push({
-      type: "standing_reset",
-      label: "Add a 2-min Standing Reset",
-      description: "A short 2-min stand on an off-day helps break sedentary patterns",
+      labelKey: "negotiation.option.add_minutes",
+      descKey: "negotiation.option.add_minutes_desc",
+      descParams: { from: currentDuration, to: currentDuration + 5 },
     });
   }
 
   if (fatigueDetected) {
-    const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const dowKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     actions.push({
       type: "set_rest_day",
-      label: `Set ${dayNames[fatigueDetected.dayOfWeek]} as rest day`,
-      description: `You've been tired on ${dayNames[fatigueDetected.dayOfWeek]} for 3 weeks straight`,
+      labelKey: "negotiation.option.set_rest_day",
+      descKey: "negotiation.option.set_rest_day_desc",
+      descParams: { dow: fatigueDetected.dayOfWeek, dayKey: `negotiation.day.${dowKeys[fatigueDetected.dayOfWeek]}` },
     });
   }
 
@@ -284,7 +277,7 @@ async function checkFatiguePattern(userId: string, currentWeek: number): Promise
 
 export interface CreatePlanInput {
   userId: string;
-  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "standing_reset" | "set_rest_day" | "standing_tap";
+  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "set_rest_day" | "standing_tap";
   walkDays: number[];
   eatOutDays: number[];
   lateDinnerDays: number[];
@@ -310,8 +303,6 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
 
   if (!autoEscalatedFromStretch && input.negotiationChoice === "add_minutes" && !input.walkDayDurations) {
     walkDuration = Math.min(walkDuration + 5, 20);
-  } else if (input.negotiationChoice === "standing_reset") {
-    walkDuration = profile.walkDuration;
   }
 
   if (input.negotiationChoice === "set_rest_day") {
@@ -345,13 +336,11 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
       } else {
         dayDuration = walkDuration;
       }
-    } else if (input.negotiationChoice === "standing_reset" && !walkScheduled) {
-      dayDuration = 2;
     } else if (isStandingTapDay) {
       dayDuration = 1;
     }
 
-    const effectiveWalkScheduled = walkScheduled || isStandingTapDay || (input.negotiationChoice === "standing_reset" && !walkScheduled);
+    const effectiveWalkScheduled = walkScheduled || isStandingTapDay;
     dayEntries.push({
       dayOfWeek: d,
       walkScheduled: effectiveWalkScheduled,

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
+import { useTranslation } from "react-i18next";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -26,6 +27,7 @@ const STRUGGLE_NAMES: Record<string, string> = {
 };
 
 export default function WeeklyPlanner() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -313,11 +315,6 @@ export default function WeeklyPlanner() {
     }
   }
 
-  function handleStandingReset() {
-    setNegotiationChoice("standing_reset");
-    setNegotiationStep("done");
-  }
-
   function toggleDay(day: number, list: number[], setList: (v: number[]) => void) {
     if (list.includes(day)) {
       setList(list.filter(d => d !== day));
@@ -565,36 +562,36 @@ export default function WeeklyPlanner() {
             <div className="bg-primary/5 rounded-lg p-4 space-y-3 mb-2" data-testid="section-negotiation">
               {negotiationStep === "ask_day" && (
                 <>
-                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day">Would you like to add 1 more walk day?</p>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day">{t("negotiation.ask_day")}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-day-yes">Yes</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-day-no">No</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-day-yes">{t("common.yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-day-no">{t("common.no")}</Button>
                   </div>
                 </>
               )}
               {negotiationStep === "ask_minutes" && (
                 <>
-                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-minutes">Would you like to add 5 more minutes to your walks?</p>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-minutes">{t("negotiation.ask_minutes")}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-minutes-yes">Yes</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-minutes-no">No</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-minutes-yes">{t("common.yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-minutes-no">{t("common.no")}</Button>
                   </div>
                 </>
               )}
               {negotiationStep === "glycemic_gap" && (
                 <div className="space-y-3" data-testid="section-glycemic-gap">
                   <p className="text-sm text-muted-foreground italic">
-                    A 40-minute walk on Monday can't clear the glucose spike from a sedentary Tuesday dinner. Each meal creates its own blood sugar response — covering more days matters more than longer walks.
+                    {t("negotiation.glycemic_gap")}
                   </p>
-                  <Button size="sm" onClick={() => setNegotiationStep("ask_day_again")} data-testid="button-glycemic-gap-continue">I understand</Button>
+                  <Button size="sm" onClick={() => setNegotiationStep("ask_day_again")} data-testid="button-glycemic-gap-continue">{t("negotiation.i_understand")}</Button>
                 </div>
               )}
               {negotiationStep === "ask_day_again" && (
                 <>
-                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day-again">Would you reconsider adding one more walk day?</p>
+                  <p className="text-sm font-medium" data-testid="text-negotiation-ask-day-again">{t("negotiation.ask_day_again")}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-reconsider-yes">Yes</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-reconsider-no">No</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-reconsider-yes">{t("common.yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-reconsider-no">{t("common.no")}</Button>
                   </div>
                 </>
               )}
@@ -603,12 +600,12 @@ export default function WeeklyPlanner() {
                   <div className="flex items-start gap-2">
                     <Timer className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                     <p className="text-sm font-medium" data-testid="text-negotiation-standing-tap">
-                      How about a Standing Tap? Stand up after a meal and tap your feet for just 1 minute on a non-walk day.
+                      {t("negotiation.standing_tap_ask")}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-standing-tap-yes">Yes</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-standing-tap-no">No</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-standing-tap-yes">{t("common.yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-standing-tap-no">{t("common.no")}</Button>
                   </div>
                 </>
               )}
@@ -616,7 +613,7 @@ export default function WeeklyPlanner() {
                 <div className="space-y-3" data-testid="section-pick-standing-tap-day">
                   <div className="flex items-center gap-2">
                     <Timer className="w-4 h-4 text-primary" />
-                    <p className="text-sm font-medium">Pick a non-walk day for your Standing Tap:</p>
+                    <p className="text-sm font-medium">{t("negotiation.pick_standing_tap_day")}</p>
                   </div>
                   <div className="grid grid-cols-7 gap-1">
                     {DAY_NAMES.map((name, i) => {
@@ -644,7 +641,7 @@ export default function WeeklyPlanner() {
                   </div>
                   {standingTapDay !== null && (
                     <Button size="sm" onClick={() => setNegotiationStep("done")} data-testid="button-standing-tap-confirm">
-                      Confirm Standing Tap on {DAY_NAMES[standingTapDay]}
+                      {t("negotiation.confirm_standing_tap", { day: DAY_NAMES[standingTapDay] })}
                     </Button>
                   )}
                 </div>

@@ -8,18 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const TOTAL_STEPS = 6;
 
-const struggles = [
-  { value: "sugary_food_drink", label: "Sugary Food & Drinks" },
-  { value: "oily_fried_food", label: "Oily/Fried Food" },
-  { value: "eat_out", label: "Eating Out / Takeaway" },
-  { value: "portions", label: "Portion Control" },
-  { value: "snacks", label: "Snacking" },
-];
-
 export default function Onboarding() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -90,6 +84,14 @@ export default function Onboarding() {
     return false;
   };
 
+  const struggles = [
+    { value: "sugary_food_drink", label: t("struggle.sugary_food_drink") },
+    { value: "oily_fried_food", label: t("struggle.oily_fried_food") },
+    { value: "eat_out", label: t("struggle.eat_out") },
+    { value: "portions", label: t("struggle.portions") },
+    { value: "snacks", label: t("struggle.snacks") },
+  ];
+
   const renderRadioOption = (
     value: string,
     label: string,
@@ -120,18 +122,18 @@ export default function Onboarding() {
         data-testid="progress-bar"
       />
       <p className="text-sm text-muted-foreground mb-4" data-testid="text-step-indicator">
-        Step {step} of {TOTAL_STEPS}
+        {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
       </p>
 
       {step === 1 && (
         <Card data-testid="card-step-1">
           <CardHeader>
-            <CardTitle className="text-lg">After meals, what do you usually do?</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q1_title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("sit_rest", "Sit/rest", walkOption, setWalkOption, "option-sit-rest")}
-            {renderRadioOption("walk_10", "Walk about 10 min", walkOption, setWalkOption, "option-walk-10")}
-            {renderRadioOption("walk_longer", "Walk longer than 10 min", walkOption, setWalkOption, "option-walk-longer")}
+            {renderRadioOption("sit_rest", t("onboarding.q1_sit_rest"), walkOption, setWalkOption, "option-sit-rest")}
+            {renderRadioOption("walk_10", t("onboarding.q1_walk_10"), walkOption, setWalkOption, "option-walk-10")}
+            {renderRadioOption("walk_longer", t("onboarding.q1_walk_longer"), walkOption, setWalkOption, "option-walk-longer")}
           </CardContent>
         </Card>
       )}
@@ -139,11 +141,11 @@ export default function Onboarding() {
       {step === 2 && (
         <Card data-testid="card-step-2">
           <CardHeader>
-            <CardTitle className="text-lg">What time do you usually have dinner?</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q2_title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("before_9pm", "Before 9pm", dinnerTime, setDinnerTime, "option-before-9pm")}
-            {renderRadioOption("after_9pm", "After 9pm", dinnerTime, setDinnerTime, "option-after-9pm")}
+            {renderRadioOption("before_9pm", t("onboarding.q2_before_9pm"), dinnerTime, setDinnerTime, "option-before-9pm")}
+            {renderRadioOption("after_9pm", t("onboarding.q2_after_9pm"), dinnerTime, setDinnerTime, "option-after-9pm")}
           </CardContent>
         </Card>
       )}
@@ -151,13 +153,13 @@ export default function Onboarding() {
       {step === 3 && (
         <Card data-testid="card-step-3">
           <CardHeader>
-            <CardTitle className="text-lg">What is your sleep pattern?</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q3_title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("regular_10_6", "10pm-6am regular", sleepPattern, setSleepPattern, "option-regular-10-6")}
-            {renderRadioOption("other_regular", "Other regular schedule", sleepPattern, setSleepPattern, "option-other-regular")}
-            {renderRadioOption("night_shifts", "Night shifts", sleepPattern, setSleepPattern, "option-night-shifts")}
-            {renderRadioOption("irregular", "Irregular", sleepPattern, setSleepPattern, "option-irregular")}
+            {renderRadioOption("regular_10_6", t("onboarding.q3_regular_10_6"), sleepPattern, setSleepPattern, "option-regular-10-6")}
+            {renderRadioOption("other_regular", t("onboarding.q3_other_regular"), sleepPattern, setSleepPattern, "option-other-regular")}
+            {renderRadioOption("night_shifts", t("onboarding.q3_night_shifts"), sleepPattern, setSleepPattern, "option-night-shifts")}
+            {renderRadioOption("irregular", t("onboarding.q3_irregular"), sleepPattern, setSleepPattern, "option-irregular")}
           </CardContent>
         </Card>
       )}
@@ -165,13 +167,13 @@ export default function Onboarding() {
       {step === 4 && (
         <Card data-testid="card-step-4">
           <CardHeader>
-            <CardTitle className="text-lg">How often do you eat out per week?</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q4_title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("0", "Rarely (0)", eatingOutFrequency, setEatingOutFrequency, "option-rarely")}
-            {renderRadioOption("1-2", "1-2 times", eatingOutFrequency, setEatingOutFrequency, "option-1-2")}
-            {renderRadioOption("3-4", "3-4 times", eatingOutFrequency, setEatingOutFrequency, "option-3-4")}
-            {renderRadioOption("5+", "5+ times", eatingOutFrequency, setEatingOutFrequency, "option-5-plus")}
+            {renderRadioOption("0", t("onboarding.q4_rarely"), eatingOutFrequency, setEatingOutFrequency, "option-rarely")}
+            {renderRadioOption("1-2", t("onboarding.q4_1_2"), eatingOutFrequency, setEatingOutFrequency, "option-1-2")}
+            {renderRadioOption("3-4", t("onboarding.q4_3_4"), eatingOutFrequency, setEatingOutFrequency, "option-3-4")}
+            {renderRadioOption("5+", t("onboarding.q4_5_plus"), eatingOutFrequency, setEatingOutFrequency, "option-5-plus")}
           </CardContent>
         </Card>
       )}
@@ -179,7 +181,7 @@ export default function Onboarding() {
       {step === 5 && (
         <Card data-testid="card-step-5">
           <CardHeader>
-            <CardTitle className="text-lg">Which diet areas do you struggle with?</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q5_title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {struggles.map((item) => (
@@ -203,7 +205,7 @@ export default function Onboarding() {
       {step === 6 && (
         <Card data-testid="card-step-6">
           <CardHeader>
-            <CardTitle className="text-lg">Enter your email for daily reminders (optional)</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q6_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Label htmlFor="email" className="sr-only">Email</Label>
@@ -222,7 +224,7 @@ export default function Onboarding() {
       <div className="flex justify-between gap-3 mt-6">
         {step > 1 ? (
           <Button variant="outline" onClick={handleBack} data-testid="button-back">
-            Back
+            {t("onboarding.back")}
           </Button>
         ) : (
           <div />
@@ -230,11 +232,11 @@ export default function Onboarding() {
 
         {step < TOTAL_STEPS ? (
           <Button onClick={handleNext} disabled={isNextDisabled()} data-testid="button-next">
-            Next
+            {t("onboarding.next")}
           </Button>
         ) : (
           <Button onClick={handleSubmit} disabled={submitting} data-testid="button-get-started">
-            {submitting ? "Saving..." : "Get Started"}
+            {submitting ? t("onboarding.saving") : t("onboarding.get_started")}
           </Button>
         )}
       </div>

@@ -38,6 +38,7 @@ export const userProfiles = pgTable("user_profiles", {
   piggyBankCoins: integer("piggy_bank_coins").notNull().default(0),
   piggyBankReward: text("piggy_bank_reward"),
   piggyBankNeedsRewardSetup: boolean("piggy_bank_needs_reward_setup").notNull().default(true),
+  preferredLanguage: varchar("preferred_language").notNull().default("en"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

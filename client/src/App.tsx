@@ -15,6 +15,8 @@ import Profile from "@/pages/profile";
 import MonthlyReport from "@/pages/monthly-report";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import i18n from "./i18n";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -23,6 +25,12 @@ function AuthenticatedApp() {
     queryKey: ["/api/plan/current"],
     enabled: !!profile,
   });
+
+  useEffect(() => {
+    if ((profile as any)?.preferredLanguage) {
+      i18n.changeLanguage((profile as any).preferredLanguage);
+    }
+  }, [(profile as any)?.preferredLanguage]);
 
   if (profileLoading || (profile && planLoading)) {
     return (

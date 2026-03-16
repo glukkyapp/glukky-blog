@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import pigAnimationData from "@assets/wired-flat-453-savings-pig-hover-pinch_1773589181755.json";
+import { useTranslation } from "react-i18next";
 
 interface CoinSavedPopupProps {
   coins: number;
@@ -9,6 +10,7 @@ interface CoinSavedPopupProps {
 }
 
 export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProps) {
+  const { t } = useTranslation();
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,7 +77,7 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
           }}
           data-testid="text-coin-saved-count"
         >
-          +{coins} coin{coins !== 1 ? "s" : ""} saved!
+          {t("popup.coin_saved", { count: coins })}
         </p>
       </div>
     </div>

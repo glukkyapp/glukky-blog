@@ -113,6 +113,23 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/profile/language", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { preferredLanguage } = req.body;
+      const validLanguages = ["en", "zh-Hant", "yue"];
+      if (!preferredLanguage || !validLanguages.includes(preferredLanguage)) {
+        return res.status(400).json({ message: "Invalid language. Must be one of: en, zh-Hant, yue" });
+      }
+      const profile = await storage.updateProfile(userId, { preferredLanguage });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ preferredLanguage: profile.preferredLanguage });
+    } catch (error) {
+      console.error("Error updating language:", error);
+      res.status(500).json({ message: "Failed to update language" });
+    }
+  });
+
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -303,7 +320,7 @@ export async function registerRoutes(
       if (!Array.isArray(walkDays) || walkDays.length > 7) {
         return res.status(400).json({ message: "Invalid walk days" });
       }
-      const validChoices = ["keep_current", "add_day", "add_minutes", "standing_reset", "set_rest_day", "standing_tap"];
+      const validChoices = ["keep_current", "add_day", "add_minutes", "set_rest_day", "standing_tap"];
       if (negotiationChoice && !validChoices.includes(negotiationChoice)) {
         return res.status(400).json({ message: "Invalid negotiation choice" });
       }

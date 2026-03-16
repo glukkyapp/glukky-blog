@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const FULL_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -32,6 +33,7 @@ const MITIGATION_OPTIONS = [
 ] as const;
 
 export default function Home() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
@@ -470,8 +472,8 @@ export default function Home() {
               data-testid={`button-tactic-${opt.value}`}
               disabled={dinnerLabelMutation.isPending}
             >
-              <span className="font-medium">{opt.label}</span>
-              <span className="text-muted-foreground"> — {opt.desc}</span>
+              <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
+              <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
             </button>
           ))}
         </div>
@@ -626,8 +628,8 @@ export default function Home() {
                 data-testid={`button-tactic-${opt.value}`}
                 disabled={dinnerLabelMutation.isPending}
               >
-                <span className="font-medium">{opt.label}</span>
-                <span className="text-muted-foreground"> — {opt.desc}</span>
+                <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
+                <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
               </button>
             ))}
           </div>
@@ -681,8 +683,8 @@ export default function Home() {
               data-testid={`button-tactic-${opt.value}`}
               disabled={dinnerLabelMutation.isPending}
             >
-              <span className="font-medium">{opt.label}</span>
-              <span className="text-muted-foreground"> — {opt.desc}</span>
+              <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
+              <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
             </button>
           ))}
         </div>
@@ -1314,7 +1316,7 @@ export default function Home() {
                       <div className="flex flex-col gap-1">
                         {MITIGATION_OPTIONS.map(opt => (
                           <Button key={opt.value} size="sm" variant={catchupTacticPick === opt.value ? "default" : "outline"} onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }} data-testid={`button-catchup-tactic-${opt.value}`}>
-                            {opt.label}
+                            {t(`mitigation.${opt.value}_label`)}
                           </Button>
                         ))}
                       </div>

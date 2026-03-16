@@ -2,17 +2,19 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Home, TrendingUp, CalendarDays, User } from "lucide-react";
-
-const navItems = [
-  { key: "home", label: "Home", path: "/", icon: Home },
-  { key: "roadmap", label: "Roadmap", path: "/roadmap", icon: TrendingUp },
-  { key: "planner", label: "Planner", path: "/plan", icon: CalendarDays },
-  { key: "profile", label: "Profile", path: "/profile", icon: User },
-];
+import { useTranslation } from "react-i18next";
 
 export default function FloatingNavBar() {
+  const { t } = useTranslation();
   const [location, setLocation] = useLocation();
   const [activePath, setActivePath] = useState(location || "/");
+
+  const navItems = [
+    { key: "home", label: t("nav.home"), path: "/", icon: Home },
+    { key: "roadmap", label: t("nav.roadmap"), path: "/roadmap", icon: TrendingUp },
+    { key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays },
+    { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
+  ];
 
   const isActive = (path: string) =>
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);

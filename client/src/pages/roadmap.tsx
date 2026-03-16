@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 interface RoadmapData {
   currentStruggle: string;
@@ -35,14 +36,6 @@ interface PiggyBankData {
   reward: string | null;
   needsRewardSetup: boolean;
 }
-
-const STRUGGLE_LABELS: Record<string, string> = {
-  sugary_food_drink: "Sugary Food & Drinks",
-  oily_fried_food: "Oily/Fried Food",
-  eat_out: "Eating Out",
-  portions: "Portion Control",
-  snacks: "Snacking",
-};
 
 function LoadingSkeleton() {
   return (
@@ -65,6 +58,7 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
   onClaim: () => void;
   onSetReward: () => void;
 }) {
+  const { t } = useTranslation();
   const prevCoins = useRef(data.coins);
   const [animating, setAnimating] = useState(false);
   const [coinsGained, setCoinsGained] = useState(0);
@@ -73,9 +67,9 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
     if (data.coins > prevCoins.current) {
       setCoinsGained(data.coins - prevCoins.current);
       setAnimating(true);
-      const t = setTimeout(() => setAnimating(false), 2200);
+      const timer = setTimeout(() => setAnimating(false), 2200);
       prevCoins.current = data.coins;
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
     prevCoins.current = data.coins;
   }, [data.coins]);
@@ -102,7 +96,6 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
       <Card data-testid="card-piggy-bank" className={isFull ? "border-amber-400 shadow-md" : ""}>
         <CardContent className="pt-4 pb-5">
           <div className="flex flex-col items-center gap-1 relative">
-            {/* Coin drop animation overlay */}
             {animating && (
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
@@ -131,32 +124,29 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  New coin saved! +{coinsGained}
+                  {t("roadmap.new_coin_saved", { count: coinsGained })}
                 </p>
               </div>
             )}
 
-            {/* Pig SVG */}
             <PiggyBankSVG coins={data.coins} className="w-36 h-36" />
 
-            {/* Coin progress */}
             <div className="w-full mt-1">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs text-muted-foreground font-medium" data-testid="text-piggy-coins">
-                  {data.coins} / {data.capacity} coins
+                  {t("roadmap.coins_count", { coins: data.coins, capacity: data.capacity })}
                 </span>
                 {isFull && (
-                  <span className="text-xs font-semibold text-amber-600">Full!</span>
+                  <span className="text-xs font-semibold text-amber-600">{t("roadmap.full")}</span>
                 )}
               </div>
               <Progress value={fillPct} className={isFull ? "[&>div]:bg-amber-400" : ""} data-testid="progress-piggy-bank" />
             </div>
 
-            {/* Reward goal label */}
             <div className="w-full mt-2">
               {data.reward ? (
                 <p className="text-xs text-muted-foreground" data-testid="text-piggy-reward">
-                  Goal: <span className="font-medium text-foreground">{data.reward}</span>
+                  {t("roadmap.reward_goal")} <span className="font-medium text-foreground">{data.reward}</span>
                 </p>
               ) : (
                 <button
@@ -164,12 +154,11 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
                   onClick={onSetReward}
                   data-testid="button-set-reward"
                 >
-                  Tap to set your reward →
+                  {t("roadmap.tap_set_reward")}
                 </button>
               )}
             </div>
 
-            {/* Claim button */}
             {isFull && (
               <Button
                 onClick={onClaim}
@@ -177,7 +166,7 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
                 data-testid="button-claim-reward"
               >
                 <Gift className="h-4 w-4 mr-2" />
-                Claim Reward
+                {t("roadmap.claim_reward")}
               </Button>
             )}
           </div>
@@ -188,6 +177,7 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
 }
 
 export default function RoadmapPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<RoadmapData>({
     queryKey: ["/api/roadmap"],
   });
@@ -251,6 +241,14 @@ export default function RoadmapPage() {
     tipLadders,
   } = data;
 
+  const STRUGGLE_LABELS: Record<string, string> = {
+    sugary_food_drink: t("struggle.sugary_food_drink"),
+    oily_fried_food: t("struggle.oily_fried_food"),
+    eat_out: t("struggle.eat_out"),
+    portions: t("struggle.portions"),
+    snacks: t("struggle.snacks"),
+  };
+
   const rawIndex = struggles.indexOf(currentStruggle);
   const currentStruggleIndex = rawIndex >= 0 ? rawIndex : 0;
 
@@ -260,12 +258,11 @@ export default function RoadmapPage() {
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-xl font-semibold" data-testid="text-focus-title">
-            Your Weekly Progress
+            {t("roadmap.title")}
           </h1>
         </div>
       </div>
 
-      {/* Piggy bank card */}
       {piggy && (
         <PiggyBankCard
           data={piggy}
@@ -276,11 +273,11 @@ export default function RoadmapPage() {
 
       <Card data-testid="card-walk-progress">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Post-meal Walk</CardTitle>
+          <CardTitle className="text-base">{t("roadmap.walk_card_title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">How you're doing</span>
+            <span className="text-sm text-muted-foreground">{t("roadmap.how_youre_doing")}</span>
             <span className="text-sm font-medium" data-testid="text-walk-avg">
               {Math.round(walkSuccessAvg)}%
             </span>
@@ -292,11 +289,11 @@ export default function RoadmapPage() {
       {isDinnerFocus && (
         <Card data-testid="card-dinner-progress">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Early Dinner</CardTitle>
+            <CardTitle className="text-base">{t("roadmap.dinner_card_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-sm text-muted-foreground">Success rate</span>
+              <span className="text-sm text-muted-foreground">{t("roadmap.success_rate")}</span>
               <span className="text-sm font-medium" data-testid="text-dinner-avg">
                 {Math.round(dinnerSuccessAvg)}%
               </span>
@@ -308,7 +305,7 @@ export default function RoadmapPage() {
 
       <Card data-testid="card-diet-tip-progress">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Diet Tip</CardTitle>
+          <CardTitle className="text-base">{t("roadmap.diet_tip_title")}</CardTitle>
         </CardHeader>
         <CardContent>
           {currentTip && (
@@ -317,9 +314,9 @@ export default function RoadmapPage() {
             </p>
           )}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">Completion of diet tip per week</span>
+            <span className="text-sm text-muted-foreground">{t("roadmap.diet_completion")}</span>
             <span className="text-sm font-medium" data-testid="text-diet-completion-count">
-              {dietTipCompletionCount} {dietTipCompletionCount === 1 ? "day" : "days"}
+              {t("roadmap.diet_days", { count: dietTipCompletionCount })}
             </span>
           </div>
         </CardContent>
@@ -327,7 +324,7 @@ export default function RoadmapPage() {
 
       <div className="pt-2">
         <h2 className="text-base font-semibold mb-3" data-testid="text-struggle-queue-title">
-          Struggle Queue
+          {t("roadmap.struggle_queue_title")}
         </h2>
         <div className="space-y-2">
           {struggles.filter((_, index) => index >= currentStruggleIndex).map((struggle) => {
@@ -356,20 +353,19 @@ export default function RoadmapPage() {
         </div>
       </div>
 
-      {/* Reward setup modal */}
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
         <DialogContent data-testid="modal-reward-setup">
           <DialogHeader>
-            <DialogTitle>What will you work towards?</DialogTitle>
+            <DialogTitle>{t("roadmap.reward_setup_title")}</DialogTitle>
             <DialogDescription>
-              Set a reward for when your piggy bank is full (60 coins).
+              {t("roadmap.reward_setup_desc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <Input
               value={rewardInput}
               onChange={(e) => setRewardInput(e.target.value)}
-              placeholder="e.g. A nice meal out, new shoes..."
+              placeholder={t("roadmap.reward_placeholder")}
               data-testid="input-reward"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && rewardInput.trim()) {
@@ -383,24 +379,23 @@ export default function RoadmapPage() {
               disabled={!rewardInput.trim() || rewardMutation.isPending}
               data-testid="button-save-reward"
             >
-              {rewardMutation.isPending ? "Saving..." : "Save"}
+              {rewardMutation.isPending ? t("roadmap.saving") : t("roadmap.save")}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Congratulations modal */}
       <Dialog open={showCongrats} onOpenChange={setShowCongrats}>
         <DialogContent data-testid="modal-congrats">
           <DialogHeader>
-            <DialogTitle className="text-xl">Your piggy bank is full!</DialogTitle>
+            <DialogTitle className="text-xl">{t("roadmap.congrats_title")}</DialogTitle>
             <DialogDescription>
-              You've earned 60 coins. Time to claim your reward.
+              {t("roadmap.congrats_desc")}
             </DialogDescription>
           </DialogHeader>
           {piggy?.reward && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 my-2">
-              <p className="text-xs text-muted-foreground mb-1">Your reward</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("roadmap.your_reward")}</p>
               <p className="font-semibold text-foreground text-base" data-testid="text-congrats-reward">
                 {piggy.reward}
               </p>
@@ -412,7 +407,7 @@ export default function RoadmapPage() {
             disabled={claimMutation.isPending}
             data-testid="button-confirm-claim"
           >
-            {claimMutation.isPending ? "Claiming..." : "Claim Reward"}
+            {claimMutation.isPending ? t("roadmap.claiming") : t("roadmap.claim_reward")}
           </Button>
         </DialogContent>
       </Dialog>
