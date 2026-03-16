@@ -16,20 +16,18 @@ import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const STRUGGLE_NAMES: Record<string, string> = {
-  sugary_food_drink: "Sugary Food & Drinks",
-  oily_fried_food: "Oily/Fried Food",
-  eat_out: "Eating Out / Takeaway",
-  portions: "Portion Control",
-  snacks: "Snacking",
-};
-
 export default function WeeklyPlanner() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
+  const STRUGGLE_NAMES: Record<string, string> = {
+    sugary_food_drink: t("struggle.sugary_food_drink"),
+    oily_fried_food: t("struggle.oily_fried_food"),
+    eat_out: t("struggle.eat_out"),
+    portions: t("struggle.portions"),
+    snacks: t("struggle.snacks"),
+  };
 
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
@@ -359,32 +357,32 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-weekly-report-title">
             <Award className="w-5 h-5 text-primary" />
-            Week {reflection.weekNumber} Report
+            {t("planner.week_report", { week: reflection.weekNumber })}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="rounded-lg border p-4 space-y-1" data-testid="section-physical">
             <div className="flex items-center gap-2 mb-2">
               <Footprints className="w-4 h-4 text-primary" />
-              <p className="font-semibold text-sm">Physical</p>
+              <p className="font-semibold text-sm">{t("planner.physical")}</p>
             </div>
             <p className="text-2xl font-bold text-center text-primary" data-testid="text-walk-report">
               {reflection.walkDaysScheduled > 0
-                ? `${reflection.walkDaysCompleted}/${reflection.walkDaysScheduled} walk days`
+                ? t("planner.walk_days_report", { completed: reflection.walkDaysCompleted, scheduled: reflection.walkDaysScheduled })
                 : reflection.stretchAdjustedDays > 0
-                  ? `${reflection.stretchAdjustedDays} stretch day${reflection.stretchAdjustedDays > 1 ? "s" : ""}`
-                  : "No walk days"}
+                  ? t("planner.stretch_days", { count: reflection.stretchAdjustedDays })
+                  : t("planner.no_walk_days")}
             </p>
             <p className="text-center text-sm text-muted-foreground">
               {(reflection.walkDaysScheduled === 0 && reflection.stretchAdjustedDays > 0)
-                ? `${reflection.stretchSuccessPct ?? 0}% stretch completion`
-                : `${reflection.walkSuccessPct}% walk completion`}
+                ? t("planner.stretch_completion", { pct: reflection.stretchSuccessPct ?? 0 })
+                : t("planner.walk_completion", { pct: reflection.walkSuccessPct })}
             </p>
             {reflection.stretchAdjustedDays > 0 && (
               <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-stretch-remark">
                 <Activity className="w-3.5 h-3.5 text-primary" />
                 <p className="text-sm text-muted-foreground">
-                  Stretching: {reflection.stretchAdjustedDays} day{reflection.stretchAdjustedDays > 1 ? "s" : ""}
+                  {t("planner.stretching_days", { count: reflection.stretchAdjustedDays })}
                 </p>
               </div>
             )}
@@ -392,7 +390,7 @@ export default function WeeklyPlanner() {
               <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-standing-tap-report">
                 <Timer className="w-3.5 h-3.5 text-amber-500" />
                 <p className="text-sm text-muted-foreground">
-                  Standing Tap: {reflection.standingTapDaysCompleted}/{reflection.standingTapDaysScheduled} completed
+                  {t("planner.standing_tap_report", { completed: reflection.standingTapDaysCompleted, scheduled: reflection.standingTapDaysScheduled })}
                 </p>
               </div>
             )}
@@ -403,25 +401,25 @@ export default function WeeklyPlanner() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-                  <p className="font-semibold text-sm">Late Dinner</p>
+                  <p className="font-semibold text-sm">{t("planner.late_dinner")}</p>
                 </div>
                 {reflection.dinnerJustGraduated && (
-                  <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full" data-testid="badge-dinner-mastered">Mastered!</span>
+                  <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full" data-testid="badge-dinner-mastered">{t("planner.mastered_badge")}</span>
                 )}
               </div>
               {reflection.dinnerSuccessPct !== null && reflection.dinnerSuccessPct !== undefined && (
                 <p className="text-2xl font-bold text-center text-amber-500" data-testid="text-dinner-success-pct">
-                  {reflection.dinnerSuccessPct}% dinner success
+                  {t("planner.dinner_success_pct", { pct: reflection.dinnerSuccessPct })}
                 </p>
               )}
               {reflection.dinnerEarlyTotal > 0 && (
                 <p className="text-sm" data-testid="text-dinner-early-report">
-                  You moved dinner early <span className="font-semibold">{reflection.dinnerEarlyCount}/{reflection.dinnerEarlyTotal}</span> days
+                  {t("planner.dinner_early_report", { count: reflection.dinnerEarlyCount, total: reflection.dinnerEarlyTotal })}
                 </p>
               )}
               {reflection.dinnerTacticTotal > 0 && (
                 <p className="text-sm" data-testid="text-dinner-tactic-report">
-                  You followed dinner tactic <span className="font-semibold">{reflection.dinnerTacticCount}/{reflection.dinnerTacticTotal}</span> days
+                  {t("planner.dinner_tactic_report", { count: reflection.dinnerTacticCount, total: reflection.dinnerTacticTotal })}
                 </p>
               )}
             </div>
@@ -431,30 +429,30 @@ export default function WeeklyPlanner() {
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-struggle">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-green-500" />
-                <p className="font-semibold text-sm">Diet — {STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle}</p>
+                <p className="font-semibold text-sm">{t("planner.diet_label", { name: STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle })}</p>
               </div>
               {dietSuccessPct !== null && (
                 <p className="text-2xl font-bold text-center text-green-600" data-testid="text-diet-success-pct">
-                  {dietSuccessPct}% diet success
+                  {t("planner.diet_success_pct", { pct: dietSuccessPct })}
                 </p>
               )}
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
-                Tip: {reflection.dietTip}
+                {t("planner.tip_label", { tip: reflection.dietTip })}
               </p>
               {reflection.weekInCycle > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
-                  Week {reflection.weekInCycle} of 3 on this struggle
+                  {t("planner.week_of_cycle", { week: reflection.weekInCycle })}
                 </p>
               )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
                 {reflection.dietYesCount > 0 && (
-                  <p className="text-green-600">Followed tip {reflection.dietYesCount} day{reflection.dietYesCount !== 1 ? "s" : ""}</p>
+                  <p className="text-green-600">{t("planner.followed_tip", { count: reflection.dietYesCount })}</p>
                 )}
                 {reflection.dietNoChanceCount > 0 && (
-                  <p className="text-muted-foreground">No chance to practice {reflection.dietNoChanceCount} day{reflection.dietNoChanceCount !== 1 ? "s" : ""}</p>
+                  <p className="text-muted-foreground">{t("planner.no_chance", { count: reflection.dietNoChanceCount })}</p>
                 )}
                 {reflection.dietNoCount > 0 && (
-                  <p className="text-amber-600">Didn't follow tip {reflection.dietNoCount} day{reflection.dietNoCount !== 1 ? "s" : ""}</p>
+                  <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
                 )}
               </div>
             </div>
@@ -462,7 +460,7 @@ export default function WeeklyPlanner() {
           {reflection.missedCheckInDays >= 2 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-missed-checkins">
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                You missed a few check-ins this week — that's okay! Try to check in daily next week for more accurate tracking.
+                {t("planner.missed_checkins")}
               </p>
             </div>
           )}
@@ -478,10 +476,10 @@ export default function WeeklyPlanner() {
           <div className="flex flex-col items-center text-center gap-3">
             <Calendar className="w-10 h-10 text-primary" />
             <h2 className="text-lg font-semibold" data-testid="text-plan-transition-title">
-              Let's do next week's planning!
+              {t("planner.plan_transition_title")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Based on last week, let's set up your goals for the coming week.
+              {t("planner.plan_transition_desc")}
             </p>
           </div>
         </CardContent>
@@ -541,7 +539,7 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-walk-days-title">
             {isStretchMode && acceptedEscalation !== true ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
-            {isStretchMode && acceptedEscalation !== true ? "Pick your stretch days" : "Which days work best for a walk?"}
+            {isStretchMode && acceptedEscalation !== true ? t("planner.pick_stretch_days") : t("planner.pick_walk_days")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -551,8 +549,8 @@ export default function WeeklyPlanner() {
                 <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">
                   {walkFreq === 7
-                    ? "Congratulations! You're walking every day — that's incredible!"
-                    : "Amazing — you've hit a very good target — in fact better than most of us! Keep it up — you can still add walking days at your wish."}
+                    ? t("planner.congrats_every_day")
+                    : t("planner.congrats_good_target")}
                 </p>
               </div>
             </div>
@@ -654,13 +652,13 @@ export default function WeeklyPlanner() {
               <div className="flex items-start gap-2">
                 <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">You've nailed stretching for {reflection?.stretchSuccessWeeks || 2} week{(reflection?.stretchSuccessWeeks || 2) !== 1 ? "s" : ""}!</p>
-                  <p className="text-sm text-muted-foreground mt-1">Ready to try 10-minute walks?</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">{t("planner.stretch_nailed", { weeks: reflection?.stretchSuccessWeeks || 2 })}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t("planner.ready_walks")}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("add_minutes"); }} data-testid="button-escalation-yes">Yes, let's do it</Button>
-                <Button size="sm" variant="outline" onClick={() => { setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">Not yet</Button>
+                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("add_minutes"); }} data-testid="button-escalation-yes">{t("planner.yes_lets_do_it")}</Button>
+                <Button size="sm" variant="outline" onClick={() => { setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">{t("planner.not_yet")}</Button>
               </div>
             </div>
           )}
@@ -668,7 +666,7 @@ export default function WeeklyPlanner() {
           {acceptedEscalation === true && (
             <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-escalation-confirmed">
               <Award className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-green-700 dark:text-green-400">Great! Pick your walk days below — each day will be a 10-minute walk.</p>
+              <p className="text-sm text-green-700 dark:text-green-400">{t("planner.escalation_confirmed")}</p>
             </div>
           )}
 
@@ -676,7 +674,7 @@ export default function WeeklyPlanner() {
             <div className="bg-primary/5 rounded-lg p-3 flex items-start gap-2" data-testid="section-stretch-suggestion">
               <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-sm text-muted-foreground">
-                Great job last week! Want to add one more stretch day? (suggested: {(reflection.stretchProgression.lastWeekStretchCount || 1) + 1} days)
+                {t("planner.stretch_add_day", { count: (reflection.stretchProgression.lastWeekStretchCount || 1) + 1 })}
               </p>
             </div>
           )}
@@ -686,20 +684,20 @@ export default function WeeklyPlanner() {
               <Activity className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-sm text-muted-foreground">
                 {profile?.isStretchMode
-                  ? "Let's take a bit more time to get comfortable with stretching before heading back to walks — you're building a great habit!"
-                  : "Walking has been tough these past 2 weeks — that's okay! We're switching to gentle 2-minute stretches to keep the habit going without the pressure."}
+                  ? t("planner.stretch_comfort")
+                  : t("planner.walking_bridge")}
               </p>
             </div>
           )}
 
           <p className="text-sm text-muted-foreground">
-            {isStretchMode && acceptedEscalation !== true ? "Pick days for a 2-minute post-dinner stretch" : "Tap the days that feel doable this week"}
+            {isStretchMode && acceptedEscalation !== true ? t("planner.pick_stretch_hint") : t("planner.tap_doable_days")}
           </p>
           {firstActiveDay > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
               {isFirstWeek
-                ? `You're joining mid-week — days before ${DAY_NAMES[firstActiveDay]} are inactive`
-                : `Planning late — days before ${DAY_NAMES[firstActiveDay]} are inactive`}
+                ? t("planner.joining_mid_week", { day: DAY_NAMES[firstActiveDay] })
+                : t("planner.planning_late", { day: DAY_NAMES[firstActiveDay] })}
             </p>
           )}
           <div className="grid grid-cols-7 gap-1">
@@ -731,13 +729,15 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">
-            {walkDays.length} {isStretchMode && acceptedEscalation !== true ? "stretch" : "walk"} day{walkDays.length !== 1 ? "s" : ""} selected
-            {standingTapDay !== null && !walkDays.includes(standingTapDay) && " + 1 standing tap"}
+            {isStretchMode && acceptedEscalation !== true
+              ? t("planner.stretch_days_selected", { count: walkDays.length })
+              : t("planner.walk_days_selected", { count: walkDays.length })}
+            {standingTapDay !== null && !walkDays.includes(standingTapDay) && ` + ${t("planner.one_standing_tap")}`}
           </p>
 
           {(!isStretchMode || acceptedEscalation === true) && walkDays.length > 0 && (
             <div className="space-y-2 pt-2 border-t" data-testid="section-walk-durations">
-              <p className="text-xs font-medium text-muted-foreground">Walk duration per day:</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("planner.walk_duration_per_day")}</p>
               <div className="space-y-1.5">
                 {walkDays.sort((a, b) => a - b).map(day => {
                   const options = getDurationOptions(day);
@@ -772,7 +772,7 @@ export default function WeeklyPlanner() {
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3" data-testid="section-standing-tap-summary">
               <Timer className="w-4 h-4 text-amber-600" />
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                Standing Tap on {DAY_NAMES[standingTapDay]} — 1 min
+                {t("planner.standing_tap_on", { day: DAY_NAMES[standingTapDay] })}
               </p>
             </div>
           )}
@@ -787,11 +787,11 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-eat-out-days-title">
             <ShoppingBag className="w-5 h-5 text-primary" />
-            Eating Out / Takeaway Days
+            {t("planner.eat_out_title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Any days you'll be eating out or getting takeaway?</p>
+          <p className="text-sm text-muted-foreground">{t("planner.eat_out_desc")}</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
@@ -814,7 +814,7 @@ export default function WeeklyPlanner() {
               );
             })}
           </div>
-          <p className="text-center text-sm text-muted-foreground">{eatOutDays.length} days selected</p>
+          <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: eatOutDays.length })}</p>
         </CardContent>
       </Card>
     );
@@ -826,11 +826,11 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-late-dinner-days-title">
             <UtensilsCrossed className="w-5 h-5 text-amber-500" />
-            Late Dinner Days
+            {t("planner.late_dinner_title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Any nights where dinner will be late (after 9pm)?</p>
+          <p className="text-sm text-muted-foreground">{t("planner.late_dinner_desc")}</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
@@ -853,7 +853,7 @@ export default function WeeklyPlanner() {
               );
             })}
           </div>
-          <p className="text-center text-sm text-muted-foreground">{lateDinnerDays.length} days selected</p>
+          <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: lateDinnerDays.length })}</p>
         </CardContent>
       </Card>
     );
@@ -865,12 +865,12 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-stretch-offer-title">
             <Activity className="w-5 h-5 text-primary" />
-            One Small Step
+            {t("planner.one_small_step")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Would you like to do a 2-minute post-dinner stretch on one or more days this week?
+            {t("planner.stretch_offer_desc")}
           </p>
 
           {!stretchAccepted ? (
@@ -879,19 +879,19 @@ export default function WeeklyPlanner() {
                 onClick={() => setStretchAccepted(true)}
                 data-testid="button-stretch-yes"
               >
-                Yes, let's try it
+                {t("planner.yes_lets_try")}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => { setStretchAccepted(false); goNext(); }}
                 data-testid="button-stretch-no"
               >
-                No thanks
+                {t("planner.no_thanks")}
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm font-medium">Pick your stretch days:</p>
+              <p className="text-sm font-medium">{t("planner.pick_stretch_label")}</p>
               <div className="grid grid-cols-7 gap-1">
                 {DAY_NAMES.map((name, i) => {
                   const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
@@ -914,7 +914,7 @@ export default function WeeklyPlanner() {
                   );
                 })}
               </div>
-              <p className="text-center text-sm text-muted-foreground">{stretchDays.length} days selected</p>
+              <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: stretchDays.length })}</p>
             </div>
           )}
         </CardContent>
@@ -935,25 +935,25 @@ export default function WeeklyPlanner() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-dinner-focus-title">
             <UtensilsCrossed className="w-5 h-5 text-amber-500" />
-            This Week's Focus: Late Dinner
+            {t("planner.this_week_focus_dinner")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">Current focus</p>
-            <p className="font-semibold text-lg" data-testid="text-dinner-focus-label">Late Dinner Management</p>
+            <p className="text-sm text-muted-foreground">{t("planner.current_focus")}</p>
+            <p className="font-semibold text-lg" data-testid="text-dinner-focus-label">{t("planner.late_dinner_management")}</p>
           </div>
 
           {hasReflection && dinnerGrad && (
             <div className="rounded-lg border p-4 space-y-3" data-testid="section-dinner-graduation-progress">
-              <p className="text-sm font-medium">Graduation progress</p>
+              <p className="text-sm font-medium">{t("planner.graduation_progress")}</p>
               {dinnerGrad.ready ? (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{totalSuccess}/{totalDays} days across last 3 weeks</span>
-                        <span>Goal: 80%</span>
+                        <span>{t("planner.days_across_weeks", { success: totalSuccess, total: totalDays })}</span>
+                        <span>{t("planner.goal_80")}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
@@ -965,7 +965,7 @@ export default function WeeklyPlanner() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct">
-                    {aggPct}% success across last 3 weeks — {aggPct >= 80 ? "ready to graduate!" : `need 80% to graduate`}
+                    {aggPct >= 80 ? t("planner.ready_to_graduate", { pct: aggPct }) : t("planner.need_80_to_graduate", { pct: aggPct })}
                   </p>
                 </>
               ) : (
@@ -986,7 +986,7 @@ export default function WeeklyPlanner() {
                     ))}
                   </div>
                   <span className="text-muted-foreground text-xs">
-                    {weeksFound}/3 weeks tracked — need 3 weeks to evaluate
+                    {t("planner.weeks_tracked", { count: weeksFound })}
                   </span>
                 </div>
               )}
@@ -994,24 +994,23 @@ export default function WeeklyPlanner() {
           )}
 
           <div className="bg-card border rounded-lg p-4 space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Available tactics</p>
+            <p className="text-sm font-medium text-muted-foreground">{t("planner.available_tactics")}</p>
             <div className="space-y-1">
               <p className="text-sm" data-testid="text-tactic-fiber">
-                <span className="font-medium text-amber-600">Fiber Starter</span> — eat veggies first
+                <span className="font-medium text-amber-600">{t("mitigation.fiber_starter_label")}</span> — {t("mitigation.fiber_starter_short")}
               </p>
               <p className="text-sm" data-testid="text-tactic-dusk">
-                <span className="font-medium text-amber-600">Dusk Prep</span> — light snack at 5 PM
+                <span className="font-medium text-amber-600">{t("mitigation.dusk_prep_label")}</span> — {t("mitigation.dusk_prep_short")}
               </p>
               <p className="text-sm" data-testid="text-tactic-split">
-                <span className="font-medium text-amber-600">Split Dinner</span> — split into two smaller meals
+                <span className="font-medium text-amber-600">{t("mitigation.split_dinner_label")}</span> — {t("mitigation.split_dinner_short")}
               </p>
             </div>
           </div>
 
           {!hasReflection && (
             <p className="text-xs text-center text-muted-foreground" data-testid="text-dinner-focus-first-week">
-              Each day you mark as "late dinner," you'll choose a tactic during your daily check-in.
-              Reach 80% success across 3 weeks to graduate!
+              {t("planner.dinner_focus_first_week")}
             </p>
           )}
         </CardContent>
@@ -1053,23 +1052,23 @@ export default function WeeklyPlanner() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle data-testid="text-diet-review-title">This Week's Diet Focus</CardTitle>
+          <CardTitle data-testid="text-diet-review-title">{t("planner.diet_focus_title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {isFallback && (
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 flex items-start gap-2" data-testid="section-diet-fallback-message">
               <Sparkles className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-sm text-muted-foreground">Let's add a small focus this week!</p>
+              <p className="text-sm text-muted-foreground">{t("planner.diet_fallback")}</p>
             </div>
           )}
 
           <div className="bg-primary/5 rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">Current struggle</p>
+            <p className="text-sm text-muted-foreground">{t("planner.current_struggle")}</p>
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
               {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
             </p>
             {hasReflection && weekInCycle > 0 && weekInCycle < 3 && (
-              <p className="text-xs text-muted-foreground mt-1">Week {weekInCycle} of 3</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("planner.week_of_cycle", { week: weekInCycle })}</p>
             )}
           </div>
 
@@ -1080,12 +1079,12 @@ export default function WeeklyPlanner() {
                   <Award className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-primary">
-                      Great job! You've mastered {previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}!
+                      {t("planner.mastered_struggle", { name: previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) })}
                     </p>
                     {nextStruggleLabel ? (
-                      <p className="text-sm text-muted-foreground mt-1">Moving to: {nextStruggleLabel}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("planner.moving_to", { name: nextStruggleLabel })}</p>
                     ) : (
-                      <p className="text-sm text-muted-foreground mt-1">All diet struggles completed!</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("planner.all_struggles_done")}</p>
                     )}
                   </div>
                 </div>
@@ -1095,10 +1094,10 @@ export default function WeeklyPlanner() {
                   <TrendingUp className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-blue-600">
-                      It seems you don't have many chances to try this, let's move to the next one!
+                      {t("planner.skipped_struggle")}
                     </p>
                     {nextStruggleLabel && (
-                      <p className="text-sm text-muted-foreground mt-1">Next focus: {nextStruggleLabel}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
                     )}
                   </div>
                 </div>
@@ -1108,7 +1107,7 @@ export default function WeeklyPlanner() {
                   <RotateCcw className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-amber-600">
-                      You're at {Math.round(((serverEval?.yesDays || 0) / 21) * 100)}% — almost there! Let's keep at it for 3 more weeks.
+                      {t("planner.stay_struggle", { pct: Math.round(((serverEval?.yesDays || 0) / 21) * 100) })}
                     </p>
                   </div>
                 </div>
@@ -1118,19 +1117,19 @@ export default function WeeklyPlanner() {
                   <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-green-600">
-                      You're doing good enough! Let's try another focus.
+                      {t("planner.moved_on_struggle")}
                     </p>
                     {nextStruggleLabel && (
-                      <p className="text-sm text-muted-foreground mt-1">Next focus: {nextStruggleLabel}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
                     )}
                   </div>
                 </div>
               )}
               {isTransitionType && bestTip && bestTipYes > 0 && (
                 <div className="bg-primary/5 rounded-lg p-3 mt-2" data-testid="section-best-tip">
-                  <p className="text-xs text-muted-foreground mb-1">Your most successful tip</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("planner.most_successful_tip")}</p>
                   <p className="text-sm font-medium" data-testid="text-best-tip">"{bestTip}"</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{bestTipYes} day{bestTipYes !== 1 ? "s" : ""} followed successfully</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("planner.days_followed", { count: bestTipYes })}</p>
                 </div>
               )}
             </div>
@@ -1147,13 +1146,13 @@ export default function WeeklyPlanner() {
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-col items-center text-center gap-4">
             <Award className="w-12 h-12 text-amber-500" />
-            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">Late Dinner Improvement Mastered!</h2>
+            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">{t("planner.dinner_mastered_title")}</h2>
             <div className="bg-green-50 dark:bg-green-950/30 rounded-lg px-6 py-3">
               <p className="text-3xl font-bold text-green-600" data-testid="text-dinner-grad-pct">{pct}%</p>
-              <p className="text-sm text-muted-foreground">dinner success over the last 3 weeks</p>
+              <p className="text-sm text-muted-foreground">{t("planner.dinner_success_3weeks")}</p>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Amazing work! Your late dinner routine is now under control. We'll move on to the next focus for now, but you can always come back to late dinner if you prefer.
+              {t("planner.dinner_mastered_desc")}
             </p>
           </div>
         </CardContent>
@@ -1176,21 +1175,21 @@ export default function WeeklyPlanner() {
             {evalType === "mastered" && <Award className="w-12 h-12 text-primary" />}
             {(evalType === "skipped" || evalType === "moved_on") && <TrendingUp className="w-12 h-12 text-green-500" />}
             <h2 className="text-xl font-bold" data-testid="text-diet-graduation-title">
-              {evalType === "mastered" ? `${struggleName} Mastered!` : `Moving On from ${struggleName}`}
+              {evalType === "mastered" ? t("planner.struggle_mastered", { name: struggleName }) : t("planner.moving_on_from", { name: struggleName })}
             </h2>
-            {evalType === "mastered" && <p className="text-sm text-muted-foreground">Great job sticking with it!</p>}
-            {evalType === "skipped" && <p className="text-sm text-muted-foreground">It seems you didn't have many chances to try this — that's completely fine!</p>}
-            {evalType === "moved_on" && <p className="text-sm text-muted-foreground">You're doing well enough — let's try another focus.</p>}
+            {evalType === "mastered" && <p className="text-sm text-muted-foreground">{t("planner.great_job_sticking")}</p>}
+            {evalType === "skipped" && <p className="text-sm text-muted-foreground">{t("planner.skipped_struggle")}</p>}
+            {evalType === "moved_on" && <p className="text-sm text-muted-foreground">{t("planner.moved_on_struggle")}</p>}
             {bestTip && bestTipYes > 0 && (
               <div className="bg-primary/5 rounded-lg p-4 w-full max-w-sm" data-testid="section-diet-grad-best-tip">
-                <p className="text-xs text-muted-foreground mb-1">Your most successful tip</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("planner.most_successful_tip")}</p>
                 <p className="text-sm font-medium">"{bestTip}"</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{bestTipYes} day{bestTipYes !== 1 ? "s" : ""} followed successfully</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("planner.days_followed", { count: bestTipYes })}</p>
               </div>
             )}
             {nextStruggleLabel && (
               <p className="text-sm text-muted-foreground">
-                {evalType === "mastered" ? "Next focus:" : "Moving to:"} <span className="font-medium">{nextStruggleLabel}</span>
+                {evalType === "mastered" ? t("planner.next_focus", { name: "" }) : t("planner.moving_to", { name: "" })} <span className="font-medium">{nextStruggleLabel}</span>
               </p>
             )}
           </div>
@@ -1210,7 +1209,7 @@ export default function WeeklyPlanner() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle data-testid="text-tip-selection-title">Your Tip This Week</CardTitle>
+            <CardTitle data-testid="text-tip-selection-title">{t("planner.your_tip_this_week")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-primary/5 rounded-lg p-4 text-center">
@@ -1225,17 +1224,17 @@ export default function WeeklyPlanner() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle data-testid="text-tip-selection-title">Choose Your Tip</CardTitle>
+            <CardTitle data-testid="text-tip-selection-title">{t("planner.choose_your_tip")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Last week you practiced:
+              {t("planner.last_week_practiced")}
             </p>
             <div className="bg-primary/5 rounded-lg p-3 text-center">
               <p className="font-medium text-primary text-sm">{lastWeekTip}</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              Would you like to keep practicing this tip?
+              {t("planner.keep_practicing_tip")}
             </p>
             <div className="flex gap-3">
               <Button
@@ -1248,7 +1247,7 @@ export default function WeeklyPlanner() {
                   goNext();
                 }}
               >
-                Yes, keep it
+                {t("planner.yes_keep_it")}
               </Button>
               <Button
                 variant="outline"
@@ -1256,7 +1255,7 @@ export default function WeeklyPlanner() {
                 data-testid="button-change-tip"
                 onClick={() => setKeepSameTip(false)}
               >
-                Try a different one
+                {t("planner.try_different")}
               </Button>
             </div>
           </CardContent>
@@ -1267,11 +1266,11 @@ export default function WeeklyPlanner() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle data-testid="text-tip-selection-title">Pick a Tip to Practice</CardTitle>
+          <CardTitle data-testid="text-tip-selection-title">{t("planner.pick_tip_to_practice")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Choose the tip that feels most manageable for you this week:
+            {t("planner.choose_tip_desc")}
           </p>
           {tipLadder.map((tip, i) => (
             <button
@@ -1296,7 +1295,7 @@ export default function WeeklyPlanner() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle data-testid="text-preview-title">Your Week at a Glance</CardTitle>
+          <CardTitle data-testid="text-preview-title">{t("planner.week_at_glance")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-8 gap-1 text-center text-xs">
@@ -1308,7 +1307,7 @@ export default function WeeklyPlanner() {
 
           <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
             <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">
-              {isStretchActive && acceptedEscalation !== true ? "Stretch" : "Walk"}
+              {isStretchActive && acceptedEscalation !== true ? t("home.stretch_row") : t("home.walk_row")}
             </div>
             {DAY_NAMES.map((_, i) => {
               const inactive = i < firstActiveDay;
@@ -1327,7 +1326,7 @@ export default function WeeklyPlanner() {
 
           {lateDinnerDays.length > 0 && (
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Late Dinner</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
               {DAY_NAMES.map((_, i) => {
                 const inactive = i < firstActiveDay;
                 return (
@@ -1345,7 +1344,7 @@ export default function WeeklyPlanner() {
 
           {eatOutDays.length > 0 && (
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out / Takeaway</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
               {DAY_NAMES.map((_, i) => {
                 const inactive = i < firstActiveDay;
                 return (
@@ -1364,23 +1363,23 @@ export default function WeeklyPlanner() {
           <div className="flex items-center gap-4 pt-1 text-[10px] text-muted-foreground" data-testid="preview-legend">
             <div className="flex items-center gap-1">
               {isStretchActive && acceptedEscalation !== true ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
-              {isStretchActive && acceptedEscalation !== true ? "Stretch" : "Walk"}
+              {isStretchActive && acceptedEscalation !== true ? t("home.stretch_row") : t("home.walk_row")}
             </div>
             {lateDinnerDays.length > 0 && (
-              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> {t("home.late_dinner_legend")}</div>
             )}
             {eatOutDays.length > 0 && (
-              <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Eating Out / Takeaway</div>
+              <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
             )}
           </div>
 
           {lateDinnerDays.length > 0 && !profile?.dinnerMastered && (
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1" data-testid="section-preview-dinner-focus">
               <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <UtensilsCrossed className="w-3 h-3" /> Focus: Late Dinner Management
+                <UtensilsCrossed className="w-3 h-3" /> {t("home.focus_dinner")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Choose a tactic each late dinner day during your daily check-in
+                {t("home.choose_tactic_hint")}
               </p>
             </div>
           )}
@@ -1391,7 +1390,7 @@ export default function WeeklyPlanner() {
             return (
               <div className="bg-primary/5 rounded-lg p-3 space-y-1" data-testid="section-preview-diet-focus">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> Focus: {STRUGGLE_NAMES[struggle] || struggle}
+                  <TrendingUp className="w-3 h-3" /> {t("home.focus_label", { name: STRUGGLE_NAMES[struggle] || struggle })}
                 </p>
                 <p className="text-xs text-primary font-medium">{tip}</p>
               </div>
@@ -1404,7 +1403,7 @@ export default function WeeklyPlanner() {
             disabled={createPlanMutation.isPending}
             data-testid="button-confirm-plan"
           >
-            {createPlanMutation.isPending ? "Creating plan..." : "Confirm & Start Week"}
+            {createPlanMutation.isPending ? t("planner.creating_plan") : t("planner.confirm_start_week")}
           </Button>
         </CardContent>
       </Card>
@@ -1469,7 +1468,7 @@ export default function WeeklyPlanner() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-semibold">Monthly Report</p>
+              <p className="text-sm font-semibold">{t("planner.monthly_report")}</p>
             </div>
             <div className="animate-pulse space-y-2">
               <div className="h-4 bg-muted rounded w-3/4" />
@@ -1493,15 +1492,15 @@ export default function WeeklyPlanner() {
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-2">
             <Calendar className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-semibold">Monthly Report</p>
+            <p className="text-sm font-semibold">{t("planner.monthly_report")}</p>
           </div>
           {isLastDayOfMonth ? (
             <p className="text-sm text-muted-foreground" data-testid="text-monthly-not-enough-data">
-              Complete at least 4 weeks to see your monthly report.
+              {t("planner.monthly_not_enough")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
-              Your monthly report will be available on {monthName} {lastDay}
+              {t("planner.monthly_pending", { month: monthName, day: lastDay })}
             </p>
           )}
         </CardContent>
@@ -1517,10 +1516,10 @@ export default function WeeklyPlanner() {
             <div className="flex flex-col items-center text-center gap-3">
               <Clock className="w-10 h-10 text-muted-foreground" />
               <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
-                Your first week's report is pending!
+                {t("planner.first_week_pending")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Complete your week and check back on Sunday at 10pm to see your report and plan the next week.
+                {t("planner.first_week_pending_desc")}
               </p>
             </div>
           </CardContent>
@@ -1534,7 +1533,7 @@ export default function WeeklyPlanner() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         <h1 className="text-lg font-bold" data-testid="text-last-week-title">
-          Your statistics last week
+          {t("planner.stats_last_week")}
         </h1>
         {renderWeeklyReport()}
         {renderMonthlyReportMessage()}
@@ -1557,12 +1556,12 @@ export default function WeeklyPlanner() {
             <div className="flex flex-col items-center text-center gap-3">
               <CalendarDays className="w-10 h-10 text-primary" />
               <h2 className="text-lg font-semibold" data-testid="text-plan-ready-title">
-                Week {planWeekNum} plan is set!
+                {t("planner.week_plan_set", { week: planWeekNum })}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {isSundayNight
-                  ? "Great work this week! You've already reviewed your report — your next plan is ready to go!"
-                  : "Your plan starts tomorrow. Check back on Sunday at 10pm for your weekly report."}
+                  ? t("planner.plan_set_sunday")
+                  : t("planner.plan_set_other")}
               </p>
             </div>
           </CardContent>
@@ -1584,11 +1583,11 @@ export default function WeeklyPlanner() {
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-amber-600" />
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Complete your Sunday check-in first
+                {t("planner.sunday_checkin_first")}
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
-              Finish Sunday's daily check-in before planning next week. Don't forget today's check-in too!
+              {t("planner.sunday_checkin_desc")}
             </p>
             <Button
               size="sm"
@@ -1596,7 +1595,7 @@ export default function WeeklyPlanner() {
               onClick={() => setLocation("/")}
               data-testid="button-go-home-checkin"
             >
-              Go to Home
+              {t("planner.go_home")}
             </Button>
           </CardContent>
         </Card>
@@ -1611,7 +1610,7 @@ export default function WeeklyPlanner() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold" data-testid="text-planner-title">
-            {isFirstWeek ? "Plan Your First Week" : `Plan Week ${profile?.currentWeek || ""}`}
+            {isFirstWeek ? t("planner.plan_first_week") : t("planner.plan_week", { week: profile?.currentWeek || "" })}
           </h1>
           {!isFirstWeek && (() => {
             const weekNum = profile?.currentWeek || 1;
@@ -1634,7 +1633,7 @@ export default function WeeklyPlanner() {
             );
           })()}
           <span className="text-sm text-muted-foreground">
-            Step {clampedStepIndex + 1}/{steps.length}
+            {t("planner.step_of", { current: clampedStepIndex + 1, total: steps.length })}
           </span>
         </div>
         <Progress value={((clampedStepIndex + 1) / steps.length) * 100} className="h-2" />
@@ -1650,7 +1649,7 @@ export default function WeeklyPlanner() {
           disabled={clampedStepIndex === 0}
           data-testid="button-back"
         >
-          <ChevronLeft className="w-4 h-4 mr-1" /> Back
+          <ChevronLeft className="w-4 h-4 mr-1" /> {t("planner.back")}
         </Button>
 
         {!isLastStep && (
@@ -1660,7 +1659,7 @@ export default function WeeklyPlanner() {
             disabled={currentStepId === "dietTipSelection" && !selectedTip}
             data-testid="button-next"
           >
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+            {t("planner.next")} <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}
       </div>

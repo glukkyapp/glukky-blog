@@ -9,33 +9,31 @@ import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const FULL_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
 function isDayStretch(day: any, profile: any): boolean {
   if (day?.isStretchDay) return true;
   if (profile?.isStretchMode && day?.walkScheduled && !day?.standingTap && day?.walkDuration === 2) return true;
   return false;
 }
 
-const DINNER_LABEL_SHORT: Record<string, string> = {
-  move_early: "Early",
-  fiber_starter: "Fiber",
-  dusk_prep: "Dusk",
-  split_dinner: "Split",
-  none: "",
-};
-
-const MITIGATION_OPTIONS = [
-  { value: "fiber_starter", label: "Fiber Starter", desc: "Eat veggies first" },
-  { value: "dusk_prep", label: "Dusk Prep", desc: "Light snack at 5 PM" },
-  { value: "split_dinner", label: "Split Dinner", desc: "Split into two smaller meals" },
+const MITIGATION_OPTION_KEYS = [
+  { value: "fiber_starter", labelKey: "mitigation.fiber_starter_label", descKey: "mitigation.fiber_starter_desc" },
+  { value: "dusk_prep", labelKey: "mitigation.dusk_prep_label", descKey: "mitigation.dusk_prep_desc" },
+  { value: "split_dinner", labelKey: "mitigation.split_dinner_label", descKey: "mitigation.split_dinner_desc" },
 ] as const;
 
 export default function Home() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
+  const FULL_DAY_NAMES = [t("negotiation.day.monday"), t("negotiation.day.tuesday"), t("negotiation.day.wednesday"), t("negotiation.day.thursday"), t("negotiation.day.friday"), t("negotiation.day.saturday"), t("negotiation.day.sunday")];
+  const DINNER_LABEL_SHORT: Record<string, string> = {
+    move_early: t("mitigation.early_short"),
+    fiber_starter: t("mitigation.fiber_short"),
+    dusk_prep: t("mitigation.dusk_short"),
+    split_dinner: t("mitigation.split_short"),
+    none: "",
+  };
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
 
@@ -226,7 +224,7 @@ export default function Home() {
         setTimeout(() => {
           setShowTickAnimation(false);
           setRecorded(true);
-          toast({ title: "Nice work!", description: isCatchUpCheck ? "Sunday check-in done!" : "Here's what's coming up tomorrow" });
+          toast({ title: t("home.nice_work"), description: isCatchUpCheck ? t("home.sunday_done") : t("home.coming_up") });
           if (isCatchUpCheck) {
             queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
             queryClient.invalidateQueries({ queryKey: ["/api/log"] });
@@ -261,16 +259,16 @@ export default function Home() {
           if (adj.convertedToStretch) {
             const isConsecutiveStretch = todayPlan?.isStretchDay;
             setHydrationAdvice(isConsecutiveStretch
-              ? "Let's keep tomorrow as a stretch day to restore your energy! Rest well tonight."
-              : "We've switched tomorrow to a 2 min stretch instead. Rest well tonight!");
+              ? t("home.hydration_stretch_keep")
+              : t("home.hydration_stretch_switch"));
           } else if (!adj.tomorrowWalkScheduled) {
-            setHydrationAdvice("Stay hydrated tomorrow! Rest well tonight.");
+            setHydrationAdvice(t("home.hydration_rest"));
           } else if (adj.reduced && adj.newDuration) {
-            setHydrationAdvice(`We've reduced tomorrow's walk to ${adj.newDuration} min. Stay hydrated and rest well!`);
+            setHydrationAdvice(t("home.hydration_reduced", { duration: adj.newDuration }));
           } else if (adj.walkCompleted) {
-            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+            setHydrationAdvice(t("home.hydration_walk"));
           } else {
-            setHydrationAdvice("Stay hydrated tomorrow! Drink extra water before your walk.");
+            setHydrationAdvice(t("home.hydration_walk"));
           }
         }
       }
@@ -298,16 +296,16 @@ export default function Home() {
       if (data?.nextDayAdjustment) {
         const adj = data.nextDayAdjustment;
         if (adj.convertedToStretch) {
-          setCatchupAdjMsg("Since you were tired, we've eased your next walk to a 2-minute stretch. Rest well!");
+          setCatchupAdjMsg(t("home.catchup_stretch"));
         } else if (adj.reduced && adj.newDuration) {
-          setCatchupAdjMsg(`Since you were tired, we've reduced your next walk to ${adj.newDuration} min. Rest well!`);
+          setCatchupAdjMsg(t("home.catchup_reduced", { duration: adj.newDuration }));
         } else if (wasTiredMiss) {
-          setCatchupAdjMsg("Since you were tired, we'll ease your next scheduled walk. Rest well!");
+          setCatchupAdjMsg(t("home.catchup_tired_ease"));
         } else if (adj.tomorrowWalkScheduled) {
-          setCatchupAdjMsg("You're all set for your next scheduled walk!");
+          setCatchupAdjMsg(t("home.catchup_all_set"));
         }
       } else if (wasTiredMiss) {
-        setCatchupAdjMsg("Since you were tired, we'll ease your next scheduled walk. Rest well!");
+        setCatchupAdjMsg(t("home.catchup_tired_ease"));
       }
       setCatchupCompleted(true);
     },
@@ -388,18 +386,18 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
     }
     if (dayData.eatOutScheduled && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out')) {
-      tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
+      tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
     }
     if (calendarPlan?.dietTip) {
       tasks.push({ icon: TrendingUp, text: `"${calendarPlan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
@@ -413,7 +411,7 @@ export default function Home() {
           </div>
 
           {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">It's your rest day — enjoy it!</p>
+            <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
           ) : (
             <div className="space-y-2">
               {tasks.map((task, idx) => {
@@ -450,12 +448,12 @@ export default function Home() {
             <Check className="w-4 h-4 text-green-600" />
             <p className="text-sm font-medium text-green-700 dark:text-green-400">
               {label === "move_early"
-                ? "Plan: Move dinner before 9pm"
-                : `Plan: ${DINNER_LABEL_SHORT[label] || label} tactic`
+                ? t("home.plan_move_dinner")
+                : t("home.plan_tactic", { tactic: DINNER_LABEL_SHORT[label] || label })
               }
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">Follow-up at 10pm</p>
+          <p className="text-xs text-muted-foreground">{t("home.follow_up_10pm")}</p>
         </div>
       );
     }
@@ -463,8 +461,8 @@ export default function Home() {
     if (showTacticPicker) {
       return (
         <div className="space-y-3" data-testid="section-dinner-tactic">
-          <p className="text-sm font-medium">{catchUpDayName ? `Which tactic did you use on ${catchUpDayName}?` : "Let's pick a game plan for dinner tonight:"}</p>
-          {MITIGATION_OPTIONS.map(opt => (
+          <p className="text-sm font-medium">{catchUpDayName ? t("home.dinner_catchup_tactic", { day: catchUpDayName }) : t("home.dinner_pick_plan")}</p>
+          {MITIGATION_OPTION_KEYS.map(opt => (
             <button
               key={opt.value}
               onClick={() => handleTacticPick(opt.value)}
@@ -472,8 +470,8 @@ export default function Home() {
               data-testid={`button-tactic-${opt.value}`}
               disabled={dinnerLabelMutation.isPending}
             >
-              <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
-              <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
+              <span className="font-medium">{t(opt.labelKey)}</span>
+              <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
             </button>
           ))}
         </div>
@@ -485,7 +483,7 @@ export default function Home() {
         <div className="space-y-3" data-testid="section-dinner-catchup">
           <div className="flex items-center gap-2">
             <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-            <p className="text-sm font-medium">What happened with dinner on {catchUpDayName}?</p>
+            <p className="text-sm font-medium">{t("home.dinner_question_day", { day: catchUpDayName })}</p>
           </div>
           <div className="flex flex-col gap-2">
             <Button
@@ -500,7 +498,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-catchup-dinner-early"
             >
-              Moved it early
+              {t("home.moved_early")}
             </Button>
             <Button
               size="sm"
@@ -509,7 +507,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-catchup-dinner-tactic"
             >
-              Used a dinner tactic
+              {t("home.used_tactic")}
             </Button>
             <Button
               size="sm"
@@ -520,7 +518,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-catchup-dinner-no"
             >
-              I didn't manage it
+              {t("home.didnt_manage")}
             </Button>
           </div>
         </div>
@@ -532,7 +530,7 @@ export default function Home() {
         <div className="space-y-3" data-testid="section-dinner-late-checkin">
           <div className="flex items-center gap-2">
             <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-            <p className="text-sm font-medium">What happened with dinner tonight?</p>
+            <p className="text-sm font-medium">{t("home.dinner_tonight_question")}</p>
           </div>
           <div className="flex flex-col gap-2">
             <Button
@@ -547,7 +545,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-early"
             >
-              Moved it early
+              {t("home.moved_early")}
             </Button>
             <Button
               size="sm"
@@ -556,7 +554,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-tactic"
             >
-              Used a dinner tactic
+              {t("home.used_tactic")}
             </Button>
             <Button
               size="sm"
@@ -565,7 +563,7 @@ export default function Home() {
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-no"
             >
-              I didn't manage it
+              {t("home.didnt_manage")}
             </Button>
           </div>
         </div>
@@ -619,8 +617,8 @@ export default function Home() {
       if (!isFirstLateDinnerDay && (firstDayChoseTactic || !firstDayLabel || firstDayLabel === "none")) {
         return (
           <div className="space-y-3" data-testid="section-dinner-tactic">
-            <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
-            {MITIGATION_OPTIONS.map(opt => (
+            <p className="text-sm font-medium">{t("home.dinner_pick_plan")}</p>
+            {MITIGATION_OPTION_KEYS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => handleTacticPick(opt.value)}
@@ -628,8 +626,8 @@ export default function Home() {
                 data-testid={`button-tactic-${opt.value}`}
                 disabled={dinnerLabelMutation.isPending}
               >
-                <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
-                <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
+                <span className="font-medium">{t(opt.labelKey)}</span>
+                <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
               </button>
             ))}
           </div>
@@ -674,8 +672,8 @@ export default function Home() {
 
       return (
         <div className="space-y-3" data-testid="section-dinner-pivot-tactics">
-          <p className="text-sm font-medium">Let's pick a game plan for dinner tonight:</p>
-          {MITIGATION_OPTIONS.map(opt => (
+          <p className="text-sm font-medium">{t("home.dinner_pick_plan")}</p>
+          {MITIGATION_OPTION_KEYS.map(opt => (
             <button
               key={opt.value}
               onClick={() => handleTacticPick(opt.value)}
@@ -683,8 +681,8 @@ export default function Home() {
               data-testid={`button-tactic-${opt.value}`}
               disabled={dinnerLabelMutation.isPending}
             >
-              <span className="font-medium">{t(`mitigation.${opt.value}_label`)}</span>
-              <span className="text-muted-foreground"> — {t(`mitigation.${opt.value}_desc`)}</span>
+              <span className="font-medium">{t(opt.labelKey)}</span>
+              <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
             </button>
           ))}
         </div>
@@ -728,7 +726,7 @@ export default function Home() {
         <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 rounded-lg p-3" data-testid="section-dinner-followup-done">
           <Check className="w-4 h-4 text-green-600" />
           <p className="text-sm text-green-700 dark:text-green-400">
-            Dinner check-in recorded: {todayLog.dinnerSuccess ? "Yes" : "No"}
+            {t("home.dinner_checkin_recorded")}: {todayLog.dinnerSuccess ? t("common.yes") : t("common.no")}
           </p>
         </div>
       );
@@ -789,7 +787,7 @@ export default function Home() {
             ) : (
               <X className="w-4 h-4 text-red-400" />
             )}
-            <span>{todayLog.walkCompleted ? "Completed" : "Skipped"}</span>
+            <span>{todayLog.walkCompleted ? t("home.completed") : t("home.skipped")}</span>
           </div>
         ) : (
           <>
@@ -847,12 +845,12 @@ export default function Home() {
               ) : (
                 <X className="w-4 h-4 text-red-400" />
               )}
-              <span>{todayLog.walkCompleted ? "Completed" : "Skipped"}</span>
+              <span>{todayLog.walkCompleted ? t("home.completed") : t("home.skipped")}</span>
             </div>
             <span>·</span>
             <div className="flex items-center gap-1.5">
               <Battery className="w-4 h-4 text-amber-500" />
-              <span>{todayLog.walkTired ? "Felt tired" : "Feeling good"}</span>
+              <span>{todayLog.walkTired ? t("home.feeling_tired_label") : t("home.feeling_good")}</span>
             </div>
           </div>
         ) : (
@@ -1027,31 +1025,31 @@ export default function Home() {
     if (todayPlan?.walkScheduled) {
       if (todayPlan?.standingTap) {
         items.push({
-          label: "Standing tap after dinner",
-          value: todayLog?.walkCompleted ? "Completed" : "Skipped",
+          label: t("home.standing_tap_label"),
+          value: todayLog?.walkCompleted ? t("home.completed") : t("home.skipped"),
           positive: !!todayLog?.walkCompleted,
         });
         items.push({
-          label: "Duration",
-          value: "1 min",
+          label: t("home.duration_label"),
+          value: t("home.duration_min", { duration: 1 }),
           positive: true,
         });
       } else {
         const chkStretch = isDayStretch(todayPlan, profile);
         const chkDur = chkStretch ? 2 : todayPlan?.walkDuration;
         items.push({
-          label: chkStretch ? "Stretch after dinner" : "Walk after dinner",
-          value: todayLog?.walkCompleted ? "Completed" : "Skipped",
+          label: chkStretch ? t("home.stretch_after_dinner") : t("home.walk_after_dinner"),
+          value: todayLog?.walkCompleted ? t("home.completed") : t("home.skipped"),
           positive: !!todayLog?.walkCompleted,
         });
         items.push({
-          label: "Duration",
-          value: `${chkDur} min`,
+          label: t("home.duration_label"),
+          value: t("home.duration_min", { duration: chkDur }),
           positive: true,
         });
         items.push({
-          label: "Feeling tired",
-          value: todayLog?.walkTired ? "Yes" : "No",
+          label: t("home.feeling_tired_label"),
+          value: todayLog?.walkTired ? t("common.yes") : t("common.no"),
           positive: !todayLog?.walkTired,
         });
       }
@@ -1059,21 +1057,21 @@ export default function Home() {
 
     if (isLateDinnerDay && dinnerLabelSet) {
       const tacticName = todayPlan?.dinnerLabel === "move_early"
-        ? "Early dinner"
+        ? t("home.early_dinner")
         : (DINNER_LABEL_SHORT[todayPlan?.dinnerLabel] || todayPlan?.dinnerLabel);
       items.push({
-        label: `Late dinner tactic (${tacticName})`,
-        value: todayLog?.dinnerSuccess ? "Followed" : "Not followed",
+        label: t("home.late_dinner_tactic", { tactic: tacticName }),
+        value: todayLog?.dinnerSuccess ? t("home.followed") : t("home.not_followed"),
         positive: !!todayLog?.dinnerSuccess,
       });
     }
 
     if (calendarPlan?.dietTip) {
-      const struggle = calendarPlan.dietStruggle?.replace(/_/g, " ") || "diet";
-      const dietVal = todayLog?.dietResponse === "yes" ? "Yes" :
-                      todayLog?.dietResponse === "no" ? "No" : "Didn't get the chance";
+      const struggleName = calendarPlan.dietStruggle ? t(`struggle.${calendarPlan.dietStruggle}`, { defaultValue: calendarPlan.dietStruggle.replace(/_/g, " ") }) : t("home.diet_row");
+      const dietVal = todayLog?.dietResponse === "yes" ? t("common.yes") :
+                      todayLog?.dietResponse === "no" ? t("common.no") : t("home.didnt_get_chance");
       items.push({
-        label: `Diet tactic for ${struggle}`,
+        label: t("home.diet_tactic_for", { struggle: struggleName }),
         value: dietVal,
         positive: todayLog?.dietResponse === "yes",
       });
@@ -1083,7 +1081,7 @@ export default function Home() {
       <div className="space-y-2" data-testid="section-checkin-summary">
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle2 className="w-5 h-5 text-green-600" />
-          <p className="text-sm font-semibold text-green-700 dark:text-green-400">Today's check-in complete</p>
+          <p className="text-sm font-semibold text-green-700 dark:text-green-400">{t("home.checkin_complete")}</p>
         </div>
         {items.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
@@ -1107,7 +1105,7 @@ export default function Home() {
         <Card>
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
-              <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
+              <span className="font-semibold text-foreground">{t("home.today")}</span> — {formatDate()}
             </div>
             <div className="flex items-center justify-center py-10" data-testid="section-tick-animation">
               <CheckCircle2 className="w-20 h-20 text-green-500 animate-bounce" />
@@ -1122,7 +1120,7 @@ export default function Home() {
         <Card>
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
-              <span className="font-semibold text-foreground">TODAY</span> — {formatDate()}
+              <span className="font-semibold text-foreground">{t("home.today")}</span> — {formatDate()}
             </div>
 
             {hydrationAdvice && (
@@ -1137,7 +1135,7 @@ export default function Home() {
                     onClick={() => setHydrationAdvice(null)}
                     data-testid="button-dismiss-hydration-summary"
                   >
-                    Got it
+                    {t("home.got_it")}
                   </Button>
                 </div>
               </div>
@@ -1179,7 +1177,7 @@ export default function Home() {
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
             <span className="font-semibold text-foreground">
-              {isCatchUp ? "SUNDAY CHECK-IN" : "TODAY"}
+              {isCatchUp ? t("home.sunday_checkin") : t("home.today")}
             </span> — {isCatchUp ? formatCatchUpDate() : formatDate()}
           </div>
 
@@ -1197,9 +1195,9 @@ export default function Home() {
           <div className="rounded-lg bg-muted/30 p-3 space-y-1">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-medium">Diet Snap</p>
+              <p className="text-sm font-medium">{t("home.diet_snap")}</p>
             </div>
-            <p className="text-xs text-muted-foreground italic" data-testid="text-diet-snap">Coming soon...</p>
+            <p className="text-xs text-muted-foreground italic" data-testid="text-diet-snap">{t("home.coming_soon")}</p>
           </div>
         </CardContent>
       </Card>
@@ -1236,11 +1234,11 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Let's catch up — complete your Sunday check-in
+                {t("home.catchup_banner")}
               </p>
             </div>
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-1">
-              Finish Sunday's check-in ({formatCatchUpDate()}) before viewing your weekly report.
+              {t("home.catchup_desc", { date: formatCatchUpDate() })}
             </p>
           </CardContent>
         </Card>
@@ -1252,25 +1250,25 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Log {DAY_NAMES[singleMissedDay.dayOfWeek]}'s check-in
+                {t("home.log_checkin", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
               </p>
             </div>
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
-              You missed {DAY_NAMES[singleMissedDay.dayOfWeek]}'s check-in — let's quickly catch up.
+              {t("home.missed_checkin_desc", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
             </p>
             {singleMissedDay.walkScheduled && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Did you complete your walk on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
+                <p className="text-sm font-medium">{t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
-                  <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">Yes</Button>
-                  <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">No</Button>
+                  <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">{t("common.yes")}</Button>
+                  <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">{t("common.no")}</Button>
                 </div>
                 {catchupWalkDone === false && (
                   <div className="space-y-2 pl-1">
-                    <p className="text-sm text-muted-foreground">Were you tired on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
+                    <p className="text-sm text-muted-foreground">{t("home.tired_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">Yes</Button>
-                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">No</Button>
+                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">{t("common.yes")}</Button>
+                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">{t("common.no")}</Button>
                     </div>
                   </div>
                 )}
@@ -1283,10 +1281,10 @@ export default function Home() {
               if (hasLabel && label === "move_early") {
                 return (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Did you manage to eat before 9pm on {missedDayName}?</p>
+                    <p className="text-sm font-medium">{t("home.eat_before_9pm", { day: missedDayName })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
-                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
                     </div>
                   </div>
                 );
@@ -1294,29 +1292,29 @@ export default function Home() {
               if (hasLabel) {
                 return (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Did you follow the {DINNER_LABEL_SHORT[label] || label} tip on {missedDayName}?</p>
+                    <p className="text-sm font-medium">{t("home.follow_tip_on", { tip: DINNER_LABEL_SHORT[label] || label, day: missedDayName })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">Yes</Button>
-                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">No</Button>
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
                     </div>
                   </div>
                 );
               }
               return (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">What happened with dinner on {missedDayName}?</p>
+                  <p className="text-sm font-medium">{t("home.dinner_question_day", { day: missedDayName })}</p>
                   <div className="flex flex-col gap-2">
-                    <Button size="sm" variant={catchupDinnerChoice === "early" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("early"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-early">Moved it early</Button>
-                    <Button size="sm" variant={catchupDinnerChoice === "tactic" ? "default" : "outline"} onClick={() => setCatchupDinnerChoice("tactic")} data-testid="button-catchup-dinner-tactic">Used a dinner tactic</Button>
-                    <Button size="sm" variant={catchupDinnerChoice === "none" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("none"); setCatchupDinnerDone(false); setCatchupTacticPick(null); }} data-testid="button-catchup-dinner-none">I didn't manage it</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "early" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("early"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-early">{t("home.moved_early")}</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "tactic" ? "default" : "outline"} onClick={() => setCatchupDinnerChoice("tactic")} data-testid="button-catchup-dinner-tactic">{t("home.used_tactic")}</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "none" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("none"); setCatchupDinnerDone(false); setCatchupTacticPick(null); }} data-testid="button-catchup-dinner-none">{t("home.didnt_manage")}</Button>
                   </div>
                   {catchupDinnerChoice === "tactic" && (
                     <div className="space-y-2 pl-1">
-                      <p className="text-xs text-muted-foreground">Which tactic did you use?</p>
+                      <p className="text-xs text-muted-foreground">{t("home.which_tactic")}</p>
                       <div className="flex flex-col gap-1">
-                        {MITIGATION_OPTIONS.map(opt => (
+                        {MITIGATION_OPTION_KEYS.map(opt => (
                           <Button key={opt.value} size="sm" variant={catchupTacticPick === opt.value ? "default" : "outline"} onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }} data-testid={`button-catchup-tactic-${opt.value}`}>
-                            {t(`mitigation.${opt.value}_label`)}
+                            {t(opt.labelKey)}
                           </Button>
                         ))}
                       </div>
@@ -1327,11 +1325,11 @@ export default function Home() {
             })()}
             {calendarPlan?.dietTip && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Did you get a chance to try the diet tip on {FULL_DAY_NAMES[singleMissedDay.dayOfWeek]}?</p>
+                <p className="text-sm font-medium">{t("home.diet_tip_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
-                  <Button size="sm" variant={catchupDietResponse === "yes" ? "default" : "outline"} onClick={() => setCatchupDietResponse("yes")} data-testid="button-catchup-diet-yes">Yes</Button>
-                  <Button size="sm" variant={catchupDietResponse === "no" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no")} data-testid="button-catchup-diet-no">No</Button>
-                  <Button size="sm" variant={catchupDietResponse === "no_chance" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no_chance")} data-testid="button-catchup-diet-no-chance">Didn't get the chance</Button>
+                  <Button size="sm" variant={catchupDietResponse === "yes" ? "default" : "outline"} onClick={() => setCatchupDietResponse("yes")} data-testid="button-catchup-diet-yes">{t("common.yes")}</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no")} data-testid="button-catchup-diet-no">{t("common.no")}</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no_chance" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no_chance")} data-testid="button-catchup-diet-no-chance">{t("home.didnt_get_chance")}</Button>
                 </div>
               </div>
             )}
@@ -1364,7 +1362,7 @@ export default function Home() {
               }
               data-testid="button-catchup-submit"
             >
-              {catchupMutation.isPending || dinnerLabelMutation.isPending ? "Saving..." : `Log ${DAY_NAMES[singleMissedDay.dayOfWeek]}`}
+              {catchupMutation.isPending || dinnerLabelMutation.isPending ? t("home.saving") : t("home.log_day", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
             </Button>
             {catchupAdjMsg && (
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">
@@ -1382,9 +1380,9 @@ export default function Home() {
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <p className="text-sm font-semibold" data-testid="text-all-set">You're all set for next week!</p>
+                <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Your plan is ready. Get some rest tonight.</p>
+              <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
             </CardContent>
           </Card>
           {(() => {
@@ -1402,18 +1400,18 @@ export default function Home() {
             const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
             if (dayData.walkScheduled) {
               if (dayData.standingTap) {
-                tasks.push({ icon: Timer, text: "1 min standing tap after dinner", testId: "text-plan-standing-tap", color: "text-amber-500" });
+                tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500" });
               } else {
                 const isStretch = isDayStretch(dayData, profile);
                 const dur = isStretch ? 2 : dayData.walkDuration;
-                tasks.push({ icon: isStretch ? Activity : Footprints, text: `${dur} min ${isStretch ? "stretch" : "walk"} after dinner`, testId: "text-plan-walk", color: "text-primary" });
+                tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary" });
               }
             }
             if (dayData.lateDinnerScheduled) {
-              tasks.push({ icon: UtensilsCrossed, text: "Late dinner — pick a tactic at 2pm", testId: "text-plan-late-dinner", color: "text-amber-500" });
+              tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
             }
             if (dayData.eatOutScheduled && !plan?.isDinnerFocus && (!plan?.dietStruggle || plan?.dietStruggle === 'eat_out')) {
-              tasks.push({ icon: ShoppingBag, text: "Eating Out / Takeaway", testId: "text-plan-eat-out", color: "text-orange-500" });
+              tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
             }
             if (plan?.dietTip) {
               tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
@@ -1422,10 +1420,10 @@ export default function Home() {
               <Card>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-                    <span className="font-semibold text-foreground">TOMORROW</span> — {formatTomorrowDate()}
+                    <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {formatTomorrowDate()}
                   </div>
                   {tasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">It's your rest day — enjoy it!</p>
+                    <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
                   ) : (
                     <div className="space-y-2">
                       {tasks.map((task, idx) => {
@@ -1454,21 +1452,21 @@ export default function Home() {
               <CalendarDays className="w-5 h-5 text-primary" />
               <p className="text-sm font-semibold">
                 {isCatchUp
-                  ? "You still haven't viewed your weekly report!"
-                  : "Your weekly report is ready!"}
+                  ? t("home.report_not_viewed")
+                  : t("home.report_ready")}
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
               {isCatchUp
-                ? "Review how last week went and plan ahead."
-                : "Time to review how your week went and plan ahead for next week."}
+                ? t("home.report_not_viewed_desc")
+                : t("home.report_ready_desc")}
             </p>
             <Button
               size="sm"
               onClick={() => setLocation("/plan")}
               data-testid="button-go-to-planner"
             >
-              Review & Plan Next Week
+              {t("home.review_plan")}
             </Button>
           </CardContent>
         </Card>
@@ -1481,7 +1479,7 @@ export default function Home() {
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date-summary">
                   <span className="font-semibold text-foreground">
-                    {isCatchUp ? "SUNDAY" : "TODAY"}
+                    {isCatchUp ? t("home.sunday") : t("home.today")}
                   </span> — {isCatchUp ? formatCatchUpDate() : formatDate()}
                 </div>
 
@@ -1497,7 +1495,7 @@ export default function Home() {
                         onClick={() => setHydrationAdvice(null)}
                         data-testid="button-dismiss-hydration-recorded"
                       >
-                        Got it
+                        {t("home.got_it")}
                       </Button>
                     </div>
                   </div>
@@ -1506,12 +1504,12 @@ export default function Home() {
                 {renderCheckInSummary()}
               </CardContent>
             </Card>
-            {tomorrowInPlanWeek && renderReadOnlyPlan(tomorrowPlan, "TOMORROW", formatTomorrowDate())}
+            {tomorrowInPlanWeek && renderReadOnlyPlan(tomorrowPlan, t("home.tomorrow"), formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
           renderCheckInCard()
         ) : (
-          renderReadOnlyPlan(todayPlan, "TODAY", formatDate())
+          renderReadOnlyPlan(todayPlan, t("home.today"), formatDate())
         )
       )}
 
@@ -1520,7 +1518,7 @@ export default function Home() {
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-dinner-focus">
               <UtensilsCrossed className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-semibold">Focus: Late Dinner Management</p>
+              <p className="text-sm font-semibold">{t("home.focus_dinner")}</p>
             </div>
             {(() => {
               const dinnerDaysData = calendarData?.calendar?.filter((d: any) => d.lateDinnerScheduled || (d.dinnerLabel && d.dinnerLabel !== "none")) || [];
@@ -1528,12 +1526,11 @@ export default function Home() {
               const dinnerAnswered = dinnerDaysData.filter((d: any) => d.dinnerSuccess !== null).length;
               return dinnerAnswered > 0 ? (
                 <p className="text-xs text-muted-foreground" data-testid="text-dinner-focus-stats">
-                  This week: {dinnerSuccess}/{dinnerAnswered} dinner tactics followed
+                  {t("home.dinner_tactics_followed", { success: dinnerSuccess, total: dinnerAnswered })}
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground" data-testid="text-dinner-focus-hint">
-                  Choose a tactic each late dinner day during your daily check-in
-                </p>
+                  {t("home.choose_tactic_hint")}</p>
               );
             })()}
           </CardContent>
@@ -1545,7 +1542,7 @@ export default function Home() {
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <p className="text-sm font-semibold">Focus: {calendarPlan.dietStruggle.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+              <p className="text-sm font-semibold">{t("home.focus_label", { name: t(`struggle.${calendarPlan.dietStruggle}`, { defaultValue: calendarPlan.dietStruggle.replace(/_/g, " ") }) })}</p>
             </div>
             {calendarPlan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{calendarPlan.dietTip}"</p>}
           </CardContent>
@@ -1554,7 +1551,7 @@ export default function Home() {
 
       {!nextWeekPlanned && (<Card>
         <CardContent className="pt-4">
-          <p className="text-sm font-semibold mb-3" data-testid="text-calendar-title">Weekly Calendar</p>
+          <p className="text-sm font-semibold mb-3" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
           <div className="space-y-2">
             <div className="grid grid-cols-8 gap-1 text-center text-xs">
               <div />
@@ -1564,7 +1561,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{profile?.isStretchMode ? "Stretch" : "Walk"}</div>
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{profile?.isStretchMode ? t("home.stretch_row") : t("home.walk_row")}</div>
               {calendarData?.calendar?.map((d: any, i: number) => {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
@@ -1614,7 +1611,7 @@ export default function Home() {
 
             {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Late Dinner</div>
+                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1643,7 +1640,7 @@ export default function Home() {
 
             {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Eat Out / Takeaway</div>
+                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1669,7 +1666,7 @@ export default function Home() {
 
             {calendarPlan?.dietTip && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Diet</div>
+                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{t("home.diet_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1693,19 +1690,19 @@ export default function Home() {
             )}
 
             <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground flex-wrap" data-testid="calendar-legend">
-              <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
-              <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
+              <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> {t("home.done")}</div>
+              <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> {t("home.missed")}</div>
               <div className="flex items-center gap-1">
                 {profile?.isStretchMode ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
-                {profile?.isStretchMode ? " Planned stretch" : " Planned walk"}
+                {profile?.isStretchMode ? ` ${t("home.planned_stretch")}` : ` ${t("home.planned_walk")}`}
               </div>
               {calendarData?.calendar?.some((d: any) => d.standingTap) && (
-                <div className="flex items-center gap-1"><Timer className="w-3 h-3 text-amber-500" /> Standing tap</div>
+                <div className="flex items-center gap-1"><Timer className="w-3 h-3 text-amber-500" /> {t("home.standing_tap_legend")}</div>
               )}
-              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
-              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> {t("home.late_dinner_legend")}</div>
+              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> {t("home.tactic_set")}</div>
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
-                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> Planned Eating Out / Takeaway</div>
+                <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
               )}
             </div>
           </div>
