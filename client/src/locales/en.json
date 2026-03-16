@@ -444,7 +444,21 @@
     "export_data": "Export Data",
     "coming_soon": "Coming Soon...",
     "log_out": "Log Out",
-    "language": "Language"
+    "language": "Language",
+    "sleep_regular_10_6": "Regular (10pm–6am)",
+    "sleep_other_regular": "Other regular schedule",
+    "sleep_night_shifts": "Night shifts",
+    "sleep_irregular": "Irregular",
+    "eating_out_rarely": "Rarely / never",
+    "eating_out_once": "About once a week",
+    "eating_out_times": "About {{count}} times a week",
+    "walk_not_set": "Not set",
+    "walk_min_each": "{{duration}} min each",
+    "walks_per_week": "{{count}}× per week, {{duration}}",
+    "no_walks": "None yet",
+    "dinner_before_9pm": "Before 9pm",
+    "dinner_after_9pm": "After 9pm (working on it!)",
+    "late_dinner_timing": "Late Dinner Timing"
   },
   "popup": {
     "coin_saved_one": "+{{count}} coin saved!",

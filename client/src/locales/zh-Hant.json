@@ -444,7 +444,21 @@
     "export_data": "匯出數據",
     "coming_soon": "即將推出...",
     "log_out": "登出",
-    "language": "語言"
+    "language": "語言",
+    "sleep_regular_10_6": "規律（晚10時至早6時）",
+    "sleep_other_regular": "其他規律作息",
+    "sleep_night_shifts": "夜班",
+    "sleep_irregular": "不規律",
+    "eating_out_rarely": "很少 / 從不",
+    "eating_out_once": "每週約1次",
+    "eating_out_times": "每週約{{count}}次",
+    "walk_not_set": "未設定",
+    "walk_min_each": "每次{{duration}}分鐘",
+    "walks_per_week": "每週{{count}}次，{{duration}}",
+    "no_walks": "暫無",
+    "dinner_before_9pm": "9點前",
+    "dinner_after_9pm": "9點後（努力改善中！）",
+    "late_dinner_timing": "晚餐時間管理"
   },
   "popup": {
     "coin_saved_one": "+{{count}} 個硬幣已儲！",

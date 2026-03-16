@@ -16,6 +16,12 @@ import {
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
+import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+
+function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
+  const i18nKey = DIET_TIP_I18N_KEYS[tip];
+  return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
+}
 
 interface RoadmapData {
   currentStruggle: string;
@@ -310,7 +316,7 @@ export default function RoadmapPage() {
         <CardContent>
           {currentTip && (
             <p className="text-sm text-primary font-medium mb-3" data-testid="text-current-tip">
-              "{currentTip}"
+              "{translateDietTip(currentTip, t)}"
             </p>
           )}
           <div className="flex items-center justify-between gap-2 mb-2">

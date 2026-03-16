@@ -10,13 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-
-const SLEEP_LABELS: Record<string, string> = {
-  regular_10_6: "Regular (10pm–6am)",
-  other_regular: "Other regular schedule",
-  night_shifts: "Night shifts",
-  irregular: "Irregular",
-};
+import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 
 interface ProfileData {
   walksPerWeek: number;
@@ -79,16 +73,9 @@ function ProfileSkeleton() {
   );
 }
 
-function formatEatingOut(value: string): string {
-  const num = parseInt(value, 10);
-  if (isNaN(num) || num === 0) return "Rarely / never";
-  if (num === 1) return "About once a week";
-  return `About ${num} times a week`;
-}
-
-function formatWalkDuration(duration: number): string {
-  if (duration < 5) return "Not set";
-  return `${duration} min each`;
+function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
+  const i18nKey = DIET_TIP_I18N_KEYS[tip];
+  return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
 }
 
 function HealthMarkersCard({ profile }: { profile: ProfileData }) {
@@ -273,8 +260,9 @@ export default function ProfilePage() {
     snacks: t("struggle.snacks"),
   };
 
-  const dinnerLabel = profile?.hasLateDinner ? "After 9pm (working on it!)" : "Before 9pm";
-  const walkDurationDisplay = formatWalkDuration(profile?.walkDuration ?? 0);
+  const dinnerLabel = profile?.hasLateDinner ? t("profile.dinner_after_9pm") : t("profile.dinner_before_9pm");
+  const walkDuration = profile?.walkDuration ?? 0;
+  const walkDurationDisplay = walkDuration < 5 ? t("profile.walk_not_set") : t("profile.walk_min_each", { duration: walkDuration });
   const walksPerWeek = profile?.walksPerWeek ?? 0;
   const currentLang = profile?.preferredLanguage || "en";
 
@@ -291,19 +279,24 @@ export default function ProfilePage() {
           <p data-testid="text-walks">
             <span className="text-muted-foreground">{t("profile.post_meal_walks")}</span>{" "}
             {walksPerWeek > 0
-              ? `${walksPerWeek}× per week, ${walkDurationDisplay}`
-              : "None yet"}
+              ? t("profile.walks_per_week", { count: walksPerWeek, duration: walkDurationDisplay })
+              : t("profile.no_walks")}
           </p>
           <p data-testid="text-dinner-time">
             <span className="text-muted-foreground">{t("profile.dinner_time")}</span> {dinnerLabel}
           </p>
           <p data-testid="text-sleep-pattern">
             <span className="text-muted-foreground">{t("profile.sleep_pattern")}</span>{" "}
-            {SLEEP_LABELS[profile?.sleepPattern ?? ""] ?? profile?.sleepPattern ?? "N/A"}
+            {t(`profile.sleep_${profile?.sleepPattern ?? ""}`, { defaultValue: profile?.sleepPattern ?? "N/A" })}
           </p>
           <p data-testid="text-eating-out">
             <span className="text-muted-foreground">{t("profile.eating_out")}</span>{" "}
-            {formatEatingOut(profile?.eatingOutFrequency ?? "0")}
+            {(() => {
+              const num = parseInt(profile?.eatingOutFrequency ?? "0", 10);
+              if (isNaN(num) || num === 0) return t("profile.eating_out_rarely");
+              if (num === 1) return t("profile.eating_out_once");
+              return t("profile.eating_out_times", { count: num });
+            })()}
           </p>
         </CardContent>
       </Card>
@@ -320,12 +313,12 @@ export default function ProfilePage() {
         <CardContent className="space-y-2 text-sm">
           <p data-testid="text-focus-area" className="font-medium">
             {roadmap?.isDinnerFocus
-              ? "Late Dinner Timing"
+              ? t("profile.late_dinner_timing")
               : STRUGGLE_NAMES[roadmap?.currentStruggle ?? ""] ?? roadmap?.currentStruggle ?? "N/A"}
           </p>
           {roadmap?.currentTip && (
             <p data-testid="text-current-tip" className="text-muted-foreground">
-              {roadmap.currentTip}
+              {translateDietTip(roadmap.currentTip, t)}
             </p>
           )}
         </CardContent>
