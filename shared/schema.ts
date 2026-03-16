@@ -151,6 +151,20 @@ export const DIET_TIP_LADDERS: Record<string, string[]> = {
   snacks: ["Kitchen Closure after dinner", "Switch to edamame or nuts"],
 };
 
+export const DIET_TIP_I18N_KEYS: Record<string, string> = {
+  "Dilute juice 1:1 with water": "diet_tip.dilute_juice",
+  "Swap dessert for yogurt + berries": "diet_tip.swap_dessert",
+  "Limit fruit to 1x per week": "diet_tip.limit_fruit",
+  "Steam your food first, then sear briefly": "diet_tip.steam_then_sear",
+  "Choose grilled over fried": "diet_tip.grilled_over_fried",
+  "Decouple (eat at home first, socialize out)": "diet_tip.decouple",
+  "Share main dishes": "diet_tip.share_mains",
+  "Swap sides for vegetables": "diet_tip.swap_sides_veggies",
+  "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": "diet_tip.plate_method",
+  "Kitchen Closure after dinner": "diet_tip.kitchen_closure",
+  "Switch to edamame or nuts": "diet_tip.switch_edamame_nuts",
+};
+
 export const MITIGATION_TRIO = ["fiber_starter", "dusk_prep", "split_dinner"] as const;
 
 export const MITIGATION_TRIO_LABELS: Record<string, string> = {

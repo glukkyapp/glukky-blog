@@ -465,5 +465,18 @@
     "create_account": "Create Account",
     "logging_in": "Logging in...",
     "registering": "Registering..."
+  },
+  "diet_tip": {
+    "dilute_juice": "Dilute juice 1:1 with water",
+    "swap_dessert": "Swap dessert for yogurt + berries",
+    "limit_fruit": "Limit fruit to 1x per week",
+    "steam_then_sear": "Steam your food first, then sear briefly",
+    "grilled_over_fried": "Choose grilled over fried",
+    "decouple": "Decouple (eat at home first, socialize out)",
+    "share_mains": "Share main dishes",
+    "swap_sides_veggies": "Swap sides for vegetables",
+    "plate_method": "Use the plate method (½ veggies, ¼ protein, ¼ carbs)",
+    "kitchen_closure": "Kitchen Closure after dinner",
+    "switch_edamame_nuts": "Switch to edamame or nuts"
   }
 }

@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+
+function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
+  const i18nKey = DIET_TIP_I18N_KEYS[tip];
+  return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
+}
 
 function isDayStretch(day: any, profile: any): boolean {
   if (day?.isStretchDay) return true;
@@ -401,7 +407,7 @@ export default function Home() {
       tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
     }
     if (calendarPlan?.dietTip) {
-      tasks.push({ icon: TrendingUp, text: `"${calendarPlan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
+      tasks.push({ icon: TrendingUp, text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
     }
 
     return (
@@ -943,7 +949,7 @@ export default function Home() {
           <TrendingUp className="w-4 h-4 text-primary" />
           <p className="text-sm font-medium">{t("home.diet_tactic_label")}</p>
         </div>
-        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{calendarPlan.dietTip}"</p>
+        <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{translateDietTip(calendarPlan.dietTip, t)}"</p>
         {dietAnswered ? (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="section-diet-answered">
             {todayLog.dietResponse === "yes" ? (
@@ -1416,7 +1422,7 @@ export default function Home() {
               tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
             }
             if (plan?.dietTip) {
-              tasks.push({ icon: TrendingUp, text: `"${plan.dietTip}"`, testId: "text-plan-diet", color: "text-primary" });
+              tasks.push({ icon: TrendingUp, text: `"${translateDietTip(plan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
             }
             return (
               <Card>
@@ -1546,7 +1552,7 @@ export default function Home() {
               <TrendingUp className="w-4 h-4 text-primary" />
               <p className="text-sm font-semibold">{t("home.focus_label", { name: t(`struggle.${calendarPlan.dietStruggle}`, { defaultValue: calendarPlan.dietStruggle.replace(/_/g, " ") }) })}</p>
             </div>
-            {calendarPlan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{calendarPlan.dietTip}"</p>}
+            {calendarPlan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{translateDietTip(calendarPlan.dietTip, t)}"</p>}
           </CardContent>
         </Card>
       )}

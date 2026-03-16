@@ -186,11 +186,11 @@
   "roadmap": {
     "title": "你嘅每週進度",
     "walk_card_title": "飯後散步",
-    "how_youre_doing": "你嘅狀況",
+    "how_youre_doing": "你嘅進度",
     "dinner_card_title": "早啲食晚飯",
     "success_rate": "成功率",
     "diet_tip_title": "飲食貼士",
-    "diet_completion": "每週飲食貼士完成率",
+    "diet_completion": "每週飲食建議完成次數",
     "diet_days_one": "{{count}}日",
     "diet_days_other": "{{count}}日",
     "struggle_queue_title": "困難項目",
@@ -465,5 +465,18 @@
     "create_account": "建立帳號",
     "logging_in": "登入緊...",
     "registering": "註冊緊..."
+  },
+  "diet_tip": {
+    "dilute_juice": "果汁加水1:1稀釋",
+    "swap_dessert": "以乳酪加漿果代替甜品",
+    "limit_fruit": "每週限制生果1次",
+    "steam_then_sear": "先蒸後略煎",
+    "grilled_over_fried": "揀烤嘅代替炸嘅",
+    "decouple": "先喺屋企食飽，再出去傾偈",
+    "share_mains": "分享主菜",
+    "swap_sides_veggies": "配菜換做蔬菜",
+    "plate_method": "餐盤法（½蔬菜、¼蛋白質、¼碳水）",
+    "kitchen_closure": "晚飯後關閉廚房",
+    "switch_edamame_nuts": "改食毛豆或堅果"
   }
 }

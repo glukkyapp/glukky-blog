@@ -12,7 +12,12 @@ import {
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
   Wine, Soup, Minus, Activity, Sparkles, Timer,
 } from "lucide-react";
-import { DIET_TIP_LADDERS, STRUGGLE_PRIORITY } from "@shared/schema";
+import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
+
+function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
+  const i18nKey = DIET_TIP_I18N_KEYS[tip];
+  return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
+}
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 
@@ -437,7 +442,7 @@ export default function WeeklyPlanner() {
                 </p>
               )}
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
-                {t("planner.tip_label", { tip: reflection.dietTip })}
+                {t("planner.tip_label", { tip: translateDietTip(reflection.dietTip, t) })}
               </p>
               {reflection.weekInCycle > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
@@ -1213,7 +1218,7 @@ export default function WeeklyPlanner() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-primary/5 rounded-lg p-4 text-center">
-              <p className="font-medium text-primary" data-testid="text-auto-tip">{tipLadder[0]}</p>
+              <p className="font-medium text-primary" data-testid="text-auto-tip">{translateDietTip(tipLadder[0], t)}</p>
             </div>
           </CardContent>
         </Card>
@@ -1231,7 +1236,7 @@ export default function WeeklyPlanner() {
               {t("planner.last_week_practiced")}
             </p>
             <div className="bg-primary/5 rounded-lg p-3 text-center">
-              <p className="font-medium text-primary text-sm">{lastWeekTip}</p>
+              <p className="font-medium text-primary text-sm">{translateDietTip(lastWeekTip!, t)}</p>
             </div>
             <p className="text-sm text-muted-foreground">
               {t("planner.keep_practicing_tip")}
@@ -1283,7 +1288,7 @@ export default function WeeklyPlanner() {
               }`}
               onClick={() => setSelectedTip(tip)}
             >
-              <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{tip}</p>
+              <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{translateDietTip(tip, t)}</p>
             </button>
           ))}
         </CardContent>
@@ -1392,7 +1397,7 @@ export default function WeeklyPlanner() {
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> {t("home.focus_label", { name: STRUGGLE_NAMES[struggle] || struggle })}
                 </p>
-                <p className="text-xs text-primary font-medium">{tip}</p>
+                <p className="text-xs text-primary font-medium">{translateDietTip(tip, t)}</p>
               </div>
             );
           })()}
