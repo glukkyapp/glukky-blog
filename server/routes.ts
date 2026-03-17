@@ -875,6 +875,7 @@ export async function registerRoutes(
   });
 
   const DEV_EMAILS = ["yusycyn@gmail.com"];
+  const TEST_EMAIL_PATTERN = /^test-.*@glukky\.test$/;
   const devTimeOverrides = new Map<string, number | null>();
   const devDateOverrides = new Map<string, string | null>();
 
@@ -882,10 +883,11 @@ export async function registerRoutes(
     const userId = req.user?.claims?.sub;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const user = await authStorage.getUser(userId);
-    if (!user || !DEV_EMAILS.includes(user.email)) {
-      return res.status(403).json({ message: "Forbidden" });
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (DEV_EMAILS.includes(user.email) || TEST_EMAIL_PATTERN.test(user.email)) {
+      return next();
     }
-    next();
+    return res.status(403).json({ message: "Forbidden" });
   };
 
   app.get("/api/dev/state", isAuthenticated, isDevUser, async (req: any, res) => {
