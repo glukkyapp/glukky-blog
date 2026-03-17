@@ -131,8 +131,8 @@
     "tried_on_day": "喺{{day}}試咗",
     "didnt_try_today": "今日冇試",
     "didnt_try_day": "喺{{day}}冇試",
-    "diet_chance_today": "今日有機會試嗎？",
-    "diet_chance_day": "你喺{{day}}有機會嘗試嗎？",
+    "diet_chance_today": "今日有冇做到？",
+    "diet_chance_day": "你喺{{day}}有冇做到？",
     "duration_min_short": "{{duration}}分"
   },
   "mitigation": {
@@ -202,7 +202,7 @@
     "coins_count": "{{coins}} / {{capacity}} 個硬幣",
     "reward_setup_title": "你想為咩努力？",
     "reward_setup_desc": "設定豬豬儲蓄罐滿嗰陣嘅獎勵（60個）。",
-    "reward_placeholder": "例如：一頓靚餐、新鞋...",
+    "reward_placeholder": "例如：食大餐、新鞋...",
     "saving": "儲存緊...",
     "save": "儲存",
     "congrats_title": "你嘅豬豬儲蓄罐滿嘞！",
@@ -465,8 +465,8 @@
     "coin_saved_other": "+{{count}} 個硬幣已儲！"
   },
   "common": {
-    "yes": "係",
-    "no": "唔係",
+    "yes": "有",
+    "no": "冇",
     "error": "錯誤"
   },
   "landing": {
@@ -483,7 +483,7 @@
   "diet_tip": {
     "dilute_juice": "果汁加水1:1稀釋",
     "swap_dessert": "以乳酪加漿果代替甜品",
-    "limit_fruit": "每週限制生果1次",
+    "limit_fruit": "每星期最多一次生果",
     "steam_then_sear": "先蒸後略煎",
     "grilled_over_fried": "揀烤嘅代替炸嘅",
     "decouple": "先喺屋企食飽，再出去傾偈",
@@ -540,9 +540,9 @@
     },
     "piggy_bank": {
       "title": "你嘅豬豬儲蓄罐",
-      "p1": "完成散步同跟住飲食建議嚟賺取硬幣。",
+      "p1": "完成散步同飲食建議嚟賺取金幣。",
       "p2": "集滿60個硬幣，領取你為自己設定嘅獎勵。",
-      "p3": "揀一個你真正想要嘅——咁樣效果更好。"
+      "p3": "揀一樣你真正想要嘅嘢——咁樣你會更加有動力。"
     },
     "dinner_tactics": {
       "title": "三個晚餐策略",
