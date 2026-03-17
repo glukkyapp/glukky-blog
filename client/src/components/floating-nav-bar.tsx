@@ -28,7 +28,7 @@ export default function FloatingNavBar() {
   return (
     <nav
       className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
-      style={{ width: "343px", height: "80px", maxWidth: "calc(100vw - 32px)" }}
+      style={{ width: "457px", height: "80px", maxWidth: "calc(100vw - 32px)" }}
       data-testid="nav-floating-bar"
     >
       <div
@@ -37,6 +37,8 @@ export default function FloatingNavBar() {
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
+          paddingLeft: "57px",
+          paddingRight: "57px",
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
