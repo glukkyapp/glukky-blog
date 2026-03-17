@@ -69,11 +69,6 @@ export default function Home() {
   const cardDinnerTiming = useInfoCard("dinner_timing");
   const cardDinnerTactics = useInfoCard("dinner_tactics");
 
-  useEffect(() => { if (profile) cardWelcome.trigger(); }, [!!profile]);
-  useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
-  useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
-  useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
-
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
     : currentHour;
@@ -147,6 +142,11 @@ export default function Home() {
   });
   const calendarPlan = calendarData?.plan;
   const planFirstActiveDay = calendarPlan?.firstActiveDay ?? 0;
+
+  useEffect(() => { if (profile) cardWelcome.trigger(); }, [!!profile]);
+  useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
+  useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
+  useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
 
   const sundayCheckInDone = (() => {
     if (!isCatchUp) return false;

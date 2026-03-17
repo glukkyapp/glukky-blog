@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export function useInfoCard(id: string) {
   const key = `glukky_card_${id}_seen`;
@@ -49,6 +49,7 @@ export function InfoCardPopup({
     <Dialog open={visible} onOpenChange={(open) => { if (!open) onDismiss(); }}>
       <DialogContent
         className="max-w-xs mx-auto rounded-2xl p-0 overflow-hidden"
+        aria-describedby={undefined}
         data-testid={testId || "dialog-info-card"}
       >
         <div className="flex flex-col items-center gap-4 p-6 pb-5">
@@ -56,9 +57,9 @@ export function InfoCardPopup({
             <Icon className="w-8 h-8 text-primary" />
           </div>
 
-          <h2 className="text-base font-semibold text-center leading-snug" data-testid="text-info-card-title">
+          <DialogTitle className="text-base font-semibold text-center leading-snug" data-testid="text-info-card-title">
             {t(titleKey)}
-          </h2>
+          </DialogTitle>
 
           <p
             className="text-sm text-center text-muted-foreground leading-relaxed min-h-[56px]"
