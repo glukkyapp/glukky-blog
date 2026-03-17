@@ -13,6 +13,7 @@ import Home from "@/pages/home";
 import Roadmap from "@/pages/roadmap";
 import Profile from "@/pages/profile";
 import MonthlyReport from "@/pages/monthly-report";
+import Snap from "@/pages/snap";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -63,6 +64,7 @@ function AuthenticatedApp() {
           <Route path="/" component={Home} />
           <Route path="/roadmap" component={Roadmap} />
           <Route path="/plan" component={WeeklyPlanner} />
+          <Route path="/snap" component={Snap} />
           <Route path="/profile" component={Profile} />
           <Route path="/monthly" component={MonthlyReport} />
           <Route path="/dev" component={DevPanel} />

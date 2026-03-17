@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
-import { Target, Check, X, Minus, Camera, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
+import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 
@@ -1209,13 +1209,6 @@ export default function Home() {
             </div>
           ))}
 
-          <div className="rounded-lg bg-muted/30 p-3 space-y-1">
-            <div className="flex items-center gap-2">
-              <Camera className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-medium">{t("home.diet_snap")}</p>
-            </div>
-            <p className="text-xs text-muted-foreground italic" data-testid="text-diet-snap">{t("home.coming_soon")}</p>
-          </div>
         </CardContent>
       </Card>
     );
