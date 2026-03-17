@@ -28,7 +28,7 @@ export default function FloatingNavBar() {
   return (
     <nav
       className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
-      style={{ width: "457px", height: "80px", maxWidth: "calc(100vw - 32px)" }}
+      style={{ width: "343px", height: "80px", maxWidth: "calc(100vw - 32px)" }}
       data-testid="nav-floating-bar"
     >
       <div
