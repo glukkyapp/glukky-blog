@@ -37,8 +37,8 @@ export default function FloatingNavBar() {
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-          paddingLeft: "62px",
-          paddingRight: "62px",
+          paddingLeft: "90px",
+          paddingRight: "90px",
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
