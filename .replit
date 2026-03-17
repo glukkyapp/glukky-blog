@@ -54,12 +54,12 @@ waitForPort = 5000
 name = "week1-gate-check"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "grep -q \"isWeek1 && currentPlan && !canPlan\" client/src/pages/weekly-planner.tsx && echo \"PASS: week-1 report gate includes !canPlan guard\" || (echo \"FAIL: week-1 report gate missing !canPlan guard — regression detected\" && exit 1)"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node tests/week1-gate.test.mjs"
 
 [[workflows.workflow]]
 name = "typecheck"
