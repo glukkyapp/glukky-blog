@@ -25,7 +25,7 @@ export async function registerRoutes(
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail } = req.body;
+      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage } = req.body;
 
       let sortedStruggles = sortStruggles(struggles || []);
       if (sortedStruggles.length === 0) {
@@ -49,6 +49,7 @@ export async function registerRoutes(
         dinnerSuccessWeeks: 0,
         onboardingComplete: true,
         notificationEmail: notificationEmail || null,
+        preferredLanguage: preferredLanguage || "en",
         restDay: null,
         currentWeek: 1,
       });

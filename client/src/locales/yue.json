@@ -164,12 +164,12 @@
     "q3_other_regular": "其他規律時間表",
     "q3_night_shifts": "夜班",
     "q3_irregular": "唔規律",
-    "q4_title": "你每星期出外食幾多次？",
+    "q4_title": "你每星期出街食幾多次？",
     "q4_rarely": "好少（0次）",
     "q4_1_2": "1-2次",
     "q4_3_4": "3-4次",
     "q4_5_plus": "5次或以上",
-    "q5_title": "你喺邊啲飲食方面有困難？",
+    "q5_title": "你喺邊啲飲食習慣方面想改善？",
     "q6_title": "輸入電郵以接收每日提示（選填）",
     "back": "返回",
     "next": "下一步",
@@ -179,7 +179,7 @@
   "struggle": {
     "sugary_food_drink": "高糖食品及飲料",
     "oily_fried_food": "油膩/煎炸食物",
-    "eat_out": "出外食飯/外賣",
+    "eat_out": "出街食飯/外賣",
     "portions": "份量控制",
     "snacks": "零食"
   },
