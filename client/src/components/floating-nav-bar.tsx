@@ -32,13 +32,11 @@ export default function FloatingNavBar() {
       data-testid="nav-floating-bar"
     >
       <div
-        className="relative w-full h-full flex items-center justify-around gap-1"
+        className="relative w-full h-full flex items-center justify-center gap-6"
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-          paddingLeft: "90px",
-          paddingRight: "90px",
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
@@ -49,7 +47,7 @@ export default function FloatingNavBar() {
               onClick={() => handleNavClick(path)}
               className="relative z-10 flex flex-col items-center justify-center"
               style={{
-                flex: 1,
+                width: "52px",
                 height: "100%",
                 color: "#0D5E4F",
                 background: "transparent",
