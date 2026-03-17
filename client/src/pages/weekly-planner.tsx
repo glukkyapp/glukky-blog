@@ -1556,7 +1556,7 @@ export default function WeeklyPlanner() {
     );
   }
 
-  if (isWeek1 && currentPlan) {
+  if (isWeek1 && currentPlan && !canPlan) {
     return renderPendingView();
   }
 
