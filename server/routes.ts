@@ -887,21 +887,23 @@ export async function registerRoutes(
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
 
-  const SNAP_DAILY_LIMIT = 3;
-  const snapDailyCount = new Map<string, { date: string; count: number }>();
+  const SNAP_LABEL_DAILY_LIMIT = 3;
+  const SNAP_ADVICE_DAILY_LIMIT = 6;
+  const snapLabelCount = new Map<string, { date: string; count: number }>();
+  const snapAdviceCount = new Map<string, { date: string; count: number }>();
 
-  function getSnapCountToday(userId: string): number {
+  function getDailyCount(map: Map<string, { date: string; count: number }>, userId: string): number {
     const today = new Date().toISOString().slice(0, 10);
-    const entry = snapDailyCount.get(userId);
+    const entry = map.get(userId);
     if (!entry || entry.date !== today) return 0;
     return entry.count;
   }
 
-  function incrementSnapCount(userId: string): void {
+  function incrementDailyCount(map: Map<string, { date: string; count: number }>, userId: string): void {
     const today = new Date().toISOString().slice(0, 10);
-    const entry = snapDailyCount.get(userId);
+    const entry = map.get(userId);
     if (!entry || entry.date !== today) {
-      snapDailyCount.set(userId, { date: today, count: 1 });
+      map.set(userId, { date: today, count: 1 });
     } else {
       entry.count += 1;
     }
@@ -1088,8 +1090,8 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
 
-      if (getSnapCountToday(userId) >= SNAP_DAILY_LIMIT) {
-        return res.status(429).json({ message: `Daily limit of ${SNAP_DAILY_LIMIT} snaps reached. Try again tomorrow.` });
+      if (getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
+        return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.` });
       }
 
       const { imageBase64, mimeType } = req.body;
@@ -1135,7 +1137,7 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
         ],
       });
 
-      incrementSnapCount(userId);
+      incrementDailyCount(snapLabelCount, userId);
 
       const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "";
       let parsed: any;
@@ -1154,8 +1156,8 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
         portion: parsed.portion ?? null,
         sauces: parsed.sauces ?? null,
         extras: parsed.extras ?? null,
-        snapsUsedToday: getSnapCountToday(userId),
-        snapsLimit: SNAP_DAILY_LIMIT,
+        snapsUsedToday: getDailyCount(snapLabelCount, userId),
+        snapsLimit: SNAP_LABEL_DAILY_LIMIT,
       });
     } catch (error: any) {
       console.error("Snap label error:", error);
@@ -1166,6 +1168,10 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
   app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+
+      if (getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
+        return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.` });
+      }
 
       const { name, portion, sauces, extras } = req.body;
       if (!name) {
@@ -1194,7 +1200,7 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
 
       const langLabel: Record<string, string> = {
         en: "English",
-        "zh-HK": "Traditional Chinese (繁體中文)",
+        "zh-Hant": "Traditional Chinese (繁體中文)",
         yue: "Written Cantonese (廣東話書面語)",
       };
 
@@ -1234,7 +1240,13 @@ Always reply in EXACTLY this format — 4 lines, nothing else:
 
       const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
-      res.json({ advice });
+      incrementDailyCount(snapAdviceCount, userId);
+
+      res.json({
+        advice,
+        adviceUsedToday: getDailyCount(snapAdviceCount, userId),
+        adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+      });
     } catch (error: any) {
       console.error("Snap advice error:", error);
       res.status(500).json({ message: "Diet advice generation failed. Please try again." });
