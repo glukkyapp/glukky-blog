@@ -576,8 +576,8 @@ export default function WeeklyPlanner() {
                 <>
                   <p className="text-sm font-medium" data-testid="text-negotiation-ask-day">{t("negotiation.ask_day")}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-day-yes">{t("common.yes")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-day-no">{t("common.no")}</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-add-day-yes">{t("negotiation.ask_day_yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-add-day-no">{t("negotiation.ask_day_no")}</Button>
                   </div>
                 </>
               )}

@@ -213,6 +213,8 @@
   },
   "negotiation": {
     "ask_day": "你想增加1日散步嗎？",
+    "ask_day_yes": "想",
+    "ask_day_no": "唔想",
     "yes": "係",
     "no": "唔係",
     "ask_minutes": "你想增加5分鐘散步時間嗎？",
@@ -264,7 +266,7 @@
     "diet_label": "飲食 — {{name}}",
     "diet_success_pct": "{{pct}}%飲食成功率",
     "tip_label": "貼士：{{tip}}",
-    "week_of_cycle": "呢個困難嘅第{{week}}週，共3週",
+    "week_of_cycle": "第{{week}}週，共3週",
     "followed_tip_one": "跟住建議{{count}}日",
     "followed_tip_other": "跟住建議{{count}}日",
     "no_chance_one": "冇機會練習{{count}}日",
@@ -280,8 +282,8 @@
     "stretch_days_hint": "揀做2分鐘飯後伸展嘅日子",
     "mid_week_joining": "你係週中加入——{{day}}之前嘅日子唔可以揀",
     "mid_week_late": "規劃遲咗——{{day}}之前嘅日子唔可以揀",
-    "days_selected_one": "已揀{{count}}個{{type}}日",
-    "days_selected_other": "已揀{{count}}個{{type}}日",
+    "days_selected_one": "已揀{{count}}日",
+    "days_selected_other": "已揀{{count}}日",
     "generic_days_selected_one": "已揀{{count}}日",
     "generic_days_selected_other": "已揀{{count}}日",
     "plus_standing_tap": " + 1次企立踏步",
@@ -462,8 +464,8 @@
     "late_dinner_timing": "晚餐時間管理"
   },
   "popup": {
-    "coin_saved_one": "+{{count}} 個硬幣已儲！",
-    "coin_saved_other": "+{{count}} 個硬幣已儲！"
+    "coin_saved_one": "已儲{{count}}個硬幣！",
+    "coin_saved_other": "已儲{{count}}個硬幣！"
   },
   "common": {
     "yes": "有",
