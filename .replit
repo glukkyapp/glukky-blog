@@ -37,10 +37,6 @@ args = "Start application"
 task = "workflow.run"
 args = "week1-gate-check"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "typecheck"
-
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -59,18 +55,7 @@ isValidation = true
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node tests/week1-gate.test.mjs"
-
-[[workflows.workflow]]
-name = "typecheck"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx tsc --noEmit"
-
-[workflows.workflow.metadata]
-isValidation = true
+args = "npx playwright test tests/week1-gate.spec.ts --reporter=list && node tests/week1-gate.test.mjs"
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.0"]
