@@ -36,19 +36,18 @@ export function PiggyBankSVG({ coins, className }: Props) {
         draggable={false}
       />
 
-      {/* Gold coin-fill overlay — covers belly area, mix-blend-mode keeps face visible */}
+      {/* Gold coin-fill overlay — covers belly area, stops before the face on the right */}
       {state > 0 && (
         <div
           aria-hidden
           style={{
             position: "absolute",
-            left: "17%",
-            top: "28%",
-            width: "58%",
-            height: "48%",
+            left: "14%",
+            top: "26%",
+            width: "62%",
+            height: "52%",
             borderRadius: "50%",
             backgroundColor: `rgba(${GOLD}, ${opacity})`,
-            mixBlendMode: "multiply",
             pointerEvents: "none",
           }}
         />
