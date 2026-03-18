@@ -60,15 +60,19 @@ function LoadingSkeleton() {
   );
 }
 
-function PiggyBankCard({ data, onClaim, onSetReward }: {
+const DEV_STATES = [0, 10, 25, 40, 55] as const;
+
+function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
   data: PiggyBankData;
   onClaim: () => void;
   onSetReward: () => void;
+  isDev?: boolean;
 }) {
   const { t } = useTranslation();
   const prevCoins = useRef(data.coins);
   const [animating, setAnimating] = useState(false);
   const [coinsGained, setCoinsGained] = useState(0);
+  const [devPreviewCoins, setDevPreviewCoins] = useState<number | null>(null);
 
   useEffect(() => {
     if (data.coins > prevCoins.current) {
@@ -136,7 +140,34 @@ function PiggyBankCard({ data, onClaim, onSetReward }: {
               </div>
             )}
 
-            <PiggyBankSVG coins={data.coins} className="w-36 h-36" />
+            <PiggyBankSVG coins={devPreviewCoins ?? data.coins} className="w-48 h-48" />
+
+            {isDev && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[10px] text-muted-foreground mr-1">preview:</span>
+                {DEV_STATES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setDevPreviewCoins(devPreviewCoins === c ? null : c)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono transition-colors ${
+                      (devPreviewCoins === c || (devPreviewCoins === null && c === 0 && data.coins < 10))
+                        ? "bg-amber-100 border-amber-400 text-amber-700"
+                        : "border-muted-foreground/30 text-muted-foreground hover:border-amber-300"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+                {devPreviewCoins !== null && (
+                  <button
+                    onClick={() => setDevPreviewCoins(null)}
+                    className="text-[10px] px-1.5 py-0.5 rounded border border-muted-foreground/30 text-muted-foreground hover:text-foreground ml-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="w-full mt-1">
               <div className="flex justify-between items-center mb-1">
@@ -191,6 +222,10 @@ export default function RoadmapPage() {
 
   const { data: piggy, refetch: refetchPiggy } = useQuery<PiggyBankData>({
     queryKey: ["/api/piggybank"],
+  });
+
+  const { data: devCheck } = useQuery<{ isDev: boolean }>({
+    queryKey: ["/api/dev/check"],
   });
 
   const [showRewardSetup, setShowRewardSetup] = useState(false);
@@ -281,6 +316,7 @@ export default function RoadmapPage() {
           data={piggy}
           onClaim={() => setShowCongrats(true)}
           onSetReward={() => setShowRewardSetup(true)}
+          isDev={devCheck?.isDev}
         />
       )}
 
