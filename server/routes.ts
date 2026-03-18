@@ -1137,8 +1137,6 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
         ],
       });
 
-      incrementDailyCount(snapLabelCount, userId);
-
       const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "";
       let parsed: any;
       try {
@@ -1150,6 +1148,8 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
       if (parsed.error) {
         return res.status(422).json({ message: parsed.error });
       }
+
+      incrementDailyCount(snapLabelCount, userId);
 
       res.json({
         name: parsed.name ?? null,
