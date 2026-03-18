@@ -1556,13 +1556,9 @@ export default function WeeklyPlanner() {
     );
   }
 
-  if (isWeek1 && currentPlan && !canPlan) {
-    return renderPendingView();
-  }
-
   const nextWeekPlanned = !!(currentPlan?.startDate && effectiveDateStr < currentPlan.startDate);
 
-  if (nextWeekPlanned) {
+  function renderPlanReady() {
     const planWeekNum = currentPlan?.weekNumber || (profile?.currentWeek ? profile.currentWeek - 1 : 1);
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -1586,11 +1582,7 @@ export default function WeeklyPlanner() {
     );
   }
 
-  if (isPastPlanWeek && !canPlan) {
-    return renderLastWeekReport();
-  }
-
-  if (!isWeek1 && canPlan && isLatePlanning && !sundayCheckInDone) {
+  function renderCatchupGate() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-sunday-checkin-gate">
@@ -1618,6 +1610,23 @@ export default function WeeklyPlanner() {
       </div>
     );
   }
+
+  // ── Single view-mode decision ─────────────────────────────────────────────
+  // All time/week conditions (including canPlan) are resolved here in one
+  // place. To add a new screen, extend this block — never stack another
+  // early-return above it that ignores canPlan.
+  const viewMode =
+    isWeek1 && currentPlan && !canPlan                             ? "pending"
+    : nextWeekPlanned                                              ? "plan_ready"
+    : isPastPlanWeek && !canPlan                                   ? "last_week_report"
+    : !isWeek1 && canPlan && isLatePlanning && !sundayCheckInDone  ? "catchup_gate"
+    :                                                                "planner";
+  // ─────────────────────────────────────────────────────────────────────────
+
+  if (viewMode === "pending")          return renderPendingView();
+  if (viewMode === "plan_ready")       return renderPlanReady();
+  if (viewMode === "last_week_report") return renderLastWeekReport();
+  if (viewMode === "catchup_gate")     return renderCatchupGate();
 
   return (
     <>
