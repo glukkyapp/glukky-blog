@@ -553,5 +553,35 @@
       "p2": "Dusk Prep — small snack at 5pm means a smaller, less impactful late dinner.",
       "p3": "Split Dinner — two smaller meals are easier on your blood sugar than one large one."
     }
+  },
+  "snap": {
+    "title": "Food Snap",
+    "subtitle": "Take a photo of your meal for personalised diet advice.",
+    "take_photo": "Take Photo / Upload",
+    "photos_remaining": "{{remaining}} of {{limit}} photo analyses left today",
+    "photos_exhausted": "You've used all {{limit}} photo analyses today. Come back tomorrow.",
+    "advice_remaining": "{{remaining}} of {{limit}} advice requests left today",
+    "advice_exhausted": "You've used all {{limit}} advice requests today. Come back tomorrow.",
+    "analysing": "Analysing your photo…",
+    "getting_advice": "Getting diet advice…",
+    "label_title": "What did you eat?",
+    "label_subtitle": "Check Claude's guess and correct anything before getting advice.",
+    "field_name": "Food name",
+    "field_portion": "Portion",
+    "field_sauces": "Sauces / condiments",
+    "field_extras": "Extras / toppings",
+    "field_placeholder_name": "e.g. Wonton noodle soup",
+    "field_placeholder_portion": "e.g. Medium bowl",
+    "field_placeholder_sauces": "e.g. Soy sauce, hoisin",
+    "field_placeholder_extras": "e.g. Extra wonton",
+    "get_advice": "Get diet advice",
+    "try_again": "Try a different photo",
+    "advice_title": "Diet advice",
+    "done": "Done",
+    "next": "Next",
+    "error_no_food": "No food detected in this photo. Please try a clearer shot.",
+    "error_limit_label": "You've used all {{limit}} photo analyses for today. Come back tomorrow.",
+    "error_limit_advice": "You've used all {{limit}} advice requests for today. Come back tomorrow.",
+    "error_generic": "Something went wrong. Please try again."
   }
 }
