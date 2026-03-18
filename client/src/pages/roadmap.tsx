@@ -147,7 +147,7 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
               </div>
             )}
 
-            <PiggyBankSVG coins={data.coins} className="w-48 h-48" />
+            <PiggyBankSVG coins={data.coins} />
 
             {isDev && (
               <div className="flex items-center gap-1 mt-1">

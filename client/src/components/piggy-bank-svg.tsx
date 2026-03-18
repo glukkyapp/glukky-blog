@@ -1,86 +1,34 @@
-import pigImage from "@assets/midjourney-editor-1773825798623_1773825809837.png";
+import img0 from "@assets/IMG_2062_1773846070998.PNG";
+import img1 from "@assets/IMG_0610_1773846070999.PNG";
+import img2 from "@assets/IMG_0611_1773846070999.PNG";
+import img3 from "@assets/IMG_0612_1773846070999.PNG";
+import img4 from "@assets/IMG_0613_1773846070999.PNG";
+import img5 from "@assets/IMG_0614_1773846070999.PNG";
 
 interface Props {
   coins: number;
   className?: string;
 }
 
-function getState(coins: number): 0 | 1 | 2 | 3 | 4 {
-  if (coins >= 55) return 4;
-  if (coins >= 40) return 3;
-  if (coins >= 25) return 2;
-  if (coins >= 10) return 1;
-  return 0;
+function getImage(coins: number): string {
+  if (coins >= 46) return img5;
+  if (coins >= 31) return img4;
+  if (coins >= 16) return img3;
+  if (coins >= 7) return img2;
+  if (coins >= 1) return img1;
+  return img0;
 }
 
-const FILL_OPACITY: Record<number, number> = {
-  0: 0,
-  1: 0.35,
-  2: 0.5,
-  3: 0.65,
-  4: 0.8,
-};
-
-const GOLD = "255, 199, 56";
-
 export function PiggyBankSVG({ coins, className }: Props) {
-  const state = getState(coins);
-  const opacity = FILL_OPACITY[state];
-
   return (
-    <div className={`relative ${className ?? ""}`} style={{ display: "inline-block" }}>
-      <img
-        src={pigImage}
-        alt="piggy bank"
-        className="w-full h-full object-contain"
-        draggable={false}
-      />
-
-      {/* Gold coin-fill overlay — covers belly area, stops before the face on the right */}
-      {state > 0 && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "18%",
-            top: "24%",
-            width: "68%",
-            height: "54%",
-            borderRadius: "50%",
-            backgroundColor: `rgba(${GOLD}, ${opacity})`,
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Sparkle stars for state 4 */}
-      {state === 4 && (
-        <svg
-          aria-hidden
-          viewBox="0 0 100 100"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            overflow: "visible",
-          }}
-        >
-          {[
-            [12, 22],
-            [88, 18],
-            [50, 4],
-          ].map(([x, y], i) => (
-            <g key={i} transform={`translate(${x},${y})`}>
-              <line x1="0" y1="-7" x2="0" y2="7"  stroke="#FFC738" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="-7" y1="0" x2="7" y2="0"  stroke="#FFC738" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="-5" y1="-5" x2="5" y2="5" stroke="#FFC738" strokeWidth="1.8" strokeLinecap="round" />
-              <line x1="5" y1="-5" x2="-5" y2="5" stroke="#FFC738" strokeWidth="1.8" strokeLinecap="round" />
-            </g>
-          ))}
-        </svg>
-      )}
-    </div>
+    <img
+      src={getImage(coins)}
+      alt="piggy bank"
+      width={230}
+      height={230}
+      style={{ width: 230, height: 230, objectFit: "contain" }}
+      draggable={false}
+      className={className}
+    />
   );
 }
