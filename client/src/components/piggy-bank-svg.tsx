@@ -42,10 +42,10 @@ export function PiggyBankSVG({ coins, className }: Props) {
           aria-hidden
           style={{
             position: "absolute",
-            left: "14%",
-            top: "26%",
-            width: "62%",
-            height: "52%",
+            left: "18%",
+            top: "24%",
+            width: "68%",
+            height: "54%",
             borderRadius: "50%",
             backgroundColor: `rgba(${GOLD}, ${opacity})`,
             pointerEvents: "none",
