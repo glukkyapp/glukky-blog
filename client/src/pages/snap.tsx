@@ -30,12 +30,23 @@ interface LabelForm {
   extras: string;
 }
 
+const ADVICE_PREFIXES = ["🩸", "⚠️", "💡", "✅"] as const;
+
 function parseAdvicePanels(advice: string): string[] {
-  return advice
+  const lines = advice
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-    .slice(0, 4);
+    .filter((l) => l.length > 0);
+
+  const ordered: string[] = [];
+  for (const prefix of ADVICE_PREFIXES) {
+    const match = lines.find((l) => l.startsWith(prefix));
+    if (match) ordered.push(match);
+  }
+
+  if (ordered.length === 4) return ordered;
+
+  return lines.slice(0, 4);
 }
 
 function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
