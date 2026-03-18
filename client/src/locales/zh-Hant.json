@@ -553,5 +553,35 @@
       "p2": "黃昏預備——下午5點吃少量小食，讓晚餐更小、影響更少。",
       "p3": "晚餐一開二——兩頓小餐比一頓大餐對血糖更友善。"
     }
+  },
+  "snap": {
+    "title": "食物快拍",
+    "subtitle": "拍下你的餐點，獲得個人化飲食建議！",
+    "take_photo": "拍照 / 上傳",
+    "photos_remaining": "今日還有 {{remaining}} / {{limit}} 次照片分析",
+    "photos_exhausted": "今日已用盡 {{limit}} 次照片分析，明天再見！",
+    "advice_remaining": "今日還有 {{remaining}} / {{limit}} 次飲食建議",
+    "advice_exhausted": "今日已用盡 {{limit}} 次飲食建議，明天再來吧。",
+    "analysing": "正在分析你的餐點…",
+    "getting_advice": "正在獲取飲食建議…",
+    "label_title": "你正在吃什麼？",
+    "label_subtitle": "確認我的判斷，有誤可以更正，再獲取建議。",
+    "field_name": "食物名稱",
+    "field_portion": "份量",
+    "field_sauces": "醬料 / 調味",
+    "field_extras": "配料 / 加料",
+    "field_placeholder_name": "例如：雲吞麵",
+    "field_placeholder_portion": "例如：中碗",
+    "field_placeholder_sauces": "例如：醬油、海鮮醬",
+    "field_placeholder_extras": "例如：加雲吞",
+    "get_advice": "獲取飲食建議",
+    "try_again": "換一張照片",
+    "advice_title": "飲食建議",
+    "done": "完成",
+    "next": "下一頁",
+    "error_no_food": "未能識別食物，請嘗試拍攝更清晰的照片。",
+    "error_limit_label": "今日已用盡 {{limit}} 次照片分析，明天再見！",
+    "error_limit_advice": "今日已用盡 {{limit}} 次飲食建議，明天再來吧。",
+    "error_generic": "發生錯誤，請再試一次。"
   }
 }

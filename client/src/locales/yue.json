@@ -553,5 +553,35 @@
       "p2": "黃昏預備——下畫5點食少少嘢，晚餐食少啲、影響細啲。",
       "p3": "晚餐一開二——兩餐細，好過一餐大。"
     }
+  },
+  "snap": {
+    "title": "食物快拍",
+    "subtitle": "影低你食緊啲咩，獲得度身訂造飲食建議！",
+    "take_photo": "影相 / 上傳",
+    "photos_remaining": "今日仲有 {{remaining}} / {{limit}} 次照片分析",
+    "photos_exhausted": "今日已用曬 {{limit}} 次照片分析，聽日再見喇！",
+    "advice_remaining": "今日剩返 {{remaining}} / {{limit}} 次飲食建議",
+    "advice_exhausted": "今日已用曬 {{limit}} 次飲食建議，聽日再見喇！",
+    "analysing": "分析緊你餐飯…",
+    "getting_advice": "幫緊你獲取飲食建議…",
+    "label_title": "你食緊咩？",
+    "label_subtitle": "睇下我分析得啱唔啱，可以更正我，再比建議你。",
+    "field_name": "食物名稱",
+    "field_portion": "份量",
+    "field_sauces": "醬料 / 調味",
+    "field_extras": "配料 / 加料",
+    "field_placeholder_name": "例如：雲吞麵",
+    "field_placeholder_portion": "例如：中碗",
+    "field_placeholder_sauces": "例如：醬油、海鮮醬",
+    "field_placeholder_extras": "例如：加雲吞",
+    "get_advice": "獲取飲食建議",
+    "try_again": "換一張相",
+    "advice_title": "飲食建議",
+    "done": "完成",
+    "next": "下一頁",
+    "error_no_food": "未能識別食物，請嘗試拍攝更清晰的照片。",
+    "error_limit_label": "今日已用曬 {{limit}} 次照片分析，聽日再見喇！",
+    "error_limit_advice": "今日已用曬 {{limit}} 次飲食建議，聽日再見喇！",
+    "error_generic": "發生咗錯誤，請再試一次。"
   }
 }
