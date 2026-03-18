@@ -1091,7 +1091,7 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
 
       if (getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
-        return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.` });
+        return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });
       }
 
       const { imageBase64, mimeType } = req.body;
@@ -1170,7 +1170,7 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
       const userId = req.user.claims.sub;
 
       if (getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
-        return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.` });
+        return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
       const { name, portion, sauces, extras } = req.body;
