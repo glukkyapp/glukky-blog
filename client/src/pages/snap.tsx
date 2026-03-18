@@ -77,6 +77,7 @@ export default function Snap() {
   const [step, setStep] = useState<Step>("upload");
   const [error, setError] = useState<string | null>(null);
   const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState<LabelForm>({ name: "", portion: "", sauces: "", extras: "" });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
@@ -85,6 +86,8 @@ export default function Snap() {
     setStep("upload");
     setError(null);
     setLabelResult(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
     setForm({ name: "", portion: "", sauces: "", extras: "" });
     setAdviceResult(null);
     setAdvicePanel(0);
@@ -96,6 +99,8 @@ export default function Snap() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
 
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
     setError(null);
     setStep("labeling");
 
@@ -250,6 +255,15 @@ export default function Snap() {
 
       {step === "review" && (
         <div className="flex flex-col gap-4">
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt="Food photo"
+              className="w-full rounded-2xl object-cover max-h-52"
+              data-testid="img-snap-preview"
+            />
+          )}
+
           <div>
             <p className="text-sm font-semibold">{t("snap.label_title")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
