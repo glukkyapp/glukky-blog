@@ -376,7 +376,6 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
 
   await storage.updateProfile(input.userId, {
     walkDuration: walkDayMaxDuration,
-    walksPerWeek: walkFrequency,
   });
 
   return { plan, days };
