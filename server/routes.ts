@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
@@ -881,6 +882,31 @@ export async function registerRoutes(
   const devDateOverrides = new Map<string, string | null>();
   const devCoinOverrides = new Map<string, number | null>();
 
+  const anthropic = new Anthropic({
+    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  });
+
+  const SNAP_DAILY_LIMIT = 3;
+  const snapDailyCount = new Map<string, { date: string; count: number }>();
+
+  function getSnapCountToday(userId: string): number {
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = snapDailyCount.get(userId);
+    if (!entry || entry.date !== today) return 0;
+    return entry.count;
+  }
+
+  function incrementSnapCount(userId: string): void {
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = snapDailyCount.get(userId);
+    if (!entry || entry.date !== today) {
+      snapDailyCount.set(userId, { date: today, count: 1 });
+    } else {
+      entry.count += 1;
+    }
+  }
+
   const isDevUser = async (req: any, res: any, next: any) => {
     const userId = req.user?.claims?.sub;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -1055,6 +1081,163 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error generating history:", error);
       res.status(500).json({ message: "Failed to generate history" });
+    }
+  });
+
+  app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      if (getSnapCountToday(userId) >= SNAP_DAILY_LIMIT) {
+        return res.status(429).json({ message: `Daily limit of ${SNAP_DAILY_LIMIT} snaps reached. Try again tomorrow.` });
+      }
+
+      const { imageBase64, mimeType } = req.body;
+      if (!imageBase64 || !mimeType) {
+        return res.status(400).json({ message: "imageBase64 and mimeType are required" });
+      }
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ message: "Unsupported image type. Use JPEG, PNG, WebP, or GIF." });
+      }
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 512,
+        system: `You are a food identification assistant. Analyse the food in the photo and return ONLY a valid JSON object with exactly these fields:
+{
+  "name": "primary food name in English",
+  "portion": "estimated portion size (e.g. Medium bowl ~400ml, 1 slice, Small plate)",
+  "sauces": "visible sauces or condiments as a short string, or null if none",
+  "extras": "additional toppings or sides as a short string, or null if none"
+}
+
+Important context: Users are based in Hong Kong. Common foods include: congee, dim sum, rice noodles, wonton noodles, milk tea, pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot.
+
+If you cannot identify food in the image, return exactly: {"error":"No food detected"}
+
+Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+                  data: imageBase64,
+                },
+              },
+              { type: "text", text: "Identify the food in this image." },
+            ],
+          },
+        ],
+      });
+
+      incrementSnapCount(userId);
+
+      const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return res.status(422).json({ message: "Could not parse food identification response." });
+      }
+
+      if (parsed.error) {
+        return res.status(422).json({ message: parsed.error });
+      }
+
+      res.json({
+        name: parsed.name ?? null,
+        portion: parsed.portion ?? null,
+        sauces: parsed.sauces ?? null,
+        extras: parsed.extras ?? null,
+        snapsUsedToday: getSnapCountToday(userId),
+        snapsLimit: SNAP_DAILY_LIMIT,
+      });
+    } catch (error: any) {
+      console.error("Snap label error:", error);
+      res.status(500).json({ message: "Food identification failed. Please try again." });
+    }
+  });
+
+  app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const { name, portion, sauces, extras } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "name is required" });
+      }
+
+      const profile = await storage.getProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+
+      const struggle = profile.currentStruggle ?? "sugary_food_drink";
+      const tipIndex = profile.currentTipIndex ?? 0;
+      const lang = profile.preferredLanguage ?? "en";
+
+      const tipList = DIET_TIP_LADDERS[struggle] ?? [];
+      const tip = tipList[tipIndex] ?? tipList[0] ?? "Choose lower-GI options where possible";
+
+      const struggleLabel: Record<string, string> = {
+        sugary_food_drink: "sugary food & drinks",
+        oily_fried_food: "oily / fried food",
+        eat_out: "eating out / takeaway",
+        portions: "portion control",
+        snacks: "snacking",
+      };
+
+      const langLabel: Record<string, string> = {
+        en: "English",
+        "zh-HK": "Traditional Chinese (繁體中文)",
+        yue: "Written Cantonese (廣東話書面語)",
+      };
+
+      const foodDesc = [
+        `Food: ${name}`,
+        portion ? `Portion: ${portion}` : null,
+        sauces ? `Sauces / condiments: ${sauces}` : null,
+        extras ? `Extras / toppings: ${extras}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        system: `You are a dietary advisor helping a person manage Type 2 diabetes through blood sugar and sugar control. Your sole focus is glycaemic impact and practical sugar reduction.
+
+Users are based in Hong Kong. You are familiar with local foods: congee, dim sum, rice noodles, wonton noodles, Hong Kong milk tea (with condensed milk), pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, siu mai, har gow, cheung fun, lo mai gai, turnip cake.
+
+The user's current diet struggle is: ${struggleLabel[struggle] ?? struggle}
+Their current weekly tip is: "${tip}"
+
+Reply in ${langLabel[lang] ?? "English"}.
+
+Always reply in EXACTLY this format — 4 lines, nothing else:
+🩸 Blood sugar impact: [High / Medium / Low]
+⚠️ Watch out for: [the single biggest GI or sugar risk in this meal, 1 concise sentence]
+💡 One swap: [one specific, actionable portion or ingredient change — be concrete, not generic]
+✅ Your focus: [connect this meal to the user's current struggle in 1 sentence]`,
+        messages: [
+          {
+            role: "user",
+            content: foodDesc,
+          },
+        ],
+      });
+
+      const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+
+      res.json({ advice });
+    } catch (error: any) {
+      console.error("Snap advice error:", error);
+      res.status(500).json({ message: "Diet advice generation failed. Please try again." });
     }
   });
 
