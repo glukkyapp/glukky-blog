@@ -834,8 +834,9 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const devOverride = devCoinOverrides.get(userId);
       res.json({
-        coins: profile.piggyBankCoins,
+        coins: devOverride != null ? devOverride : profile.piggyBankCoins,
         capacity: 60,
         reward: profile.piggyBankReward ?? null,
         needsRewardSetup: profile.piggyBankNeedsRewardSetup,
@@ -878,6 +879,7 @@ export async function registerRoutes(
   const TEST_EMAIL_PATTERN = /^test-.*@glukky\.test$/;
   const devTimeOverrides = new Map<string, number | null>();
   const devDateOverrides = new Map<string, string | null>();
+  const devCoinOverrides = new Map<string, number | null>();
 
   const isDevUser = async (req: any, res: any, next: any) => {
     const userId = req.user?.claims?.sub;
@@ -889,6 +891,21 @@ export async function registerRoutes(
     }
     return res.status(403).json({ message: "Forbidden" });
   };
+
+  app.post("/api/dev/set-coins", isAuthenticated, isDevUser, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { coins } = req.body;
+    if (coins === null || coins === undefined) {
+      devCoinOverrides.delete(userId);
+    } else {
+      const n = Number(coins);
+      if (!isFinite(n) || n < 0 || n > 60) {
+        return res.status(400).json({ message: "coins must be 0–60 or null" });
+      }
+      devCoinOverrides.set(userId, n);
+    }
+    res.json({ coinsOverride: devCoinOverrides.get(userId) ?? null });
+  });
 
   app.get("/api/dev/state", isAuthenticated, isDevUser, async (req: any, res) => {
     try {

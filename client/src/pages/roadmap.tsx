@@ -72,7 +72,14 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
   const prevCoins = useRef(data.coins);
   const [animating, setAnimating] = useState(false);
   const [coinsGained, setCoinsGained] = useState(0);
-  const [devPreviewCoins, setDevPreviewCoins] = useState<number | null>(null);
+
+  const setDevCoinsMutation = useMutation({
+    mutationFn: (coins: number | null) =>
+      apiRequest("POST", "/api/dev/set-coins", { coins }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+    },
+  });
 
   useEffect(() => {
     if (data.coins > prevCoins.current) {
@@ -140,7 +147,7 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
               </div>
             )}
 
-            <PiggyBankSVG coins={devPreviewCoins ?? data.coins} className="w-48 h-48" />
+            <PiggyBankSVG coins={data.coins} className="w-48 h-48" />
 
             {isDev && (
               <div className="flex items-center gap-1 mt-1">
@@ -148,9 +155,10 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
                 {DEV_STATES.map((c) => (
                   <button
                     key={c}
-                    onClick={() => setDevPreviewCoins(devPreviewCoins === c ? null : c)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono transition-colors ${
-                      (devPreviewCoins === c || (devPreviewCoins === null && c === 0 && data.coins < 10))
+                    disabled={setDevCoinsMutation.isPending}
+                    onClick={() => setDevCoinsMutation.mutate(c)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono transition-colors disabled:opacity-40 ${
+                      data.coins === c
                         ? "bg-amber-100 border-amber-400 text-amber-700"
                         : "border-muted-foreground/30 text-muted-foreground hover:border-amber-300"
                     }`}
@@ -158,14 +166,14 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
                     {c}
                   </button>
                 ))}
-                {devPreviewCoins !== null && (
-                  <button
-                    onClick={() => setDevPreviewCoins(null)}
-                    className="text-[10px] px-1.5 py-0.5 rounded border border-muted-foreground/30 text-muted-foreground hover:text-foreground ml-1"
-                  >
-                    ✕
-                  </button>
-                )}
+                <button
+                  disabled={setDevCoinsMutation.isPending}
+                  onClick={() => setDevCoinsMutation.mutate(null)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-muted-foreground/30 text-muted-foreground hover:text-foreground ml-1 disabled:opacity-40"
+                  title="Clear dev override"
+                >
+                  ✕
+                </button>
               </div>
             )}
 
