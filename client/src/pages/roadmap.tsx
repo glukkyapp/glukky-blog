@@ -149,6 +149,12 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
 
             <PiggyBankSVG coins={data.coins} />
 
+            {data.reward && (
+              <p className="text-base font-bold text-foreground text-center mt-1" data-testid="text-piggy-reward">
+                {data.reward}
+              </p>
+            )}
+
             {isDev && (
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-[10px] text-muted-foreground mr-1">preview:</span>
@@ -189,12 +195,8 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
               <Progress value={fillPct} className={isFull ? "[&>div]:bg-amber-400" : ""} data-testid="progress-piggy-bank" />
             </div>
 
-            <div className="w-full mt-2">
-              {data.reward ? (
-                <p className="text-xs text-muted-foreground" data-testid="text-piggy-reward">
-                  {t("roadmap.reward_goal")} <span className="font-medium text-foreground">{data.reward}</span>
-                </p>
-              ) : (
+            {!data.reward && (
+              <div className="w-full mt-2">
                 <button
                   className="text-xs text-primary underline underline-offset-2"
                   onClick={onSetReward}
@@ -202,8 +204,8 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
                 >
                   {t("roadmap.tap_set_reward")}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {isFull && (
               <Button
