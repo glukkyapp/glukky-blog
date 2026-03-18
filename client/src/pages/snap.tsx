@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Loader2, RotateCcw, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -82,11 +82,16 @@ export default function Snap() {
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   function reset() {
     setStep("upload");
     setError(null);
     setLabelResult(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setForm({ name: "", portion: "", sauces: "", extras: "" });
     setAdviceResult(null);
@@ -99,7 +104,6 @@ export default function Snap() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
 
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
     setError(null);
     setStep("labeling");
