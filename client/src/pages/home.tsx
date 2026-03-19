@@ -64,6 +64,7 @@ export default function Home() {
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
 
+  const cardFirstWalkDay = useInfoCard("first_walk_day");
   const cardStretchSwitch = useInfoCard("stretch_switch");
   const cardDinnerTiming = useInfoCard("dinner_timing");
   const cardDinnerTactics = useInfoCard("dinner_tactics");
@@ -142,6 +143,7 @@ export default function Home() {
   const calendarPlan = calendarData?.plan;
   const planFirstActiveDay = calendarPlan?.firstActiveDay ?? 0;
 
+  useEffect(() => { if (todayPlan?.walkScheduled && effectiveHour >= 8) cardFirstWalkDay.trigger(); }, [todayPlan?.walkScheduled, effectiveHour]);
   useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
   useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
   useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
@@ -1720,6 +1722,7 @@ export default function Home() {
       </Card>)}
     </div>
     <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
+    <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />
     <InfoCardPopup visible={cardDinnerTactics.visible} onDismiss={cardDinnerTactics.dismiss} icon={UtensilsCrossed} titleKey="info_card.dinner_tactics.title" panelKeys={["info_card.dinner_tactics.p1","info_card.dinner_tactics.p2","info_card.dinner_tactics.p3"]} testId="dialog-card-dinner-tactics" />

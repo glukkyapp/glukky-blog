@@ -518,6 +518,12 @@
       "p3": "We prioritise dinner timing over other diet habits — it has the biggest impact.",
       "p4": "On nights you can't eat early, we'll give you tactics to soften the effect."
     },
+    "first_walk_day": {
+      "title": "Your first walk day",
+      "p1": "Here comes your first post-meal walk! A short walk after dinner is one of the most effective things you can do for blood sugar.",
+      "p2": "Struggling to find 10 minutes? Try natural 'excuses' — take out the rubbish, collect the mail, or buy groceries on foot.",
+      "p3": "Take the stairs. Add an extra loop around your building, block, or the nearby park."
+    },
     "stretch_switch": {
       "title": "Switching to gentle stretching",
       "p1": "Walking has been tough recently — that's normal.",
