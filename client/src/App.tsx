@@ -17,7 +17,7 @@ import Snap from "@/pages/snap";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
-import glukkyLogo from "@assets/Screenshot_2026-03-19_at_22.19.09_1773930063753.png";
+import glukkyLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
 import i18n from "./i18n";
 
 function AuthenticatedApp() {

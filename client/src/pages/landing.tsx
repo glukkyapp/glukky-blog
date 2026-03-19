@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import glukkyLogo from "@assets/Screenshot_2026-03-19_at_22.19.09_1773930063753.png";
+import glukkyLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
