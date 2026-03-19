@@ -143,7 +143,6 @@ export default function Home() {
   const calendarPlan = calendarData?.plan;
   const planFirstActiveDay = calendarPlan?.firstActiveDay ?? 0;
 
-  useEffect(() => { if (todayPlan?.walkScheduled && effectiveHour >= 8) cardFirstWalkDay.trigger(); }, [todayPlan?.walkScheduled, effectiveHour]);
   useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
   useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
   useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
@@ -187,6 +186,8 @@ export default function Home() {
 
   const todayPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === checkInDayOfWeek);
   const todayLog = calendarData?.calendar?.find((d: any) => d.date === checkInDate);
+
+  useEffect(() => { if (todayPlan?.walkScheduled && effectiveHour >= 8) cardFirstWalkDay.trigger(); }, [todayPlan?.walkScheduled, effectiveHour]);
   const tomorrowDow = (dayOfWeek + 1) % 7;
   const tomorrowPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === tomorrowDow);
   const tomorrowInPlanWeek = planSundayStr ? todayStr < planSundayStr : false;
