@@ -101,7 +101,7 @@
     "tactic_set": "已設策略",
     "planned_eat_out": "計劃出外食飯 / 外賣",
     "focus_dinner": "重點：晚餐管理",
-    "dinner_tactics_followed": "今週：{{success}}/{{total}}次晚餐策略已跟住",
+    "dinner_tactics_followed": "今週：{{success}}/{{total}}次晚餐策略已完成",
     "choose_tactic_hint": "每日晚餐遲咗嗰陣，喺每日簽到入面揀策略",
     "focus_label": "重點：{{name}}",
     "nice_work": "做得好！",
