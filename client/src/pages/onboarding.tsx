@@ -13,19 +13,11 @@ import i18n from "@/i18n";
 
 const TOTAL_STEPS = 6;
 
-const LANGUAGES = [
-  { code: "en", label: "English", testId: "button-lang-en" },
-  { code: "zh-Hant", label: "繁體中文", testId: "button-lang-zh-Hant" },
-  { code: "yue", label: "粵語", testId: "button-lang-yue" },
-];
-
 export default function Onboarding() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [preStep, setPreStep] = useState<"lang" | "intro" | "questions">("lang");
-  const [selectedLang, setSelectedLang] = useState("en");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,12 +27,6 @@ export default function Onboarding() {
   const [eatingOutFrequency, setEatingOutFrequency] = useState<string>("");
   const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
   const [notificationEmail, setNotificationEmail] = useState("");
-
-  const handleSelectLanguage = (code: string) => {
-    setSelectedLang(code);
-    i18n.changeLanguage(code);
-    setPreStep("intro");
-  };
 
   const getWalkData = () => {
     if (walkOption === "sit_rest") return { walksPerWeek: 0, walkDuration: 0 };
@@ -72,7 +58,7 @@ export default function Onboarding() {
         eatingOutFrequency,
         struggles,
         notificationEmail,
-        preferredLanguage: selectedLang,
+        preferredLanguage: i18n.language || "en",
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       setLocation("/plan");
@@ -130,55 +116,6 @@ export default function Onboarding() {
       {label}
     </button>
   );
-
-  if (preStep === "lang") {
-    return (
-      <div className="max-w-sm mx-auto px-4 pt-16" data-testid="onboarding-lang-screen">
-        <div className="mb-10 text-center">
-          <h1 className="text-2xl font-bold mb-2">Glukky</h1>
-          <p className="text-muted-foreground text-sm">Choose your language / 選擇語言</p>
-        </div>
-        <div className="flex flex-col gap-4">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.code}
-              type="button"
-              data-testid={lang.testId}
-              onClick={() => handleSelectLanguage(lang.code)}
-              className="w-full text-left px-6 py-4 rounded-lg border border-border text-foreground font-medium text-base hover:border-primary hover:bg-primary/5 transition-colors"
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (preStep === "intro") {
-    return (
-      <div className="max-w-sm mx-auto px-4 pt-12" data-testid="onboarding-intro-screen">
-        <Card data-testid="card-intro">
-          <CardHeader>
-            <CardTitle className="text-xl">{t("info_card.welcome.title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground leading-relaxed">
-            <p>{t("info_card.welcome.p1")}</p>
-            <p>{t("info_card.welcome.p2")}</p>
-            <p>{t("info_card.welcome.p3")}</p>
-          </CardContent>
-        </Card>
-        <div className="flex justify-end mt-6">
-          <Button
-            onClick={() => setPreStep("questions")}
-            data-testid="button-intro-next"
-          >
-            {t("onboarding.next")}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-8" data-testid="onboarding-container">

@@ -17,6 +17,7 @@ import Snap from "@/pages/snap";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
+import { Activity } from "lucide-react";
 import i18n from "./i18n";
 
 function AuthenticatedApp() {
@@ -81,11 +82,11 @@ function Router() {
 
   if (isLoading) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full">
-          <div className="h-8 bg-muted rounded w-48 mx-auto" />
-          <div className="h-20 bg-muted rounded" />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3 bg-white">
+        <Activity className="w-14 h-14" style={{ color: "#14A085" }} />
+        <h1 className="text-4xl font-bold" style={{ color: "#14A085" }}>
+          Glukky
+        </h1>
       </div>
     );
   }
