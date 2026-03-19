@@ -83,7 +83,7 @@ function Router() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3 bg-white">
-        <img src={glukkyLogo} alt="Glukky" style={{ width: 220, mixBlendMode: "multiply" }} />
+        <img src={glukkyLogo} alt="Glukky" style={{ width: 440 }} />
       </div>
     );
   }

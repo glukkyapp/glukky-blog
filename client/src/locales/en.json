@@ -589,5 +589,13 @@
     "error_limit_label": "You've used all {{limit}} photo analyses for today. Come back tomorrow.",
     "error_limit_advice": "You've used all {{limit}} advice requests for today. Come back tomorrow.",
     "error_generic": "Something went wrong. Please try again."
+  },
+  "slides": {
+    "s1_headline": "Your blood sugar,\nin your hands",
+    "s1_body": "A short walk after dinner is one of the most effective ways to keep blood sugar in check.",
+    "s2_headline": "One small change\na week",
+    "s2_body": "We focus on one diet habit at a time — sustainable progress you can actually keep.",
+    "s3_headline": "The app adapts\nto you",
+    "s3_body": "Based on how you're doing each week, Glukky quietly adjusts your plan."
   }
 }

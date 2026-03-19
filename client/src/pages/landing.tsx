@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import glukkyLogo from "@assets/Screenshot_2026-03-19_at_22.19.09_1773930063753.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,30 +10,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
-import slide3Img from "@assets/generated_images/slide3_track.png";
+import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
 
 const LANGUAGES = [
   { code: "en", label: "English", sub: "English" },
   { code: "zh-Hant", label: "繁體中文", sub: "Traditional Chinese" },
   { code: "yue", label: "粵語", sub: "Cantonese" },
-];
-
-const SLIDES = [
-  {
-    image: slide1Img,
-    headline: "Your blood sugar,\nin your hands",
-    body: "A short walk after dinner is one of the most effective ways to keep blood sugar in check.",
-  },
-  {
-    image: slide2Img,
-    headline: "One small change\na week",
-    body: "We focus on one diet habit at a time — sustainable progress you can actually keep.",
-  },
-  {
-    image: slide3Img,
-    headline: "The app adapts\nto you",
-    body: "Based on how you're doing each week, Glukky quietly adjusts your plan.",
-  },
 ];
 
 type LandingStep = "lang" | "slides" | "auth";
@@ -44,6 +27,7 @@ function getInitialStep(): LandingStep {
 }
 
 export default function Landing() {
+  const { t } = useTranslation();
   const [step, setStep] = useState<LandingStep>(getInitialStep);
   const [slideIndex, setSlideIndex] = useState(0);
   const [tab, setTab] = useState<"login" | "register">("login");
@@ -55,6 +39,12 @@ export default function Landing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const slides = [
+    { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body") },
+    { image: slide2Img, headline: t("slides.s2_headline"), body: t("slides.s2_body") },
+    { image: slide3Img, headline: t("slides.s3_headline"), body: t("slides.s3_body") },
+  ];
+
   const handleSelectLanguage = useCallback((code: string) => {
     localStorage.setItem("glukky_preferred_lang", code);
     i18n.changeLanguage(code);
@@ -63,12 +53,12 @@ export default function Landing() {
   }, []);
 
   const handleSlideNext = useCallback(() => {
-    if (slideIndex < SLIDES.length - 1) {
+    if (slideIndex < slides.length - 1) {
       setSlideIndex((i) => i + 1);
     } else {
       setStep("auth");
     }
-  }, [slideIndex]);
+  }, [slideIndex, slides.length]);
 
   function switchTab(t: "login" | "register") {
     setTab(t);
@@ -132,7 +122,7 @@ export default function Landing() {
       >
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
-            <img src={glukkyLogo} alt="Glukky" style={{ width: 160, mixBlendMode: "multiply" }} />
+            <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
           </div>
           <p className="text-sm text-muted-foreground text-center">
             Choose your language / 選擇語言
@@ -158,61 +148,63 @@ export default function Landing() {
   }
 
   if (step === "slides") {
-    const slide = SLIDES[slideIndex];
+    const slide = slides[slideIndex];
     return (
       <div
         className="flex flex-col min-h-screen bg-white"
         data-testid="landing-slides-screen"
       >
-        <div className="flex items-center gap-1.5 px-5 pt-5 pb-2 z-10">
-          <img src={glukkyLogo} alt="Glukky" style={{ width: 110, mixBlendMode: "multiply" }} />
-        </div>
-
-        <div className="flex-1 overflow-hidden min-h-0">
-          <img
-            key={slideIndex}
-            src={slide.image}
-            alt=""
-            className="w-full h-full object-cover"
-            style={{ display: "block" }}
-          />
-        </div>
-
-        <div className="bg-white rounded-t-3xl px-6 pt-6 pb-8 flex flex-col gap-5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-2xl font-bold text-foreground leading-tight whitespace-pre-line">
-              {slide.headline}
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {slide.body}
-            </p>
+        <div className="max-w-sm mx-auto w-full flex flex-col flex-1">
+          <div className="flex items-center gap-1.5 px-5 pt-5 pb-2 z-10">
+            <img src={glukkyLogo} alt="Glukky" style={{ width: 220 }} />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5" data-testid="slide-dots">
-              {SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSlideIndex(i)}
-                  data-testid={`slide-dot-${i}`}
-                  className={`rounded-full transition-all ${
-                    i === slideIndex
-                      ? "w-5 h-2"
-                      : "w-2 h-2 bg-muted"
-                  }`}
-                  style={i === slideIndex ? { backgroundColor: "#14A085" } : undefined}
-                />
-              ))}
+          <div className="h-[58vh] overflow-hidden">
+            <img
+              key={slideIndex}
+              src={slide.image}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ display: "block" }}
+            />
+          </div>
+
+          <div className="bg-white rounded-t-3xl px-6 pt-6 pb-8 flex flex-col gap-5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-2xl font-bold text-foreground leading-tight whitespace-pre-line">
+                {slide.headline}
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {slide.body}
+              </p>
             </div>
 
-            <Button
-              onClick={handleSlideNext}
-              className="rounded-full px-7 text-white text-sm font-semibold"
-              style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
-              data-testid={slideIndex === SLIDES.length - 1 ? "button-get-started" : "button-next-slide"}
-            >
-              {slideIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
-            </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5" data-testid="slide-dots">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSlideIndex(i)}
+                    data-testid={`slide-dot-${i}`}
+                    className={`rounded-full transition-all ${
+                      i === slideIndex
+                        ? "w-5 h-2"
+                        : "w-2 h-2 bg-muted"
+                    }`}
+                    style={i === slideIndex ? { backgroundColor: "#14A085" } : undefined}
+                  />
+                ))}
+              </div>
+
+              <Button
+                onClick={handleSlideNext}
+                className="rounded-full px-7 text-white text-sm font-semibold"
+                style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
+                data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
+              >
+                {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -226,7 +218,7 @@ export default function Landing() {
     >
       <div className="flex flex-col items-center gap-1 mb-8">
         <div className="flex items-center gap-2" data-testid="text-app-title">
-          <img src={glukkyLogo} alt="Glukky" style={{ width: 160, mixBlendMode: "multiply" }} />
+          <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
         </div>
         <p className="text-xs text-muted-foreground" data-testid="text-description">
           Manage your diabetes with daily habits.
