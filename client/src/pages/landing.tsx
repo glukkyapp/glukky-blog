@@ -154,12 +154,12 @@ export default function Landing() {
         className="flex flex-col min-h-screen bg-white"
         data-testid="landing-slides-screen"
       >
-        <div className="max-w-sm mx-auto w-full flex flex-col flex-1 relative">
+        <div className="max-w-sm mx-auto w-full flex flex-col flex-1">
           <div className="flex justify-center pt-5 pb-3">
             <img src={glukkyLogo} alt="Glukky" style={{ width: 220 }} />
           </div>
 
-          <div className="h-[50vh] overflow-hidden">
+          <div className="h-[50vh] overflow-hidden shrink-0">
             <img
               key={slideIndex}
               src={slide.image}
@@ -169,7 +169,7 @@ export default function Landing() {
             />
           </div>
 
-          <div className="bg-white rounded-t-3xl px-6 pt-6 pb-32 flex flex-col gap-4 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+          <div className="bg-white rounded-t-3xl px-6 pt-6 pb-6 flex flex-col gap-4 flex-1 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-bold text-foreground leading-tight whitespace-pre-line">
                 {slide.headline}
@@ -194,17 +194,17 @@ export default function Landing() {
                 />
               ))}
             </div>
-          </div>
 
-          <div className="absolute bottom-0 left-0 right-0 px-6 pb-8 flex justify-center">
-            <Button
-              onClick={handleSlideNext}
-              className="rounded-full px-10 py-3 text-white text-base font-semibold"
-              style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
-              data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
-            >
-              {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
-            </Button>
+            <div className="flex justify-center mt-auto pt-2 pb-2">
+              <Button
+                onClick={handleSlideNext}
+                className="rounded-full px-10 py-3 text-white text-base font-semibold"
+                style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
+                data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
+              >
+                {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
