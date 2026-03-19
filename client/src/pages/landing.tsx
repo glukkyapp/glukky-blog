@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { Activity, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import glukkyLogo from "@assets/Screenshot_2026-03-19_at_22.19.09_1773930063753.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,10 +132,7 @@ export default function Landing() {
       >
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
-            <Activity className="w-8 h-8" style={{ color: "#14A085" }} />
-            <h1 className="text-3xl font-bold" style={{ color: "#14A085" }}>
-              Glukky
-            </h1>
+            <img src={glukkyLogo} alt="Glukky" style={{ width: 160, mixBlendMode: "multiply" }} />
           </div>
           <p className="text-sm text-muted-foreground text-center">
             Choose your language / 選擇語言
@@ -167,10 +165,7 @@ export default function Landing() {
         data-testid="landing-slides-screen"
       >
         <div className="flex items-center gap-1.5 px-5 pt-5 pb-2 z-10">
-          <Activity className="w-5 h-5" style={{ color: "#14A085" }} />
-          <span className="font-bold text-base" style={{ color: "#14A085" }}>
-            Glukky
-          </span>
+          <img src={glukkyLogo} alt="Glukky" style={{ width: 110, mixBlendMode: "multiply" }} />
         </div>
 
         <div className="flex-1 overflow-hidden min-h-0">
@@ -231,10 +226,7 @@ export default function Landing() {
     >
       <div className="flex flex-col items-center gap-1 mb-8">
         <div className="flex items-center gap-2" data-testid="text-app-title">
-          <Activity className="w-7 h-7" style={{ color: "#14A085" }} />
-          <h1 className="text-3xl font-bold" style={{ color: "#14A085" }}>
-            Glukky
-          </h1>
+          <img src={glukkyLogo} alt="Glukky" style={{ width: 160, mixBlendMode: "multiply" }} />
         </div>
         <p className="text-xs text-muted-foreground" data-testid="text-description">
           Manage your diabetes with daily habits.

@@ -17,7 +17,7 @@ import Snap from "@/pages/snap";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
-import { Activity } from "lucide-react";
+import glukkyLogo from "@assets/Screenshot_2026-03-19_at_22.19.09_1773930063753.png";
 import i18n from "./i18n";
 
 function AuthenticatedApp() {
@@ -83,10 +83,7 @@ function Router() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3 bg-white">
-        <Activity className="w-14 h-14" style={{ color: "#14A085" }} />
-        <h1 className="text-4xl font-bold" style={{ color: "#14A085" }}>
-          Glukky
-        </h1>
+        <img src={glukkyLogo} alt="Glukky" style={{ width: 220, mixBlendMode: "multiply" }} />
       </div>
     );
   }
