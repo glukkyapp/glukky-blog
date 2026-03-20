@@ -143,6 +143,12 @@ export default function Landing() {
             </button>
           ))}
         </div>
+
+        <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+          <img src={slide1Img} alt="" />
+          <img src={slide2Img} alt="" />
+          <img src={slide3Img} alt="" />
+        </div>
       </div>
     );
   }
@@ -155,11 +161,11 @@ export default function Landing() {
         data-testid="landing-slides-screen"
       >
         <div className="max-w-sm mx-auto w-full flex flex-col flex-1">
-          <div className="flex justify-center pt-5 pb-3">
+          <div className="flex justify-center pt-3 pb-2">
             <img src={glukkyLogo} alt="Glukky" style={{ width: 220 }} />
           </div>
 
-          <div className="h-[50vh] overflow-hidden shrink-0">
+          <div className="h-[45vh] overflow-hidden shrink-0">
             <img
               key={slideIndex}
               src={slide.image}

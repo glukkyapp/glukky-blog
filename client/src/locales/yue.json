@@ -564,6 +564,8 @@
     "title": "食物快拍",
     "subtitle": "影低你食緊啲咩，獲得度身訂造飲食建議！",
     "take_photo": "影相 / 上傳",
+    "take_photo_camera": "影相",
+    "upload_from_album": "揀相片",
     "photos_remaining": "今日仲有 {{remaining}} / {{limit}} 次照片分析",
     "photos_exhausted": "今日已用曬 {{limit}} 次照片分析，聽日再見喇！",
     "advice_remaining": "今日剩返 {{remaining}} / {{limit}} 次飲食建議",

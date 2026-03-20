@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Loader2, RotateCcw, ChevronRight } from "lucide-react";
+import { Camera, Images, Loader2, RotateCcw, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +72,8 @@ function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
 
 export default function Snap() {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("upload");
   const [error, setError] = useState<string | null>(null);
@@ -100,8 +101,7 @@ export default function Snap() {
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!fileInputRef.current) fileInputRef.current = e.target;
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    e.target.value = "";
     if (!file) return;
 
     setPreviewUrl(URL.createObjectURL(file));
@@ -220,24 +220,46 @@ export default function Snap() {
           )}
 
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
             className="hidden"
-            data-testid="input-snap-file"
+            data-testid="input-snap-camera"
             onChange={handleFileSelect}
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-3 w-40 h-40 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
-            data-testid="button-snap-upload"
-          >
-            <Camera className="w-10 h-10 text-primary/70" strokeWidth={1.5} />
-            <span className="text-sm font-medium text-primary/80 text-center leading-tight px-2">
-              {t("snap.take_photo")}
-            </span>
-          </button>
+          <input
+            ref={albumInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            data-testid="input-snap-album"
+            onChange={handleFileSelect}
+          />
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
+              data-testid="button-snap-camera"
+            >
+              <Camera className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
+              <span className="text-xs font-medium text-primary/80 text-center leading-tight px-2">
+                {t("snap.take_photo_camera")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => albumInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
+              data-testid="button-snap-album"
+            >
+              <Images className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
+              <span className="text-xs font-medium text-primary/80 text-center leading-tight px-2">
+                {t("snap.upload_from_album")}
+              </span>
+            </button>
+          </div>
 
           {labelResult && (
             <CounterBadge
