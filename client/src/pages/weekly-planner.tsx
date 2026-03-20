@@ -172,7 +172,7 @@ export default function WeeklyPlanner() {
     }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
     if (noWalkDays) s.push("stretchOffer");
-    if (isDinnerFocus && !profile?.currentStruggle) s.push("dinnerFocusReview");
+    if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
       s.push("dietReview");
       if (isDietTransition) s.push("dietGraduationCelebration");
@@ -180,7 +180,7 @@ export default function WeeklyPlanner() {
     }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, profile?.currentStruggle, noWalkDays, reflection?.dinnerJustGraduated, isDietTransition]);
+  }, [isFirstWeek, isDinnerFocus, noWalkDays, reflection?.dinnerJustGraduated, isDietTransition]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -453,9 +453,9 @@ export default function WeeklyPlanner() {
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
                 {t("planner.tip_label", { tip: translateDietTip(reflection.dietTip, t) })}
               </p>
-              {reflection.weekInCycle > 0 && (
+              {(reflection.activeDays || 0) > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
-                  {t("planner.week_of_cycle", { week: reflection.weekInCycle })}
+                  {t("planner.diet_days_progress", { yesDays: reflection.activeDaysYes || 0, activeDays: reflection.activeDays || 0 })}
                 </p>
               )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
@@ -1034,31 +1034,35 @@ export default function WeeklyPlanner() {
 
   function getEffectiveStruggle() {
     const struggles = (profile?.struggles as string[]) || [];
-    const excludedStruggles: string[] = [];
-    if (eatOutDays.length === 0) excludedStruggles.push("eat_out");
-    const sortedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !excludedStruggles.includes(s));
+    const mastered = (profile?.masteredStruggles as string[]) || [];
+    const triedBefore = (profile?.triedBeforeStruggles as string[]) || [];
 
     const serverEval = reflection?.dietEvaluation;
     const isTransition = serverEval?.type === "mastered" || serverEval?.type === "skipped" || serverEval?.type === "moved_on";
-    if (isTransition && serverEval?.nextStruggle && !excludedStruggles.includes(serverEval.nextStruggle)) {
-      return { effectiveStruggle: serverEval.nextStruggle, isFallback: !struggles.includes(serverEval.nextStruggle), isTransition: true, previousStruggle: profile?.currentStruggle || null };
-    }
+    const previousStruggle = isTransition ? (serverEval?.struggle || null) : null;
 
-    const effectiveStruggle = profile?.currentStruggle && !excludedStruggles.includes(profile.currentStruggle)
-      ? profile.currentStruggle
-      : sortedStruggles[0] || "sugary_food_drink";
-    return { effectiveStruggle, isFallback: !struggles.includes(effectiveStruggle), isTransition: false, previousStruggle: null };
+    const hypMastered = (isTransition && serverEval?.type === "mastered" && previousStruggle)
+      ? [...mastered, previousStruggle] : mastered;
+    const hypTriedBefore = (isTransition && (serverEval?.type === "skipped" || serverEval?.type === "moved_on") && previousStruggle)
+      ? [...triedBefore, previousStruggle] : triedBefore;
+
+    const untried = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
+    const triedNotMastered = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && hypTriedBefore.includes(s));
+    const effectiveStruggle = [...untried, ...triedNotMastered][0] || (struggles[0] || "sugary_food_drink");
+
+    return { effectiveStruggle, isFallback: !struggles.includes(effectiveStruggle), isTransition, previousStruggle };
   }
 
   function renderDietReview() {
     const { effectiveStruggle, isFallback, isTransition, previousStruggle } = getEffectiveStruggle();
 
     const hasReflection = !!reflection;
-    const weekInCycle = reflection?.weekInCycle || 0;
+    const activeDays = reflection?.activeDays || 0;
+    const activeDaysYes = reflection?.activeDaysYes || 0;
 
     const serverEval = reflection?.dietEvaluation;
-    const evalType: "mastered" | "skipped" | "stay" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
-    const nextStruggleLabel = serverEval?.nextStruggle ? (STRUGGLE_NAMES[serverEval.nextStruggle] || serverEval.nextStruggle) : "";
+    const evalType: "mastered" | "skipped" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
+    const nextStruggleLabel = isTransition ? (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) : "";
     const bestTip = serverEval?.bestTip;
     const bestTipYes = serverEval?.bestTipYes || 0;
     const isTransitionType = evalType === "mastered" || evalType === "skipped" || evalType === "moved_on";
@@ -1081,8 +1085,8 @@ export default function WeeklyPlanner() {
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
               {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
             </p>
-            {hasReflection && weekInCycle > 0 && weekInCycle < 3 && (
-              <p className="text-xs text-muted-foreground mt-1">{t("planner.week_of_cycle", { week: weekInCycle })}</p>
+            {hasReflection && activeDays > 0 && !isTransitionType && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-days-progress">{t("planner.diet_days_progress", { yesDays: activeDaysYes, activeDays })}</p>
             )}
           </div>
 
@@ -1113,16 +1117,6 @@ export default function WeeklyPlanner() {
                     {nextStruggleLabel && (
                       <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
                     )}
-                  </div>
-                </div>
-              )}
-              {evalType === "stay" && (
-                <div className="flex items-start gap-2">
-                  <RotateCcw className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-600">
-                      {t("planner.stay_struggle", { pct: Math.round(((serverEval?.yesDays || 0) / 21) * 100) })}
-                    </p>
                   </div>
                 </div>
               )}

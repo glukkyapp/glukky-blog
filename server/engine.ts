@@ -313,14 +313,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   const isDinnerFocus = profile.hasLateDinner && !profile.dinnerMastered;
   let dietStruggle: string | null = null;
   let dietTip: string | null = null;
-
-  if (!isDinnerFocus && profile.currentStruggle) {
-    dietStruggle = profile.currentStruggle;
-    const ladder = DIET_TIP_LADDERS[profile.currentStruggle];
-    if (ladder && profile.currentTipIndex < ladder.length) {
-      dietTip = ladder[profile.currentTipIndex];
-    }
-  }
+  // dietStruggle and dietTip are computed and set by routes.ts after plan creation
 
   const dayEntries: any[] = [];
   for (let d = 0; d < 7; d++) {
@@ -381,77 +374,60 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   return { plan, days };
 }
 
-export async function evaluateDietStruggle(userId: string): Promise<{ type: string; nextStruggle?: string; yesDays?: number; noChanceDays?: number; bestTip?: string; bestTipYes?: number }> {
+export async function evaluateDietStruggle(userId: string, struggle: string): Promise<{
+  type: string;
+  struggle: string;
+  yesDays?: number;
+  noChanceDays?: number;
+  activeDays?: number;
+  bestTip?: string;
+  bestTipYes?: number;
+}> {
   const profile = await storage.getProfile(userId);
-  if (!profile || !profile.currentStruggle) return { type: "in_cycle" };
+  if (!profile) return { type: "in_cycle", struggle };
 
-  const dietActiveWeeks: { weekNumber: number; plan: any }[] = [];
-  for (let w = profile.tipCycleStartWeek + 1; w <= profile.currentWeek - 1; w++) {
+  const activePlans: { weekNumber: number; plan: WeeklyPlan }[] = [];
+  for (let w = 1; w <= profile.currentWeek - 1; w++) {
     const wp = await storage.getWeeklyPlan(userId, w);
-    if (wp && wp.dietStruggle === profile.currentStruggle) {
-      dietActiveWeeks.push({ weekNumber: w, plan: wp });
+    if (wp && wp.dietStruggle === struggle) {
+      activePlans.push({ weekNumber: w, plan: wp });
     }
   }
 
-  if (dietActiveWeeks.length < 3) return { type: "in_cycle" };
+  const activeDays = activePlans.length * 7;
+  if (activeDays === 0) return { type: "in_cycle", struggle, activeDays: 0 };
 
-  const evalWeeks = dietActiveWeeks.slice(-3);
   let yesDays = 0;
   let noChanceDays = 0;
-  for (const { weekNumber: wn, plan: wp } of evalWeeks) {
-    const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
+  const tipYesCounts: Record<string, number> = {};
+
+  for (const { weekNumber: wn, plan: wp } of activePlans) {
+    const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
+    const logs = await storage.getDailyLogsByWeek(userId, wn, startDate);
     for (const log of logs) {
       if (log.dietResponse === "yes") yesDays++;
       else if (log.dietResponse === "no_chance") noChanceDays++;
     }
-  }
-
-  const tipYesCounts: Record<string, number> = {};
-  for (const { weekNumber: wn, plan: wp } of dietActiveWeeks) {
-    if (!wp.dietTip) continue;
-    const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
-    const yesCount = logs.filter(l => l.dietResponse === "yes").length;
-    tipYesCounts[wp.dietTip] = (tipYesCounts[wp.dietTip] || 0) + yesCount;
+    if (wp.dietTip) {
+      const yesCount = logs.filter(l => l.dietResponse === "yes").length;
+      tipYesCounts[wp.dietTip] = (tipYesCounts[wp.dietTip] || 0) + yesCount;
+    }
   }
 
   let bestTip: string | undefined;
   let bestTipYes = 0;
   for (const [tip, count] of Object.entries(tipYesCounts)) {
-    if (count > bestTipYes) {
-      bestTip = tip;
-      bestTipYes = count;
-    }
+    if (count > bestTipYes) { bestTip = tip; bestTipYes = count; }
   }
 
-  const struggles = [...(profile.struggles || [])] as string[];
-  const currentStruggle = profile.currentStruggle;
-  const currentIdx = struggles.indexOf(currentStruggle);
-
-  if (yesDays >= 16) {
-    const nextStruggle = currentIdx < struggles.length - 1 ? struggles[currentIdx + 1] : null;
-    return { type: "mastered", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
-  } else if (noChanceDays >= 11) {
-    const reordered = [...struggles];
-    if (currentIdx >= 0) {
-      reordered.splice(currentIdx, 1);
-      reordered.push(currentStruggle);
-    }
-    const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
-    return { type: "skipped", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
-  } else {
-    const newStayCycles = profile.tipStayCycles + 1;
-    if (newStayCycles >= 2) {
-      const reordered = [...struggles];
-      if (currentIdx >= 0) {
-        reordered.splice(currentIdx, 1);
-        reordered.push(currentStruggle);
-      }
-      const nextStruggle = reordered.find(s => s !== currentStruggle) || null;
-      return { type: "moved_on", nextStruggle: nextStruggle || undefined, yesDays, noChanceDays, bestTip, bestTipYes };
-    } else {
-      return { type: "stay", yesDays, noChanceDays };
-    }
+  if (activeDays >= 21) {
+    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    if (noChanceDays >= 11) return { type: "skipped", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
   }
+  if (activeDays >= 42) {
+    return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+  }
+  return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
 }
 
 export async function getDinnerGraduationData(userId: string): Promise<{
@@ -714,11 +690,9 @@ export async function generateMonthlyReportData(userId: string) {
     }
   }
 
-  if (profile.currentStruggle) {
-    const completedStruggles = profile.struggles.slice(0, profile.struggles.indexOf(profile.currentStruggle));
-    for (const s of completedStruggles) {
-      if (struggleStatus[s]) struggleStatus[s].completed = true;
-    }
+  const mastered = (profile.masteredStruggles || []) as string[];
+  for (const s of mastered) {
+    if (struggleStatus[s]) struggleStatus[s].completed = true;
   }
 
   return {

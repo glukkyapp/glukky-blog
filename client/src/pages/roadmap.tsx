@@ -17,7 +17,7 @@ import {
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
-import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -25,15 +25,16 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
 }
 
 interface RoadmapData {
-  currentStruggle: string;
-  currentTip: string;
+  currentStruggle: string | null;
+  currentTip: string | null;
   isDinnerFocus: boolean;
   dinnerMastered: boolean;
   walkSuccessAvg: number;
   dinnerSuccessAvg: number;
   dietTipCompletionCount: number;
   struggles: string[];
-  currentTipIndex: number;
+  masteredStruggles: string[];
+  triedBeforeStruggles: string[];
   tipLadders: Record<string, string[]>;
 }
 
@@ -295,7 +296,8 @@ export default function RoadmapPage() {
     dinnerSuccessAvg,
     dietTipCompletionCount,
     struggles,
-    currentTipIndex,
+    masteredStruggles,
+    triedBeforeStruggles,
     tipLadders,
   } = data;
 
@@ -307,8 +309,9 @@ export default function RoadmapPage() {
     snacks: t("struggle.snacks"),
   };
 
-  const rawIndex = struggles.indexOf(currentStruggle);
-  const currentStruggleIndex = rawIndex >= 0 ? rawIndex : 0;
+  const untriedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !masteredStruggles.includes(s) && !triedBeforeStruggles.includes(s));
+  const triedNotMasteredStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeStruggles.includes(s));
+  const queuedStruggles = [...untriedStruggles, ...triedNotMasteredStruggles];
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -386,8 +389,9 @@ export default function RoadmapPage() {
           {t("roadmap.struggle_queue_title")}
         </h2>
         <div className="space-y-2">
-          {struggles.filter((_, index) => index >= currentStruggleIndex).map((struggle) => {
+          {queuedStruggles.map((struggle) => {
             const isCurrent = struggle === currentStruggle;
+            const isTriedBefore = triedBeforeStruggles.includes(struggle);
             const label = STRUGGLE_LABELS[struggle] || struggle;
 
             return (
@@ -405,7 +409,10 @@ export default function RoadmapPage() {
                 ) : (
                   <Lock className="h-4 w-4 shrink-0" />
                 )}
-                <span data-testid={`text-struggle-label-${struggle}`}>{label}</span>
+                <span data-testid={`text-struggle-label-${struggle}`} className="flex-1">{label}</span>
+                {isTriedBefore && !isCurrent && (
+                  <span className="text-xs opacity-70 shrink-0">{t("roadmap.tried_before")}</span>
+                )}
               </div>
             );
           })}

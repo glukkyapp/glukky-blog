@@ -209,7 +209,8 @@
     "congrats_title": "你的豬豬儲蓄罐滿了！",
     "congrats_desc": "你已賺取60個硬幣，是時候領取獎勵了。",
     "your_reward": "你的獎勵",
-    "claiming": "領取中..."
+    "claiming": "領取中...",
+    "tried_before": "曾嘗試"
   },
   "negotiation": {
     "ask_day": "你想增加1天散步嗎？",
@@ -267,6 +268,7 @@
     "diet_success_pct": "{{pct}}%飲食成功率",
     "tip_label": "建議：{{tip}}",
     "week_of_cycle": "此困難的第{{week}}週，共3週",
+    "diet_days_progress": "{{activeDays}} 日飲食建議中，{{yesDays}} 日達標",
     "followed_tip_one": "遵循建議{{count}}天",
     "followed_tip_other": "遵循建議{{count}}天",
     "no_chance_one": "沒機會練習{{count}}天",

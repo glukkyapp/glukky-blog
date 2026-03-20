@@ -19,7 +19,7 @@ interface ProfileData {
   sleepPattern: string;
   eatingOutFrequency: string;
   struggles: string[];
-  currentStruggle: string;
+  currentStruggle: string | null;
   hasLateDinner: boolean;
   dinnerMastered: boolean;
   notificationEmail: string;
@@ -29,8 +29,8 @@ interface ProfileData {
 }
 
 interface RoadmapData {
-  currentStruggle: string;
-  currentTip: string;
+  currentStruggle: string | null;
+  currentTip: string | null;
   isDinnerFocus: boolean;
   struggles: string[];
   tipLadders: Record<string, unknown>;

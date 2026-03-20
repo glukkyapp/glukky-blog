@@ -209,7 +209,8 @@
     "congrats_title": "Your piggy bank is full!",
     "congrats_desc": "You've earned 60 coins. Time to claim your reward.",
     "your_reward": "Your reward",
-    "claiming": "Claiming..."
+    "claiming": "Claiming...",
+    "tried_before": "tried before"
   },
   "negotiation": {
     "ask_day": "Would you like to add 1 more walk day?",
@@ -267,6 +268,7 @@
     "diet_success_pct": "{{pct}}% diet success",
     "tip_label": "Tip: {{tip}}",
     "week_of_cycle": "Week {{week}} of 3 on this struggle",
+    "diet_days_progress": "{{yesDays}} in {{activeDays}} days completed diet advice",
     "followed_tip_one": "Followed tip {{count}} day",
     "followed_tip_other": "Followed tip {{count}} days",
     "no_chance_one": "No chance to practice {{count}} day",
