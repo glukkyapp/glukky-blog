@@ -912,7 +912,7 @@ export default function Home() {
                   disabled={logMutation.isPending}
                   data-testid="button-tired-yes"
                 >
-                  {t("common.yes")}
+                  {t("common.tired_yes")}
                 </Button>
                 <Button
                   size="sm"
@@ -922,7 +922,7 @@ export default function Home() {
                   disabled={logMutation.isPending}
                   data-testid="button-tired-no"
                 >
-                  {t("common.no")}
+                  {t("common.tired_no")}
                 </Button>
               </div>
             </div>
@@ -1069,7 +1069,7 @@ export default function Home() {
         });
         items.push({
           label: t("home.feeling_tired_label"),
-          value: todayLog?.walkTired ? t("common.yes") : t("common.no"),
+          value: todayLog?.walkTired ? t("common.tired_yes") : t("common.tired_no"),
           positive: !todayLog?.walkTired,
         });
       }
@@ -1263,11 +1263,11 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                {t("home.log_checkin", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
+                {t("home.log_checkin", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}
               </p>
             </div>
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
-              {t("home.missed_checkin_desc", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
+              {t("home.missed_checkin_desc", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}
             </p>
             {singleMissedDay.walkScheduled && (
               <div className="space-y-2">
@@ -1280,8 +1280,8 @@ export default function Home() {
                   <div className="space-y-2 pl-1">
                     <p className="text-sm text-muted-foreground">{t("home.tired_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">{t("common.yes")}</Button>
-                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">{t("common.no")}</Button>
+                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">{t("common.tired_yes")}</Button>
+                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">{t("common.tired_no")}</Button>
                     </div>
                   </div>
                 )}

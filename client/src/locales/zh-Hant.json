@@ -76,7 +76,7 @@
     "eat_before_9pm": "你在{{day}}有在9點前吃晚餐嗎？",
     "follow_tip_on": "你在{{day}}有遵循{{tip}}的建議嗎？",
     "which_tactic": "你用了什麼策略？",
-    "diet_tip_question_day": "你在{{day}}有機會嘗試飲食建議嗎？",
+    "diet_tip_question_day": "你在{{day}}有跟飲食建議嗎？",
     "saving": "儲存中...",
     "log_day": "記錄{{day}}",
     "all_set": "下週已準備就緒！",
@@ -470,6 +470,10 @@
   "common": {
     "yes": "是",
     "no": "否",
+    "tired_yes": "累",
+    "tired_no": "不累",
+    "want_yes": "想",
+    "want_no": "不想",
     "error": "錯誤"
   },
   "landing": {

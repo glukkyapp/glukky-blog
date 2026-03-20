@@ -470,6 +470,10 @@
   "common": {
     "yes": "Yes",
     "no": "No",
+    "tired_yes": "Yes",
+    "tired_no": "No",
+    "want_yes": "Yes",
+    "want_no": "No",
     "error": "Error"
   },
   "landing": {
