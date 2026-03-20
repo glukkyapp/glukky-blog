@@ -17,8 +17,12 @@ interface LabelResult {
   snapsLimit: number;
 }
 
+interface TipEntry { key: string; timing: "immediate" | "future"; }
+interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
+
 interface AdviceResult {
   advice: string;
+  focusPanelData?: FocusPanelData | null;
   adviceUsedToday: number;
   adviceLimit: number;
 }
@@ -30,7 +34,7 @@ interface LabelForm {
   extras: string;
 }
 
-const ADVICE_PREFIXES = ["🩸", "⚠️", "💡", "✅"] as const;
+const ADVICE_PREFIXES = ["🩸", "⚠️", "💡"] as const;
 
 function parseAdvicePanels(advice: string): string[] {
   const lines = advice
@@ -44,9 +48,39 @@ function parseAdvicePanels(advice: string): string[] {
     if (match) ordered.push(match);
   }
 
-  if (ordered.length === 4) return ordered;
+  if (ordered.length === 3) return ordered;
 
-  return lines.slice(0, 4);
+  return lines.slice(0, 3);
+}
+
+function FocusPanelContent({ data }: { data: FocusPanelData }) {
+  const { t } = useTranslation();
+  const struggleName = data.struggleKey === "portions"
+    ? t("snap.focus_struggle_portions")
+    : t(`struggle.${data.struggleKey}`);
+  return (
+    <div className="flex flex-col gap-3 text-sm leading-relaxed text-center min-h-[64px] justify-center">
+      <p>{t("snap.focus_heading", { struggle: struggleName })}</p>
+      <div className="flex flex-col gap-2">
+        {data.tips.map((tip, i) => (
+          <p key={i}>
+            {tip.timing === "immediate" ? (
+              <>
+                {t("snap.focus_immediate_prefix")}
+                <em><strong>{t(tip.key)}</strong></em>
+                {t("snap.focus_immediate_suffix")}
+              </>
+            ) : (
+              <>
+                {t("snap.focus_future_prefix")}
+                <em><strong>{t(tip.key)}</strong></em>
+              </>
+            )}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
@@ -196,6 +230,9 @@ export default function Snap() {
   }
 
   const panels = adviceResult ? parseAdvicePanels(adviceResult.advice) : [];
+  const focusPanelData = adviceResult?.focusPanelData ?? null;
+  const totalPanels = panels.length + (focusPanelData ? 1 : 0);
+  const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
 
   return (
     <div className="flex flex-col min-h-[70vh] px-5 py-6 gap-5 max-w-sm mx-auto w-full">
@@ -404,16 +441,21 @@ export default function Snap() {
             className="rounded-2xl border bg-card p-5 flex flex-col gap-5"
             data-testid="card-snap-advice"
           >
-            <p
-              className="text-sm leading-relaxed min-h-[64px] text-center"
+            <div
               data-testid={`text-snap-advice-panel-${advicePanel}`}
             >
-              {panels[advicePanel] ?? ""}
-            </p>
+              {isFocusPanel && focusPanelData ? (
+                <FocusPanelContent data={focusPanelData} />
+              ) : (
+                <p className="text-sm leading-relaxed min-h-[64px] text-center">
+                  {panels[advicePanel] ?? ""}
+                </p>
+              )}
+            </div>
 
-            {panels.length > 1 && (
+            {totalPanels > 1 && (
               <div className="flex items-center justify-center gap-2" data-testid="nav-snap-advice-dots">
-                {panels.map((_, i) => (
+                {Array.from({ length: totalPanels }).map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setAdvicePanel(i)}
@@ -430,7 +472,7 @@ export default function Snap() {
             )}
 
             <div className="flex gap-2">
-              {advicePanel < panels.length - 1 ? (
+              {advicePanel < totalPanels - 1 ? (
                 <Button
                   variant="outline"
                   className="flex-1 gap-1"

@@ -590,7 +590,12 @@
     "error_no_food": "No food detected in this photo. Please try a clearer shot.",
     "error_limit_label": "You've used all {{limit}} photo analyses for today. Come back tomorrow.",
     "error_limit_advice": "You've used all {{limit}} advice requests for today. Come back tomorrow.",
-    "error_generic": "Something went wrong. Please try again."
+    "error_generic": "Something went wrong. Please try again.",
+    "focus_heading": "Heads up — this falls under your {{struggle}} goal 🙋",
+    "focus_immediate_prefix": "Remember our advice? ",
+    "focus_immediate_suffix": " — you can do it right now!",
+    "focus_future_prefix": "It might be hard to change right now, but for your coming meals, remember: ",
+    "focus_struggle_portions": "Portion Control"
   },
   "slides": {
     "s1_headline": "Your blood sugar,\nin your hands",

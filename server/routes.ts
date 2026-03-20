@@ -10,13 +10,106 @@ import {
   processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
   getWeekStartDate, evaluateDietStruggle,
 } from "./engine";
-import { DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS, type InsertUserProfile } from "@shared/schema";
+import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, type InsertUserProfile } from "@shared/schema";
 import {
   evaluateDailyAchievements,
   evaluateWeeklyAchievements,
   awardDinnerGraduationCoin,
   awardStruggleGraduationCoin,
 } from "./achievements";
+
+const SUGARY_DRINK_KW = [
+  "juice", "tea", "milk tea", "bubble tea", "boba", "soda", "cola", "lemonade",
+  "smoothie", "drink", "beverage", "yakult", "vitasoy", "horlicks", "milo",
+  "ovaltine", "cocoa", "hot chocolate", "latte", "cappuccino", "coffee",
+  "7up", "sprite", "fanta", "ribena", "coke", "pepsi", "iced coffee",
+  "herbal tea", "chrysanthemum", "barley water", "sugar cane", "matcha",
+  "condensed milk", "sweetened milk",
+];
+const SUGARY_FRUIT_KW = [
+  "fruit", "mango", "orange", "apple", "banana", "grape", "melon", "watermelon",
+  "lychee", "longan", "strawberry", "blueberry", "kiwi", "pear", "peach",
+  "papaya", "pineapple", "guava", "durian", "jackfruit", "rambutan",
+  "plum", "cherry", "fig", "pomelo", "tangerine", "mandarin",
+];
+const SUGARY_FOOD_KW = [
+  "cake", "biscuit", "cookie", "dessert", "sweet", "candy", "chocolate",
+  "pudding", "tart", "pastry", "bun", "pineapple bun", "egg tart",
+  "wife cake", "walnut cookie", "sesame ball", "sago", "glutinous",
+  "sweet soup", "tang yuan", "red bean", "tong yuen", "sugar", "sugary",
+  "donut", "doughnut", "waffle", "brownie", "ice cream", "gelato",
+  "custard", "caramel", "syrup", "mochi",
+];
+const OILY_KW = [
+  "fried", "oily", "crispy", "deep-fried", "deep fried", "pan-fried", "pan fried",
+  "stir-fried", "stir fried", "lard", "butter", "greasy", "tempura",
+  "french fries", "spring roll", "doughnut", "sausage", "char siu",
+  "roast", "roasted", "bbq", "pork belly", "bacon",
+];
+const LARGE_PORTION_KW = [
+  "large", "big", "jumbo", "extra", "double", "xl", "full", "whole", "super",
+  "king size", "oversized", "king-size",
+];
+const SNACK_KW = [
+  "snack", "chips", "biscuit", "cookie", "cracker", "candy", "chocolate",
+  "sweets", "cake", "pastry", "puff", "pudding", "wafer", "popcorn",
+  "mochi", "gummy", "jelly", "toffee", "caramel", "fudge", "prawn crackers",
+];
+
+interface TipEntry { key: string; timing: "immediate" | "future"; }
+interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
+
+function computeFocusPanel(
+  struggle: string,
+  tipIndex: number,
+  name: string,
+  portion: string | null,
+  sauces: string | null,
+  extras: string | null
+): FocusPanelData | null {
+  const supported = ["sugary_food_drink", "oily_fried_food", "portions", "snacks"];
+  if (!supported.includes(struggle)) return null;
+
+  const txt = [name, portion, sauces, extras].filter(Boolean).join(" ").toLowerCase();
+
+  if (struggle === "sugary_food_drink") {
+    const isDrink = SUGARY_DRINK_KW.some(kw => txt.includes(kw));
+    const isFruit = SUGARY_FRUIT_KW.some(kw => txt.includes(kw));
+    const isFood  = SUGARY_FOOD_KW.some(kw => txt.includes(kw));
+    if (!isDrink && !isFruit && !isFood) return null;
+
+    const tips: TipEntry[] = [];
+    if (isDrink) tips.push({ key: "diet_tip.dilute_juice", timing: "immediate" });
+    if (isFruit) tips.push({ key: "diet_tip.limit_fruit", timing: "future" });
+    if (!isDrink && !isFruit && isFood) tips.push({ key: "diet_tip.swap_dessert", timing: "future" });
+    return { struggleKey: struggle, tips };
+  }
+
+  if (struggle === "oily_fried_food") {
+    if (!OILY_KW.some(kw => txt.includes(kw))) return null;
+    const tipList = DIET_TIP_LADDERS[struggle] ?? [];
+    const tip = tipList[tipIndex] ?? tipList[0];
+    const tipKey = DIET_TIP_I18N_KEYS[tip];
+    if (!tipKey) return null;
+    return { struggleKey: struggle, tips: [{ key: tipKey, timing: "future" }] };
+  }
+
+  if (struggle === "portions") {
+    if (!LARGE_PORTION_KW.some(kw => txt.includes(kw))) return null;
+    return { struggleKey: struggle, tips: [{ key: "diet_tip.plate_method", timing: "immediate" }] };
+  }
+
+  if (struggle === "snacks") {
+    if (!SNACK_KW.some(kw => txt.includes(kw))) return null;
+    const tipList = DIET_TIP_LADDERS[struggle] ?? [];
+    const tip = tipList[tipIndex] ?? tipList[0];
+    const tipKey = DIET_TIP_I18N_KEYS[tip];
+    if (!tipKey) return null;
+    return { struggleKey: struggle, tips: [{ key: tipKey, timing: "future" }] };
+  }
+
+  return null;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -1220,16 +1313,17 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
 
 Users are based in Hong Kong. You are familiar with local foods: congee, dim sum, rice noodles, wonton noodles, Hong Kong milk tea (with condensed milk), pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, siu mai, har gow, cheung fun, lo mai gai, turnip cake.
 
-The user's current diet struggle is: ${struggleLabel[struggle] ?? struggle}
-Their current weekly tip is: "${tip}"
-
 Reply in ${langLabel[lang] ?? "English"}.
 
-Always reply in EXACTLY this format — 4 lines, nothing else:
+Important rules:
+- All advice must be actionable with THIS meal, right now — not a general reminder for the future.
+- If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings for healthy food.
+- Your advice must not contradict the user's current weekly tip: "${tip}"
+
+Always reply in EXACTLY this format — 3 lines, nothing else:
 🩸 Blood sugar impact: [High / Medium / Low]
-⚠️ Watch out for: [the single biggest GI or sugar risk in this meal, 1 concise sentence]
-💡 One swap: [one specific, actionable portion or ingredient change — be concrete, not generic]
-✅ Your focus: [connect this meal to the user's current struggle in 1 sentence]`,
+⚠️ Watch out for: [the single biggest GI or sugar risk right now — 1 concise sentence. If the food is genuinely healthy, say so instead.]
+💡 One swap: [one specific change you can make to this meal right now — be concrete. If no swap is needed, say the food is a good choice.]`,
         messages: [
           {
             role: "user",
@@ -1240,10 +1334,13 @@ Always reply in EXACTLY this format — 4 lines, nothing else:
 
       const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
+      const focusPanelData = computeFocusPanel(struggle, tipIndex, name, portion, sauces, extras);
+
       incrementDailyCount(snapAdviceCount, userId);
 
       res.json({
         advice,
+        focusPanelData,
         adviceUsedToday: getDailyCount(snapAdviceCount, userId),
         adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
       });

@@ -178,7 +178,7 @@
     "saving": "儲存中..."
   },
   "struggle": {
-    "sugary_food_drink": "高糖食品及飲料",
+    "sugary_food_drink": "含糖食物及飲品",
     "oily_fried_food": "油膩/煎炸食物",
     "eat_out": "外出用餐/外賣",
     "portions": "份量控制",
@@ -484,7 +484,7 @@
     "registering": "註冊中..."
   },
   "diet_tip": {
-    "dilute_juice": "果汁加水1:1稀釋",
+    "dilute_juice": "果汁加1:1清水稀釋",
     "swap_dessert": "以乳酪加漿果代替甜品",
     "limit_fruit": "每週限制水果1次",
     "steam_then_sear": "先蒸後略煎",
@@ -590,7 +590,12 @@
     "error_no_food": "未能識別食物，請嘗試拍攝更清晰的照片。",
     "error_limit_label": "今日已用盡 {{limit}} 次照片分析，明天再見！",
     "error_limit_advice": "今日已用盡 {{limit}} 次飲食建議，明天再來吧。",
-    "error_generic": "發生錯誤，請再試一次。"
+    "error_generic": "發生錯誤，請再試一次。",
+    "focus_heading": "咦！— 這屬於「{{struggle}}」，是我們這星期的目標 🙋",
+    "focus_immediate_prefix": "我們的建議是 ",
+    "focus_immediate_suffix": "，記得哦～",
+    "focus_future_prefix": "如果你一定要吃它，沒問題，但接下來的餐點，記得我們的建議：",
+    "focus_struggle_portions": "大份量食物"
   },
   "slides": {
     "s1_headline": "血糖，\n由你掌控",
