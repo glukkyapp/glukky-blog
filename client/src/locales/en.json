@@ -565,7 +565,7 @@
     "subtitle": "Take a photo of your meal for personalised diet advice.",
     "take_photo": "Take Photo / Upload",
     "take_photo_camera": "Take Photo",
-    "upload_from_album": "From Album",
+    "upload_from_album": "Choose from Album",
     "photos_remaining": "{{remaining}} of {{limit}} photo analyses left today",
     "photos_exhausted": "You've used all {{limit}} photo analyses today. Come back tomorrow.",
     "advice_remaining": "{{remaining}} of {{limit}} advice requests left today",
