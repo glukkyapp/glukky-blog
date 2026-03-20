@@ -32,7 +32,7 @@ export default function FloatingNavBar() {
       data-testid="nav-floating-bar"
     >
       <div
-        className="relative w-full h-full flex items-center justify-center gap-6"
+        className="relative w-full h-full flex items-center justify-center gap-4 sm:gap-6"
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",

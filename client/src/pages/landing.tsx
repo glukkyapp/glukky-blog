@@ -120,14 +120,9 @@ export default function Landing() {
         className="flex flex-col items-center justify-center min-h-screen px-8 gap-10 bg-white"
         data-testid="landing-lang-screen"
       >
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center gap-2">
-            <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
-          </div>
-          <p className="text-sm text-muted-foreground text-center">
-            Choose your language / 選擇語言
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground text-center">
+          Choose your language / 選擇語言
+        </p>
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
           {LANGUAGES.map((lang) => (
@@ -157,60 +152,53 @@ export default function Landing() {
     const slide = slides[slideIndex];
     return (
       <div
-        className="flex flex-col min-h-screen bg-white"
+        className="relative h-screen overflow-hidden"
         data-testid="landing-slides-screen"
       >
-        <div className="max-w-sm mx-auto w-full flex flex-col flex-1">
-          <div className="flex justify-center pt-3 pb-2">
-            <img src={glukkyLogo} alt="Glukky" style={{ width: 220 }} />
+        <img
+          key={slideIndex}
+          src={slide.image}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.72) 100%)" }}
+        />
+
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-14 flex flex-col gap-5 max-w-sm mx-auto">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-3xl font-bold text-white leading-tight whitespace-pre-line">
+              {slide.headline}
+            </h2>
+            <p className="text-sm text-white/80 leading-relaxed">
+              {slide.body}
+            </p>
           </div>
 
-          <div className="h-[45vh] overflow-hidden shrink-0">
-            <img
-              key={slideIndex}
-              src={slide.image}
-              alt=""
-              className="w-full h-full object-cover"
-              style={{ display: "block" }}
-            />
+          <div className="flex justify-center items-center gap-1.5" data-testid="slide-dots">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSlideIndex(i)}
+                data-testid={`slide-dot-${i}`}
+                className={`rounded-full transition-all ${
+                  i === slideIndex ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/40"
+                }`}
+              />
+            ))}
           </div>
 
-          <div className="bg-white rounded-t-3xl px-6 pt-6 pb-6 flex flex-col gap-4 flex-1 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-bold text-foreground leading-tight whitespace-pre-line">
-                {slide.headline}
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {slide.body}
-              </p>
-            </div>
-
-            <div className="flex justify-center items-center gap-1.5 pt-1" data-testid="slide-dots">
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSlideIndex(i)}
-                  data-testid={`slide-dot-${i}`}
-                  className={`rounded-full transition-all ${
-                    i === slideIndex
-                      ? "w-5 h-2"
-                      : "w-2 h-2 bg-muted"
-                  }`}
-                  style={i === slideIndex ? { backgroundColor: "#14A085" } : undefined}
-                />
-              ))}
-            </div>
-
-            <div className="flex justify-center mt-auto pt-2 pb-2">
-              <Button
-                onClick={handleSlideNext}
-                className="rounded-full px-10 py-3 text-white text-base font-semibold"
-                style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
-                data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
-              >
-                {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
-              </Button>
-            </div>
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSlideNext}
+              className="rounded-full px-10 py-3 text-white text-base font-semibold"
+              style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
+              data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
+            >
+              {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
+            </Button>
           </div>
         </div>
       </div>
@@ -219,7 +207,7 @@ export default function Landing() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-white px-6 pt-16 pb-8"
+      className="flex flex-col min-h-screen bg-white px-6 pt-8 pb-8"
       data-testid="landing-auth-screen"
     >
       <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
@@ -227,7 +215,7 @@ export default function Landing() {
         <img src={slide2Img} alt="" />
         <img src={slide3Img} alt="" />
       </div>
-      <div className="flex flex-col items-center gap-1 mb-8">
+      <div className="flex flex-col items-center gap-1 mb-2">
         <div className="flex items-center gap-2" data-testid="text-app-title">
           <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
         </div>
