@@ -117,12 +117,15 @@ export default function Landing() {
   if (step === "lang") {
     return (
       <div
-        className="flex flex-col items-center justify-center min-h-screen px-8 gap-10 bg-white"
+        className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6 bg-white"
         data-testid="landing-lang-screen"
       >
-        <p className="text-sm text-muted-foreground text-center">
-          Choose your language / 選擇語言
-        </p>
+        <div className="flex flex-col items-center gap-3">
+          <img src={glukkyLogo} alt="Glukky" style={{ width: "min(200px, 55vw)" }} />
+          <p className="text-sm text-muted-foreground text-center">
+            Choose your language / 選擇語言
+          </p>
+        </div>
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
           {LANGUAGES.map((lang) => (
@@ -152,7 +155,7 @@ export default function Landing() {
     const slide = slides[slideIndex];
     return (
       <div
-        className="relative h-screen overflow-hidden"
+        className="relative h-dvh overflow-hidden"
         data-testid="landing-slides-screen"
       >
         <img
