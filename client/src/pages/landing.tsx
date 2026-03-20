@@ -222,6 +222,11 @@ export default function Landing() {
       className="flex flex-col min-h-screen bg-white px-6 pt-16 pb-8"
       data-testid="landing-auth-screen"
     >
+      <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+        <img src={slide1Img} alt="" />
+        <img src={slide2Img} alt="" />
+        <img src={slide3Img} alt="" />
+      </div>
       <div className="flex flex-col items-center gap-1 mb-8">
         <div className="flex items-center gap-2" data-testid="text-app-title">
           <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
