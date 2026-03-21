@@ -386,10 +386,14 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   const profile = await storage.getProfile(userId);
   if (!profile) return { type: "in_cycle", struggle };
 
+  const week1Plan = await storage.getWeeklyPlan(userId, 1);
+  const isPartialFirstWeek = !!(week1Plan && week1Plan.firstActiveDay > 0);
+
   const activePlans: { weekNumber: number; plan: WeeklyPlan }[] = [];
   for (let w = 1; w <= profile.currentWeek - 1; w++) {
     const wp = await storage.getWeeklyPlan(userId, w);
     if (wp && wp.dietStruggle === struggle) {
+      if (isPartialFirstWeek && w === 1) continue;
       activePlans.push({ weekNumber: w, plan: wp });
     }
   }
@@ -420,12 +424,21 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     if (count > bestTipYes) { bestTip = tip; bestTipYes = count; }
   }
 
-  if (activeDays >= 21) {
-    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-    if (noChanceDays >= 11) return { type: "skipped", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-  }
   if (activeDays >= 42) {
+    if (yesDays >= 32) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
     return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+  }
+  if (activeDays >= 35) {
+    if (yesDays >= 27) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
+  }
+  if (activeDays >= 28) {
+    if (yesDays >= 22) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
+  }
+  if (activeDays === 21) {
+    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    if (noChanceDays >= 16) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
   }
   return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
 }

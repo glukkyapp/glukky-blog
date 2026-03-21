@@ -446,7 +446,7 @@ export async function registerRoutes(
                   triedBeforeStruggles: triedBefore.filter(s => s !== lastStruggle),
                 });
                 try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
-              } else if (dietEvaluation.type === "skipped" || dietEvaluation.type === "moved_on") {
+              } else if (dietEvaluation.type === "not_relevant" || dietEvaluation.type === "moved_on") {
                 const newTriedBefore = triedBefore.includes(lastStruggle) ? triedBefore : [...triedBefore, lastStruggle];
                 const struggles = [...(profile.struggles || [])] as string[];
                 const idx = struggles.indexOf(lastStruggle);

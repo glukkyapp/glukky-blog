@@ -161,7 +161,7 @@ export default function WeeklyPlanner() {
   const isEmptyWeekStretch = !isStretchMode && stretchAccepted && stretchDays.length > 0;
   const isStretchActive = isStretchMode || isEmptyWeekStretch;
 
-  const isDietTransition = reflection?.dietEvaluation?.type === "mastered" || reflection?.dietEvaluation?.type === "skipped" || reflection?.dietEvaluation?.type === "moved_on";
+  const isDietTransition = reflection?.dietEvaluation?.type === "mastered" || reflection?.dietEvaluation?.type === "not_relevant" || reflection?.dietEvaluation?.type === "moved_on";
 
   const steps = useMemo(() => {
     const s: string[] = [];
@@ -1038,12 +1038,12 @@ export default function WeeklyPlanner() {
     const triedBefore = (profile?.triedBeforeStruggles as string[]) || [];
 
     const serverEval = reflection?.dietEvaluation;
-    const isTransition = serverEval?.type === "mastered" || serverEval?.type === "skipped" || serverEval?.type === "moved_on";
+    const isTransition = serverEval?.type === "mastered" || serverEval?.type === "not_relevant" || serverEval?.type === "moved_on";
     const previousStruggle = isTransition ? (serverEval?.struggle || null) : null;
 
     const hypMastered = (isTransition && serverEval?.type === "mastered" && previousStruggle)
       ? [...mastered, previousStruggle] : mastered;
-    const hypTriedBefore = (isTransition && (serverEval?.type === "skipped" || serverEval?.type === "moved_on") && previousStruggle)
+    const hypTriedBefore = (isTransition && (serverEval?.type === "not_relevant" || serverEval?.type === "moved_on") && previousStruggle)
       ? [...triedBefore, previousStruggle] : triedBefore;
 
     const untried = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
@@ -1061,11 +1061,11 @@ export default function WeeklyPlanner() {
     const activeDaysYes = reflection?.activeDaysYes || 0;
 
     const serverEval = reflection?.dietEvaluation;
-    const evalType: "mastered" | "skipped" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
+    const evalType: "mastered" | "not_relevant" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
     const nextStruggleLabel = isTransition ? (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) : "";
     const bestTip = serverEval?.bestTip;
     const bestTipYes = serverEval?.bestTipYes || 0;
-    const isTransitionType = evalType === "mastered" || evalType === "skipped" || evalType === "moved_on";
+    const isTransitionType = evalType === "mastered" || evalType === "not_relevant" || evalType === "moved_on";
 
     return (
       <Card>
@@ -1088,6 +1088,9 @@ export default function WeeklyPlanner() {
             {hasReflection && activeDays > 0 && !isTransitionType && (
               <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-days-progress">{t("planner.diet_days_progress", { yesDays: activeDaysYes, activeDays })}</p>
             )}
+            {isFirstWeek && firstActiveDay > 0 && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-mid-week-notice">{t("planner.diet_mid_week_notice")}</p>
+            )}
           </div>
 
           {hasReflection && evalType !== "in_cycle" && (
@@ -1107,12 +1110,12 @@ export default function WeeklyPlanner() {
                   </div>
                 </div>
               )}
-              {evalType === "skipped" && (
+              {evalType === "not_relevant" && (
                 <div className="flex items-start gap-2">
                   <TrendingUp className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-blue-600">
-                      {t("planner.skipped_struggle")}
+                      {t("planner.not_relevant_struggle")}
                     </p>
                     {nextStruggleLabel && (
                       <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
@@ -1181,12 +1184,12 @@ export default function WeeklyPlanner() {
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-col items-center text-center gap-4">
             {evalType === "mastered" && <Award className="w-12 h-12 text-primary" />}
-            {(evalType === "skipped" || evalType === "moved_on") && <TrendingUp className="w-12 h-12 text-green-500" />}
+            {(evalType === "not_relevant" || evalType === "moved_on") && <TrendingUp className="w-12 h-12 text-green-500" />}
             <h2 className="text-xl font-bold" data-testid="text-diet-graduation-title">
               {evalType === "mastered" ? t("planner.struggle_mastered", { name: struggleName }) : t("planner.moving_on_from", { name: struggleName })}
             </h2>
             {evalType === "mastered" && <p className="text-sm text-muted-foreground">{t("planner.great_job_sticking")}</p>}
-            {evalType === "skipped" && <p className="text-sm text-muted-foreground">{t("planner.skipped_struggle")}</p>}
+            {evalType === "not_relevant" && <p className="text-sm text-muted-foreground">{t("planner.not_relevant_struggle")}</p>}
             {evalType === "moved_on" && <p className="text-sm text-muted-foreground">{t("planner.moved_on_struggle")}</p>}
             {bestTip && bestTipYes > 0 && (
               <div className="bg-primary/5 rounded-lg p-4 w-full max-w-sm" data-testid="section-diet-grad-best-tip">
