@@ -896,7 +896,7 @@ export async function registerRoutes(
       res.json({
         currentStruggle,
         currentTip,
-        isDinnerFocus: profile.hasLateDinner && !profile.dinnerMastered,
+        isDinnerFocus: plan?.isDinnerFocus ?? (profile.hasLateDinner && !profile.dinnerMastered),
         dinnerMastered: profile.dinnerMastered,
         walkSuccessAvg,
         dinnerSuccessAvg,
