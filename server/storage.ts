@@ -9,7 +9,7 @@ import {
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -237,8 +237,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async resetUser(userId: string): Promise<void> {
+    const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
+    if (plans.length > 0) {
+      const planIds = plans.map(p => p.id);
+      await db.delete(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds));
+    }
     await db.delete(dailyLogs).where(eq(dailyLogs.userId, userId));
-    await db.delete(weeklyPlanDays).where(eq(weeklyPlanDays.userId, userId));
     await db.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId));
     await db.delete(weeklyReports).where(eq(weeklyReports.userId, userId));
     await db.delete(monthlyReports).where(eq(monthlyReports.userId, userId));
