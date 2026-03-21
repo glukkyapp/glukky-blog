@@ -415,9 +415,6 @@ export default function Home() {
     if (dayData.lateDinnerScheduled) {
       tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
     }
-    if (dayData.eatOutScheduled && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out')) {
-      tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
-    }
     if (calendarPlan?.dietTip) {
       tasks.push({ icon: TrendingUp, text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
     }
@@ -1422,9 +1419,6 @@ export default function Home() {
             }
             if (dayData.lateDinnerScheduled) {
               tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
-            }
-            if (dayData.eatOutScheduled && !plan?.isDinnerFocus && (!plan?.dietStruggle || plan?.dietStruggle === 'eat_out')) {
-              tasks.push({ icon: ShoppingBag, text: t("home.eat_out_task"), testId: "text-plan-eat-out", color: "text-orange-500" });
             }
             if (plan?.dietTip) {
               tasks.push({ icon: TrendingUp, text: `"${translateDietTip(plan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
