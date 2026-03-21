@@ -524,7 +524,7 @@ export async function registerRoutes(
           if (selectedTip && ladder.includes(selectedTip)) {
             planUpdate.dietTip = selectedTip;
           } else {
-            planUpdate.dietTip = ladder.length > 0 ? ladder[0] : null;
+            planUpdate.dietTip = null;
           }
         }
 
@@ -884,8 +884,14 @@ export async function registerRoutes(
         }
         return null;
       })();
-      const currentStruggle = lastNonNullPlan?.dietStruggle || null;
       const currentTip = lastNonNullPlan?.dietTip || null;
+
+      const struggles = (profile.struggles || []) as string[];
+      const masteredS = (profile.masteredStruggles || []) as string[];
+      const triedBeforeS = (profile.triedBeforeStruggles || []) as string[];
+      const untriedQ = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !masteredS.includes(s) && !triedBeforeS.includes(s));
+      const triedNotMasteredQ = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeS.includes(s));
+      const currentStruggle = [...untriedQ, ...triedNotMasteredQ][0] || null;
 
       res.json({
         currentStruggle,
@@ -1055,7 +1061,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const fields = req.body;
-      const allowed = ["currentStruggle", "currentTipIndex", "walkDuration", "walksPerWeek",
+      const allowed = ["walkDuration", "walksPerWeek",
         "dinnerMastered", "hasLateDinner", "dinnerSuccessWeeks", "restDay", "dinnerTime"];
       const update: any = {};
       for (const key of allowed) {

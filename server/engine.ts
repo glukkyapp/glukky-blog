@@ -493,11 +493,8 @@ export async function processDinnerGraduation(userId: string): Promise<{ graduat
   }
 
   if (gradData.successPct >= 80) {
-    const firstStruggle = profile.struggles.length > 0 ? profile.struggles[0] : null;
     await storage.updateProfile(userId, {
       dinnerMastered: true,
-      currentStruggle: firstStruggle,
-      currentTipIndex: 0,
     });
     return { graduated: true, successPct: gradData.successPct };
   }
