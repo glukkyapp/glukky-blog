@@ -1097,6 +1097,16 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/dev/reset-account", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.resetUser(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reset account" });
+    }
+  });
+
   app.get("/api/dev/time", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json({

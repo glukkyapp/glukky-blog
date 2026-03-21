@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Clock, Calendar, Database, ChevronLeft } from "lucide-react";
+import { Settings, Clock, Calendar, Database, ChevronLeft, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 const TIME_OPTIONS = [
@@ -66,6 +66,21 @@ export default function DevPanel() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries();
       toast({ title: `Generated ${data.generatedWeeks?.length} weeks`, description: `Now at week ${data.currentWeek}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resetAccountMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/dev/reset-account", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      localStorage.clear();
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -275,6 +290,24 @@ export default function DevPanel() {
               {generateHistoryMutation.isPending ? "Generating..." : `Generate ${historyWeeks} weeks`}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-200 dark:border-red-900">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-4 h-4 text-red-500" />
+            <p className="text-sm font-semibold text-red-600">Reset Account</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Deletes all data and profile. You will be sent back to onboarding.</p>
+          <Button
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => { if (confirm("Delete ALL data and reset? This cannot be undone.")) resetAccountMutation.mutate(); }}
+            disabled={resetAccountMutation.isPending}
+            data-testid="button-reset-account"
+          >
+            {resetAccountMutation.isPending ? "Resetting..." : "Reset Account"}
+          </Button>
         </CardContent>
       </Card>
 

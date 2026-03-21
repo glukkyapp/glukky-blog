@@ -48,6 +48,7 @@ export interface IStorage {
   addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
+  resetUser(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -233,6 +234,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userProfiles.userId, userId))
       .returning();
     return updated;
+  }
+
+  async resetUser(userId: string): Promise<void> {
+    await db.delete(dailyLogs).where(eq(dailyLogs.userId, userId));
+    await db.delete(weeklyPlanDays).where(eq(weeklyPlanDays.userId, userId));
+    await db.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId));
+    await db.delete(weeklyReports).where(eq(weeklyReports.userId, userId));
+    await db.delete(monthlyReports).where(eq(monthlyReports.userId, userId));
+    await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
+    await db.delete(userProfiles).where(eq(userProfiles.userId, userId));
   }
 }
 
