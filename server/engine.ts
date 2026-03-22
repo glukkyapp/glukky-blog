@@ -540,8 +540,6 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
   if (recentPlans.length < 2) return result;
 
   let totalWalks = 0;
-  let totalStretchDays = 0;
-  let stretchDaysCompleted = 0;
 
   for (const plan of recentPlans) {
     const logs = await storage.getDailyLogsByWeek(userId, plan.weekNumber, plan.startDate);
@@ -566,25 +564,10 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
         }
       }
     }
-
-    for (const day of planDays) {
-      if (plan.isStretchWeek && day.isStretchDay) {
-        totalStretchDays++;
-        const dayDate = new Date(plan.startDate);
-        dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
-        const dateStr = dayDate.toISOString().split("T")[0];
-        const log = logs.find(l => l.date === dateStr);
-        if (log?.walkCompleted) stretchDaysCompleted++;
-      }
-    }
   }
 
   if (totalWalks === 0) {
     result.walkingBridge = true;
-  }
-
-  if (totalStretchDays > 0 && stretchDaysCompleted === totalStretchDays) {
-    result.autoEscalation = true;
   }
 
   let consecutiveCount = 0;
@@ -606,6 +589,10 @@ export async function checkBiWeeklyTriggers(userId: string): Promise<{
     consecutiveCount++;
   }
   result.consecutiveStretchWeeks = consecutiveCount;
+
+  if (result.consecutiveStretchWeeks >= 2) {
+    result.autoEscalation = true;
+  }
 
   return result;
 }
