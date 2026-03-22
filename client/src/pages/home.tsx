@@ -162,7 +162,8 @@ export default function Home() {
       if (sunLog.dinnerSuccess === null || sunLog.dinnerSuccess === undefined) return false;
     }
     if (calendarPlan?.dietTip) {
-      if (sunLog.dietResponse === null || sunLog.dietResponse === undefined) return false;
+      const sunEatOutOk = calendarPlan?.dietStruggle !== "eat_out" || sunPlanDay?.eatOutScheduled === true;
+      if (sunEatOutOk && (sunLog.dietResponse === null || sunLog.dietResponse === undefined)) return false;
     }
     return true;
   })();
@@ -179,7 +180,10 @@ export default function Home() {
       if (!d.date || d.date >= todayStr) return false;
       if (d.walkScheduled && (d.walkCompleted === null || d.walkCompleted === undefined)) return true;
       if (d.lateDinnerScheduled && (d.dinnerSuccess === null || d.dinnerSuccess === undefined)) return true;
-      if (planHasDietTip && (d.dietResponse === null || d.dietResponse === undefined)) return true;
+      if (planHasDietTip) {
+        const isEatOutDay = calendarData?.plan?.dietStruggle !== "eat_out" || d.eatOutScheduled === true;
+        if (isEatOutDay && (d.dietResponse === null || d.dietResponse === undefined)) return true;
+      }
       return false;
     });
   }, [calendarData, todayStr, isCatchUp]);
@@ -238,7 +242,10 @@ export default function Home() {
         if (tp.walkCompleted === null) allDone = false;
         if (!tp.standingTap && (tp.walkTired === null || tp.walkTired === undefined)) allDone = false;
       }
-      if (calendarPlan?.dietTip && tp.dietResponse === null) allDone = false;
+      if (calendarPlan?.dietTip) {
+        const isEatOutDay = calendarPlan?.dietStruggle !== "eat_out" || tp.eatOutScheduled === true;
+        if (isEatOutDay && tp.dietResponse === null) allDone = false;
+      }
 
       if (allDone) {
         setShowTickAnimation(true);
@@ -418,7 +425,8 @@ export default function Home() {
       tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
     }
     if (calendarPlan?.dietTip) {
-      tasks.push({ icon: TrendingUp, text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
+      const showDietTask = calendarPlan?.dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
+      if (showDietTask) tasks.push({ icon: TrendingUp, text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
     }
 
     return (
@@ -951,6 +959,7 @@ export default function Home() {
 
   function renderDietCheckIn() {
     if (!calendarPlan?.dietTip) return null;
+    if (calendarPlan?.dietStruggle === "eat_out" && !todayPlan?.eatOutScheduled) return null;
 
     const dietAnswered = todayLog?.dietResponse !== null && todayLog?.dietResponse !== undefined;
 
@@ -1033,7 +1042,8 @@ export default function Home() {
       }
     }
     if (calendarPlan?.dietTip) {
-      if (todayLog.dietResponse === null || todayLog.dietResponse === undefined) return false;
+      const isEatOutDay = calendarPlan?.dietStruggle !== "eat_out" || todayPlan?.eatOutScheduled === true;
+      if (isEatOutDay && (todayLog.dietResponse === null || todayLog.dietResponse === undefined)) return false;
     }
     return true;
   }

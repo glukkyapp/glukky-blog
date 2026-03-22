@@ -277,6 +277,7 @@
     "tip_label": "Tip: {{tip}}",
     "week_of_cycle": "Week {{week}} of 3 on this struggle",
     "diet_days_progress": "{{yesDays}} in {{activeDays}} days completed diet advice",
+    "eat_out_days_progress": "{{yesDays}} of {{eatOutDays}} eat-out days — kept it healthy",
     "followed_tip_one": "Followed tip {{count}} day",
     "followed_tip_other": "Followed tip {{count}} days",
     "no_chance_one": "No chance to practice {{count}} day",
@@ -594,6 +595,10 @@
     "struggle_intro_snacks": {
       "title": "Pick one of our advices to improve your health and wellbeing!",
       "body": "Late-night snacking keeps blood sugar elevated when your body is winding down. Closing the kitchen after dinner gives your body a chance to stabilise overnight."
+    },
+    "struggle_intro_eat_out": {
+      "title": "Pick one of our advices to improve your health and wellbeing!",
+      "body": "Eating out makes it harder to control what goes into your food — hidden oils, large portions, and sugary sauces can all push blood sugar higher. Small choices at the table, like asking for sauce on the side or swapping rice for vegetables, add up over time."
     }
   },
   "snap": {

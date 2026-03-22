@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles, Timer,
+  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -154,6 +154,7 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroOily = useInfoCard("struggle_intro_oily");
   const cardStruggleIntroPortions = useInfoCard("struggle_intro_portions");
   const cardStruggleIntroSnacks = useInfoCard("struggle_intro_snacks");
+  const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
 
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
@@ -200,6 +201,7 @@ export default function WeeklyPlanner() {
         else if (effectiveStruggle === "oily_fried_food") cardStruggleIntroOily.trigger();
         else if (effectiveStruggle === "portions") cardStruggleIntroPortions.trigger();
         else if (effectiveStruggle === "snacks") cardStruggleIntroSnacks.trigger();
+        else if (effectiveStruggle === "eat_out") cardStruggleIntroEatOut.trigger();
       }
     }
   }, [currentStepId]);
@@ -1114,8 +1116,13 @@ export default function WeeklyPlanner() {
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
               {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
             </p>
-            {hasReflection && activeDays > 0 && !isTransitionType && (
-              <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-days-progress">{t("planner.diet_days_progress", { yesDays: activeDaysYes, activeDays })}</p>
+            {hasReflection && activeDays > 0 && !isTransitionType && reflection?.dietEvaluation?.struggle === effectiveStruggle && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-days-progress">
+                {effectiveStruggle === "eat_out" && serverEval?.eatOutDaysScheduled != null
+                  ? t("planner.eat_out_days_progress", { yesDays: serverEval.yesDays ?? 0, eatOutDays: serverEval.eatOutDaysScheduled })
+                  : t("planner.diet_days_progress", { yesDays: activeDaysYes, activeDays })
+                }
+              </p>
             )}
             {isFirstWeek && firstActiveDay > 0 && (
               <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-mid-week-notice">{t("planner.diet_mid_week_notice")}</p>
@@ -1729,6 +1736,7 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardStruggleIntroOily.visible} onDismiss={cardStruggleIntroOily.dismiss} icon={UtensilsCrossed} titleKey="info_card.struggle_intro_oily.title" panelKeys={["info_card.struggle_intro_oily.body"]} testId="dialog-card-struggle-intro-oily" />
     <InfoCardPopup visible={cardStruggleIntroPortions.visible} onDismiss={cardStruggleIntroPortions.dismiss} icon={Soup} titleKey="info_card.struggle_intro_portions.title" panelKeys={["info_card.struggle_intro_portions.body"]} testId="dialog-card-struggle-intro-portions" />
     <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
+    <InfoCardPopup visible={cardStruggleIntroEatOut.visible} onDismiss={cardStruggleIntroEatOut.dismiss} icon={Utensils} titleKey="info_card.struggle_intro_eat_out.title" panelKeys={["info_card.struggle_intro_eat_out.body"]} testId="dialog-card-struggle-intro-eat-out" />
     </>
   );
 }

@@ -337,7 +337,17 @@ export async function registerRoutes(
             activeDays += 7;
             const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
             const logs = await storage.getDailyLogsByWeek(userId, w, startDate);
-            activeDaysYes += logs.filter(l => l.dietResponse === "yes").length;
+            if (currentStruggleForReflection === "eat_out") {
+              const planDays = await storage.getWeeklyPlanDays(wp.id);
+              const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
+              const startMs = new Date(startDate).getTime();
+              for (const log of logs) {
+                const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
+                if (eatOutDayIndices.has(dayIndex) && log.dietResponse === "yes") activeDaysYes++;
+              }
+            } else {
+              activeDaysYes += logs.filter(l => l.dietResponse === "yes").length;
+            }
           }
         }
       }

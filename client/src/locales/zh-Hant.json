@@ -277,6 +277,7 @@
     "tip_label": "建議：{{tip}}",
     "week_of_cycle": "此困難的第{{week}}週，共3週",
     "diet_days_progress": "{{activeDays}} 日飲食建議中，{{yesDays}} 日達標",
+    "eat_out_days_progress": "{{eatOutDays}} 個外出用餐日中，{{yesDays}} 日保持健康飲食",
     "followed_tip_one": "遵循建議{{count}}天",
     "followed_tip_other": "遵循建議{{count}}天",
     "no_chance_one": "沒機會練習{{count}}天",
@@ -594,6 +595,10 @@
     "struggle_intro_snacks": {
       "title": "選一個我們的建議，改善你的健康！",
       "body": "深夜進食會在身體需要休息時令血糖持續偏高。晚餐後關閉廚房，讓身體有機會在夜間穩定血糖。"
+    },
+    "struggle_intro_eat_out": {
+      "title": "選一個我們的建議，改善你的健康！",
+      "body": "外出用餐難以控制食材——隱藏的油脂、過大的份量和含糖醬汁都可能令血糖升高。在餐桌上的小選擇，例如要求醬料分開上、以蔬菜代替白飯，長期下來都能帶來改變。"
     }
   },
   "snap": {

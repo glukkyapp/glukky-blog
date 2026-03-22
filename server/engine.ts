@@ -381,6 +381,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   yesDays?: number;
   noChanceDays?: number;
   activeDays?: number;
+  eatOutDaysScheduled?: number;
   bestTip?: string;
   bestTipYes?: number;
 }> {
@@ -408,6 +409,66 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
 
   const activeDays = uniqueActivePlans.length * 7;
   if (activeDays === 0) return { type: "in_cycle", struggle, activeDays: 0 };
+
+  if (struggle === "eat_out") {
+    let eatOutDaysScheduled = 0;
+    let yesDays = 0;
+    let noChanceDays = 0;
+    const tipYesCounts: Record<string, number> = {};
+
+    for (const { weekNumber: wn, plan: wp } of uniqueActivePlans) {
+      const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
+      const planDays = await storage.getWeeklyPlanDays(wp.id);
+      const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
+      eatOutDaysScheduled += eatOutDayIndices.size;
+
+      const startMs = new Date(startDate).getTime();
+      const logs = await storage.getDailyLogsByWeek(userId, wn, startDate);
+      for (const log of logs) {
+        const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
+        if (!eatOutDayIndices.has(dayIndex)) continue;
+        if (log.dietResponse === "yes") yesDays++;
+        else if (log.dietResponse === "no_chance") noChanceDays++;
+      }
+      if (wp.dietTip) {
+        const yesCount = logs.filter(l => {
+          const dayIndex = Math.round((new Date(l.date).getTime() - startMs) / 86400000);
+          return eatOutDayIndices.has(dayIndex) && l.dietResponse === "yes";
+        }).length;
+        tipYesCounts[wp.dietTip] = (tipYesCounts[wp.dietTip] || 0) + yesCount;
+      }
+    }
+
+    let bestTip: string | undefined;
+    let bestTipYes = 0;
+    for (const [tip, count] of Object.entries(tipYesCounts)) {
+      if (count > bestTipYes) { bestTip = tip; bestTipYes = count; }
+    }
+
+    const yesRate = eatOutDaysScheduled > 0 ? yesDays / eatOutDaysScheduled : 0;
+    const noChanceRate = eatOutDaysScheduled > 0 ? noChanceDays / eatOutDaysScheduled : 0;
+
+    if (activeDays === 21) {
+      if (eatOutDaysScheduled < 6) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      if (yesRate >= 0.75) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      if (noChanceRate >= 0.75) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    }
+
+    if (activeDays >= 28) {
+      const minRequired = activeDays >= 42 ? 12 : activeDays >= 35 ? 10 : 8;
+      if (eatOutDaysScheduled >= minRequired && yesRate >= 0.75) {
+        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      }
+      if (activeDays >= 42) {
+        if (eatOutDaysScheduled >= 12) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+        return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      }
+      return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    }
+
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+  }
 
   let yesDays = 0;
   let noChanceDays = 0;
