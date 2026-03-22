@@ -571,6 +571,22 @@
       "p1": "Fiber Starter — eat your vegetables first. Fibre slows glucose absorption.",
       "p2": "Dusk Prep — small snack at 5pm means a smaller, less impactful late dinner.",
       "p3": "Split Dinner — two smaller meals are easier on your blood sugar than one large one."
+    },
+    "struggle_intro_sugary": {
+      "title": "Pick one of our advices to improve your health and wellbeing!",
+      "body": "Sugary drinks and desserts cause sharp blood sugar spikes. Even small swaps — like diluting juice or choosing fruit over sweets — can make a real difference over time."
+    },
+    "struggle_intro_oily": {
+      "title": "Pick one of our advices to improve your health and wellbeing!",
+      "body": "Oily and fried foods slow digestion and lead to prolonged blood sugar rises. Choosing grilled or steamed options helps keep your glucose levels steadier after meals."
+    },
+    "struggle_intro_portions": {
+      "title": "Pick one of our advices to improve your health and wellbeing!",
+      "body": "Large portions — especially of carbs — cause bigger blood sugar spikes. The plate method (½ veggies, ¼ protein, ¼ carbs) is a simple way to keep portions balanced without counting calories."
+    },
+    "struggle_intro_snacks": {
+      "title": "Pick one of our advices to improve your health and wellbeing!",
+      "body": "Late-night snacking keeps blood sugar elevated when your body is winding down. Closing the kitchen after dinner gives your body a chance to stabilise overnight."
     }
   },
   "snap": {

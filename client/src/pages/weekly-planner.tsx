@@ -150,6 +150,10 @@ export default function WeeklyPlanner() {
   const cardDietFocus = useInfoCard("diet_focus");
   const cardWalkEscalation = useInfoCard("walk_escalation");
   const cardGlycemicGap = useInfoCard("glycemic_gap");
+  const cardStruggleIntroSugary = useInfoCard("struggle_intro_sugary");
+  const cardStruggleIntroOily = useInfoCard("struggle_intro_oily");
+  const cardStruggleIntroPortions = useInfoCard("struggle_intro_portions");
+  const cardStruggleIntroSnacks = useInfoCard("struggle_intro_snacks");
 
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
@@ -186,7 +190,19 @@ export default function WeeklyPlanner() {
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
 
-  useEffect(() => { if (currentStepId === "dietTipSelection") cardDietFocus.trigger(); }, [currentStepId]);
+  useEffect(() => {
+    if (currentStepId === "dietTipSelection") {
+      cardDietFocus.trigger();
+      const dietFocusSeen = !!localStorage.getItem("glukky_card_diet_focus_seen");
+      if (dietFocusSeen) {
+        const { effectiveStruggle } = getEffectiveStruggle();
+        if (effectiveStruggle === "sugary_food_drink") cardStruggleIntroSugary.trigger();
+        else if (effectiveStruggle === "oily_fried_food") cardStruggleIntroOily.trigger();
+        else if (effectiveStruggle === "portions") cardStruggleIntroPortions.trigger();
+        else if (effectiveStruggle === "snacks") cardStruggleIntroSnacks.trigger();
+      }
+    }
+  }, [currentStepId]);
   useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
   useEffect(() => { if (negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep]);
 
@@ -1702,6 +1718,10 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardDietFocus.visible} onDismiss={cardDietFocus.dismiss} icon={TrendingUp} titleKey="info_card.diet_focus.title" panelKeys={["info_card.diet_focus.p1","info_card.diet_focus.p2","info_card.diet_focus.p3"]} testId="dialog-card-diet-focus" />
     <InfoCardPopup visible={cardWalkEscalation.visible} onDismiss={cardWalkEscalation.dismiss} icon={Footprints} titleKey="info_card.walk_escalation.title" panelKeys={["info_card.walk_escalation.p1","info_card.walk_escalation.p2","info_card.walk_escalation.p3"]} testId="dialog-card-walk-escalation" />
     <InfoCardPopup visible={cardGlycemicGap.visible} onDismiss={cardGlycemicGap.dismiss} icon={Activity} titleKey="info_card.glycemic_gap.title" panelKeys={["info_card.glycemic_gap.p1","info_card.glycemic_gap.p2"]} testId="dialog-card-glycemic-gap" />
+    <InfoCardPopup visible={cardStruggleIntroSugary.visible} onDismiss={cardStruggleIntroSugary.dismiss} icon={Wine} titleKey="info_card.struggle_intro_sugary.title" panelKeys={["info_card.struggle_intro_sugary.body"]} testId="dialog-card-struggle-intro-sugary" />
+    <InfoCardPopup visible={cardStruggleIntroOily.visible} onDismiss={cardStruggleIntroOily.dismiss} icon={UtensilsCrossed} titleKey="info_card.struggle_intro_oily.title" panelKeys={["info_card.struggle_intro_oily.body"]} testId="dialog-card-struggle-intro-oily" />
+    <InfoCardPopup visible={cardStruggleIntroPortions.visible} onDismiss={cardStruggleIntroPortions.dismiss} icon={Soup} titleKey="info_card.struggle_intro_portions.title" panelKeys={["info_card.struggle_intro_portions.body"]} testId="dialog-card-struggle-intro-portions" />
+    <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
     </>
   );
 }
