@@ -521,7 +521,10 @@ export async function registerRoutes(
           const struggles = (freshProfile?.struggles || []) as string[];
           const masteredS = (freshProfile?.masteredStruggles || []) as string[];
           const triedBeforeS = (freshProfile?.triedBeforeStruggles || []) as string[];
-          const untried = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !masteredS.includes(s) && !triedBeforeS.includes(s));
+          const effectiveStruggles = (eatOutDays || []).length > 0 && !masteredS.includes("eat_out") && !triedBeforeS.includes("eat_out") && !struggles.includes("eat_out")
+            ? [...struggles, "eat_out"]
+            : struggles;
+          const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !triedBeforeS.includes(s));
           const triedNotMastered = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeS.includes(s));
           const currentStruggle = [...untried, ...triedNotMastered][0] || (struggles.length > 0 ? struggles[0] : "sugary_food_drink");
           planUpdate.dietStruggle = currentStruggle;
