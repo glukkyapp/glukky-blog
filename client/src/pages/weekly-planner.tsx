@@ -1684,7 +1684,11 @@ export default function WeeklyPlanner() {
           <Button
             size="sm"
             onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
-            disabled={currentStepId === "dietTipSelection" && !selectedTip}
+            disabled={
+              (currentStepId === "dietTipSelection" && !selectedTip) ||
+              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === null) ||
+              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null)
+            }
             data-testid="button-next"
           >
             {t("planner.next")} <ChevronRight className="w-4 h-4 ml-1" />

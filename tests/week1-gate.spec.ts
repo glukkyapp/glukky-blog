@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 const BASE = "http://localhost:5000";
 const TEST_EMAIL = `test-week1-spec@glukky.test`;
 const TEST_PASS = "TestSpec123";
+const WEEK1_DATE = "2026-03-16";
 
 async function loginRequest(request: any) {
   const r = await request.post(`${BASE}/api/auth/login`, {
@@ -17,9 +18,15 @@ async function setupTestUser(request: any) {
   });
   if (reg.status() === 409) {
     await loginRequest(request);
-    return;
+  } else {
+    expect(reg.status()).toBe(200);
   }
-  expect(reg.status()).toBe(200);
+
+  await request.post(`${BASE}/api/dev/reset-account`);
+
+  await request.post(`${BASE}/api/dev/set-time`, {
+    data: { date: WEEK1_DATE, hour: 10 },
+  });
 
   const profile = await request.post(`${BASE}/api/profile`, {
     data: {
@@ -36,9 +43,11 @@ async function setupTestUser(request: any) {
   const plan = await request.post(`${BASE}/api/plan/weekly`, {
     data: { walkDays: [0, 2, 4], eatOutDays: [], lateDinnerDays: [] },
   });
-  if (plan.status() !== 409) {
-    expect(plan.status()).toBe(200);
-  }
+  expect(plan.status()).toBe(200);
+
+  await request.post(`${BASE}/api/dev/set-time`, {
+    data: { date: null, hour: null },
+  });
 }
 
 test.describe("Week-1 report gate — Sunday 10pm regression", () => {
