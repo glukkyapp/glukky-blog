@@ -142,6 +142,7 @@ export default function WeeklyPlanner() {
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
   const [standingTapDay, setStandingTapDay] = useState<number | null>(null);
+  const [standingTapSuggestAccepted, setStandingTapSuggestAccepted] = useState<boolean | null>(null);
   const [walkDayDurations, setWalkDayDurations] = useState<Record<number, number>>({});
   const [negotiationAgreedMinutes, setNegotiationAgreedMinutes] = useState(false);
   const [negotiationInitialized, setNegotiationInitialized] = useState(false);
@@ -171,7 +172,7 @@ export default function WeeklyPlanner() {
       s.push("planTransition");
     }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
-    if (noWalkDays) s.push("stretchOffer");
+    if (noWalkDays) s.push("standingTapSuggest");
     if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
       s.push("dietReview");
@@ -873,64 +874,69 @@ export default function WeeklyPlanner() {
     );
   }
 
-  function renderStretchOffer() {
+  function renderStandingTapSuggest() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2" data-testid="text-stretch-offer-title">
+          <CardTitle className="flex items-center gap-2" data-testid="text-standing-tap-suggest-title">
             <Activity className="w-5 h-5 text-primary" />
-            {t("planner.one_small_step")}
+            {t("planner.standing_tap_suggest_title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {t("planner.stretch_offer_desc")}
+            {t("planner.standing_tap_suggest_desc")}
           </p>
 
-          {!stretchAccepted ? (
+          {standingTapSuggestAccepted === null ? (
             <div className="flex gap-2">
               <Button
-                onClick={() => setStretchAccepted(true)}
-                data-testid="button-stretch-yes"
+                onClick={() => setStandingTapSuggestAccepted(true)}
+                data-testid="button-standing-tap-suggest-yes"
               >
                 {t("planner.yes_lets_try")}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setStretchAccepted(false); goNext(); }}
-                data-testid="button-stretch-no"
+                onClick={() => { setStandingTapSuggestAccepted(false); goNext(); }}
+                data-testid="button-standing-tap-suggest-no"
               >
                 {t("planner.no_thanks")}
               </Button>
             </div>
-          ) : (
+          ) : standingTapSuggestAccepted ? (
             <div className="space-y-3">
-              <p className="text-sm font-medium">{t("planner.pick_stretch_label")}</p>
+              <p className="text-sm font-medium">{t("planner.standing_tap_suggest_pick")}</p>
               <div className="grid grid-cols-7 gap-1">
                 {DAY_NAMES.map((name, i) => {
                   const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
+                  const selected = standingTapDay === i;
                   return (
                     <button
                       key={i}
-                      onClick={() => !inactive && toggleDay(i, stretchDays, setStretchDays)}
+                      onClick={() => { if (!inactive) setStandingTapDay(selected ? null : i); }}
                       disabled={inactive}
                       className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
                         inactive
                           ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
-                          : stretchDays.includes(i)
+                          : selected
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
                       }`}
-                      data-testid={`button-stretch-day-${i}`}
+                      data-testid={`button-standing-tap-suggest-day-${i}`}
                     >
                       {name}
                     </button>
                   );
                 })}
               </div>
-              <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: stretchDays.length })}</p>
+              {standingTapDay !== null && (
+                <Button size="sm" onClick={goNext} data-testid="button-standing-tap-suggest-confirm">
+                  {t("negotiation.confirm_standing_tap", { day: DAY_NAMES[standingTapDay] })}
+                </Button>
+              )}
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     );
@@ -1428,7 +1434,7 @@ export default function WeeklyPlanner() {
       case "walkDays": return renderWalkDays();
       case "eatOutDays": return renderEatOutDays();
       case "lateDinnerDays": return renderLateDinnerDays();
-      case "stretchOffer": return renderStretchOffer();
+      case "standingTapSuggest": return renderStandingTapSuggest();
       case "dinnerFocusReview": return renderDinnerFocusReview();
       case "dinnerGraduationCelebration": return renderDinnerGraduationCelebration();
       case "dietReview": return renderDietReview();
