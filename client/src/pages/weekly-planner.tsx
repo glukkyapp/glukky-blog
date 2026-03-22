@@ -894,14 +894,14 @@ export default function WeeklyPlanner() {
                 onClick={() => setStandingTapSuggestAccepted(true)}
                 data-testid="button-standing-tap-suggest-yes"
               >
-                {t("planner.yes_lets_try")}
+                {t("planner.standing_tap_suggest_yes")}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setStandingTapSuggestAccepted(false); goNext(); }}
+                onClick={() => { setStandingTapSuggestAccepted(false); setStandingTapDay(null); goNext(); }}
                 data-testid="button-standing-tap-suggest-no"
               >
-                {t("planner.no_thanks")}
+                {t("planner.standing_tap_suggest_no")}
               </Button>
             </div>
           ) : standingTapSuggestAccepted ? (
