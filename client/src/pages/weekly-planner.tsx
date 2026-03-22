@@ -888,7 +888,7 @@ export default function WeeklyPlanner() {
             {t("planner.standing_tap_suggest_desc")}
           </p>
 
-          {standingTapSuggestAccepted === null ? (
+          {standingTapSuggestAccepted !== true ? (
             <div className="flex gap-2">
               <Button
                 onClick={() => setStandingTapSuggestAccepted(true)}
@@ -904,7 +904,7 @@ export default function WeeklyPlanner() {
                 {t("planner.standing_tap_suggest_no")}
               </Button>
             </div>
-          ) : standingTapSuggestAccepted ? (
+          ) : (
             <div className="space-y-3">
               <p className="text-sm font-medium">{t("planner.standing_tap_suggest_pick")}</p>
               <div className="grid grid-cols-7 gap-1">
@@ -936,7 +936,7 @@ export default function WeeklyPlanner() {
                 </Button>
               )}
             </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
     );
@@ -1686,7 +1686,7 @@ export default function WeeklyPlanner() {
             onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
             disabled={
               (currentStepId === "dietTipSelection" && !selectedTip) ||
-              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === null) ||
+              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null)
             }
             data-testid="button-next"
