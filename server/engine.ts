@@ -283,6 +283,7 @@ export interface CreatePlanInput {
   lateDinnerDays: number[];
   standingTapDay?: number;
   walkDayDurations?: Record<string, number>;
+  baseDate?: Date;
 }
 
 export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?: boolean }): Promise<{ plan: WeeklyPlan; days: WeeklyPlanDay[] }> {
@@ -290,7 +291,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   if (!profile) throw new Error("Profile not found");
 
   const weekNumber = profile.currentWeek;
-  const startDate = getWeekStartDate(weekNumber);
+  const startDate = getWeekStartDate(weekNumber, input.baseDate);
 
   let walkDuration = profile.walkDuration;
   let walkFrequency = input.walkDays.length;

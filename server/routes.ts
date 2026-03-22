@@ -492,6 +492,10 @@ export async function registerRoutes(
       const freshProfileForStretch = await storage.getProfile(userId);
       const effectiveStretchOnly = stretchOnly || freshProfileForStretch?.isStretchMode;
 
+      const dateOverride = devDateOverrides.get(userId);
+      const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();
+      effectiveDate.setHours(0, 0, 0, 0);
+
       const result = await createWeeklyPlan({
         userId,
         negotiationChoice: negotiationChoice || "keep_current",
@@ -501,6 +505,7 @@ export async function registerRoutes(
         standingTapDay: standingTapDay !== undefined ? standingTapDay : undefined,
         walkDayDurations: walkDayDurations || undefined,
         isStretchMode: !!effectiveStretchOnly,
+        baseDate: effectiveDate,
       });
 
       {
@@ -547,9 +552,6 @@ export async function registerRoutes(
       }
 
       {
-        const dateOverride = devDateOverrides.get(userId);
-        const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();
-        effectiveDate.setHours(0, 0, 0, 0);
         const jsDay = effectiveDate.getDay();
         const todayDow = jsDay === 0 ? 6 : jsDay - 1;
 
