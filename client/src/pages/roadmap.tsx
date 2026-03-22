@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { TrendingUp, Lock, Gift, BarChart2, PiggyBank } from "lucide-react";
+import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, AlertCircle, EyeOff, type LucideIcon } from "lucide-react";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -17,7 +17,7 @@ import {
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
-import { DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
+import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -25,16 +25,19 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
 }
 
 interface RoadmapData {
-  currentStruggle: string | null;
+  activeStruggle: string | null;
+  inProgressStruggles: string[];
+  masteredStruggles: string[];
+  upcomingStruggles: string[];
+  skippedStruggles: string[];
+  difficultStruggles: string[];
+  inactiveStruggles: string[];
   currentTip: string | null;
   isDinnerFocus: boolean;
   dinnerMastered: boolean;
   walkSuccessAvg: number;
   dinnerSuccessAvg: number;
   dietTipCompletionCount: number;
-  struggles: string[];
-  masteredStruggles: string[];
-  triedBeforeStruggles: string[];
   tipLadders: Record<string, string[]>;
 }
 
@@ -288,16 +291,19 @@ export default function RoadmapPage() {
   }
 
   const {
-    currentStruggle,
+    activeStruggle,
+    inProgressStruggles,
+    masteredStruggles,
+    upcomingStruggles,
+    skippedStruggles,
+    difficultStruggles,
+    inactiveStruggles,
     currentTip,
     isDinnerFocus,
     dinnerMastered,
     walkSuccessAvg,
     dinnerSuccessAvg,
     dietTipCompletionCount,
-    struggles,
-    masteredStruggles,
-    triedBeforeStruggles,
     tipLadders,
   } = data;
 
@@ -309,9 +315,15 @@ export default function RoadmapPage() {
     snacks: t("struggle.snacks"),
   };
 
-  const untriedStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !masteredStruggles.includes(s) && !triedBeforeStruggles.includes(s));
-  const triedNotMasteredStruggles = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeStruggles.includes(s));
-  const queuedStruggles = [...untriedStruggles, ...triedNotMasteredStruggles];
+  const struggleCategories: { key: string; icon: LucideIcon; struggles: string[]; highlight?: boolean }[] = [
+    { key: "active", icon: TrendingUp, struggles: activeStruggle ? [activeStruggle] : [], highlight: true },
+    { key: "in_progress", icon: Clock, struggles: inProgressStruggles },
+    { key: "mastered", icon: CheckCircle2, struggles: masteredStruggles },
+    { key: "upcoming", icon: Lock, struggles: upcomingStruggles },
+    { key: "skipped", icon: SkipForward, struggles: skippedStruggles },
+    { key: "difficult", icon: AlertCircle, struggles: difficultStruggles },
+    { key: "inactive", icon: EyeOff, struggles: inactiveStruggles },
+  ];
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -384,39 +396,46 @@ export default function RoadmapPage() {
         </CardContent>
       </Card>
 
-      <div className="pt-2">
-        <h2 className="text-base font-semibold mb-3" data-testid="text-struggle-queue-title">
+      <div className="pt-2 space-y-4">
+        <h2 className="text-base font-semibold" data-testid="text-struggle-queue-title">
           {t("roadmap.struggle_queue_title")}
         </h2>
-        <div className="space-y-2">
-          {queuedStruggles.map((struggle) => {
-            const isCurrent = struggle === currentStruggle;
-            const isTriedBefore = triedBeforeStruggles.includes(struggle);
-            const label = STRUGGLE_LABELS[struggle] || struggle;
-
-            return (
-              <div
-                key={struggle}
-                data-testid={`struggle-item-${struggle}`}
-                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${
-                  isCurrent
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "text-muted-foreground opacity-60"
-                }`}
-              >
-                {isCurrent ? (
-                  <TrendingUp className="h-4 w-4 shrink-0" />
-                ) : (
-                  <Lock className="h-4 w-4 shrink-0" />
-                )}
-                <span data-testid={`text-struggle-label-${struggle}`} className="flex-1">{label}</span>
-                {isTriedBefore && !isCurrent && (
-                  <span className="text-xs opacity-70 shrink-0">{t("roadmap.tried_before")}</span>
-                )}
+        {struggleCategories.map(({ key, icon: Icon, struggles: list, highlight }) => {
+          if (list.length === 0) return null;
+          return (
+            <div key={key} data-testid={`struggle-category-${key}`}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                {t(`roadmap.category_${key}`)}
+              </p>
+              <div className="space-y-1">
+                {list.map((struggle) => (
+                  <div
+                    key={struggle}
+                    data-testid={`struggle-item-${struggle}`}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${
+                      highlight
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : key === "mastered"
+                        ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
+                        : key === "difficult"
+                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
+                        : key === "skipped"
+                        ? "bg-muted/50 text-muted-foreground"
+                        : key === "inactive"
+                        ? "text-muted-foreground opacity-40"
+                        : "text-foreground/80"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span data-testid={`text-struggle-label-${struggle}`} className="flex-1">
+                      {STRUGGLE_LABELS[struggle] || struggle}
+                    </span>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>

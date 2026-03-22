@@ -1057,7 +1057,10 @@ export default function WeeklyPlanner() {
   function getEffectiveStruggle() {
     const struggles = (profile?.struggles as string[]) || [];
     const mastered = (profile?.masteredStruggles as string[]) || [];
-    const triedBefore = (profile?.triedBeforeStruggles as string[]) || [];
+    const skippedArr = (profile?.skippedStruggles as string[]) || [];
+    const difficultArr = (profile?.difficultStruggles as string[]) || [];
+    const legacyTried = (profile?.triedBeforeStruggles as string[]) || [];
+    const triedBefore = [...new Set([...skippedArr, ...difficultArr, ...legacyTried])];
 
     const serverEval = reflection?.dietEvaluation;
     const isTransition = serverEval?.type === "mastered" || serverEval?.type === "not_relevant" || serverEval?.type === "moved_on";
@@ -1068,11 +1071,15 @@ export default function WeeklyPlanner() {
     const hypTriedBefore = (isTransition && (serverEval?.type === "not_relevant" || serverEval?.type === "moved_on") && previousStruggle)
       ? [...triedBefore, previousStruggle] : triedBefore;
 
-    const untried = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
-    const triedNotMastered = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && hypTriedBefore.includes(s));
-    const effectiveStruggle = [...untried, ...triedNotMastered][0] || (struggles[0] || "sugary_food_drink");
+    const effectiveStruggles = eatOutDays.length > 0 && !hypMastered.includes("eat_out") && !hypTriedBefore.includes("eat_out") && !struggles.includes("eat_out")
+      ? [...struggles, "eat_out"]
+      : struggles;
 
-    return { effectiveStruggle, isFallback: !struggles.includes(effectiveStruggle), isTransition, previousStruggle };
+    const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
+    const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && hypTriedBefore.includes(s));
+    const effectiveStruggle = [...untried, ...triedNotMastered][0] || (effectiveStruggles[0] || "sugary_food_drink");
+
+    return { effectiveStruggle, isFallback: !effectiveStruggles.includes(effectiveStruggle), isTransition, previousStruggle };
   }
 
   function renderDietReview() {

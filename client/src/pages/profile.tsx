@@ -29,11 +29,9 @@ interface ProfileData {
 }
 
 interface RoadmapData {
-  currentStruggle: string | null;
-  activePlanStruggle: string | null;
+  activeStruggle: string | null;
   currentTip: string | null;
   isDinnerFocus: boolean;
-  struggles: string[];
   tipLadders: Record<string, unknown>;
 }
 
@@ -315,7 +313,7 @@ export default function ProfilePage() {
           <p data-testid="text-focus-area" className="font-medium">
             {roadmap?.isDinnerFocus
               ? t("profile.late_dinner_timing")
-              : STRUGGLE_NAMES[roadmap?.activePlanStruggle ?? ""] ?? roadmap?.activePlanStruggle ?? "N/A"}
+              : STRUGGLE_NAMES[roadmap?.activeStruggle ?? ""] ?? roadmap?.activeStruggle ?? "N/A"}
           </p>
           {roadmap?.currentTip && (
             <p data-testid="text-current-tip" className="text-muted-foreground">

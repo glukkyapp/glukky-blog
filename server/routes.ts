@@ -437,27 +437,29 @@ export async function registerRoutes(
           const lastStruggle = lastWeekPlan?.dietStruggle;
           if (lastStruggle) {
             const mastered = (profile.masteredStruggles || []) as string[];
-            const triedBefore = (profile.triedBeforeStruggles || []) as string[];
+            const skipped = (profile.skippedStruggles || []) as string[];
+            const difficult = (profile.difficultStruggles || []) as string[];
             if (!mastered.includes(lastStruggle)) {
               dietEvaluation = await evaluateDietStruggle(userId, lastStruggle);
               if (dietEvaluation.type === "mastered") {
                 await storage.updateProfile(userId, {
                   masteredStruggles: [...mastered, lastStruggle],
-                  triedBeforeStruggles: triedBefore.filter(s => s !== lastStruggle),
+                  skippedStruggles: skipped.filter(s => s !== lastStruggle),
+                  difficultStruggles: difficult.filter(s => s !== lastStruggle),
                 });
                 try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
-              } else if (dietEvaluation.type === "not_relevant" || dietEvaluation.type === "moved_on") {
-                const newTriedBefore = triedBefore.includes(lastStruggle) ? triedBefore : [...triedBefore, lastStruggle];
-                const struggles = [...(profile.struggles || [])] as string[];
-                const idx = struggles.indexOf(lastStruggle);
-                if (idx >= 0) {
-                  struggles.splice(idx, 1);
-                  struggles.push(lastStruggle);
+              } else if (dietEvaluation.type === "not_relevant") {
+                if (!skipped.includes(lastStruggle)) {
+                  await storage.updateProfile(userId, {
+                    skippedStruggles: [...skipped, lastStruggle],
+                  });
                 }
-                await storage.updateProfile(userId, {
-                  struggles,
-                  triedBeforeStruggles: newTriedBefore,
-                });
+              } else if (dietEvaluation.type === "moved_on") {
+                if (!difficult.includes(lastStruggle)) {
+                  await storage.updateProfile(userId, {
+                    difficultStruggles: [...difficult, lastStruggle],
+                  });
+                }
               }
             }
           }
@@ -520,12 +522,14 @@ export async function registerRoutes(
         } else {
           const struggles = (freshProfile?.struggles || []) as string[];
           const masteredS = (freshProfile?.masteredStruggles || []) as string[];
-          const triedBeforeS = (freshProfile?.triedBeforeStruggles || []) as string[];
-          const effectiveStruggles = (eatOutDays || []).length > 0 && !masteredS.includes("eat_out") && !triedBeforeS.includes("eat_out") && !struggles.includes("eat_out")
+          const skippedS = (freshProfile?.skippedStruggles || []) as string[];
+          const difficultS = (freshProfile?.difficultStruggles || []) as string[];
+          const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
+          const effectiveStruggles = (eatOutDays || []).length > 0 && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out") && !legacyTriedS.includes("eat_out") && !struggles.includes("eat_out")
             ? [...struggles, "eat_out"]
             : struggles;
-          const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !triedBeforeS.includes(s));
-          const triedNotMastered = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeS.includes(s));
+          const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s) && !legacyTriedS.includes(s));
+          const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)));
           const currentStruggle = [...untried, ...triedNotMastered][0] || (struggles.length > 0 ? struggles[0] : "sugary_food_drink");
           planUpdate.dietStruggle = currentStruggle;
           const ladder = DIET_TIP_LADDERS[currentStruggle] || [];
@@ -882,35 +886,64 @@ export async function registerRoutes(
         }
       }
 
-      const lastNonNullPlan = await (async () => {
-        for (let w = (profile.currentWeek); w >= 1; w--) {
-          const wp = await storage.getWeeklyPlan(userId, w);
-          if (wp?.dietStruggle) return wp;
-        }
-        return null;
-      })();
+      const allPlans = await storage.getAllWeeklyPlans(userId);
+      const currentPlan = allPlans.find(p => p.weekNumber === profile.currentWeek) || plan;
+      const pastPlans = allPlans.filter(p => p.weekNumber < profile.currentWeek);
+
+      const lastNonNullPlan = allPlans.slice().reverse().find(p => p.dietStruggle) || null;
       const currentTip = lastNonNullPlan?.dietTip || null;
 
-      const struggles = (profile.struggles || []) as string[];
+      const activeStruggle = currentPlan?.dietStruggle || null;
+      const pastDietStruggles = [...new Set(pastPlans.map(p => p.dietStruggle).filter(Boolean))] as string[];
+      const eatOutEver = await storage.hasAnyEatOutScheduled(userId);
+
+      const profileStruggles = (profile.struggles || []) as string[];
       const masteredS = (profile.masteredStruggles || []) as string[];
-      const triedBeforeS = (profile.triedBeforeStruggles || []) as string[];
-      const untriedQ = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && !masteredS.includes(s) && !triedBeforeS.includes(s));
-      const triedNotMasteredQ = STRUGGLE_PRIORITY.filter(s => struggles.includes(s) && triedBeforeS.includes(s));
-      const currentStruggle = [...untriedQ, ...triedNotMasteredQ][0] || null;
+      const skippedS = (profile.skippedStruggles || []) as string[];
+      const difficultS = (profile.difficultStruggles || []) as string[];
+      const legacyTriedS = (profile.triedBeforeStruggles || []) as string[];
+
+      const resolvedDifficult = [...new Set([...difficultS, ...legacyTriedS.filter(s => !skippedS.includes(s))])];
+
+      const visibleStruggles = new Set([
+        ...profileStruggles,
+        ...(eatOutEver && !profileStruggles.includes("eat_out") ? ["eat_out"] : []),
+      ]);
+
+      const terminalSet = new Set([...masteredS, ...skippedS, ...resolvedDifficult]);
+
+      const inProgressStruggles = STRUGGLE_PRIORITY.filter(s =>
+        pastDietStruggles.includes(s) &&
+        s !== activeStruggle &&
+        !terminalSet.has(s)
+      );
+
+      const everActive = new Set([...pastDietStruggles, ...(activeStruggle ? [activeStruggle] : [])]);
+
+      const upcomingStruggles = STRUGGLE_PRIORITY.filter(s =>
+        visibleStruggles.has(s) &&
+        !everActive.has(s) &&
+        !terminalSet.has(s)
+      );
+
+      const inactiveStruggles = STRUGGLE_PRIORITY.filter(s =>
+        !visibleStruggles.has(s)
+      );
 
       res.json({
-        currentStruggle,
-        activePlanStruggle: lastNonNullPlan?.dietStruggle || null,
+        activeStruggle,
+        inProgressStruggles,
+        masteredStruggles: masteredS,
+        upcomingStruggles,
+        skippedStruggles: skippedS,
+        difficultStruggles: resolvedDifficult,
+        inactiveStruggles,
         currentTip,
         isDinnerFocus: plan?.isDinnerFocus ?? (profile.hasLateDinner && !profile.dinnerMastered),
         dinnerMastered: profile.dinnerMastered,
         walkSuccessAvg,
         dinnerSuccessAvg,
-        dietTipAttempts,
         dietTipCompletionCount,
-        struggles: profile.struggles,
-        masteredStruggles: (profile.masteredStruggles || []) as string[],
-        triedBeforeStruggles: (profile.triedBeforeStruggles || []) as string[],
         tipLadders: DIET_TIP_LADDERS,
       });
     } catch (error) {

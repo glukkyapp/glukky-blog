@@ -42,6 +42,8 @@ export interface IStorage {
   createMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport>;
 
   getRecentWeeklyPlans(userId: string, limit: number): Promise<WeeklyPlan[]>;
+  getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]>;
+  hasAnyEatOutScheduled(userId: string): Promise<boolean>;
 
   getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
@@ -190,6 +192,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(weeklyPlans.userId, userId))
       .orderBy(desc(weeklyPlans.weekNumber))
       .limit(limit);
+  }
+
+  async getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]> {
+    return db.select().from(weeklyPlans)
+      .where(eq(weeklyPlans.userId, userId))
+      .orderBy(weeklyPlans.weekNumber);
+  }
+
+  async hasAnyEatOutScheduled(userId: string): Promise<boolean> {
+    const allPlans = await db.select({ id: weeklyPlans.id })
+      .from(weeklyPlans)
+      .where(eq(weeklyPlans.userId, userId));
+    if (allPlans.length === 0) return false;
+    const planIds = allPlans.map(p => p.id);
+    const [row] = await db.select({ id: weeklyPlanDays.id })
+      .from(weeklyPlanDays)
+      .where(and(
+        inArray(weeklyPlanDays.weeklyPlanId, planIds),
+        eq(weeklyPlanDays.eatOutScheduled, true),
+      ))
+      .limit(1);
+    return !!row;
   }
 
   async getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined> {

@@ -35,6 +35,8 @@ export const userProfiles = pgTable("user_profiles", {
   tipStayCycles: integer("tip_stay_cycles").notNull().default(0),
   masteredStruggles: text("mastered_struggles").array().notNull().default(sql`'{}'::text[]`),
   triedBeforeStruggles: text("tried_before_struggles").array().notNull().default(sql`'{}'::text[]`),
+  skippedStruggles: text("skipped_struggles").array().notNull().default(sql`'{}'::text[]`),
+  difficultStruggles: text("difficult_struggles").array().notNull().default(sql`'{}'::text[]`),
   hba1cLevel: real("hba1c_level"),
   bloodTestDate: date("blood_test_date"),
   piggyBankCoins: integer("piggy_bank_coins").notNull().default(0),
