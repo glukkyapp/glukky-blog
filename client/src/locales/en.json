@@ -72,6 +72,7 @@
     "log_checkin": "Log {{day}}'s check-in",
     "missed_checkin_desc": "You missed {{day}}'s check-in — let's quickly catch up.",
     "walk_question_day": "Did you complete your walk on {{day}}?",
+    "stretch_question_day": "Did you complete your 2-minute stretch on {{day}}?",
     "tired_question_day": "Were you tired on {{day}}?",
     "eat_before_9pm": "Did you manage to eat before 9pm on {{day}}?",
     "follow_tip_on": "Did you follow the {{tip}} tip on {{day}}?",

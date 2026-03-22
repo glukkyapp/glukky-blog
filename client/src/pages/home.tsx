@@ -1270,7 +1270,7 @@ export default function Home() {
             </p>
             {singleMissedDay.walkScheduled && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">{t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
+                <p className="text-sm font-medium">{isDayStretch(singleMissedDay, profile) ? t("home.stretch_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
                   <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">{t("common.yes")}</Button>
                   <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">{t("common.no")}</Button>

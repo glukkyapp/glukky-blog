@@ -72,6 +72,7 @@
     "log_checkin": "記錄{{day}}嘅簽到",
     "missed_checkin_desc": "你漏咗{{day}}嘅簽到——嚟補返啦。",
     "walk_question_day": "你喺{{day}}有散步嗎？",
+    "stretch_question_day": "你喺{{day}}有做2分鐘伸展嗎？",
     "tired_question_day": "你喺{{day}}覺得攰嗎？",
     "eat_before_9pm": "你喺{{day}}有喺9點前食晚飯嗎？",
     "follow_tip_on": "你喺{{day}}有跟住{{tip}}嘅建議嗎？",
