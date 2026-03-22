@@ -398,14 +398,21 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     }
   }
 
-  const activeDays = activePlans.length * 7;
+  const seenStartDates = new Set<string>();
+  const uniqueActivePlans = activePlans.filter(({ plan }) => {
+    if (seenStartDates.has(plan.startDate)) return false;
+    seenStartDates.add(plan.startDate);
+    return true;
+  });
+
+  const activeDays = uniqueActivePlans.length * 7;
   if (activeDays === 0) return { type: "in_cycle", struggle, activeDays: 0 };
 
   let yesDays = 0;
   let noChanceDays = 0;
   const tipYesCounts: Record<string, number> = {};
 
-  for (const { weekNumber: wn, plan: wp } of activePlans) {
+  for (const { weekNumber: wn, plan: wp } of uniqueActivePlans) {
     const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
     const logs = await storage.getDailyLogsByWeek(userId, wn, startDate);
     for (const log of logs) {
