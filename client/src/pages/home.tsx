@@ -174,10 +174,12 @@ export default function Home() {
 
   const missedScheduledDays = useMemo(() => {
     if (!calendarData?.calendar || isCatchUp) return [];
+    const planHasDietTip = !!calendarData?.plan?.dietTip;
     return calendarData.calendar.filter((d: any) => {
       if (!d.date || d.date >= todayStr) return false;
-      if (!d.walkScheduled && !d.lateDinnerScheduled) return false;
       if (d.walkScheduled && (d.walkCompleted === null || d.walkCompleted === undefined)) return true;
+      if (d.lateDinnerScheduled && (d.dinnerSuccess === null || d.dinnerSuccess === undefined)) return true;
+      if (planHasDietTip && (d.dietResponse === null || d.dietResponse === undefined)) return true;
       return false;
     });
   }, [calendarData, todayStr, isCatchUp]);
