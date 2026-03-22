@@ -672,7 +672,7 @@ export default function WeeklyPlanner() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("add_minutes"); }} data-testid="button-escalation-yes">{t("planner.yes_lets_do_it")}</Button>
+                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("stretch_escalation"); }} data-testid="button-escalation-yes">{t("planner.yes_lets_do_it")}</Button>
                 <Button size="sm" variant="outline" onClick={() => { setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">{t("planner.not_yet")}</Button>
               </div>
             </div>

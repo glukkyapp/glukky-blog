@@ -419,7 +419,7 @@ export async function registerRoutes(
       if (!Array.isArray(walkDays) || walkDays.length > 7) {
         return res.status(400).json({ message: "Invalid walk days" });
       }
-      const validChoices = ["keep_current", "add_day", "add_minutes", "set_rest_day", "standing_tap"];
+      const validChoices = ["keep_current", "add_day", "add_minutes", "set_rest_day", "standing_tap", "stretch_escalation"];
       if (negotiationChoice && !validChoices.includes(negotiationChoice)) {
         return res.status(400).json({ message: "Invalid negotiation choice" });
       }
@@ -482,7 +482,7 @@ export async function registerRoutes(
           if (biWeekly.walkingBridge && !profile.isStretchMode) {
             await storage.updateProfile(userId, { isStretchMode: true, stretchSuccessWeeks: 0 });
           }
-          if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "add_minutes") {
+          if (biWeekly.autoEscalation && profile.isStretchMode && negotiationChoice === "stretch_escalation") {
             await storage.updateProfile(userId, { isStretchMode: false, walkDuration: 10, stretchSuccessWeeks: 0 });
           }
         }

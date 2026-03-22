@@ -277,7 +277,7 @@ async function checkFatiguePattern(userId: string, currentWeek: number): Promise
 
 export interface CreatePlanInput {
   userId: string;
-  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "set_rest_day" | "standing_tap";
+  negotiationChoice: "keep_current" | "add_day" | "add_minutes" | "set_rest_day" | "standing_tap" | "stretch_escalation";
   walkDays: number[];
   eatOutDays: number[];
   lateDinnerDays: number[];
