@@ -1109,6 +1109,9 @@ export default function WeeklyPlanner() {
     const bestTip = serverEval?.bestTip;
     const bestTipYes = serverEval?.bestTipYes || 0;
     const isTransitionType = evalType === "mastered" || evalType === "not_relevant" || evalType === "moved_on";
+    const pct = effectiveStruggle === "eat_out" && serverEval?.eatOutDaysScheduled
+      ? Math.round(((serverEval.yesDays ?? 0) / serverEval.eatOutDaysScheduled) * 100)
+      : activeDays > 0 ? Math.round((activeDaysYes / activeDays) * 100) : 0;
 
     return (
       <Card>
@@ -1140,6 +1143,17 @@ export default function WeeklyPlanner() {
               <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-mid-week-notice">{t("planner.diet_mid_week_notice")}</p>
             )}
           </div>
+
+          {hasReflection && evalType === "in_cycle" && activeDays >= 21 && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-diet-second-phase">
+              <div className="flex items-start gap-2">
+                <TrendingUp className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  {t("planner.diet_second_phase_msg", { pct })}
+                </p>
+              </div>
+            </div>
+          )}
 
           {hasReflection && evalType !== "in_cycle" && (
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-progression">
@@ -1177,6 +1191,9 @@ export default function WeeklyPlanner() {
                   <div>
                     <p className="text-sm font-medium text-green-600">
                       {t("planner.moved_on_struggle")}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1" data-testid="text-moved-on-come-back">
+                      {t("planner.moved_on_come_back", { name: previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) })}
                     </p>
                     {nextStruggleLabel && (
                       <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
