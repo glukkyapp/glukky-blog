@@ -1683,7 +1683,7 @@ export default function Home() {
               </div>
             )}
 
-            {calendarPlan?.dietTip && (
+            {calendarPlan?.dietTip && calendarPlan?.dietStruggle !== 'eat_out' && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{t("home.diet_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
