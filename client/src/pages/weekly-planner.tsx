@@ -208,6 +208,11 @@ export default function WeeklyPlanner() {
   useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
   useEffect(() => { if (negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep]);
 
+  const effectiveStruggleForReset = getEffectiveStruggle().effectiveStruggle;
+  useEffect(() => {
+    setSelectedTip(null);
+  }, [effectiveStruggleForReset]);
+
   useEffect(() => {
     if (initialized) return;
     if (!profile) return;

@@ -547,7 +547,7 @@ export async function registerRoutes(
           if (selectedTip && ladder.includes(selectedTip)) {
             planUpdate.dietTip = selectedTip;
           } else {
-            planUpdate.dietTip = null;
+            planUpdate.dietTip = ladder[0] || null;
           }
         }
 
