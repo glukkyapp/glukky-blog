@@ -490,7 +490,7 @@ export default function WeeklyPlanner() {
               </div>
             </div>
           )}
-          {reflection.missedCheckInDays >= 2 && (
+          {reflection.missedWalkCheckInDays >= 2 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-missed-checkins">
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {t("planner.missed_checkins")}

@@ -34,6 +34,7 @@ export interface WeeklyReflection {
   dietNoChanceCount: number;
   dietCleanWeek: boolean;
   isDinnerFocus: boolean;
+  missedWalkCheckInDays: number;
   fatigueDetected: { dayOfWeek: number; count: number } | null;
   suggestedActions: SuggestedAction[];
   lastWeekSchedule: LastWeekDaySchedule[];
@@ -136,7 +137,7 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
   const dietCleanWeek = dietNoCount === 0 && (dietYesCount + dietNoChanceCount) > 0;
   const dietDaysTotal = planDays.length;
 
-  const missedCheckInDays = planDays.filter(d => {
+  const missedWalkCheckInDays = planDays.filter(d => {
     if (!d.walkScheduled && !d.lateDinnerScheduled) return false;
     const dayDate = new Date(plan.startDate + "T00:00:00");
     dayDate.setDate(dayDate.getDate() + d.dayOfWeek);
@@ -186,7 +187,7 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     dietNoChanceCount,
     dietCleanWeek,
     dietDaysTotal,
-    missedCheckInDays,
+    missedWalkCheckInDays,
     isDinnerFocus: plan.isDinnerFocus,
     fatigueDetected,
     suggestedActions,

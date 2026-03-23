@@ -1345,7 +1345,7 @@ export default function Home() {
                 </div>
               );
             })()}
-            {calendarPlan?.dietTip && (
+            {calendarPlan?.dietTip && (calendarPlan?.dietStruggle !== "eat_out" || singleMissedDay.eatOutScheduled) && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t("home.diet_tip_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
@@ -1371,7 +1371,7 @@ export default function Home() {
                   walkCompleted: singleMissedDay.walkScheduled ? catchupWalkDone : undefined,
                   walkTired: singleMissedDay.walkScheduled && catchupWalkDone === false ? catchupWalkTired : undefined,
                   dinnerSuccess: singleMissedDay.lateDinnerScheduled ? catchupDinnerDone : undefined,
-                  dietResponse: calendarPlan?.dietTip ? catchupDietResponse : undefined,
+                  dietResponse: calendarPlan?.dietTip && (calendarPlan?.dietStruggle !== "eat_out" || singleMissedDay.eatOutScheduled) ? catchupDietResponse : undefined,
                 });
               }}
               disabled={
@@ -1380,7 +1380,7 @@ export default function Home() {
                 (singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null) ||
                 (singleMissedDay.lateDinnerScheduled && catchupDinnerDone === null && catchupDinnerChoice === null) ||
                 (singleMissedDay.lateDinnerScheduled && (!singleMissedDay.dinnerLabel || singleMissedDay.dinnerLabel === "none") && catchupDinnerChoice === "tactic" && !catchupTacticPick) ||
-                (calendarPlan?.dietTip && catchupDietResponse === null)
+                (calendarPlan?.dietTip && (calendarPlan?.dietStruggle !== "eat_out" || singleMissedDay.eatOutScheduled) && catchupDietResponse === null)
               }
               data-testid="button-catchup-submit"
             >
