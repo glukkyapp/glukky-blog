@@ -334,18 +334,19 @@ export async function registerRoutes(
         for (let w = 1; w <= (profile?.currentWeek || 1) - 1; w++) {
           const wp = await storage.getWeeklyPlan(userId, w);
           if (wp && wp.dietStruggle === currentStruggleForReflection) {
-            activeDays += 7;
             const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
             const logs = await storage.getDailyLogsByWeek(userId, w, startDate);
             if (currentStruggleForReflection === "eat_out") {
               const planDays = await storage.getWeeklyPlanDays(wp.id);
               const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
+              activeDays += eatOutDayIndices.size;
               const startMs = new Date(startDate).getTime();
               for (const log of logs) {
                 const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
                 if (eatOutDayIndices.has(dayIndex) && log.dietResponse === "yes") activeDaysYes++;
               }
             } else {
+              activeDays += 7;
               activeDaysYes += logs.filter(l => l.dietResponse === "yes").length;
             }
           }
