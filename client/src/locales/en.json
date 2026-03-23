@@ -285,6 +285,7 @@
     "didnt_follow_one": "Didn't follow tip {{count}} day",
     "didnt_follow_other": "Didn't follow tip {{count}} days",
     "missed_checkins": "You missed a few check-ins this week — that's okay! Try to check in daily next week for more accurate tracking.",
+    "missed_diet_checkins": "You missed a few diet check-ins this week — that's okay! Try to log your diet daily next week for more accurate tracking.",
     "transition_title": "Let's do next week's planning!",
     "transition_desc": "Based on last week, let's set up your goals for the coming week.",
     "walk_days_title": "Which days work best for a walk?",

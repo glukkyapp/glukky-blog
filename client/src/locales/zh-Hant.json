@@ -285,6 +285,7 @@
     "didnt_follow_one": "未遵循建議{{count}}天",
     "didnt_follow_other": "未遵循建議{{count}}天",
     "missed_checkins": "你這週漏了幾次簽到——沒關係！下週試著每天簽到以獲得更準確的追蹤。",
+    "missed_diet_checkins": "你這週漏了幾次飲食簽到——沒關係！下週試著每天記錄飲食以獲得更準確的追蹤。",
     "transition_title": "來規劃下週吧！",
     "transition_desc": "根據上週的情況，來設定下週的目標。",
     "walk_days_title": "哪幾天適合散步？",
