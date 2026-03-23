@@ -50,16 +50,31 @@ export interface SuggestedAction {
   descParams?: Record<string, string | number>;
 }
 
-export function getWeekStartDate(weekNumber: number, baseDate?: Date): string {
+export async function getWeekStartDate(weekNumber: number, baseDate?: Date, userId?: string): Promise<string> {
+  if (weekNumber > 1 && userId) {
+    const week1Plan = await storage.getWeeklyPlan(userId, 1);
+    if (week1Plan) {
+      // Anchor every week to the stored week 1 start date so that the schedule
+      // is fixed regardless of when the planner is opened. Without this, using
+      // the current Monday as the base causes the offset to compound by 7 days
+      // each cycle (week 3 is 7 days off, week 4 is 14 days off, etc.).
+      const week1Start = new Date(week1Plan.startDate + "T00:00:00");
+      const weekOffset = (weekNumber - 1) * 7;
+      const startDate = new Date(week1Start);
+      startDate.setDate(week1Start.getDate() + weekOffset);
+      return startDate.toISOString().split("T")[0];
+    }
+    // Edge case: userId provided and weekNumber > 1 but no week 1 plan found
+    // (e.g. data was deleted). Fall through to the current-Monday fallback so
+    // plan creation does not hard-error; the resulting date may be slightly off
+    // but is still a valid Monday.
+  }
   const base = baseDate || new Date();
   const dayOfWeek = base.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const thisMonday = new Date(base);
   thisMonday.setDate(base.getDate() + mondayOffset);
-  const weekOffset = (weekNumber - 1) * 7;
-  const startDate = new Date(thisMonday);
-  startDate.setDate(thisMonday.getDate() + weekOffset);
-  return startDate.toISOString().split("T")[0];
+  return thisMonday.toISOString().split("T")[0];
 }
 
 export function getCurrentWeekNumber(profile: UserProfile): number {
@@ -308,7 +323,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   if (!profile) throw new Error("Profile not found");
 
   const weekNumber = profile.currentWeek;
-  const startDate = getWeekStartDate(weekNumber, input.baseDate);
+  const startDate = await getWeekStartDate(weekNumber, input.baseDate, input.userId);
 
   let walkDuration = profile.walkDuration;
   let walkFrequency = input.walkDays.length;
