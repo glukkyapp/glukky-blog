@@ -480,23 +480,27 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     const yesRate = eatOutDaysScheduled > 0 ? yesDays / eatOutDaysScheduled : 0;
     const noChanceRate = eatOutDaysScheduled > 0 ? noChanceDays / eatOutDaysScheduled : 0;
 
-    if (activeDays === 21) {
-      if (eatOutDaysScheduled < 6) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      if (yesRate >= 0.75) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      if (noChanceRate >= 0.75) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
-    }
+    // No mastery/skip before 21 active eat_out days
+    if (activeDays < 21) return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
 
-    if (activeDays >= 28) {
-      const minRequired = activeDays >= 42 ? 12 : activeDays >= 35 ? 10 : 8;
-      if (eatOutDaysScheduled >= minRequired && yesRate >= 0.75) {
+    // Phase gate helper: mastery if >= minDays && yesRate >= 75%; skip if < minDays or noChanceRate >= 75%
+    const evalPhase = (minDays: number) => {
+      if (eatOutDaysScheduled >= minDays && yesRate >= 0.75)
         return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      }
-      if (activeDays >= 42) {
-        if (eatOutDaysScheduled >= 12) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      if (eatOutDaysScheduled < minDays || noChanceRate >= 0.75)
         return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      }
-      return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+      return null;
+    };
+
+    if (activeDays === 21) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    if (activeDays === 35) return evalPhase(5) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    if (activeDays >= 42) {
+      if (eatOutDaysScheduled >= 6 && yesRate >= 0.75)
+        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      if (eatOutDaysScheduled >= 6)
+        return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+      return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
     }
 
     return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
