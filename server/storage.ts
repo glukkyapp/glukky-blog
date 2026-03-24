@@ -288,7 +288,6 @@ export class DatabaseStorage implements IStorage {
       piggyBankCoins: 0,
       piggyBankReward: null,
       piggyBankNeedsRewardSetup: true,
-      onboardingComplete: false,
     }).where(eq(userProfiles.userId, userId));
   }
 }
