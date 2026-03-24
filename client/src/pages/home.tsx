@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
+import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
@@ -68,6 +69,7 @@ export default function Home() {
   const cardStretchSwitch = useInfoCard("stretch_switch");
   const cardDinnerTiming = useInfoCard("dinner_timing");
   const cardDinnerTactics = useInfoCard("dinner_tactics");
+  const foodSwitchPopup = useFoodSwitchPopup();
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
@@ -146,6 +148,7 @@ export default function Home() {
   useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
   useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
   useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
+  useEffect(() => { if (calendarPlan?.dietTip === "Food Switch") foodSwitchPopup.trigger(); }, [calendarPlan?.dietTip]);
 
   const sundayCheckInDone = (() => {
     if (!isCatchUp) return false;
@@ -1733,6 +1736,7 @@ export default function Home() {
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />
     <InfoCardPopup visible={cardDinnerTactics.visible} onDismiss={cardDinnerTactics.dismiss} icon={UtensilsCrossed} titleKey="info_card.dinner_tactics.title" panelKeys={["info_card.dinner_tactics.p1","info_card.dinner_tactics.p2","info_card.dinner_tactics.p3"]} testId="dialog-card-dinner-tactics" />
+    <FoodSwitchPopup visible={foodSwitchPopup.visible} onDismiss={foodSwitchPopup.dismiss} />
     </>
   );
 }

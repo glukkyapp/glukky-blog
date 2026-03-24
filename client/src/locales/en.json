@@ -511,6 +511,18 @@
     "logging_in": "Logging in...",
     "registering": "Registering..."
   },
+  "food_switch_popup": {
+    "tab1_title": "Food Switch",
+    "tab1": "Replace part of your meal with these foods that have lower impact on glucose spike. Equally filling, more healthy.",
+    "tab2_title": "Legumes & Pulses",
+    "tab2": "Kidney beans, lentils, chickpeas, split peas, baked beans",
+    "tab3_title": "Vegetables",
+    "tab3": "Spinach, broccoli, tomatoes",
+    "tab4_title": "Whole Grains",
+    "tab4": "Traditional rolled oats, barley, quinoa, buckwheat, and stone-ground whole wheat bread",
+    "tab5_title": "Reminder",
+    "tab5": "No problem if you cannot remember — revisit any time under 'Health Info' in profile!"
+  },
   "diet_tip": {
     "dilute_juice": "Dilute juice 1:1 with water",
     "swap_dessert": "Swap dessert for yogurt + berries",
@@ -522,7 +534,8 @@
     "swap_sides_veggies": "Swap sides for vegetables",
     "plate_method": "Use the plate method (½ veggies, ¼ protein, ¼ carbs)",
     "kitchen_closure": "Kitchen Closure after dinner",
-    "switch_edamame_nuts": "Switch to edamame or nuts"
+    "switch_edamame_nuts": "Switch to edamame or nuts",
+    "food_switch": "Food Switch"
   },
   "info_card": {
     "got_it": "Got it",

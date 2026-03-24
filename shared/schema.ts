@@ -152,7 +152,7 @@ export const DIET_TIP_LADDERS: Record<string, string[]> = {
   sugary_food_drink: ["Dilute juice 1:1 with water", "Swap dessert for yogurt + berries", "Limit fruit to 1x per week"],
   oily_fried_food: ["Steam your food first, then sear briefly", "Choose grilled over fried"],
   eat_out: ["Decouple (eat at home first, socialize out)", "Share main dishes", "Swap sides for vegetables"],
-  portions: ["Use the plate method (½ veggies, ¼ protein, ¼ carbs)"],
+  portions: ["Use the plate method (½ veggies, ¼ protein, ¼ carbs)", "Food Switch"],
   snacks: ["Kitchen Closure after dinner", "Switch to edamame or nuts"],
 };
 
@@ -168,6 +168,7 @@ export const DIET_TIP_I18N_KEYS: Record<string, string> = {
   "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": "diet_tip.plate_method",
   "Kitchen Closure after dinner": "diet_tip.kitchen_closure",
   "Switch to edamame or nuts": "diet_tip.switch_edamame_nuts",
+  "Food Switch": "diet_tip.food_switch",
 };
 
 export const MITIGATION_TRIO = ["fiber_starter", "dusk_prep", "split_dinner"] as const;

@@ -511,6 +511,18 @@
     "logging_in": "登入中...",
     "registering": "註冊中..."
   },
+  "food_switch_popup": {
+    "tab1_title": "食物替換",
+    "tab1": "用對血糖影響較少的食物取代部分餐點，同樣飽足，更加健康。",
+    "tab2_title": "豆類",
+    "tab2": "腎豆、扁豆、鷹嘴豆、裂豆、茄汁焗豆",
+    "tab3_title": "蔬菜",
+    "tab3": "菠菜、西蘭花、番茄",
+    "tab4_title": "全穀物",
+    "tab4": "傳統燕麥片、大麥、藜麥、蕎麥、石磨全麥麵包",
+    "tab5_title": "小提示",
+    "tab5": "記不住也沒關係——隨時可在個人資料的「健康資訊」重溫！"
+  },
   "diet_tip": {
     "dilute_juice": "果汁加1:1清水稀釋",
     "swap_dessert": "以乳酪加漿果代替甜品",
@@ -522,7 +534,8 @@
     "swap_sides_veggies": "配菜換成蔬菜",
     "plate_method": "餐盤法（½蔬菜、¼蛋白質、¼碳水）",
     "kitchen_closure": "晚餐後關閉廚房",
-    "switch_edamame_nuts": "改吃毛豆或堅果"
+    "switch_edamame_nuts": "改吃毛豆或堅果",
+    "food_switch": "食物替換"
   },
   "info_card": {
     "got_it": "知道了",
