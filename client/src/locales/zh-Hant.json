@@ -4,6 +4,7 @@
     "roadmap": "進度",
     "snap": "食物快拍",
     "planner": "計劃",
+    "health_info": "健康資訊",
     "profile": "個人資料"
   },
   "day_short": {
@@ -665,5 +666,27 @@
     "s2_body": "真正助你改善，我們每次只專注一個飲食習慣。",
     "s3_headline": "隨你節奏，\n調整計劃",
     "s3_body": "根據你每週的狀況，Glukky 會貼心調整你的計劃。"
+  },
+  "health_info": {
+    "title": "健康資訊",
+    "diet_advice_heading": "飲食建議",
+    "no_advice_yet": "你還沒有任何活躍的飲食建議。當你的第一個飲食建議分配後，請回來查看。",
+    "tip_no_detail": "繼續練習這個建議——每一小步都有意義！",
+    "plate_method_desc": "利用這個簡單的方法填滿你的餐盤，平衡營養並控制血糖：",
+    "plate_veggies": "蔬菜",
+    "plate_protein": "蛋白質",
+    "plate_carbs": "澱粉",
+    "plate_method_tip": "先把一半餐盤填滿蔬菜，能減慢葡萄糖吸收，讓你更有飽足感。",
+    "food_switch_desc": "把日常零食換成毛豆或堅果，是減少餐間血糖飆升的簡單方法。",
+    "food_switch_tab_edamame": "毛豆",
+    "food_switch_tab_nuts": "堅果",
+    "food_switch_tab_why": "為何有效",
+    "food_switch_tab_when": "何時食用",
+    "food_switch_tab_tip": "實用貼士",
+    "food_switch_content_edamame": "毛豆（嫩大豆）富含蛋白質和膳食纖維，升糖指數低。它們消化緩慢，引起的血糖升幅遠低於大多數零食。",
+    "food_switch_content_nuts": "杏仁、核桃、開心果等堅果富含健康脂肪和蛋白質，能減慢消化速度，降低後續餐食或零食對血糖的影響。",
+    "food_switch_content_why": "大多數包裝零食含有大量精製碳水化合物，會令血糖急速上升。毛豆和堅果能提供持久能量，避免血糖大起大落。",
+    "food_switch_content_when": "可在下午3至4點左右作為下午茶，或在正餐之間想吃東西時食用。在較大餐食前食用，也能幫助減緩整體血糖反應。",
+    "food_switch_content_tip": "在廚房準備一小份堅果（約一小把）或一袋冷凍毛豆。越容易取得，你就越有可能選擇它們。"
   }
 }

@@ -4,6 +4,7 @@
     "roadmap": "Roadmap",
     "snap": "Snap",
     "planner": "Planner",
+    "health_info": "Health Info",
     "profile": "Profile"
   },
   "day_short": {
@@ -665,5 +666,27 @@
     "s2_body": "We focus on one diet habit at a time — sustainable progress you can actually keep.",
     "s3_headline": "The app adapts\nto you",
     "s3_body": "Based on how you're doing each week, Glukky quietly adjusts your plan."
+  },
+  "health_info": {
+    "title": "Health Info",
+    "diet_advice_heading": "Diet Advice",
+    "no_advice_yet": "No diet advice has been active for you yet. Come back once your first diet tip is assigned.",
+    "tip_no_detail": "Keep practising this tip — every small step counts!",
+    "plate_method_desc": "Fill your plate using this simple guide to balance nutrients and manage blood sugar:",
+    "plate_veggies": "Vegetables",
+    "plate_protein": "Protein",
+    "plate_carbs": "Carbs",
+    "plate_method_tip": "Filling half your plate with vegetables first slows glucose absorption and keeps you fuller for longer.",
+    "food_switch_desc": "Swapping your usual snack for edamame or nuts is a simple way to reduce blood sugar spikes between meals.",
+    "food_switch_tab_edamame": "Edamame",
+    "food_switch_tab_nuts": "Nuts",
+    "food_switch_tab_why": "Why it helps",
+    "food_switch_tab_when": "When to eat",
+    "food_switch_tab_tip": "Practical tip",
+    "food_switch_content_edamame": "Edamame (young soybeans) are high in protein and fibre, and have a low glycaemic index. They digest slowly and cause a much smaller blood sugar rise than most snack foods.",
+    "food_switch_content_nuts": "Nuts like almonds, walnuts, and pistachios are rich in healthy fats and protein. They slow digestion and reduce the glycaemic impact of the meal or snack that follows.",
+    "food_switch_content_why": "Most packaged snacks are high in refined carbohydrates, which cause rapid blood sugar spikes. Edamame and nuts provide sustained energy without the sharp rise and fall.",
+    "food_switch_content_when": "Try them as a mid-afternoon snack (around 3–4pm) or when you feel like something between meals. Eating them before a larger meal can also help blunt the overall blood sugar response.",
+    "food_switch_content_tip": "Keep a small portion of nuts (about a small handful) or a bag of frozen edamame ready in your kitchen. The easier they are to reach, the more likely you are to choose them."
   }
 }

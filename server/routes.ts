@@ -1402,5 +1402,29 @@ Always reply in EXACTLY this format — 3 lines, nothing else:
     }
   });
 
+  app.get("/api/health-info/diet-tips", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const allPlans: any[] = [];
+      for (let w = 1; w <= (profile.currentWeek || 1); w++) {
+        const plan = await storage.getWeeklyPlan(userId, w);
+        if (plan) allPlans.push(plan);
+      }
+
+      const seenTips = new Set<string>();
+      for (const plan of allPlans) {
+        if (plan.dietTip) seenTips.add(plan.dietTip);
+      }
+
+      res.json({ activeTips: Array.from(seenTips) });
+    } catch (error) {
+      console.error("Error fetching diet tips:", error);
+      res.status(500).json({ message: "Failed to fetch diet tips" });
+    }
+  });
+
   return httpServer;
 }

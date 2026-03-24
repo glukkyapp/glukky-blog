@@ -14,6 +14,7 @@ import Roadmap from "@/pages/roadmap";
 import Profile from "@/pages/profile";
 import MonthlyReport from "@/pages/monthly-report";
 import Snap from "@/pages/snap";
+import HealthInfo from "@/pages/health-info";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -52,7 +53,10 @@ function AuthenticatedApp() {
   if (!currentPlan) {
     return (
       <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
-        <WeeklyPlanner />
+        <Switch>
+          <Route path="/health-info" component={HealthInfo} />
+          <Route component={WeeklyPlanner} />
+        </Switch>
         <FloatingNavBar />
       </div>
     );
@@ -66,6 +70,7 @@ function AuthenticatedApp() {
           <Route path="/roadmap" component={Roadmap} />
           <Route path="/plan" component={WeeklyPlanner} />
           <Route path="/snap" component={Snap} />
+          <Route path="/health-info" component={HealthInfo} />
           <Route path="/profile" component={Profile} />
           <Route path="/monthly" component={MonthlyReport} />
           <Route path="/dev" component={DevPanel} />
