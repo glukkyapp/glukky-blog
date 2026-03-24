@@ -127,8 +127,8 @@ export async function registerRoutes(
       }
       const hasLateDinner = dinnerTime === "after_9pm";
 
-      const profile = await storage.createProfile({
-        userId,
+      const existingProfile = await storage.getProfile(userId);
+      const profileData = {
         walksPerWeek: walksPerWeek || 0,
         walkDuration: walkDuration || 10,
         dinnerTime: dinnerTime || "before_9pm",
@@ -143,7 +143,14 @@ export async function registerRoutes(
         preferredLanguage: preferredLanguage || "en",
         restDay: null,
         currentWeek: 1,
-      });
+      };
+
+      let profile;
+      if (existingProfile) {
+        profile = await storage.updateProfile(userId, profileData);
+      } else {
+        profile = await storage.createProfile({ userId, ...profileData });
+      }
 
       res.json(profile);
     } catch (error: any) {
