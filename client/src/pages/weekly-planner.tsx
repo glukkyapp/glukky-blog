@@ -158,8 +158,10 @@ export default function WeeklyPlanner() {
 
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
-    return lateDinnerDays.length > 0 && !effectiveDinnerMastered;
-  }, [lateDinnerDays, profile?.dinnerMastered, reflection?.dinnerMastered]);
+    const effectiveDinnerExited = reflection?.dinnerExitType ?? profile?.dinnerExitType;
+    return lateDinnerDays.length > 0 && !effectiveDinnerMastered && !effectiveDinnerExited;
+  }, [lateDinnerDays, profile?.dinnerMastered, reflection?.dinnerMastered,
+      profile?.dinnerExitType, reflection?.dinnerExitType]);
 
   const noWalkDays = walkDays.length === 0;
 
@@ -174,6 +176,7 @@ export default function WeeklyPlanner() {
     if (!isFirstWeek) {
       s.push("weeklyReport");
       if (reflection?.dinnerJustGraduated) s.push("dinnerGraduationCelebration");
+      if (reflection?.dinnerJustExited) s.push("dinnerExitCelebration");
       s.push("planTransition");
     }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
@@ -975,10 +978,10 @@ export default function WeeklyPlanner() {
   function renderDinnerFocusReview() {
     const hasReflection = !!reflection;
     const dinnerGrad = reflection?.dinnerGraduation;
-    const aggPct = dinnerGrad?.successPct || 0;
-    const weeksFound = dinnerGrad?.weeksFound || 0;
-    const totalDays = dinnerGrad?.totalDays || 0;
-    const totalSuccess = dinnerGrad?.totalSuccess || 0;
+    const dinnerSuccessPct = dinnerGrad?.dinnerSuccessPct || 0;
+    const dinnerWeeksFound = dinnerGrad?.dinnerWeeksFound || 0;
+    const dinnerScheduledDays = dinnerGrad?.dinnerDaysScheduled || 0;
+    const dinnerSuccessCount = dinnerGrad?.dinnerSuccessCount || 0;
 
     return (
       <Card>
@@ -1002,20 +1005,20 @@ export default function WeeklyPlanner() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{t("planner.days_across_weeks", { success: totalSuccess, total: totalDays })}</span>
-                        <span>{t("planner.goal_80")}</span>
+                        <span>{t("planner.days_across_weeks", { success: dinnerSuccessCount, total: dinnerScheduledDays })}</span>
+                        <span>{t("planner.goal_75")}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${aggPct >= 80 ? "bg-green-500" : "bg-amber-500"}`}
-                          style={{ width: `${Math.min(aggPct, 100)}%` }}
+                          className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 75 ? "bg-green-500" : "bg-amber-500"}`}
+                          style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
                           data-testid="bar-dinner-graduation"
                         />
                       </div>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct">
-                    {aggPct >= 80 ? t("planner.ready_to_graduate", { pct: aggPct }) : t("planner.need_80_to_graduate", { pct: aggPct })}
+                    {dinnerSuccessPct >= 75 ? t("planner.ready_to_graduate", { pct: dinnerSuccessPct }) : t("planner.need_75_to_graduate", { pct: dinnerSuccessPct })}
                   </p>
                 </>
               ) : (
@@ -1025,18 +1028,18 @@ export default function WeeklyPlanner() {
                       <div
                         key={i}
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                          i < weeksFound
+                          i < dinnerWeeksFound
                             ? "bg-green-100 text-green-600 border border-green-300"
                             : "bg-muted text-muted-foreground"
                         }`}
                         data-testid={`indicator-dinner-week-${i}`}
                       >
-                        {i < weeksFound ? <Check className="w-3 h-3" /> : i + 1}
+                        {i < dinnerWeeksFound ? <Check className="w-3 h-3" /> : i + 1}
                       </div>
                     ))}
                   </div>
                   <span className="text-muted-foreground text-xs">
-                    {t("planner.weeks_tracked", { count: weeksFound })}
+                    {t("planner.weeks_tracked", { count: dinnerWeeksFound })}
                   </span>
                 </div>
               )}
@@ -1229,6 +1232,26 @@ export default function WeeklyPlanner() {
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
               {t("planner.dinner_mastered_desc")}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function renderDinnerExitScreen() {
+    const dinnerExitOutcome = reflection?.dinnerExitType;
+    const isDinnerMovedOn = dinnerExitOutcome === "moved_on";
+    return (
+      <Card>
+        <CardContent className="pt-8 pb-8">
+          <div className="flex flex-col items-center text-center gap-4">
+            <UtensilsCrossed className="w-12 h-12 text-muted-foreground" />
+            <h2 className="text-xl font-bold" data-testid="text-dinner-exit-title">
+              {t(isDinnerMovedOn ? "planner.dinner_moved_on_title" : "planner.dinner_not_relevant_title")}
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-xs" data-testid="text-dinner-exit-desc">
+              {t(isDinnerMovedOn ? "planner.dinner_moved_on_desc" : "planner.dinner_not_relevant_desc")}
             </p>
           </div>
         </CardContent>
@@ -1496,6 +1519,7 @@ export default function WeeklyPlanner() {
       case "standingTapSuggest": return renderStandingTapSuggest();
       case "dinnerFocusReview": return renderDinnerFocusReview();
       case "dinnerGraduationCelebration": return renderDinnerGraduationCelebration();
+      case "dinnerExitCelebration": return renderDinnerExitScreen();
       case "dietReview": return renderDietReview();
       case "dietGraduationCelebration": return renderDietGraduationCelebration();
       case "dietTipSelection": return renderDietTipSelection();

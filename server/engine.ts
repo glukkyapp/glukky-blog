@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { awardDinnerGraduationCoin } from "./achievements";
 import {
   STRUGGLE_PRIORITY, DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS,
   type UserProfile, type WeeklyPlan, type WeeklyPlanDay, type DailyLog,
@@ -550,18 +551,22 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
 
 export async function getDinnerGraduationData(userId: string): Promise<{
   ready: boolean;
-  successPct: number;
-  totalDays: number;
-  totalSuccess: number;
-  weeksFound: number;
+  dinnerSuccessPct: number;
+  dinnerDaysScheduled: number;
+  dinnerSuccessCount: number;
+  dinnerWeeksFound: number;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile || profile.dinnerMastered) {
-    return { ready: false, successPct: 0, totalDays: 0, totalSuccess: 0, weeksFound: 0 };
+  if (!profile || profile.dinnerMastered || profile.dinnerExitType) {
+    return { ready: false, dinnerSuccessPct: 0, dinnerDaysScheduled: 0, dinnerSuccessCount: 0, dinnerWeeksFound: 0 };
   }
+
+  const week1Plan = await storage.getWeeklyPlan(userId, 1);
+  const isPartialFirstWeek = !!(week1Plan && week1Plan.firstActiveDay > 0);
 
   const dinnerWeeks: { weekNumber: number; plan: any }[] = [];
   for (let w = 1; w <= profile.currentWeek - 1; w++) {
+    if (isPartialFirstWeek && w === 1) continue;
     const wp = await storage.getWeeklyPlan(userId, w);
     if (!wp) continue;
     const days = await storage.getWeeklyPlanDays(wp.id);
@@ -572,17 +577,16 @@ export async function getDinnerGraduationData(userId: string): Promise<{
   }
 
   if (dinnerWeeks.length < 3) {
-    return { ready: false, successPct: 0, totalDays: 0, totalSuccess: 0, weeksFound: dinnerWeeks.length };
+    return { ready: false, dinnerSuccessPct: 0, dinnerDaysScheduled: 0, dinnerSuccessCount: 0, dinnerWeeksFound: dinnerWeeks.length };
   }
 
-  const evalWeeks = dinnerWeeks.slice(-3);
-  let totalDays = 0;
-  let totalSuccess = 0;
+  let dinnerDaysScheduled = 0;
+  let dinnerSuccessCount = 0;
 
-  for (const { weekNumber: wn, plan: wp } of evalWeeks) {
+  for (const { weekNumber: wn, plan: wp } of dinnerWeeks) {
     const days = await storage.getWeeklyPlanDays(wp.id);
     const dinnerDays = days.filter(d => d.dinnerLabel !== "none");
-    totalDays += dinnerDays.length;
+    dinnerDaysScheduled += dinnerDays.length;
 
     const logs = await storage.getDailyLogsByWeek(userId, wn, wp.startDate);
     for (const dd of dinnerDays) {
@@ -590,34 +594,70 @@ export async function getDinnerGraduationData(userId: string): Promise<{
       dayDate.setDate(dayDate.getDate() + dd.dayOfWeek);
       const dateStr = dayDate.toISOString().split("T")[0];
       const log = logs.find(l => l.date === dateStr);
-      if (log?.dinnerSuccess === true) totalSuccess++;
+      if (log?.dinnerSuccess === true) dinnerSuccessCount++;
     }
   }
 
-  const successPct = totalDays > 0 ? Math.round((totalSuccess / totalDays) * 100) : 0;
+  const dinnerSuccessPct = dinnerDaysScheduled > 0
+    ? Math.round((dinnerSuccessCount / dinnerDaysScheduled) * 100)
+    : 0;
 
-  return { ready: true, successPct, totalDays, totalSuccess, weeksFound: dinnerWeeks.length };
+  return { ready: true, dinnerSuccessPct, dinnerDaysScheduled, dinnerSuccessCount, dinnerWeeksFound: dinnerWeeks.length };
 }
 
-export async function processDinnerGraduation(userId: string): Promise<{ graduated: boolean; successPct: number }> {
+export async function processDinnerGraduation(userId: string, eventDate: string): Promise<{
+  dinnerOutcomeType: "mastered" | "not_relevant" | "moved_on" | "in_cycle";
+  dinnerSuccessPct: number;
+}> {
   const profile = await storage.getProfile(userId);
-  if (!profile || profile.dinnerMastered) {
-    return { graduated: false, successPct: 0 };
+  if (!profile || profile.dinnerMastered || profile.dinnerExitType) {
+    return { dinnerOutcomeType: "in_cycle", dinnerSuccessPct: 0 };
   }
 
-  const gradData = await getDinnerGraduationData(userId);
-  if (!gradData.ready) {
-    return { graduated: false, successPct: gradData.successPct };
+  const dinnerGradData = await getDinnerGraduationData(userId);
+  if (!dinnerGradData.ready) {
+    return { dinnerOutcomeType: "in_cycle", dinnerSuccessPct: dinnerGradData.dinnerSuccessPct };
   }
 
-  if (gradData.successPct >= 80) {
-    await storage.updateProfile(userId, {
-      dinnerMastered: true,
-    });
-    return { graduated: true, successPct: gradData.successPct };
+  const { dinnerWeeksFound, dinnerDaysScheduled, dinnerSuccessCount, dinnerSuccessPct } = dinnerGradData;
+  const dinnerSuccessRate = dinnerDaysScheduled > 0 ? dinnerSuccessCount / dinnerDaysScheduled : 0;
+
+  // Phase gate helper — dinner-specific (NOT evalPhase from eat_out)
+  // Mastery:      dinnerDaysScheduled >= minDays AND dinnerSuccessRate >= 75%
+  // Not relevant: dinnerDaysScheduled < minDays (no no_chance equivalent for dinner)
+  // Continue:     null
+  const dinnerEvalPhase = (minDays: number): "mastered" | "not_relevant" | null => {
+    if (dinnerDaysScheduled >= minDays && dinnerSuccessRate >= 0.75) return "mastered";
+    if (dinnerDaysScheduled < minDays) return "not_relevant";
+    return null;
+  };
+
+  // Phase gates fire on dinnerWeeksFound milestones (analogous to eat_out's activeDays gates)
+  let dinnerOutcomeType: "mastered" | "not_relevant" | "moved_on" | "in_cycle" = "in_cycle";
+
+  if (dinnerWeeksFound < 3) {
+    dinnerOutcomeType = "in_cycle";
+  } else if (dinnerWeeksFound === 3) {
+    dinnerOutcomeType = dinnerEvalPhase(3) ?? "in_cycle";
+  } else if (dinnerWeeksFound === 4) {
+    dinnerOutcomeType = dinnerEvalPhase(4) ?? "in_cycle";
+  } else if (dinnerWeeksFound === 5) {
+    dinnerOutcomeType = dinnerEvalPhase(5) ?? "in_cycle";
+  } else {
+    // >= 6 qualifying dinner weeks
+    if (dinnerDaysScheduled >= 6 && dinnerSuccessRate >= 0.75) dinnerOutcomeType = "mastered";
+    else if (dinnerDaysScheduled >= 6) dinnerOutcomeType = "moved_on";
+    else dinnerOutcomeType = "not_relevant";
   }
 
-  return { graduated: false, successPct: gradData.successPct };
+  if (dinnerOutcomeType === "mastered") {
+    await storage.updateProfile(userId, { dinnerMastered: true });
+    try { await awardDinnerGraduationCoin(userId, eventDate); } catch {}
+  } else if (dinnerOutcomeType === "moved_on" || dinnerOutcomeType === "not_relevant") {
+    await storage.updateProfile(userId, { dinnerExitType: dinnerOutcomeType });
+  }
+
+  return { dinnerOutcomeType, dinnerSuccessPct };
 }
 
 export async function checkBiWeeklyTriggers(userId: string): Promise<{

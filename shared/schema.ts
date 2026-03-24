@@ -43,6 +43,7 @@ export const userProfiles = pgTable("user_profiles", {
   piggyBankReward: text("piggy_bank_reward"),
   piggyBankNeedsRewardSetup: boolean("piggy_bank_needs_reward_setup").notNull().default(true),
   preferredLanguage: varchar("preferred_language").notNull().default("en"),
+  dinnerExitType: varchar("dinner_exit_type"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

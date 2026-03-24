@@ -14,7 +14,6 @@ import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_
 import {
   evaluateDailyAchievements,
   evaluateWeeklyAchievements,
-  awardDinnerGraduationCoin,
   awardStruggleGraduationCoin,
 } from "./achievements";
 
@@ -354,7 +353,8 @@ export async function registerRoutes(
         }
       }
 
-      const dinnerGraduationResult = await processDinnerGraduation(userId);
+      const today = new Date().toISOString().split("T")[0];
+      const dinnerGraduationResult = await processDinnerGraduation(userId, today);
       const freshProfile = await storage.getProfile(userId);
 
       const dietEvaluation = currentStruggleForReflection
@@ -379,8 +379,11 @@ export async function registerRoutes(
         dietEvaluation,
         dinnerGraduation,
         dinnerMastered: freshProfile?.dinnerMastered || false,
-        dinnerJustGraduated: dinnerGraduationResult.graduated,
-        dinnerGraduationSuccessPct: dinnerGraduationResult.successPct,
+        dinnerExitType: freshProfile?.dinnerExitType ?? null,
+        dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered",
+        dinnerJustExited: dinnerGraduationResult.dinnerOutcomeType === "moved_on"
+          || dinnerGraduationResult.dinnerOutcomeType === "not_relevant",
+        dinnerGraduationSuccessPct: dinnerGraduationResult.dinnerSuccessPct,
       });
     } catch (error) {
       console.error("Error fetching reflection:", error);
@@ -441,9 +444,8 @@ export async function registerRoutes(
       if (profile.currentWeek > 1) {
         const planWeekEventDate = new Date().toISOString().split("T")[0];
         const dinnerCheckData = await getDinnerGraduationData(userId);
-        if (!profile.dinnerMastered && dinnerCheckData.weeksFound > 0) {
-          await processDinnerGraduation(userId);
-          try { await awardDinnerGraduationCoin(userId, planWeekEventDate); } catch {}
+        if (!profile.dinnerMastered && !profile.dinnerExitType && dinnerCheckData.dinnerWeeksFound > 0) {
+          await processDinnerGraduation(userId, planWeekEventDate);
         } else {
           const lastWeekPlan = await storage.getWeeklyPlan(userId, profile.currentWeek - 1);
           const lastStruggle = lastWeekPlan?.dietStruggle;
