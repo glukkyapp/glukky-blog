@@ -741,13 +741,7 @@ export default function WeeklyPlanner() {
           <p className="text-sm text-muted-foreground">
             {isStretchMode && acceptedEscalation !== true ? t("planner.pick_stretch_hint") : t("planner.tap_doable_days")}
           </p>
-          {firstActiveDay > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="text-mid-week-note">
-              {isFirstWeek
-                ? t("planner.joining_mid_week", { day: DAY_NAMES[firstActiveDay] })
-                : t("planner.planning_late", { day: DAY_NAMES[firstActiveDay] })}
-            </p>
-          )}
+
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
