@@ -181,6 +181,7 @@ export default function Home() {
     const planHasDietTip = !!calendarData?.plan?.dietTip;
     return calendarData.calendar.filter((d: any) => {
       if (!d.date || d.date >= todayStr) return false;
+      if (d.dayOfWeek < planFirstActiveDay) return false;
       if (d.walkScheduled && (d.walkCompleted === null || d.walkCompleted === undefined)) return true;
       if (d.lateDinnerScheduled && (d.dinnerSuccess === null || d.dinnerSuccess === undefined)) return true;
       if (planHasDietTip) {
