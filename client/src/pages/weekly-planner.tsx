@@ -463,6 +463,22 @@ export default function WeeklyPlanner() {
                   {t("planner.dinner_tactic_report", { count: reflection.dinnerTacticCount, total: reflection.dinnerTacticTotal })}
                 </p>
               )}
+              {(reflection.dinnerTacticBreakdown || []).length > 0 && (
+                <div className="space-y-1 mt-1" data-testid="section-dinner-tactic-breakdown">
+                  {(reflection.dinnerTacticBreakdown || []).map((item) => {
+                    const nameKey =
+                      item.label === "move_early" ? "planner.move_early_label" :
+                      item.label === "fiber_starter" ? "planner.fiber_starter_label" :
+                      item.label === "dusk_prep" ? "planner.dusk_prep_label" :
+                      item.label === "split_dinner" ? "planner.split_dinner_label" : item.label;
+                    return (
+                      <p key={item.label} className="text-sm text-muted-foreground" data-testid={`text-tactic-breakdown-${item.label}`}>
+                        {t("planner.dinner_tactic_by_name", { name: t(nameKey, { defaultValue: item.label }), success: item.success, total: item.total })}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

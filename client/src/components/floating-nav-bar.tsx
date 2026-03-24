@@ -29,58 +29,45 @@ export default function FloatingNavBar() {
   return (
     <nav
       className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
-      style={{ width: "457px", height: "80px", maxWidth: "calc(100vw - 32px)" }}
+      style={{ width: "calc(100vw - 32px)", maxWidth: "500px", height: "80px" }}
       data-testid="nav-floating-bar"
     >
-      <style>{`.glukky-nav-inner::-webkit-scrollbar { display: none; }`}</style>
       <div
-        className="relative w-full h-full"
+        className="flex items-center justify-center gap-3 sm:gap-5 w-full h-full px-4"
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
         }}
       >
-        <div
-          className="glukky-nav-inner flex items-center justify-center gap-4 sm:gap-6 h-full"
-          style={{
-            overflowX: "auto",
-            WebkitOverflowScrolling: "touch",
-            scrollSnapType: "x mandatory",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          {navItems.map(({ key, label, path, icon: Icon }) => {
-            const active = isActive(path);
-            return (
-              <button
-                key={key}
-                onClick={() => handleNavClick(path)}
-                className="relative z-10 flex flex-col items-center justify-center shrink-0"
-                style={{
-                  width: "52px",
-                  height: "100%",
-                  color: "#0D5E4F",
-                  background: "transparent",
-                  border: "none",
-                  scrollSnapAlign: "start",
-                }}
-                data-testid={`nav-tab-${key}`}
+        {navItems.map(({ key, label, path, icon: Icon }) => {
+          const active = isActive(path);
+          return (
+            <button
+              key={key}
+              onClick={() => handleNavClick(path)}
+              className="relative z-10 flex flex-col items-center justify-center flex-1"
+              style={{
+                minWidth: 0,
+                height: "100%",
+                color: "#0D5E4F",
+                background: "transparent",
+                border: "none",
+              }}
+              data-testid={`nav-tab-${key}`}
+            >
+              <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+              <motion.span
+                animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-xs font-medium overflow-hidden"
+                style={{ color: "#0D5E4F" }}
               >
-                <Icon size={24} strokeWidth={active ? 2.5 : 2} />
-                <motion.span
-                  animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-xs font-medium overflow-hidden"
-                  style={{ color: "#0D5E4F" }}
-                >
-                  {label}
-                </motion.span>
-              </button>
-            );
-          })}
-        </div>
+                {label}
+              </motion.span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

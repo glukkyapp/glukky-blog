@@ -271,7 +271,25 @@ export class DatabaseStorage implements IStorage {
     await db.delete(weeklyReports).where(eq(weeklyReports.userId, userId));
     await db.delete(monthlyReports).where(eq(monthlyReports.userId, userId));
     await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
-    await db.delete(userProfiles).where(eq(userProfiles.userId, userId));
+    await db.update(userProfiles).set({
+      currentWeek: 1,
+      isStretchMode: false,
+      stretchSuccessWeeks: 0,
+      dinnerMastered: false,
+      dinnerSuccessWeeks: 0,
+      dinnerExitType: null,
+      tipCycleStartWeek: 0,
+      tipStayCycles: 0,
+      currentTipIndex: 0,
+      masteredStruggles: [],
+      triedBeforeStruggles: [],
+      skippedStruggles: [],
+      difficultStruggles: [],
+      piggyBankCoins: 0,
+      piggyBankReward: null,
+      piggyBankNeedsRewardSetup: true,
+      onboardingComplete: false,
+    }).where(eq(userProfiles.userId, userId));
   }
 }
 

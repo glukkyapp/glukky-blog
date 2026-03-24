@@ -944,6 +944,15 @@ export async function registerRoutes(
         !visibleStruggles.has(s)
       );
 
+      let dinnerQueueStatus: string | null = null;
+      if (profile.hasLateDinner) {
+        if (profile.dinnerMastered) dinnerQueueStatus = "mastered";
+        else if (profile.dinnerExitType === "moved_on") dinnerQueueStatus = "moved_on";
+        else if (profile.dinnerExitType === "not_relevant") dinnerQueueStatus = "not_relevant";
+        else if (plan?.isDinnerFocus) dinnerQueueStatus = "active";
+        else dinnerQueueStatus = "upcoming";
+      }
+
       res.json({
         activeStruggle,
         inProgressStruggles,
@@ -955,6 +964,7 @@ export async function registerRoutes(
         currentTip,
         isDinnerFocus: plan?.isDinnerFocus ?? (profile.hasLateDinner && !profile.dinnerMastered),
         dinnerMastered: profile.dinnerMastered,
+        dinnerQueueStatus,
         walkSuccessAvg,
         dinnerSuccessAvg,
         dietTipCompletionCount,

@@ -28,6 +28,7 @@ export interface WeeklyReflection {
   dinnerEarlyTotal: number;
   dinnerTacticCount: number;
   dinnerTacticTotal: number;
+  dinnerTacticBreakdown: { label: string; success: number; total: number }[];
   dietTip: string | null;
   dietStruggle: string | null;
   dietNoCount: number;
@@ -143,6 +144,22 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     if (log?.dinnerSuccess === true) dinnerTacticCount++;
   }
 
+  const allDinnerLabels = ["move_early", "fiber_starter", "dusk_prep", "split_dinner"];
+  const dinnerTacticBreakdown: { label: string; success: number; total: number }[] = [];
+  for (const lbl of allDinnerLabels) {
+    const daysWithLabel = planDays.filter(d => d.dinnerLabel === lbl);
+    if (daysWithLabel.length === 0) continue;
+    let successCount = 0;
+    for (const day of daysWithLabel) {
+      const dayDate = new Date(plan.startDate + "T00:00:00");
+      dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+      const dateStr = dayDate.toISOString().split("T")[0];
+      const log = logs.find(l => l.date === dateStr);
+      if (log?.dinnerSuccess === true) successCount++;
+    }
+    dinnerTacticBreakdown.push({ label: lbl, success: successCount, total: daysWithLabel.length });
+  }
+
   let dietNoCount = 0;
   let dietYesCount = 0;
   let dietNoChanceCount = 0;
@@ -211,6 +228,7 @@ export async function getWeeklyReflection(userId: string): Promise<WeeklyReflect
     dinnerEarlyTotal: earlyDays.length,
     dinnerTacticCount,
     dinnerTacticTotal: tacticDays.length,
+    dinnerTacticBreakdown,
     dietTip: plan.dietTip,
     dietStruggle: plan.dietStruggle,
     dietNoCount,

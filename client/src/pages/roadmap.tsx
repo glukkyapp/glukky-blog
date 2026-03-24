@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, AlertCircle, EyeOff, type LucideIcon } from "lucide-react";
+import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, AlertCircle, EyeOff, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +35,7 @@ interface RoadmapData {
   currentTip: string | null;
   isDinnerFocus: boolean;
   dinnerMastered: boolean;
+  dinnerQueueStatus: string | null;
   walkSuccessAvg: number;
   dinnerSuccessAvg: number;
   dietTipCompletionCount: number;
@@ -301,6 +302,7 @@ export default function RoadmapPage() {
     currentTip,
     isDinnerFocus,
     dinnerMastered,
+    dinnerQueueStatus,
     walkSuccessAvg,
     dinnerSuccessAvg,
     dietTipCompletionCount,
@@ -315,12 +317,19 @@ export default function RoadmapPage() {
     snacks: t("struggle.snacks"),
   };
 
-  const struggleCategories: { key: string; icon: LucideIcon; struggles: string[]; highlight?: boolean }[] = [
-    { key: "active", icon: TrendingUp, struggles: activeStruggle ? [activeStruggle] : [], highlight: true },
+  const dinnerCategoryKey =
+    dinnerQueueStatus === "mastered" ? "mastered" :
+    dinnerQueueStatus === "moved_on" || dinnerQueueStatus === "not_relevant" ? "skipped" :
+    dinnerQueueStatus === "active" ? "active" :
+    dinnerQueueStatus === "upcoming" ? "upcoming" :
+    null;
+
+  const struggleCategories: { key: string; icon: LucideIcon; struggles: string[]; highlight?: boolean; hasDinner?: boolean }[] = [
+    { key: "active", icon: TrendingUp, struggles: activeStruggle ? [activeStruggle] : [], highlight: true, hasDinner: dinnerCategoryKey === "active" },
     { key: "in_progress", icon: Clock, struggles: inProgressStruggles },
-    { key: "mastered", icon: CheckCircle2, struggles: masteredStruggles },
-    { key: "upcoming", icon: Lock, struggles: upcomingStruggles },
-    { key: "skipped", icon: SkipForward, struggles: skippedStruggles },
+    { key: "mastered", icon: CheckCircle2, struggles: masteredStruggles, hasDinner: dinnerCategoryKey === "mastered" },
+    { key: "upcoming", icon: Lock, struggles: upcomingStruggles, hasDinner: dinnerCategoryKey === "upcoming" },
+    { key: "skipped", icon: SkipForward, struggles: skippedStruggles, hasDinner: dinnerCategoryKey === "skipped" },
     { key: "difficult", icon: AlertCircle, struggles: difficultStruggles },
     { key: "inactive", icon: EyeOff, struggles: inactiveStruggles },
   ];
@@ -397,11 +406,19 @@ export default function RoadmapPage() {
       </Card>
 
       <div className="pt-2 space-y-4">
-        <h2 className="text-base font-semibold" data-testid="text-struggle-queue-title">
-          {t("roadmap.struggle_queue_title")}
-        </h2>
-        {struggleCategories.map(({ key, icon: Icon, struggles: list, highlight }) => {
-          if (list.length === 0) return null;
+        {struggleCategories.map(({ key, icon: Icon, struggles: list, highlight, hasDinner }) => {
+          if (list.length === 0 && !hasDinner) return null;
+          const itemClass = highlight
+            ? "bg-primary text-primary-foreground font-medium"
+            : key === "mastered"
+            ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
+            : key === "difficult"
+            ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
+            : key === "skipped"
+            ? "bg-muted/50 text-muted-foreground"
+            : key === "inactive"
+            ? "text-muted-foreground opacity-40"
+            : "text-foreground/80";
           return (
             <div key={key} data-testid={`struggle-category-${key}`}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
@@ -412,19 +429,7 @@ export default function RoadmapPage() {
                   <div
                     key={struggle}
                     data-testid={`struggle-item-${struggle}`}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${
-                      highlight
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : key === "mastered"
-                        ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
-                        : key === "difficult"
-                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
-                        : key === "skipped"
-                        ? "bg-muted/50 text-muted-foreground"
-                        : key === "inactive"
-                        ? "text-muted-foreground opacity-40"
-                        : "text-foreground/80"
-                    }`}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${itemClass}`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span data-testid={`text-struggle-label-${struggle}`} className="flex-1">
@@ -432,6 +437,17 @@ export default function RoadmapPage() {
                     </span>
                   </div>
                 ))}
+                {hasDinner && (
+                  <div
+                    data-testid="struggle-item-dinner"
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${itemClass}`}
+                  >
+                    <UtensilsCrossed className="h-4 w-4 shrink-0" />
+                    <span data-testid="text-struggle-label-dinner" className="flex-1">
+                      {t("roadmap.late_dinner_label")}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           );
