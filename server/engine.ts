@@ -435,9 +435,10 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   eatOutDaysScheduled?: number;
   bestTip?: string;
   bestTipYes?: number;
+  weeksFound?: number;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile) return { type: "in_cycle", struggle };
+  if (!profile) return { type: "in_cycle", struggle, weeksFound: 0 };
 
   const week1Plan = await storage.getWeeklyPlan(userId, 1);
   const isPartialFirstWeek = !!(week1Plan && week1Plan.firstActiveDay > 0);
@@ -458,8 +459,9 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     return true;
   });
 
-  const activeDays = uniqueActivePlans.length * 7;
-  if (activeDays === 0) return { type: "in_cycle", struggle, activeDays: 0 };
+  const weeksFound = uniqueActivePlans.length;
+  const activeDays = weeksFound * 7;
+  if (activeDays === 0) return { type: "in_cycle", struggle, activeDays: 0, weeksFound: 0 };
 
   if (struggle === "eat_out") {
     let eatOutDaysScheduled = 0;
@@ -500,29 +502,29 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     const noChanceRate = eatOutDaysScheduled > 0 ? noChanceDays / eatOutDaysScheduled : 0;
 
     // No mastery/skip before 21 active eat_out days
-    if (activeDays < 21) return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    if (activeDays < 21) return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
 
     // Phase gate helper: mastery if >= minDays && yesRate >= 75%; skip if < minDays or noChanceRate >= 75%
     const evalPhase = (minDays: number) => {
       if (eatOutDaysScheduled >= minDays && yesRate >= 0.75)
-        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
       if (eatOutDaysScheduled < minDays || noChanceRate >= 0.75)
-        return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+        return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
       return null;
     };
 
-    if (activeDays === 21) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
-    if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
-    if (activeDays === 35) return evalPhase(5) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    if (activeDays === 21) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+    if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+    if (activeDays === 35) return evalPhase(5) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays >= 42) {
       if (eatOutDaysScheduled >= 6 && yesRate >= 0.75)
-        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+        return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
       if (eatOutDaysScheduled >= 6)
-        return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
-      return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes };
+        return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
+      return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
     }
 
-    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
   }
 
   let yesDays = 0;
@@ -549,22 +551,22 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   }
 
   if (activeDays >= 42) {
-    if (yesDays >= 32) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-    return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    if (yesDays >= 32) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+    return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
   }
   if (activeDays >= 35) {
-    if (yesDays >= 27) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
+    if (yesDays >= 27) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
   }
   if (activeDays >= 28) {
-    if (yesDays >= 22) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
+    if (yesDays >= 22) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
   }
   if (activeDays === 21) {
-    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
-    if (noChanceDays >= 16) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes };
+    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays >= 16) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
   }
-  return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays };
+  return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
 }
 
 export async function getDinnerGraduationData(userId: string): Promise<{

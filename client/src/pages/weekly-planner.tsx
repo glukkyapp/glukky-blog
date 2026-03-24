@@ -1157,6 +1157,37 @@ export default function WeeklyPlanner() {
             )}
           </div>
 
+          {hasReflection && effectiveStruggle !== "eat_out" && (serverEval?.weeksFound ?? 0) > 0 && (
+            <div className="rounded-lg border p-4 space-y-3" data-testid="section-diet-graduation-progress">
+              <p className="text-sm font-medium">{t("planner.graduation_progress")}</p>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => {
+                    const totalWeeks = serverEval?.weeksFound ?? 0;
+                    const cycleWeeks = totalWeeks > 3 ? totalWeeks - 3 : totalWeeks;
+                    const checked = i < cycleWeeks;
+                    return (
+                      <div
+                        key={i}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                          checked
+                            ? "bg-green-100 text-green-600 border border-green-300"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                        data-testid={`indicator-diet-week-${i}`}
+                      >
+                        {checked ? <Check className="w-3 h-3" /> : i + 1}
+                      </div>
+                    );
+                  })}
+                </div>
+                <span className="text-muted-foreground text-xs" data-testid="text-diet-weeks-tracked">
+                  {t("planner.weeks_tracked", { count: Math.min((serverEval?.weeksFound ?? 0) > 3 ? (serverEval?.weeksFound ?? 0) - 3 : (serverEval?.weeksFound ?? 0), 3) })}
+                </span>
+              </div>
+            </div>
+          )}
+
           {hasReflection && evalType === "in_cycle" && activeDays >= 21 && (
             <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-diet-second-phase">
               <div className="flex items-start gap-2">
