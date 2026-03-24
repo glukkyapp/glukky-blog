@@ -135,7 +135,9 @@
     "didnt_try_day": "Didn't try on {{day}}",
     "diet_chance_today": "Did you get a chance to try this today?",
     "diet_chance_day": "Did you get a chance to try this on {{day}}?",
-    "duration_min_short": "{{duration}}m"
+    "duration_min_short": "{{duration}}m",
+    "dinner_yes": "Yes",
+    "dinner_no": "No"
   },
   "mitigation": {
     "fiber_starter_label": "Fiber Starter",

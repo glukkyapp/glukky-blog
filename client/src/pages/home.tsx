@@ -779,7 +779,7 @@ export default function Home() {
             disabled={logMutation.isPending}
             data-testid="button-dinner-yes"
           >
-            {t("common.yes")}
+            {t("home.dinner_yes")}
           </Button>
           <Button
             size="sm"
@@ -789,7 +789,7 @@ export default function Home() {
             disabled={logMutation.isPending}
             data-testid="button-dinner-no"
           >
-            {t("common.no")}
+            {t("home.dinner_no")}
           </Button>
         </div>
       </div>

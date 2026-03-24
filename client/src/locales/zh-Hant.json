@@ -135,7 +135,9 @@
     "didnt_try_day": "在{{day}}沒有試",
     "diet_chance_today": "今天有機會試嗎？",
     "diet_chance_day": "你在{{day}}有機會嘗試嗎？",
-    "duration_min_short": "{{duration}}分"
+    "duration_min_short": "{{duration}}分",
+    "dinner_yes": "可以",
+    "dinner_no": "不行"
   },
   "mitigation": {
     "fiber_starter_label": "纖維優先",
