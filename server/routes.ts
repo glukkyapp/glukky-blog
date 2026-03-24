@@ -96,6 +96,7 @@ function computeFocusPanel(
 
   if (struggle === "portions") {
     if (!LARGE_PORTION_KW.some(kw => txt.includes(kw))) return null;
+    if (SUGARY_FOOD_KW.some(kw => txt.includes(kw))) return null;
     return { struggleKey: struggle, tips: [{ key: "diet_tip.plate_method", timing: "immediate" }] };
   }
 
