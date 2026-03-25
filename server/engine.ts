@@ -444,7 +444,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   const isPartialFirstWeek = !!(week1Plan && week1Plan.firstActiveDay > 0);
 
   const activePlans: { weekNumber: number; plan: WeeklyPlan }[] = [];
-  for (let w = 1; w <= profile.currentWeek - 1; w++) {
+  for (let w = 1; w <= profile.currentWeek; w++) {
     const wp = await storage.getWeeklyPlan(userId, w);
     if (wp && wp.dietStruggle === struggle) {
       if (isPartialFirstWeek && w === 1) continue;
@@ -562,7 +562,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
     if (yesDays >= 22) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
   }
-  if (activeDays === 21) {
+  if (activeDays >= 21 && activeDays < 28) {
     if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
     if (noChanceDays >= 16) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
   }

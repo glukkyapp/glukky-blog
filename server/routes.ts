@@ -333,32 +333,8 @@ export async function registerRoutes(
         ? Math.round((adjustedWalkDaysCompleted / adjustedWalkDaysScheduled) * 100)
         : 0;
 
-      let activeDays = 0;
-      let activeDaysYes = 0;
       const lastWeekPlanForReflection = await storage.getWeeklyPlan(userId, (profile?.currentWeek || 1) - 1);
       const currentStruggleForReflection = lastWeekPlanForReflection?.dietStruggle;
-      if (currentStruggleForReflection) {
-        for (let w = 1; w <= (profile?.currentWeek || 1) - 1; w++) {
-          const wp = await storage.getWeeklyPlan(userId, w);
-          if (wp && wp.dietStruggle === currentStruggleForReflection) {
-            const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
-            const logs = await storage.getDailyLogsByWeek(userId, w, startDate);
-            if (currentStruggleForReflection === "eat_out") {
-              const planDays = await storage.getWeeklyPlanDays(wp.id);
-              const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
-              activeDays += eatOutDayIndices.size;
-              const startMs = new Date(startDate).getTime();
-              for (const log of logs) {
-                const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
-                if (eatOutDayIndices.has(dayIndex) && log.dietResponse === "yes") activeDaysYes++;
-              }
-            } else {
-              activeDays += 7;
-              activeDaysYes += logs.filter(l => l.dietResponse === "yes").length;
-            }
-          }
-        }
-      }
 
       const today = new Date().toISOString().split("T")[0];
       const dinnerGraduationResult = await processDinnerGraduation(userId, today);
@@ -418,8 +394,8 @@ export async function registerRoutes(
         isStretchMode: profile?.isStretchMode || false,
         stretchProgression,
         stretchSuccessWeeks: biWeekly.consecutiveStretchWeeks,
-        activeDays,
-        activeDaysYes,
+        activeDays: (dietEvaluation as any).activeDays ?? 0,
+        activeDaysYes: (dietEvaluation as any).yesDays ?? 0,
         dietEvaluation,
         dinnerGraduation,
         dinnerMastered: freshProfile?.dinnerMastered || false,

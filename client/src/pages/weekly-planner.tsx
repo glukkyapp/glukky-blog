@@ -578,14 +578,13 @@ export default function WeeklyPlanner() {
               {(reflection.activeDays || 0) > 0 && (() => {
                 const activeDays = reflection.activeDays || 0;
                 const weeksCompleted = Math.floor(activeDays / 7);
-                const maxWeeks = 6;
-                const displayWeeks = Math.min(weeksCompleted, maxWeeks);
+                const displayWeeks = Math.min(weeksCompleted > 3 ? weeksCompleted - 3 : weeksCompleted, 3);
                 return (
                   <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-950/10 p-3 space-y-2 mt-1" data-testid="section-diet-graduation-report">
                     <p className="text-xs font-medium text-muted-foreground">{t("planner.graduation_progress")}</p>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
-                        {[0, 1, 2, 3, 4, 5].map(i => (
+                        {[0, 1, 2].map(i => (
                           <div
                             key={i}
                             className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
@@ -1166,18 +1165,11 @@ export default function WeeklyPlanner() {
     const { effectiveStruggle, isFallback, isTransition, previousStruggle } = getEffectiveStruggle();
 
     const hasReflection = !!reflection;
-    const activeDays = reflection?.activeDays || 0;
-    const activeDaysYes = reflection?.activeDaysYes || 0;
 
     const serverEval = reflection?.dietEvaluation;
     const evalType: "mastered" | "not_relevant" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
     const nextStruggleLabel = isTransition ? (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) : "";
-    const bestTip = serverEval?.bestTip;
-    const bestTipYes = serverEval?.bestTipYes || 0;
     const isTransitionType = evalType === "mastered" || evalType === "not_relevant" || evalType === "moved_on";
-    const pct = effectiveStruggle === "eat_out" && serverEval?.eatOutDaysScheduled
-      ? Math.round(((serverEval.yesDays ?? 0) / serverEval.eatOutDaysScheduled) * 100)
-      : activeDays > 0 ? Math.round((activeDaysYes / activeDays) * 100) : 0;
 
     return (
       <Card>
@@ -1197,60 +1189,10 @@ export default function WeeklyPlanner() {
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
               {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
             </p>
-            {hasReflection && activeDays > 0 && !isTransitionType && reflection?.dietEvaluation?.struggle === effectiveStruggle && (
-              <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-days-progress">
-                {effectiveStruggle === "eat_out" && serverEval?.eatOutDaysScheduled != null
-                  ? t("planner.eat_out_days_progress", { yesDays: serverEval.yesDays ?? 0, eatOutDays: serverEval.eatOutDaysScheduled })
-                  : t("planner.diet_days_progress", { yesDays: activeDaysYes, activeDays })
-                }
-              </p>
-            )}
             {isFirstWeek && firstActiveDay > 0 && (
               <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-mid-week-notice">{t("planner.diet_mid_week_notice")}</p>
             )}
           </div>
-
-          {hasReflection && effectiveStruggle !== "eat_out" && (serverEval?.weeksFound ?? 0) > 0 && (
-            <div className="rounded-lg border p-4 space-y-3" data-testid="section-diet-graduation-progress">
-              <p className="text-sm font-medium">{t("planner.graduation_progress")}</p>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="flex gap-1">
-                  {[0, 1, 2].map(i => {
-                    const totalWeeks = serverEval?.weeksFound ?? 0;
-                    const cycleWeeks = totalWeeks > 3 ? totalWeeks - 3 : totalWeeks;
-                    const checked = i < cycleWeeks;
-                    return (
-                      <div
-                        key={i}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                          checked
-                            ? "bg-green-100 text-green-600 border border-green-300"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                        data-testid={`indicator-diet-week-${i}`}
-                      >
-                        {checked ? <Check className="w-3 h-3" /> : i + 1}
-                      </div>
-                    );
-                  })}
-                </div>
-                <span className="text-muted-foreground text-xs" data-testid="text-diet-weeks-tracked">
-                  {t("planner.weeks_tracked", { count: Math.min((serverEval?.weeksFound ?? 0) > 3 ? (serverEval?.weeksFound ?? 0) - 3 : (serverEval?.weeksFound ?? 0), 3) })}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {hasReflection && evalType === "in_cycle" && activeDays >= 21 && (
-            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4" data-testid="section-diet-second-phase">
-              <div className="flex items-start gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  {t("planner.diet_second_phase_msg", { pct })}
-                </p>
-              </div>
-            </div>
-          )}
 
           {hasReflection && isTransitionType && nextStruggleLabel && (
             <div className="rounded-lg border p-4" data-testid="section-diet-next-struggle">
