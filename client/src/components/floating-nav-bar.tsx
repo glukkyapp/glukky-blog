@@ -3,11 +3,13 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Home, TrendingUp, CalendarDays, User, Camera, Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function FloatingNavBar() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
   const [activePath, setActivePath] = useState(location || "/");
+  const isMobile = useIsMobile();
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
@@ -33,14 +35,16 @@ export default function FloatingNavBar() {
       data-testid="nav-floating-bar"
     >
       <div
-        className="flex items-center w-full h-full px-2 scrollbar-hidden"
+        className={`flex items-center w-full h-full px-2${isMobile ? " scrollbar-hidden" : ""}`}
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-          overflowX: "auto",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
+          ...(isMobile ? {
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          } : {}),
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
@@ -49,10 +53,9 @@ export default function FloatingNavBar() {
             <button
               key={key}
               onClick={() => handleNavClick(path)}
-              className="relative z-10 flex flex-col items-center justify-center flex-shrink-0"
+              className={`relative z-10 flex flex-col items-center justify-center${isMobile ? " flex-shrink-0" : " flex-1"}`}
               style={{
-                width: "25%",
-                minWidth: "25%",
+                ...(isMobile ? { width: "25%", minWidth: "25%" } : {}),
                 height: "100%",
                 color: "#0D5E4F",
                 background: "transparent",
