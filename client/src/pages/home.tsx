@@ -1296,12 +1296,12 @@ export default function Home() {
             </p>
             {singleMissedDay.walkScheduled && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">{isDayStretch(singleMissedDay, profile) ? t("home.stretch_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
+                <p className="text-sm font-medium">{singleMissedDay.standingTap ? t("home.standing_tap_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : isDayStretch(singleMissedDay, profile) ? t("home.stretch_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
                   <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">{t("common.yes")}</Button>
                   <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">{t("common.no")}</Button>
                 </div>
-                {catchupWalkDone === false && (
+                {!singleMissedDay.standingTap && catchupWalkDone === false && (
                   <div className="space-y-2 pl-1">
                     <p className="text-sm text-muted-foreground">{t("home.tired_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                     <div className="flex gap-2">
@@ -1385,7 +1385,7 @@ export default function Home() {
                 catchupMutation.mutate({
                   date: singleMissedDay.date,
                   walkCompleted: singleMissedDay.walkScheduled ? catchupWalkDone : undefined,
-                  walkTired: singleMissedDay.walkScheduled && catchupWalkDone === false ? catchupWalkTired : undefined,
+                  walkTired: singleMissedDay.walkScheduled && !singleMissedDay.standingTap && catchupWalkDone === false ? catchupWalkTired : undefined,
                   dinnerSuccess: singleMissedDay.lateDinnerScheduled ? catchupDinnerDone : undefined,
                   dietResponse: calendarPlan?.dietTip && (calendarPlan?.dietStruggle !== "eat_out" || singleMissedDay.eatOutScheduled) ? catchupDietResponse : undefined,
                 });
@@ -1393,7 +1393,7 @@ export default function Home() {
               disabled={
                 catchupMutation.isPending || dinnerLabelMutation.isPending ||
                 (singleMissedDay.walkScheduled && catchupWalkDone === null) ||
-                (singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null) ||
+                (!singleMissedDay.standingTap && singleMissedDay.walkScheduled && catchupWalkDone === false && catchupWalkTired === null) ||
                 (singleMissedDay.lateDinnerScheduled && catchupDinnerDone === null && catchupDinnerChoice === null) ||
                 (singleMissedDay.lateDinnerScheduled && (!singleMissedDay.dinnerLabel || singleMissedDay.dinnerLabel === "none") && catchupDinnerChoice === "tactic" && !catchupTacticPick) ||
                 (calendarPlan?.dietTip && (calendarPlan?.dietStruggle !== "eat_out" || singleMissedDay.eatOutScheduled) && catchupDietResponse === null)
@@ -1402,14 +1402,15 @@ export default function Home() {
             >
               {catchupMutation.isPending || dinnerLabelMutation.isPending ? t("home.saving") : t("home.log_day", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
             </Button>
-            {catchupAdjMsg && (
-              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">
-                <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                <p className="text-sm text-blue-700 dark:text-blue-300">{catchupAdjMsg}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
+      )}
+
+      {catchupAdjMsg && !singleMissedDay && (
+        <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">
+          <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">{catchupAdjMsg}</p>
+        </div>
       )}
 
       {nextWeekPlanned && (
