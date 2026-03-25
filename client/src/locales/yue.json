@@ -182,7 +182,7 @@
     "saving": "儲存緊..."
   },
   "struggle": {
-    "sugary_food_drink": "含糖食物及飲品",
+    "sugary_food_drink": "糖分管理",
     "oily_fried_food": "油膩/煎炸食物",
     "eat_out": "出街食飯/外賣",
     "portions": "份量控制",
@@ -461,7 +461,8 @@
     "week_plan_set": "第{{week}}週計劃已設定！",
     "plan_set_sunday": "今週做得好！你已回顧報告——下週計劃已準備好！",
     "plan_set_other": "你嘅計劃聽日開始。星期日晚上10點返嚟睇每週報告。",
-    "duration_min_short": "{{duration}}分"
+    "duration_min_short": "{{duration}}分",
+    "got_it": "好"
   },
   "profile": {
     "title": "你嘅個人資料",
