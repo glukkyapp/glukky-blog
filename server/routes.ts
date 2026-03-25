@@ -624,7 +624,7 @@ export async function registerRoutes(
             const skipped = (profile.skippedStruggles || []) as string[];
             const difficult = (profile.difficultStruggles || []) as string[];
             if (!mastered.includes(lastStruggle)) {
-              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle);
+              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle, profile.currentWeek - 1);
               if (dietEvaluation.type === "mastered") {
                 await storage.updateProfile(userId, {
                   masteredStruggles: [...mastered, lastStruggle],
