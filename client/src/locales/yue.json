@@ -273,6 +273,8 @@
     "standing_tap_report": "企立踏步：{{completed}}/{{scheduled}}已完成",
     "late_dinner": "晚餐偏遲",
     "mastered_badge": "已掌握！",
+    "graduation_popup_heading": "恭喜！",
+    "graduation_popup_body": "你畢業喇！成為{{name}}大師",
     "dinner_success_pct": "{{pct}}%晚餐成功率",
     "dinner_early_report": "你提早食晚飯 {{count}}/{{total}} 日",
     "dinner_tactic_report": "你跟住晚餐策略 {{count}}/{{total}} 日",

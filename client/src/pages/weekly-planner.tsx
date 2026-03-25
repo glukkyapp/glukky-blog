@@ -146,6 +146,8 @@ export default function WeeklyPlanner() {
   const [walkDayDurations, setWalkDayDurations] = useState<Record<number, number>>({});
   const [negotiationAgreedMinutes, setNegotiationAgreedMinutes] = useState(false);
   const [negotiationInitialized, setNegotiationInitialized] = useState(false);
+  const [graduationPopupOpen, setGraduationPopupOpen] = useState(false);
+  const [graduationPopupShownThisSession, setGraduationPopupShownThisSession] = useState(false);
 
   const cardDietFocus = useInfoCard("diet_focus");
   const cardWalkEscalation = useInfoCard("walk_escalation");
@@ -205,6 +207,18 @@ export default function WeeklyPlanner() {
   }, [currentStepId]);
   useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
   useEffect(() => { if (negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep]);
+
+  useEffect(() => {
+    if (
+      currentStepId === "weeklyReport" &&
+      !graduationPopupShownThisSession &&
+      reflection &&
+      (reflection.dietJustGraduated || reflection.dinnerJustGraduated)
+    ) {
+      setGraduationPopupOpen(true);
+      setGraduationPopupShownThisSession(true);
+    }
+  }, [currentStepId, reflection, graduationPopupShownThisSession]);
 
   const effectiveStruggleForReset = getEffectiveStruggle().effectiveStruggle;
   useEffect(() => {
@@ -1709,6 +1723,34 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardStruggleIntroPortions.visible} onDismiss={cardStruggleIntroPortions.dismiss} icon={Soup} titleKey="info_card.struggle_intro_portions.title" panelKeys={["info_card.struggle_intro_portions.body"]} testId="dialog-card-struggle-intro-portions" />
     <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
     <InfoCardPopup visible={cardStruggleIntroEatOut.visible} onDismiss={cardStruggleIntroEatOut.dismiss} icon={Utensils} titleKey="info_card.struggle_intro_eat_out.title" panelKeys={["info_card.struggle_intro_eat_out.body"]} testId="dialog-card-struggle-intro-eat-out" />
+    {graduationPopupOpen && (() => {
+      const struggledName = reflection?.dinnerJustGraduated
+        ? t("planner.late_dinner")
+        : (reflection?.dietStruggle ? (STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle) : "");
+      return (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          data-testid="dialog-graduation-popup"
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-8 flex flex-col items-center text-center gap-4 max-w-sm w-full">
+            <Award className="w-16 h-16 text-primary" data-testid="icon-graduation-trophy" />
+            <h2 className="text-2xl font-bold" data-testid="text-graduation-heading">
+              {t("planner.graduation_popup_heading")}
+            </h2>
+            <p className="text-base text-muted-foreground" data-testid="text-graduation-body">
+              {t("planner.graduation_popup_body", { name: struggledName })}
+            </p>
+            <Button
+              onClick={() => setGraduationPopupOpen(false)}
+              data-testid="button-graduation-dismiss"
+              className="mt-2 w-full"
+            >
+              {t("planner.got_it")}
+            </Button>
+          </div>
+        </div>
+      );
+    })()}
     </>
   );
 }
