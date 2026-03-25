@@ -1180,7 +1180,12 @@ export default function WeeklyPlanner() {
 
     const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
     const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && hypTriedBefore.includes(s));
-    const effectiveStruggle = [...untried, ...triedNotMastered][0] || (effectiveStruggles[0] || "sugary_food_drink");
+    const hasEatOutDays = eatOutDays.length > 0;
+    const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
+      if (s === "eat_out" && !hasEatOutDays) return false;
+      return !hypMastered.includes(s) && !hypTriedBefore.includes(s);
+    }) || "sugary_food_drink";
+    const effectiveStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
 
     return { effectiveStruggle, isFallback: !effectiveStruggles.includes(effectiveStruggle), isTransition, previousStruggle };
   }
