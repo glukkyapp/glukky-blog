@@ -535,7 +535,12 @@ export async function registerRoutes(
             : struggles;
           const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s) && !legacyTriedS.includes(s));
           const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)));
-          const currentStruggle = [...untried, ...triedNotMastered][0] || (struggles.length > 0 ? struggles[0] : "sugary_food_drink");
+          const hasEatOutDays = (eatOutDays || []).length > 0;
+          const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
+            if (s === "eat_out" && !hasEatOutDays) return false;
+            return !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s);
+          }) || "sugary_food_drink";
+          const currentStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
           planUpdate.dietStruggle = currentStruggle;
           const ladder = DIET_TIP_LADDERS[currentStruggle] || [];
           if (selectedTip && ladder.includes(selectedTip)) {
