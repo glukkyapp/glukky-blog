@@ -575,7 +575,7 @@ export default function WeeklyPlanner() {
                   <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
                 )}
               </div>
-              {currentPlan?.firstActiveDay > 0 && reflection.weekNumber === 1 && reflection.dietStruggle
+              {currentPlan?.firstActiveDay > 0 && reflection.weekNumber === 1
                 ? (
                   <div className="rounded-lg border border-muted bg-muted/30 p-3 mt-1" data-testid="section-diet-graduation-partial">
                     <p className="text-xs text-muted-foreground">{t("planner.graduation_starts_next_week")}</p>
