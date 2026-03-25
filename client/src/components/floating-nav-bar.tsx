@@ -33,11 +33,14 @@ export default function FloatingNavBar() {
       data-testid="nav-floating-bar"
     >
       <div
-        className="flex items-center justify-center gap-3 sm:gap-5 w-full h-full px-4"
+        className="flex items-center w-full h-full px-2 scrollbar-hidden"
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
@@ -46,9 +49,10 @@ export default function FloatingNavBar() {
             <button
               key={key}
               onClick={() => handleNavClick(path)}
-              className="relative z-10 flex flex-col items-center justify-center flex-1"
+              className="relative z-10 flex flex-col items-center justify-center flex-shrink-0"
               style={{
-                minWidth: 0,
+                width: "25%",
+                minWidth: "25%",
                 height: "100%",
                 color: "#0D5E4F",
                 background: "transparent",
