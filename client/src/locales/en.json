@@ -37,7 +37,7 @@
     "standing_tap_task": "1 min standing tap after dinner",
     "walk_task": "{{duration}} min walk after dinner",
     "stretch_task": "{{duration}} min stretch after dinner",
-    "late_dinner_task": "Late dinner — pick a tactic at 2pm",
+    "late_dinner_task": "Dinner will be late today — pick a tactic at 2pm",
     "eat_out_task": "Eating Out / Takeaway",
     "plan_move_dinner": "Plan: Move dinner before 9pm",
     "plan_tactic": "Plan: {{tactic}} tactic",

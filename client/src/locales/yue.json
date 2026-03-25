@@ -37,7 +37,7 @@
     "standing_tap_task": "飯後1分鐘企立踏步",
     "walk_task": "飯後{{duration}}分鐘散步",
     "stretch_task": "飯後{{duration}}分鐘伸展",
-    "late_dinner_task": "晚餐遲咗——下晝2點揀策略",
+    "late_dinner_task": "今日晚餐會遲食——下晝2點揀策略",
     "eat_out_task": "出外食飯 / 外賣",
     "plan_move_dinner": "計劃：晚餐提早到9點前",
     "plan_tactic": "計劃：{{tactic}}策略",
@@ -138,7 +138,7 @@
     "diet_chance_day": "你喺{{day}}有冇做到？",
     "duration_min_short": "{{duration}}分",
     "dinner_yes": "可以",
-    "dinner_no": "唔得"
+    "dinner_no": "唔可以"
   },
   "mitigation": {
     "fiber_starter_label": "纖維行先",
