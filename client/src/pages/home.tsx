@@ -1288,7 +1288,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                {t("home.log_checkin", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}
+                {t("home.log_checkin")}
               </p>
             </div>
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
@@ -1400,7 +1400,7 @@ export default function Home() {
               }
               data-testid="button-catchup-submit"
             >
-              {catchupMutation.isPending || dinnerLabelMutation.isPending ? t("home.saving") : t("home.log_day", { day: DAY_NAMES[singleMissedDay.dayOfWeek] })}
+              {catchupMutation.isPending || dinnerLabelMutation.isPending ? t("home.saving") : t("home.log_day")}
             </Button>
           </CardContent>
         </Card>
