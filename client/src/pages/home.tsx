@@ -63,6 +63,12 @@ export default function Home() {
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
+  const dinnerAt10pmKey = `dinnerAnsweredAt10pm_${new Date().toISOString().slice(0, 10)}`;
+  const [dinnerAnsweredAt10pm, setDinnerAnsweredAt10pm] = useState(() => sessionStorage.getItem(dinnerAt10pmKey) === "true");
+  const markDinnerAnsweredAt10pm = () => {
+    sessionStorage.setItem(dinnerAt10pmKey, "true");
+    setDinnerAnsweredAt10pm(true);
+  };
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
 
   const cardFirstWalkDay = useInfoCard("first_walk_day");
@@ -372,7 +378,7 @@ export default function Home() {
     if (!todayPlan?.planDayId) return;
     dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: tactic });
     setShowTacticPicker(false);
-    if (isCatchUpCheckIn) {
+    if (isCatchUpCheckIn || dinnerAnsweredAt10pm) {
       logMutation.mutate({ dinnerSuccess: true });
     }
   }
@@ -571,6 +577,7 @@ export default function Home() {
                   dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
                 }
                 logMutation.mutate({ dinnerSuccess: true });
+                markDinnerAnsweredAt10pm();
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-early"
@@ -580,7 +587,10 @@ export default function Home() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setShowTacticPicker(true)}
+              onClick={() => {
+                setShowTacticPicker(true);
+                markDinnerAnsweredAt10pm();
+              }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-tactic"
             >
@@ -589,7 +599,10 @@ export default function Home() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => logMutation.mutate({ dinnerSuccess: false })}
+              onClick={() => {
+                logMutation.mutate({ dinnerSuccess: false });
+                markDinnerAnsweredAt10pm();
+              }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-dinner-late-no"
             >
@@ -752,6 +765,7 @@ export default function Home() {
   function renderDinnerFollowUp() {
     if (!isLateDinnerDay || !dinnerLabelSet) return null;
     if (todayLog?.dinnerSuccess !== null && todayLog?.dinnerSuccess !== undefined) {
+      if (dinnerAnsweredAt10pm) return null;
       return (
         <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 rounded-lg p-3" data-testid="section-dinner-followup-done">
           <Check className="w-4 h-4 text-green-600" />
@@ -1190,7 +1204,7 @@ export default function Home() {
       if (isLateDinnerDay && !dinnerLabelSet) {
         rawSections.push(renderDinnerCheckIn());
       }
-      if (isLateDinnerDay && dinnerLabelSet) {
+      if (isLateDinnerDay && dinnerLabelSet && !dinnerAnsweredAt10pm) {
         rawSections.push(renderDinnerFollowUp());
       }
       if (todayPlan?.walkScheduled) {
