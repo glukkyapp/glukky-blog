@@ -369,6 +369,43 @@ export async function registerRoutes(
         : { type: "in_cycle", struggle: null };
       const dinnerGraduation = await getDinnerGraduationData(userId);
 
+      let dietJustGraduated = false;
+      let dietJustSkipped = false;
+      let dietJustMovedOn = false;
+
+      if (currentStruggleForReflection && dietEvaluation.type !== "in_cycle") {
+        const profileForDiet = await storage.getProfile(userId);
+        const mastered = (profileForDiet?.masteredStruggles || []) as string[];
+        const skipped = (profileForDiet?.skippedStruggles || []) as string[];
+        const difficult = (profileForDiet?.difficultStruggles || []) as string[];
+
+        if (dietEvaluation.type === "mastered") {
+          if (!mastered.includes(currentStruggleForReflection)) {
+            await storage.updateProfile(userId, {
+              masteredStruggles: [...mastered, currentStruggleForReflection],
+              skippedStruggles: skipped.filter(s => s !== currentStruggleForReflection),
+              difficultStruggles: difficult.filter(s => s !== currentStruggleForReflection),
+            });
+            try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch {}
+          }
+          dietJustGraduated = true;
+        } else if (dietEvaluation.type === "not_relevant") {
+          if (!skipped.includes(currentStruggleForReflection)) {
+            await storage.updateProfile(userId, {
+              skippedStruggles: [...skipped, currentStruggleForReflection],
+            });
+          }
+          dietJustSkipped = true;
+        } else if (dietEvaluation.type === "moved_on") {
+          if (!difficult.includes(currentStruggleForReflection)) {
+            await storage.updateProfile(userId, {
+              difficultStruggles: [...difficult, currentStruggleForReflection],
+            });
+          }
+          dietJustMovedOn = true;
+        }
+      }
+
       res.json({
         ...reflection,
         walkDaysScheduled: adjustedWalkDaysScheduled,
@@ -387,10 +424,18 @@ export async function registerRoutes(
         dinnerGraduation,
         dinnerMastered: freshProfile?.dinnerMastered || false,
         dinnerExitType: freshProfile?.dinnerExitType ?? null,
-        dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered",
+        dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered"
+          || !!(freshProfile?.dinnerMastered),
         dinnerJustExited: dinnerGraduationResult.dinnerOutcomeType === "moved_on"
-          || dinnerGraduationResult.dinnerOutcomeType === "not_relevant",
+          || dinnerGraduationResult.dinnerOutcomeType === "not_relevant"
+          || !!(freshProfile?.dinnerExitType),
         dinnerGraduationSuccessPct: dinnerGraduationResult.dinnerSuccessPct,
+        dinnerOutcomeType: freshProfile?.dinnerMastered ? "mastered"
+          : freshProfile?.dinnerExitType ?? null,
+        dietJustGraduated,
+        dietJustSkipped,
+        dietJustMovedOn,
+        dietOutcomeType: dietEvaluation.type !== "in_cycle" ? dietEvaluation.type : null,
       });
     } catch (error) {
       console.error("Error fetching reflection:", error);

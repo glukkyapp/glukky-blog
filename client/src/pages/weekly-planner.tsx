@@ -169,14 +169,10 @@ export default function WeeklyPlanner() {
   const isEmptyWeekStretch = !isStretchMode && stretchAccepted && stretchDays.length > 0;
   const isStretchActive = isStretchMode || isEmptyWeekStretch;
 
-  const isDietTransition = reflection?.dietEvaluation?.type === "mastered" || reflection?.dietEvaluation?.type === "not_relevant" || reflection?.dietEvaluation?.type === "moved_on";
-
   const steps = useMemo(() => {
     const s: string[] = [];
     if (!isFirstWeek) {
       s.push("weeklyReport");
-      if (reflection?.dinnerJustGraduated) s.push("dinnerGraduationCelebration");
-      if (reflection?.dinnerJustExited) s.push("dinnerExitCelebration");
       s.push("planTransition");
     }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
@@ -184,12 +180,11 @@ export default function WeeklyPlanner() {
     if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
       s.push("dietReview");
-      if (isDietTransition) s.push("dietGraduationCelebration");
       s.push("dietTipSelection");
     }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, noWalkDays, reflection?.dinnerJustGraduated, isDietTransition]);
+  }, [isFirstWeek, isDinnerFocus, noWalkDays]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -479,6 +474,74 @@ export default function WeeklyPlanner() {
                   })}
                 </div>
               )}
+              {reflection.dinnerGraduation && (() => {
+                const dinnerGrad = reflection.dinnerGraduation;
+                const dinnerWeeksFound = dinnerGrad.dinnerWeeksFound || 0;
+                const dinnerScheduledDays = dinnerGrad.dinnerDaysScheduled || 0;
+                const dinnerSuccessCount = dinnerGrad.dinnerSuccessCount || 0;
+                const dinnerSuccessPct = dinnerGrad.dinnerSuccessPct || 0;
+                return (
+                  <div className="rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 p-3 space-y-2 mt-1" data-testid="section-dinner-graduation-report">
+                    <p className="text-xs font-medium text-muted-foreground">{t("planner.graduation_progress")}</p>
+                    {dinnerGrad.ready ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>{t("planner.days_across_weeks", { success: dinnerSuccessCount, total: dinnerScheduledDays })}</span>
+                              <span>{t("planner.goal_75")}</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 75 ? "bg-green-500" : "bg-amber-500"}`}
+                                style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
+                                data-testid="bar-dinner-graduation-report"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct-report">
+                          {dinnerSuccessPct >= 75 ? t("planner.ready_to_graduate", { pct: dinnerSuccessPct }) : t("planner.need_75_to_graduate", { pct: dinnerSuccessPct })}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="flex gap-1">
+                          {[0, 1, 2].map(i => (
+                            <div
+                              key={i}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                i < dinnerWeeksFound
+                                  ? "bg-green-100 text-green-600 border border-green-300"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                              data-testid={`indicator-dinner-week-report-${i}`}
+                            >
+                              {i < dinnerWeeksFound ? <Check className="w-3 h-3" /> : i + 1}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-muted-foreground text-xs">
+                          {t("planner.weeks_tracked", { count: dinnerWeeksFound })}
+                        </span>
+                      </div>
+                    )}
+                    {(reflection.dinnerJustGraduated || reflection.dinnerJustExited) && (
+                      <div className={`flex items-start gap-2 pt-1 border-t ${reflection.dinnerJustGraduated ? "border-green-200 dark:border-green-800" : "border-blue-200 dark:border-blue-800"}`} data-testid="section-dinner-outcome-report">
+                        {reflection.dinnerJustGraduated && <Award className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />}
+                        {reflection.dinnerJustExited && !reflection.dinnerJustGraduated && <TrendingUp className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />}
+                        <p className="text-sm font-medium" data-testid="text-dinner-outcome-report">
+                          {reflection.dinnerJustGraduated
+                            ? t("planner.dinner_mastered_title")
+                            : reflection.dinnerExitType === "moved_on"
+                              ? t("planner.dinner_moved_on_title")
+                              : t("planner.dinner_not_relevant_title")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -512,6 +575,50 @@ export default function WeeklyPlanner() {
                   <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
                 )}
               </div>
+              {(reflection.activeDays || 0) > 0 && (() => {
+                const activeDays = reflection.activeDays || 0;
+                const weeksCompleted = Math.floor(activeDays / 7);
+                const maxWeeks = 6;
+                const displayWeeks = Math.min(weeksCompleted, maxWeeks);
+                return (
+                  <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-950/10 p-3 space-y-2 mt-1" data-testid="section-diet-graduation-report">
+                    <p className="text-xs font-medium text-muted-foreground">{t("planner.graduation_progress")}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {[0, 1, 2, 3, 4, 5].map(i => (
+                          <div
+                            key={i}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                              i < displayWeeks
+                                ? "bg-green-100 text-green-600 border border-green-300"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                            data-testid={`indicator-diet-week-report-${i}`}
+                          >
+                            {i < displayWeeks ? <Check className="w-3 h-3" /> : i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-muted-foreground text-xs">
+                        {t("planner.weeks_tracked", { count: displayWeeks })}
+                      </span>
+                    </div>
+                    {(reflection.dietJustGraduated || reflection.dietJustSkipped || reflection.dietJustMovedOn) && (
+                      <div className={`flex items-start gap-2 pt-1 border-t ${reflection.dietJustGraduated ? "border-green-200 dark:border-green-800" : "border-blue-200 dark:border-blue-800"}`} data-testid="section-diet-outcome-report">
+                        {reflection.dietJustGraduated && <Award className="w-4 h-4 text-primary mt-0.5 shrink-0" />}
+                        {(reflection.dietJustSkipped || reflection.dietJustMovedOn) && <TrendingUp className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />}
+                        <p className="text-sm font-medium" data-testid="text-diet-outcome-report">
+                          {reflection.dietJustGraduated
+                            ? t("planner.mastered_struggle", { name: STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle })
+                            : reflection.dietJustSkipped
+                              ? t("planner.not_relevant_struggle")
+                              : t("planner.moved_on_struggle")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
           {reflection.missedWalkCheckInDays >= 2 && (
@@ -987,11 +1094,6 @@ export default function WeeklyPlanner() {
 
   function renderDinnerFocusReview() {
     const hasReflection = !!reflection;
-    const dinnerGrad = reflection?.dinnerGraduation;
-    const dinnerSuccessPct = dinnerGrad?.dinnerSuccessPct || 0;
-    const dinnerWeeksFound = dinnerGrad?.dinnerWeeksFound || 0;
-    const dinnerScheduledDays = dinnerGrad?.dinnerDaysScheduled || 0;
-    const dinnerSuccessCount = dinnerGrad?.dinnerSuccessCount || 0;
 
     return (
       <Card>
@@ -1006,55 +1108,6 @@ export default function WeeklyPlanner() {
             <p className="text-sm text-muted-foreground">{t("planner.current_focus")}</p>
             <p className="font-semibold text-lg" data-testid="text-dinner-focus-label">{t("planner.late_dinner_management")}</p>
           </div>
-
-          {hasReflection && dinnerGrad && (
-            <div className="rounded-lg border p-4 space-y-3" data-testid="section-dinner-graduation-progress">
-              <p className="text-sm font-medium">{t("planner.graduation_progress")}</p>
-              {dinnerGrad.ready ? (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{t("planner.days_across_weeks", { success: dinnerSuccessCount, total: dinnerScheduledDays })}</span>
-                        <span>{t("planner.goal_75")}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 75 ? "bg-green-500" : "bg-amber-500"}`}
-                          style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
-                          data-testid="bar-dinner-graduation"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct">
-                    {dinnerSuccessPct >= 75 ? t("planner.ready_to_graduate", { pct: dinnerSuccessPct }) : t("planner.need_75_to_graduate", { pct: dinnerSuccessPct })}
-                  </p>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map(i => (
-                      <div
-                        key={i}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                          i < dinnerWeeksFound
-                            ? "bg-green-100 text-green-600 border border-green-300"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                        data-testid={`indicator-dinner-week-${i}`}
-                      >
-                        {i < dinnerWeeksFound ? <Check className="w-3 h-3" /> : i + 1}
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-muted-foreground text-xs">
-                    {t("planner.weeks_tracked", { count: dinnerWeeksFound })}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="bg-card border rounded-lg p-4 space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{t("planner.available_tactics")}</p>
@@ -1199,140 +1252,16 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {hasReflection && evalType !== "in_cycle" && (
-            <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-progression">
-              {evalType === "mastered" && (
-                <div className="flex items-start gap-2">
-                  <Award className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-primary">
-                      {t("planner.mastered_struggle", { name: previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) })}
-                    </p>
-                    {nextStruggleLabel ? (
-                      <p className="text-sm text-muted-foreground mt-1">{t("planner.moving_to", { name: nextStruggleLabel })}</p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-1">{t("planner.all_struggles_done")}</p>
-                    )}
-                  </div>
+          {hasReflection && isTransitionType && nextStruggleLabel && (
+            <div className="rounded-lg border p-4" data-testid="section-diet-next-struggle">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
                 </div>
-              )}
-              {evalType === "not_relevant" && (
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">
-                      {t("planner.not_relevant_struggle")}
-                    </p>
-                    {nextStruggleLabel && (
-                      <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {evalType === "moved_on" && (
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-green-600">
-                      {t("planner.moved_on_struggle")}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1" data-testid="text-moved-on-come-back">
-                      {t("planner.moved_on_come_back", { name: previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) })}
-                    </p>
-                    {nextStruggleLabel && (
-                      <p className="text-sm text-muted-foreground mt-1">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {isTransitionType && bestTip && bestTipYes > 0 && (
-                <div className="bg-primary/5 rounded-lg p-3 mt-2" data-testid="section-best-tip">
-                  <p className="text-xs text-muted-foreground mb-1">{t("planner.most_successful_tip")}</p>
-                  <p className="text-sm font-medium" data-testid="text-best-tip">"{bestTip}"</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t("planner.days_followed", { count: bestTipYes })}</p>
-                </div>
-              )}
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function renderDinnerGraduationCelebration() {
-    const pct = reflection?.dinnerGraduationSuccessPct || 0;
-    return (
-      <Card>
-        <CardContent className="pt-8 pb-8">
-          <div className="flex flex-col items-center text-center gap-4">
-            <Award className="w-12 h-12 text-amber-500" />
-            <h2 className="text-xl font-bold" data-testid="text-dinner-graduation-title">{t("planner.dinner_mastered_title")}</h2>
-            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg px-6 py-3">
-              <p className="text-3xl font-bold text-green-600" data-testid="text-dinner-grad-pct">{pct}%</p>
-              <p className="text-sm text-muted-foreground">{t("planner.dinner_success_3weeks")}</p>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              {t("planner.dinner_mastered_desc")}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function renderDinnerExitScreen() {
-    const dinnerExitOutcome = reflection?.dinnerExitType;
-    const isDinnerMovedOn = dinnerExitOutcome === "moved_on";
-    return (
-      <Card>
-        <CardContent className="pt-8 pb-8">
-          <div className="flex flex-col items-center text-center gap-4">
-            <UtensilsCrossed className="w-12 h-12 text-muted-foreground" />
-            <h2 className="text-xl font-bold" data-testid="text-dinner-exit-title">
-              {t(isDinnerMovedOn ? "planner.dinner_moved_on_title" : "planner.dinner_not_relevant_title")}
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-xs" data-testid="text-dinner-exit-desc">
-              {t(isDinnerMovedOn ? "planner.dinner_moved_on_desc" : "planner.dinner_not_relevant_desc")}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function renderDietGraduationCelebration() {
-    const serverEval = reflection?.dietEvaluation;
-    const evalType = serverEval?.type;
-    const bestTip = serverEval?.bestTip;
-    const bestTipYes = serverEval?.bestTipYes || 0;
-    const { effectiveStruggle, previousStruggle } = getEffectiveStruggle();
-    const nextStruggleLabel = serverEval?.nextStruggle ? (STRUGGLE_NAMES[serverEval.nextStruggle] || serverEval.nextStruggle) : "";
-    const struggleName = previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle);
-    return (
-      <Card>
-        <CardContent className="pt-8 pb-8">
-          <div className="flex flex-col items-center text-center gap-4">
-            {evalType === "mastered" && <Award className="w-12 h-12 text-primary" />}
-            {(evalType === "not_relevant" || evalType === "moved_on") && <TrendingUp className="w-12 h-12 text-green-500" />}
-            <h2 className="text-xl font-bold" data-testid="text-diet-graduation-title">
-              {evalType === "mastered" ? t("planner.struggle_mastered", { name: struggleName }) : t("planner.moving_on_from", { name: struggleName })}
-            </h2>
-            {evalType === "mastered" && <p className="text-sm text-muted-foreground">{t("planner.great_job_sticking")}</p>}
-            {evalType === "not_relevant" && <p className="text-sm text-muted-foreground">{t("planner.not_relevant_struggle")}</p>}
-            {evalType === "moved_on" && <p className="text-sm text-muted-foreground">{t("planner.moved_on_struggle")}</p>}
-            {bestTip && bestTipYes > 0 && (
-              <div className="bg-primary/5 rounded-lg p-4 w-full max-w-sm" data-testid="section-diet-grad-best-tip">
-                <p className="text-xs text-muted-foreground mb-1">{t("planner.most_successful_tip")}</p>
-                <p className="text-sm font-medium">"{bestTip}"</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("planner.days_followed", { count: bestTipYes })}</p>
-              </div>
-            )}
-            {nextStruggleLabel && (
-              <p className="text-sm text-muted-foreground">
-                {evalType === "mastered" ? t("planner.next_focus", { name: "" }) : t("planner.moving_to", { name: "" })} <span className="font-medium">{nextStruggleLabel}</span>
-              </p>
-            )}
-          </div>
         </CardContent>
       </Card>
     );
@@ -1559,10 +1488,7 @@ export default function WeeklyPlanner() {
       case "lateDinnerDays": return renderLateDinnerDays();
       case "standingTapSuggest": return renderStandingTapSuggest();
       case "dinnerFocusReview": return renderDinnerFocusReview();
-      case "dinnerGraduationCelebration": return renderDinnerGraduationCelebration();
-      case "dinnerExitCelebration": return renderDinnerExitScreen();
       case "dietReview": return renderDietReview();
-      case "dietGraduationCelebration": return renderDietGraduationCelebration();
       case "dietTipSelection": return renderDietTipSelection();
       case "preview": return renderPreview();
       default: return null;
