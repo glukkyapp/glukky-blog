@@ -483,49 +483,50 @@ export default function WeeklyPlanner() {
                 return (
                   <div className="rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 p-3 space-y-2 mt-1" data-testid="section-dinner-graduation-report">
                     <p className="text-xs font-medium text-muted-foreground">{t("planner.graduation_progress")}</p>
-                    {dinnerGrad.ready ? (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                              <span>{t("planner.days_across_weeks", { success: dinnerSuccessCount, total: dinnerScheduledDays })}</span>
-                              <span>{t("planner.goal_75")}</span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 75 ? "bg-green-500" : "bg-amber-500"}`}
-                                style={{ width: `${Math.min(dinnerSuccessPct, 100)}%` }}
-                                data-testid="bar-dinner-graduation-report"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct-report">
-                          {dinnerSuccessPct >= 75 ? t("planner.ready_to_graduate", { pct: dinnerSuccessPct }) : t("planner.need_75_to_graduate", { pct: dinnerSuccessPct })}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="flex gap-1">
-                          {[0, 1, 2].map(i => (
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="flex gap-1">
+                        {[0, 1, 2].map(i => {
+                          const circleProgress = dinnerWeeksFound > 3 ? dinnerWeeksFound - 3 : dinnerWeeksFound;
+                          const filled = i < circleProgress;
+                          return (
                             <div
                               key={i}
                               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                                i < dinnerWeeksFound
+                                filled
                                   ? "bg-green-100 text-green-600 border border-green-300"
                                   : "bg-muted text-muted-foreground"
                               }`}
                               data-testid={`indicator-dinner-week-report-${i}`}
                             >
-                              {i < dinnerWeeksFound ? <Check className="w-3 h-3" /> : i + 1}
+                              {filled ? <Check className="w-3 h-3" /> : i + 1}
                             </div>
-                          ))}
-                        </div>
-                        <span className="text-muted-foreground text-xs">
-                          {t("planner.weeks_tracked", { count: dinnerWeeksFound })}
-                        </span>
+                          );
+                        })}
                       </div>
-                    )}
+                      <span className="text-muted-foreground text-xs">
+                        {t("planner.weeks_tracked", { count: dinnerWeeksFound })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>{t("planner.days_across_weeks", { success: dinnerSuccessCount, total: dinnerScheduledDays })}</span>
+                          <span>{t("planner.goal_75")}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${dinnerSuccessPct >= 75 ? "bg-green-500" : "bg-amber-500"}`}
+                            style={{ width: `${dinnerGrad.ready ? Math.min(dinnerSuccessPct, 100) : 0}%` }}
+                            data-testid="bar-dinner-graduation-report"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center" data-testid="text-dinner-agg-pct-report">
+                      {dinnerGrad.ready
+                        ? (dinnerSuccessPct >= 75 ? t("planner.ready_to_graduate", { pct: dinnerSuccessPct }) : t("planner.need_75_to_graduate", { pct: dinnerSuccessPct }))
+                        : t("planner.weeks_tracked", { count: dinnerWeeksFound })}
+                    </p>
                     {(reflection.dinnerJustGraduated || reflection.dinnerJustExited) && (
                       <div className={`flex items-start gap-2 pt-1 border-t ${reflection.dinnerJustGraduated ? "border-green-200 dark:border-green-800" : "border-blue-200 dark:border-blue-800"}`} data-testid="section-dinner-outcome-report">
                         {reflection.dinnerJustGraduated && <Award className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />}
