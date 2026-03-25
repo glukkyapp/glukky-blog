@@ -575,7 +575,13 @@ export default function WeeklyPlanner() {
                   <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
                 )}
               </div>
-              {(reflection.activeDays || 0) > 0 && (() => {
+              {currentPlan?.firstActiveDay > 0 && reflection.weekNumber === 1 && reflection.dietStruggle
+                ? (
+                  <div className="rounded-lg border border-muted bg-muted/30 p-3 mt-1" data-testid="section-diet-graduation-partial">
+                    <p className="text-xs text-muted-foreground">{t("planner.graduation_starts_next_week")}</p>
+                  </div>
+                )
+                : (reflection.activeDays || 0) > 0 && (() => {
                 const activeDays = reflection.activeDays || 0;
                 const weeksCompleted = Math.floor(activeDays / 7);
                 const displayWeeks = Math.min(weeksCompleted > 3 ? weeksCompleted - 3 : weeksCompleted, 3);

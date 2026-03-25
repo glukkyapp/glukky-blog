@@ -323,6 +323,7 @@
     "current_focus": "Current focus",
     "dinner_management": "Late Dinner Management",
     "graduation_progress": "Graduation progress",
+    "graduation_starts_next_week": "Your graduation progress starts next week!",
     "days_across_weeks": "{{success}}/{{total}} days across qualifying weeks",
     "goal_80": "Goal: 80%",
     "goal_75": "Goal: 75%",
