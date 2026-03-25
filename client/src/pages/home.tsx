@@ -275,6 +275,10 @@ export default function Home() {
     onSuccess: async (data: any, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
 
+      if (variables.dietResponse !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      }
+
       if (data?.coinsAwarded > 0) {
         setCoinPopupCoins(data.coinsAwarded);
       }
@@ -318,6 +322,9 @@ export default function Home() {
       return res.json();
     },
     onSuccess: async (data: any, variables: any) => {
+      if (variables.dietResponse !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      }
       await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
 
       if (data?.coinsAwarded > 0) {
@@ -1687,12 +1694,14 @@ export default function Home() {
                       !d.eatOutScheduled ? "bg-muted" :
                       answered && d.dietResponse === "yes" ? "bg-green-100 text-green-600" :
                       answered && d.dietResponse === "no" ? "bg-red-50 text-red-400" :
+                      answered && d.dietResponse === "no_chance" ? "bg-gray-100 text-gray-400" :
                       "bg-muted"
                     }`}>
                       {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
                        !d.eatOutScheduled ? null :
                        answered && d.dietResponse === "yes" ? <Check className="w-3 h-3" /> :
                        answered && d.dietResponse === "no" ? <X className="w-3 h-3" /> :
+                       answered && d.dietResponse === "no_chance" ? <Minus className="w-3 h-3" /> :
                        <Wine className="w-3 h-3 text-muted-foreground" />}
                     </div>
                   );
