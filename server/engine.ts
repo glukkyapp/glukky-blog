@@ -529,14 +529,16 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
 
   let yesDays = 0;
   let noChanceDays = 0;
+  let actualActiveDays = 0;
   const tipYesCounts: Record<string, number> = {};
 
   for (const { weekNumber: wn, plan: wp } of uniqueActivePlans) {
     const startDate = typeof wp.startDate === "string" ? wp.startDate : (wp.startDate as any).toISOString().split("T")[0];
     const logs = await storage.getDailyLogsByWeek(userId, wn, startDate);
     for (const log of logs) {
-      if (log.dietResponse === "yes") yesDays++;
-      else if (log.dietResponse === "no_chance") noChanceDays++;
+      if (log.dietResponse === "yes") { yesDays++; actualActiveDays++; }
+      else if (log.dietResponse === "no") actualActiveDays++;
+      else if (log.dietResponse === "no_chance") { noChanceDays++; actualActiveDays++; }
     }
     if (wp.dietTip) {
       const yesCount = logs.filter(l => l.dietResponse === "yes").length;
@@ -550,23 +552,23 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
     if (count > bestTipYes) { bestTip = tip; bestTipYes = count; }
   }
 
-  if (activeDays >= 42) {
-    if (yesDays >= 32) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
-    return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+  if (actualActiveDays >= 42) {
+    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
-  if (activeDays >= 35) {
-    if (yesDays >= 27) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
-    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
+  if (actualActiveDays >= 35) {
+    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
-  if (activeDays >= 28) {
-    if (yesDays >= 22) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
-    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
+  if (actualActiveDays >= 28) {
+    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
-  if (activeDays >= 21 && activeDays < 28) {
-    if (yesDays >= 16) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
-    if (noChanceDays >= 16) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, bestTip, bestTipYes, weeksFound };
+  if (actualActiveDays >= 21 && actualActiveDays < 28) {
+    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
-  return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, weeksFound };
+  return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
 }
 
 export async function getDinnerGraduationData(userId: string): Promise<{
