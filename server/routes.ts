@@ -470,43 +470,6 @@ export async function registerRoutes(
       let dietEvaluation: { type: string; struggle?: string | null } = { type: "in_cycle" };
 
       if (profile.currentWeek > 1) {
-        const planWeekEventDate = new Date().toISOString().split("T")[0];
-        const dinnerCheckData = await getDinnerGraduationData(userId);
-        if (!profile.dinnerMastered && !profile.dinnerExitType && dinnerCheckData.dinnerWeeksFound > 0) {
-          await processDinnerGraduation(userId, planWeekEventDate);
-        } else {
-          const lastWeekPlan = await storage.getWeeklyPlan(userId, profile.currentWeek - 1);
-          const lastStruggle = lastWeekPlan?.dietStruggle;
-          if (lastStruggle) {
-            const mastered = (profile.masteredStruggles || []) as string[];
-            const skipped = (profile.skippedStruggles || []) as string[];
-            const difficult = (profile.difficultStruggles || []) as string[];
-            if (!mastered.includes(lastStruggle)) {
-              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle, profile.currentWeek - 1);
-              if (dietEvaluation.type === "mastered") {
-                await storage.updateProfile(userId, {
-                  masteredStruggles: [...mastered, lastStruggle],
-                  skippedStruggles: skipped.filter(s => s !== lastStruggle),
-                  difficultStruggles: difficult.filter(s => s !== lastStruggle),
-                });
-                try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
-              } else if (dietEvaluation.type === "not_relevant") {
-                if (!skipped.includes(lastStruggle)) {
-                  await storage.updateProfile(userId, {
-                    skippedStruggles: [...skipped, lastStruggle],
-                  });
-                }
-              } else if (dietEvaluation.type === "moved_on") {
-                if (!difficult.includes(lastStruggle)) {
-                  await storage.updateProfile(userId, {
-                    difficultStruggles: [...difficult, lastStruggle],
-                  });
-                }
-              }
-            }
-          }
-        }
-
         let updatedStretchSuccessWeeks = profile.stretchSuccessWeeks;
         if (profile.isStretchMode) {
           const stretchProg = await getStretchProgression(userId);
@@ -647,6 +610,45 @@ export async function registerRoutes(
       }
 
       await storage.updateProfile(userId, { currentWeek: profile.currentWeek + 1 });
+
+      if (profile.currentWeek > 1) {
+        const planWeekEventDate = new Date().toISOString().split("T")[0];
+        const dinnerCheckData = await getDinnerGraduationData(userId);
+        if (!profile.dinnerMastered && !profile.dinnerExitType && dinnerCheckData.dinnerWeeksFound > 0) {
+          await processDinnerGraduation(userId, planWeekEventDate);
+        } else {
+          const lastWeekPlan = await storage.getWeeklyPlan(userId, profile.currentWeek - 1);
+          const lastStruggle = lastWeekPlan?.dietStruggle;
+          if (lastStruggle) {
+            const mastered = (profile.masteredStruggles || []) as string[];
+            const skipped = (profile.skippedStruggles || []) as string[];
+            const difficult = (profile.difficultStruggles || []) as string[];
+            if (!mastered.includes(lastStruggle)) {
+              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle);
+              if (dietEvaluation.type === "mastered") {
+                await storage.updateProfile(userId, {
+                  masteredStruggles: [...mastered, lastStruggle],
+                  skippedStruggles: skipped.filter(s => s !== lastStruggle),
+                  difficultStruggles: difficult.filter(s => s !== lastStruggle),
+                });
+                try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
+              } else if (dietEvaluation.type === "not_relevant") {
+                if (!skipped.includes(lastStruggle)) {
+                  await storage.updateProfile(userId, {
+                    skippedStruggles: [...skipped, lastStruggle],
+                  });
+                }
+              } else if (dietEvaluation.type === "moved_on") {
+                if (!difficult.includes(lastStruggle)) {
+                  await storage.updateProfile(userId, {
+                    difficultStruggles: [...difficult, lastStruggle],
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
 
       res.json({ ...result, dietEvaluation });
     } catch (error: any) {
