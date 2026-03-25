@@ -426,7 +426,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   return { plan, days };
 }
 
-export async function evaluateDietStruggle(userId: string, struggle: string): Promise<{
+export async function evaluateDietStruggle(userId: string, struggle: string, upToWeek?: number): Promise<{
   type: string;
   struggle: string;
   yesDays?: number;
@@ -444,7 +444,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
   const isPartialFirstWeek = !!(week1Plan && week1Plan.firstActiveDay > 0);
 
   const activePlans: { weekNumber: number; plan: WeeklyPlan }[] = [];
-  for (let w = 1; w <= profile.currentWeek; w++) {
+  for (let w = 1; w <= (upToWeek ?? profile.currentWeek - 1); w++) {
     const wp = await storage.getWeeklyPlan(userId, w);
     if (wp && wp.dietStruggle === struggle) {
       if (isPartialFirstWeek && w === 1) continue;
@@ -513,7 +513,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string): Pr
       return null;
     };
 
-    if (activeDays === 21) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+    if (activeDays >= 21 && activeDays < 28) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays === 35) return evalPhase(5) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays >= 42) {

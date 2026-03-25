@@ -341,7 +341,7 @@ export async function registerRoutes(
       const freshProfile = await storage.getProfile(userId);
 
       const dietEvaluation = currentStruggleForReflection
-        ? await evaluateDietStruggle(userId, currentStruggleForReflection)
+        ? await evaluateDietStruggle(userId, currentStruggleForReflection, profile?.currentWeek)
         : { type: "in_cycle", struggle: null };
       const dinnerGraduation = await getDinnerGraduationData(userId);
 
@@ -482,7 +482,7 @@ export async function registerRoutes(
             const skipped = (profile.skippedStruggles || []) as string[];
             const difficult = (profile.difficultStruggles || []) as string[];
             if (!mastered.includes(lastStruggle)) {
-              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle);
+              dietEvaluation = await evaluateDietStruggle(userId, lastStruggle, profile.currentWeek - 1);
               if (dietEvaluation.type === "mastered") {
                 await storage.updateProfile(userId, {
                   masteredStruggles: [...mastered, lastStruggle],
