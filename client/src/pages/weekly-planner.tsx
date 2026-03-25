@@ -1547,7 +1547,9 @@ export default function WeeklyPlanner() {
     );
   }
 
-  function renderPendingView() {
+  function renderPendingView(variant: "first_week" | "mid_week" = "first_week") {
+    const titleKey = variant === "mid_week" ? "planner.pending_sunday" : "planner.first_week_pending";
+    const descKey  = variant === "mid_week" ? "planner.pending_sunday_desc" : "planner.first_week_pending_desc";
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         <Card data-testid="card-report-pending">
@@ -1555,10 +1557,10 @@ export default function WeeklyPlanner() {
             <div className="flex flex-col items-center text-center gap-3">
               <Clock className="w-10 h-10 text-muted-foreground" />
               <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
-                {t("planner.first_week_pending")}
+                {t(titleKey)}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {t("planner.first_week_pending_desc")}
+                {t(descKey)}
               </p>
             </div>
           </CardContent>
@@ -1641,6 +1643,7 @@ export default function WeeklyPlanner() {
   // early-return above it that ignores canPlan.
   const viewMode =
     isWeek1 && currentPlan && !canPlan                             ? "pending"
+    : !isWeek1 && !canPlan && !isPastPlanWeek                      ? "mid_week_pending"
     : nextWeekPlanned                                              ? "plan_ready"
     : isPastPlanWeek && !canPlan                                   ? "last_week_report"
     : !isWeek1 && canPlan && isLatePlanning && !sundayCheckInDone  ? "catchup_gate"
@@ -1648,6 +1651,7 @@ export default function WeeklyPlanner() {
   // ─────────────────────────────────────────────────────────────────────────
 
   if (viewMode === "pending")          return renderPendingView();
+  if (viewMode === "mid_week_pending") return renderPendingView("mid_week");
   if (viewMode === "plan_ready")       return renderPlanReady();
   if (viewMode === "last_week_report") return renderLastWeekReport();
   if (viewMode === "catchup_gate")     return renderCatchupGate();

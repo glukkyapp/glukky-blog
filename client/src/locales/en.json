@@ -457,6 +457,8 @@
     "monthly_pending": "Your monthly report will be available on {{month}} {{day}}",
     "first_week_pending": "Your first week's report is pending!",
     "first_week_pending_desc": "Complete your week and check back on Sunday at 10pm to see your report and plan the next week.",
+    "pending_sunday": "Come back on Sunday evening",
+    "pending_sunday_desc": "Planning opens on Sunday at 10pm. Check back then to review your week and plan the next one.",
     "stats_last_week": "Your statistics last week",
     "week_plan_set": "Week {{week}} plan is set!",
     "plan_set_sunday": "Great work this week! You've already reviewed your report — your next plan is ready to go!",

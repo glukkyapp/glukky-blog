@@ -457,6 +457,8 @@
     "monthly_pending": "你的月度報告將於{{month}}{{day}}日提供",
     "first_week_pending": "你的第一週報告正在準備中！",
     "first_week_pending_desc": "完成你的一週，週日晚上10點回來查看報告並規劃下週。",
+    "pending_sunday": "週日晚上回來規劃",
+    "pending_sunday_desc": "計劃功能將於週日晚上10點開放。屆時回來回顧本週並規劃下週。",
     "stats_last_week": "你上週的統計",
     "week_plan_set": "第{{week}}週計劃已設定！",
     "plan_set_sunday": "本週做得好！你已回顧報告——下週計劃已準備好！",
