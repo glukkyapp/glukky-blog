@@ -319,10 +319,13 @@ export default function WeeklyPlanner() {
       } else {
         if (walkDur < 20) {
           setNegotiationStep("ask_minutes");
-        } else if (walkFreq >= 5) {
-          setNegotiationStep("ask_day_again");
         } else {
-          setNegotiationStep("glycemic_gap");
+          const glycemicGapSeen = localStorage.getItem("glukky_card_glycemic_gap_seen");
+          if (glycemicGapSeen) {
+            setNegotiationStep("ask_standing_tap");
+          } else {
+            setNegotiationStep("glycemic_gap");
+          }
         }
       }
     } else if (negotiationStep === "ask_minutes") {
