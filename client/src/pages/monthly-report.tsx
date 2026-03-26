@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,14 +26,6 @@ export interface MonthlyReportData {
   weeksAnalyzed: number;
 }
 
-const STRUGGLE_NAMES: Record<string, string> = {
-  sugary_food_drink: "Sugary Food & Drinks",
-  oily_fried_food: "Oily/Fried Food",
-  eat_out: "Eating Out",
-  portions: "Portion Control",
-  snacks: "Snacking",
-};
-
 const TIP_ICON_MAP: Record<string, LucideIcon> = {
   "Dilute juice 1:1 with water": CupSoda,
   "Swap dessert for yogurt + berries": Cherry,
@@ -56,7 +49,8 @@ const BUBBLE_COLORS = ["#14A085", "#22c55e", "#f59e0b", "#3b82f6", "#8b5cf6", "#
 const MIN_BUBBLE = 36;
 const MAX_BUBBLE = 72;
 
-export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportData; monthName: string }) {
+export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReportData; monthLabel: string }) {
+  const { t } = useTranslation();
   const sortedTips = Object.entries(data.tipPerformance).sort(([, a], [, b]) => b.yes - a.yes);
   const maxYes = sortedTips.length > 0 ? Math.max(...sortedTips.map(([, p]) => p.yes)) : 0;
 
@@ -65,19 +59,29 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
     return MIN_BUBBLE + (yes / maxYes) * (MAX_BUBBLE - MIN_BUBBLE);
   }
 
+  function getTipDisplayName(tip: string): string {
+    const translated = t(`monthlyReport.tipName.${tip}`, { defaultValue: "" });
+    return translated || tip;
+  }
+
+  function getStruggleName(key: string): string {
+    const translated = t(`monthlyReport.struggleName.${key}`, { defaultValue: "" });
+    return translated || key;
+  }
+
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold" data-testid="text-monthly-title">
-        {monthName} Deep Dive
+        {t("monthlyReport.title", { month: monthLabel })}
       </h1>
 
       <Card data-testid="card-diet-tips">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Diet Tips This Month</CardTitle>
+          <CardTitle className="text-base">{t("monthlyReport.dietTips.cardHeader")}</CardTitle>
         </CardHeader>
         <CardContent>
           {sortedTips.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No diet tips tracked this month.</p>
+            <p className="text-sm text-muted-foreground">{t("monthlyReport.dietTips.noData")}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-end justify-center gap-3 mb-5" data-testid="bubble-row-tips">
@@ -109,6 +113,24 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
                 {sortedTips.map(([tip, perf], i) => {
                   const Icon = getTipIcon(tip);
                   const color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
+                  const displayName = getTipDisplayName(tip);
+
+                  const followedStr = perf.yes > 0
+                    ? t("monthlyReport.dietTips.followed", { count: perf.yes })
+                    : "";
+                  const skippedStr = perf.no > 0
+                    ? t("monthlyReport.dietTips.skipped", { count: perf.no })
+                    : "";
+                  const notPossibleStr = perf.noChance > 0
+                    ? t("monthlyReport.dietTips.notPossible", { count: perf.noChance })
+                    : "";
+                  const notTrackedStr =
+                    perf.yes === 0 && perf.no === 0 && perf.noChance === 0
+                      ? t("monthlyReport.dietTips.notTracked")
+                      : "";
+
+                  const parts = [followedStr, skippedStr, notPossibleStr].filter(Boolean);
+                  const statsStr = notTrackedStr || parts.join(" · ");
 
                   return (
                     <div key={tip} className="flex items-start gap-2.5" data-testid={`tip-item-${tip}`}>
@@ -123,15 +145,9 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-snug">{tip}</p>
+                        <p className="text-sm font-medium leading-snug">{displayName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5" data-testid={`tip-stats-${tip}`}>
-                          {perf.yes > 0 ? `Followed ${perf.yes} ${perf.yes === 1 ? "day" : "days"}` : ""}
-                          {perf.yes > 0 && perf.no > 0 ? " · " : ""}
-                          {perf.no > 0 ? `Skipped ${perf.no}` : ""}
-                          {(perf.yes > 0 || perf.no > 0) && perf.noChance > 0 ? " · " : ""}
-                          {perf.noChance > 0 ? `Not possible ${perf.noChance}` : ""}
-                          {perf.yes === 0 && perf.no === 0 && perf.noChance === 0 ? "Not tracked" : ""}
-                          {perf.yes === 0 && perf.no === 0 && perf.noChance > 0 ? `Not possible ${perf.noChance} times` : ""}
+                          {statsStr}
                         </p>
                       </div>
                     </div>
@@ -145,11 +161,11 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
 
       <Card data-testid="card-diet-struggles">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Diet Struggles</CardTitle>
+          <CardTitle className="text-base">{t("monthlyReport.dietStruggles.cardHeader")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {Object.entries(data.struggleStatus).map(([struggle, info]) => {
-            const name = STRUGGLE_NAMES[struggle] ?? struggle;
+            const name = getStruggleName(struggle);
             const sortedStruggleTips = [...info.tips].sort((a, b) => {
               const aPerf = data.tipPerformance[a];
               const bPerf = data.tipPerformance[b];
@@ -162,7 +178,7 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
                   {info.completed ? (
                     <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-600" data-testid={`struggle-mastered-${struggle}`}>
                       <Check className="w-4 h-4" />
-                      {name} — Mastered ✓
+                      {name} {t("monthlyReport.dietStruggles.mastered")}
                     </span>
                   ) : (
                     <span className="text-sm font-semibold text-foreground">{name}</span>
@@ -176,10 +192,10 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
                       return (
                         <li key={tip} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`struggle-tip-${tip}`}>
                           <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="flex-1">{tip}</span>
+                          <span className="flex-1">{getTipDisplayName(tip)}</span>
                           {perf && perf.yes > 0 && (
                             <span className="text-xs text-primary font-medium" data-testid={`struggle-tip-yes-${tip}`}>
-                              {perf.yes}× followed
+                              {t("monthlyReport.dietStruggles.followedCount", { count: perf.yes })}
                             </span>
                           )}
                         </li>
@@ -197,15 +213,18 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Dumbbell className="w-4 h-4" />
-            Physical Tank
+            {t("monthlyReport.physicalTank.cardHeader")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-3xl font-bold" data-testid="text-total-minutes">
-            {data.totalMinutes} min
+            {t("monthlyReport.physicalTank.minutes", { count: data.totalMinutes })}
           </p>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-avg-per-week">
-            {Math.round(data.totalMinutes / data.weeksAnalyzed)} min/week average over {data.weeksAnalyzed} weeks
+            {t("monthlyReport.physicalTank.avgPerWeek", {
+              count: Math.round(data.totalMinutes / data.weeksAnalyzed),
+              n: data.weeksAnalyzed,
+            })}
           </p>
         </CardContent>
       </Card>
@@ -214,8 +233,16 @@ export function MonthlyReportContent({ data, monthName }: { data: MonthlyReportD
 }
 
 export default function MonthlyReportPage() {
+  const { t, i18n } = useTranslation();
   const now = new Date();
-  const monthName = now.toLocaleDateString("en-US", { month: "long" });
+
+  let monthLabel: string;
+  const lang = i18n.language;
+  if (lang === "zh-Hant" || lang === "yue") {
+    monthLabel = String(now.getMonth() + 1);
+  } else {
+    monthLabel = now.toLocaleDateString(lang, { month: "long" });
+  }
 
   const { data, isLoading, error } = useQuery<MonthlyReportData>({
     queryKey: ["/api/report/monthly", "0"],
@@ -235,7 +262,7 @@ export default function MonthlyReportPage() {
   if (error || !data) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="error-monthly-report">
-        <p className="text-muted-foreground text-center">Failed to load monthly report.</p>
+        <p className="text-muted-foreground text-center">{t("monthlyReport.loadError")}</p>
       </div>
     );
   }
@@ -244,7 +271,7 @@ export default function MonthlyReportPage() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="no-data-monthly-report">
         <p className="text-muted-foreground text-center text-lg">
-          Complete at least 4 weeks to see your monthly report.
+          {t("monthlyReport.notEnoughWeeks")}
         </p>
       </div>
     );
@@ -252,7 +279,7 @@ export default function MonthlyReportPage() {
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="monthly-report-page">
-      <MonthlyReportContent data={data} monthName={monthName} />
+      <MonthlyReportContent data={data} monthLabel={monthLabel} />
     </div>
   );
 }

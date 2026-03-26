@@ -696,5 +696,49 @@
     "food_switch_content_why": "Most packaged snacks are high in refined carbohydrates, which cause rapid blood sugar spikes. Edamame and nuts provide sustained energy without the sharp rise and fall.",
     "food_switch_content_when": "Try them as a mid-afternoon snack (around 3–4pm) or when you feel like something between meals. Eating them before a larger meal can also help blunt the overall blood sugar response.",
     "food_switch_content_tip": "Keep a small portion of nuts (about a small handful) or a bag of frozen edamame ready in your kitchen. The easier they are to reach, the more likely you are to choose them."
+  },
+  "monthlyReport": {
+    "title": "{{month}} Deep Dive",
+    "dietTips": {
+      "cardHeader": "Diet Tips This Month",
+      "noData": "No diet tips tracked this month.",
+      "followed_one": "Followed {{count}} day",
+      "followed_other": "Followed {{count}} days",
+      "skipped": "Skipped {{count}}",
+      "notPossible": "Not possible {{count}}",
+      "notTracked": "Not tracked"
+    },
+    "dietStruggles": {
+      "cardHeader": "Diet Struggles",
+      "mastered": "— Mastered ✓",
+      "followedCount": "{{count}}× followed"
+    },
+    "struggleName": {
+      "sugary_food_drink": "Sugary Food & Drinks",
+      "oily_fried_food": "Oily/Fried Food",
+      "eat_out": "Eating Out",
+      "portions": "Portion Control",
+      "snacks": "Snacking"
+    },
+    "tipName": {
+      "Dilute juice 1:1 with water": "Dilute juice 1:1 with water",
+      "Swap dessert for yogurt + berries": "Swap dessert for yogurt + berries",
+      "Limit fruit to 1x per week": "Limit fruit to 1x per week",
+      "Steam your food first, then sear briefly": "Steam your food first, then sear briefly",
+      "Choose grilled over fried": "Choose grilled over fried",
+      "Decouple (eat at home first, socialize out)": "Decouple (eat at home first, socialize out)",
+      "Share main dishes": "Share main dishes",
+      "Swap sides for vegetables": "Swap sides for vegetables",
+      "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": "Use the plate method (½ veggies, ¼ protein, ¼ carbs)",
+      "Kitchen Closure after dinner": "Kitchen Closure after dinner",
+      "Switch to edamame or nuts": "Switch to edamame or nuts"
+    },
+    "physicalTank": {
+      "cardHeader": "Physical Tank",
+      "minutes": "{{count}} min",
+      "avgPerWeek": "{{count}} min/week average over {{n}} weeks"
+    },
+    "loadError": "Failed to load monthly report.",
+    "notEnoughWeeks": "Complete at least 4 weeks to see your monthly report."
   }
 }

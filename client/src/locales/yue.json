@@ -698,5 +698,49 @@
     "food_switch_content_why": "大多數包裝零食含有大量精製碳水化合物，會令血糖急速上升。毛豆同堅果能提供持久能量，避免血糖大起大落。",
     "food_switch_content_when": "可以喺下晝3至4點左右作為茶點，或者喺正餐之間想食嘢嗰陣食用。喺較大嘅餐食前食用，亦可幫助減緩整體血糖反應。",
     "food_switch_content_tip": "喺廚房準備一小份堅果（約一小把）或者一袋冷凍毛豆。越容易攞到，你就越大機會揀佢哋。"
+  },
+  "monthlyReport": {
+    "title": "{{month}}月 深度回顧",
+    "dietTips": {
+      "cardHeader": "本月飲食貼士",
+      "noData": "本月未有記錄飲食貼士。",
+      "followed_one": "跟咗 {{count}} 日",
+      "followed_other": "跟咗 {{count}} 日",
+      "skipped": "跳過 {{count}} 次",
+      "notPossible": "不適用 {{count}} 次",
+      "notTracked": "未有記錄"
+    },
+    "dietStruggles": {
+      "cardHeader": "飲食難關",
+      "mastered": "— 已掌握 ✓",
+      "followedCount": "跟從 {{count}} 次"
+    },
+    "struggleName": {
+      "sugary_food_drink": "甜食及飲料",
+      "oily_fried_food": "炸嘢",
+      "eat_out": "外出用餐",
+      "portions": "控制份量",
+      "snacks": "零食"
+    },
+    "tipName": {
+      "Dilute juice 1:1 with water": "果汁加水 1:1 稀釋",
+      "Swap dessert for yogurt + berries": "甜品換成乳酪加莓果",
+      "Limit fruit to 1x per week": "每週最多食一次水果",
+      "Steam your food first, then sear briefly": "先蒸熟再略煎",
+      "Choose grilled over fried": "揀烤物唔揀炸物",
+      "Decouple (eat at home first, socialize out)": "喺屋企食飽先，出去食少啲",
+      "Share main dishes": "主菜分享",
+      "Swap sides for vegetables": "配菜揀蔬菜",
+      "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": "餐盤法（½蔬菜、¼蛋白質、¼澱粉）",
+      "Kitchen Closure after dinner": "晚飯後唔再食嘢",
+      "Switch to edamame or nuts": "改食毛豆或堅果"
+    },
+    "physicalTank": {
+      "cardHeader": "總運動量",
+      "minutes": "{{count}} 分鐘",
+      "avgPerWeek": "平均每週 {{count}} 分鐘，共 {{n}} 週"
+    },
+    "loadError": "載入唔到每月報告。",
+    "notEnoughWeeks": "完成至少 4 個禮拜先可以睇每月報告。"
   }
 }
