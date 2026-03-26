@@ -614,8 +614,8 @@ export async function registerRoutes(
               if (s === "eat_out" && !hasEatOutDays) return false;
               return true;
             });
-            const untried2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && !mastered1.includes(s) && !mastered2.includes(s) && !skipped2.includes(s) && !difficult2.includes(s));
-            const triedNotMastered2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && (skipped2.includes(s) || difficult2.includes(s)));
+            const untried2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && !mastered1.includes(s) && !mastered2.includes(s) && !skipped2.includes(s) && !difficult2.includes(s));
+            const triedNotMastered2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && (skipped2.includes(s) || difficult2.includes(s)));
             const fallback2 = STRUGGLE_PRIORITY.find(s => {
               if (s === "eat_out" && !hasEatOutDays) return false;
               return !mastered1.includes(s) && !mastered2.includes(s) && !skipped2.includes(s) && !difficult2.includes(s);

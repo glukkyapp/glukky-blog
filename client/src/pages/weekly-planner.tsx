@@ -970,7 +970,7 @@ export default function WeeklyPlanner() {
                 <>
                   <p className="text-sm font-medium" data-testid="text-negotiation-ask-day-again">{t("negotiation.ask_day_again")}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-reconsider-yes">{t("common.yes")}</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-reconsider-yes">{t("negotiation.ask_day_again_yes")}</Button>
                     <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-reconsider-no">{t("negotiation.ask_day_again_no")}</Button>
                   </div>
                 </>
@@ -984,8 +984,8 @@ export default function WeeklyPlanner() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-standing-tap-yes">{t("common.yes")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-standing-tap-no">{t("common.no")}</Button>
+                    <Button size="sm" onClick={() => handleNegotiationAnswer("yes")} data-testid="button-negotiation-standing-tap-yes">{t("negotiation.standing_tap_yes")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleNegotiationAnswer("no")} data-testid="button-negotiation-standing-tap-no">{t("negotiation.standing_tap_no")}</Button>
                   </div>
                 </>
               )}
@@ -1384,8 +1384,8 @@ export default function WeeklyPlanner() {
       const hypTriedBefore2 = [...new Set([...hypSkipped2, ...hypDifficult2])];
 
       const activeStruggles2 = struggles2.filter(s => !(s === "eat_out" && !hasEatOutDays));
-      const untried2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && !hypMastered2.includes(s) && !mastered1.includes(s) && !hypTriedBefore2.includes(s));
-      const triedNotMastered2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && hypTriedBefore2.includes(s));
+      const untried2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && !hypMastered2.includes(s) && !mastered1.includes(s) && !hypTriedBefore2.includes(s));
+      const triedNotMastered2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && hypTriedBefore2.includes(s));
       const fallback2 = STRUGGLE_PRIORITY.find(s => {
         if (s === "eat_out" && !hasEatOutDays) return false;
         return !mastered1.includes(s) && !hypMastered2.includes(s) && !hypTriedBefore2.includes(s);
