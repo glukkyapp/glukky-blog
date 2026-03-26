@@ -702,22 +702,36 @@ export default function WeeklyPlanner() {
   function renderRepick() {
     const struggles1 = (profile?.struggles as string[]) || [];
     const mastered1 = (profile?.masteredStruggles as string[]) || [];
-    const skipped1 = (profile?.skippedStruggles as string[]) || [];
-    const difficult1 = (profile?.difficultStruggles as string[]) || [];
     const appeared = (reflection?.appearedDietStruggles as string[]) || [];
+
+    // Profile cache may be stale — the reflection already wrote the final evaluation
+    // for the cycle-1 active struggle. Supplement from reflection data directly.
+    const reflStruggle = reflection?.dietStruggle as string | null;
+    const baseSkipped1 = (profile?.skippedStruggles as string[]) || [];
+    const baseDifficult1 = (profile?.difficultStruggles as string[]) || [];
+    const effectiveSkipped1 = (reflStruggle && reflection?.dietJustSkipped && !baseSkipped1.includes(reflStruggle))
+      ? [...baseSkipped1, reflStruggle] : baseSkipped1;
+    const effectiveDifficult1 = (reflStruggle && reflection?.dietJustMovedOn && !baseDifficult1.includes(reflStruggle))
+      ? [...baseDifficult1, reflStruggle] : baseDifficult1;
+    const effectiveMastered1 = (reflStruggle && reflection?.dietJustGraduated && !mastered1.includes(reflStruggle))
+      ? [...mastered1, reflStruggle] : mastered1;
 
     const currentActive = profile?.currentStruggle as string | null;
     const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {
       if (s === "eat_out" && eatOutDays.length === 0) return false;
-      return !mastered1.includes(s);
+      return !effectiveMastered1.includes(s);
     });
 
     const currentGroup = pickingPool.filter(s => s === currentActive);
-    const inProgress = pickingPool.filter(s =>
-      s !== currentActive && struggles1.includes(s) && appeared.includes(s) && !skipped1.includes(s) && !difficult1.includes(s)
+    // Any struggle that appeared and wasn't mastered (whether skipped or difficult) → "moved on"
+    const movedOn = pickingPool.filter(s =>
+      s !== currentActive && appeared.includes(s) &&
+      (effectiveSkipped1.includes(s) || effectiveDifficult1.includes(s))
     );
-    const movedOn = pickingPool.filter(s => difficult1.includes(s));
-    const skippedG = pickingPool.filter(s => skipped1.includes(s));
+    const inProgress = pickingPool.filter(s =>
+      s !== currentActive && struggles1.includes(s) && appeared.includes(s) &&
+      !effectiveSkipped1.includes(s) && !effectiveDifficult1.includes(s)
+    );
     const upcoming = pickingPool.filter(s => s !== currentActive && struggles1.includes(s) && !appeared.includes(s));
     const inactive = pickingPool.filter(s => !struggles1.includes(s));
 
@@ -725,7 +739,6 @@ export default function WeeklyPlanner() {
       { key: "current", labelKey: "planner.repick_group_current", items: currentGroup },
       { key: "inprogress", labelKey: "planner.repick_group_inprogress", items: inProgress },
       { key: "moved_on", labelKey: "planner.repick_group_moved_on", items: movedOn },
-      { key: "skipped", labelKey: "planner.repick_group_skipped", items: skippedG },
       { key: "upcoming", labelKey: "planner.repick_group_upcoming", items: upcoming },
       { key: "inactive", labelKey: "planner.repick_group_inactive", items: inactive },
     ].filter(g => g.items.length > 0);
@@ -1344,11 +1357,17 @@ export default function WeeklyPlanner() {
       const skipped2 = (profile?.skippedStruggles2 as string[]) || [];
       const difficult2 = (profile?.difficultStruggles2 as string[]) || [];
 
-      const hypMastered2 = (isTransition && serverEval?.type === "mastered" && previousStruggle)
+      // Only apply the hypothetical transition to cycle-2 state when the previous
+      // struggle is actually a cycle-2 struggle (normal within-cycle-2 week transition).
+      // If the previous struggle is a cycle-1 relic (not in struggles2), the cycle-1
+      // evaluation must NOT pollute cycle-2 untried/triedNotMastered computation.
+      const isTransitionWithinCycle2 = isTransition && !!previousStruggle && struggles2.includes(previousStruggle);
+
+      const hypMastered2 = (isTransitionWithinCycle2 && serverEval?.type === "mastered" && previousStruggle)
         ? [...mastered2, previousStruggle] : mastered2;
-      const hypSkipped2 = (isTransition && serverEval?.type === "not_relevant" && previousStruggle)
+      const hypSkipped2 = (isTransitionWithinCycle2 && serverEval?.type === "not_relevant" && previousStruggle)
         ? [...skipped2, previousStruggle] : skipped2;
-      const hypDifficult2 = (isTransition && serverEval?.type === "moved_on" && previousStruggle)
+      const hypDifficult2 = (isTransitionWithinCycle2 && serverEval?.type === "moved_on" && previousStruggle)
         ? [...difficult2, previousStruggle] : difficult2;
       const hypTriedBefore2 = [...new Set([...hypSkipped2, ...hypDifficult2])];
 
