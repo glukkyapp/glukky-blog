@@ -43,6 +43,7 @@ export default function WeeklyPlanner() {
     eat_out: t("struggle.eat_out"),
     portions: t("struggle.portions"),
     snacks: t("struggle.snacks"),
+    late_dinner: t("planner.late_dinner"),
   };
 
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
@@ -172,12 +173,25 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
   const tacticInfoSheet = useInfoSheet();
 
+  // cycle2Focus: the effective cycle-2 focus struggle (null when not in cycle 2)
+  const cycle2Focus = useMemo(() => {
+    const cycle = (profile?.currentStruggleCycle as number) || 1;
+    if (cycle !== 2) return null;
+    const struggles2 = (profile?.struggles2 as string[]) || [];
+    if (struggles2.length === 0) return null;
+    return getEffectiveStruggle().effectiveStruggle;
+  }, [profile, reflection, eatOutDays]);
+
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
     const effectiveDinnerExited = reflection?.dinnerExitType ?? profile?.dinnerExitType;
-    return lateDinnerDays.length > 0 && !effectiveDinnerMastered && !effectiveDinnerExited;
-  }, [lateDinnerDays, profile?.dinnerMastered, reflection?.dinnerMastered,
-      profile?.dinnerExitType, reflection?.dinnerExitType]);
+    if (effectiveDinnerMastered || effectiveDinnerExited) return false;
+    const cycle = (profile?.currentStruggleCycle as number) || 1;
+    if (cycle === 2) {
+      return cycle2Focus === "late_dinner";
+    }
+    return lateDinnerDays.length > 0;
+  }, [lateDinnerDays, profile, reflection, cycle2Focus]);
 
   const noWalkDays = walkDays.length === 0;
 
@@ -189,13 +203,13 @@ export default function WeeklyPlanner() {
     const s: string[] = [];
     if (!isFirstWeek) {
       s.push("weeklyReport");
+      if (repickStepNeeded) s.push("repick");
       s.push("planTransition");
     }
     s.push("walkDays", "eatOutDays", "lateDinnerDays");
     if (noWalkDays) s.push("standingTapSuggest");
     if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
-      if (repickStepNeeded) s.push("repick");
       s.push("dietReview");
       s.push("dietTipSelection");
     }
@@ -249,6 +263,19 @@ export default function WeeklyPlanner() {
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       goNext();
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cycle2SkipMutation = useMutation({
+    mutationFn: async (struggle: string) => {
+      const res = await apiRequest("POST", "/api/profile/cycle2-skip", { struggle });
+      return res.json();
+    },
+    onSuccess: (data: { struggles2: string[] }) => {
+      queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles2: data.struggles2 } : old);
     },
     onError: (error: Error) => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -729,10 +756,16 @@ export default function WeeklyPlanner() {
       ? [...mastered1, reflStruggle] : mastered1;
 
     const currentActive = profile?.currentStruggle as string | null;
-    const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {
-      if (s === "eat_out" && eatOutDays.length === 0) return false;
+    const eatingOutFreq = profile?.eatingOutFrequency as string | undefined;
+    const isEatOutActive = struggles1.includes("eat_out") || (!!eatingOutFreq && eatingOutFreq !== "0");
+    const dietPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {
+      if (s === "eat_out" && !isEatOutActive) return false;
       return !effectiveMastered1.includes(s);
     });
+    const effectiveDinnerMasteredForRepick = !!(reflection?.dinnerMastered ?? profile?.dinnerMastered);
+    const pickingPool = effectiveDinnerMasteredForRepick
+      ? dietPool
+      : [...dietPool, "late_dinner"];
 
     const currentGroup = pickingPool.filter(s => s === currentActive);
     // Any struggle that appeared and wasn't mastered (whether skipped or difficult) → "moved on"
@@ -873,6 +906,14 @@ export default function WeeklyPlanner() {
             <p className="text-sm text-muted-foreground">
               {t("planner.plan_transition_desc")}
             </p>
+            {cycle2Focus && (
+              <div className="mt-2 bg-primary/5 rounded-lg px-4 py-3 w-full text-center">
+                <p className="text-xs text-muted-foreground">{t("planner.this_weeks_focus") || "This week's focus"}</p>
+                <p className="font-semibold text-primary" data-testid="text-cycle2-focus">
+                  {STRUGGLE_NAMES[cycle2Focus] || cycle2Focus}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1168,6 +1209,7 @@ export default function WeeklyPlanner() {
   }
 
   function renderEatOutDays() {
+    const isEatOutFocus = cycle2Focus === "eat_out";
     return (
       <Card>
         <CardHeader>
@@ -1201,12 +1243,28 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: eatOutDays.length })}</p>
+          {isEatOutFocus && eatOutDays.length === 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                Eat Out is your focus this week — schedule at least one day to continue, or skip to another focus.
+              </p>
+              <button
+                className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
+                onClick={() => cycle2SkipMutation.mutate("eat_out")}
+                disabled={cycle2SkipMutation.isPending}
+                data-testid="button-cycle2-skip-eat-out"
+              >
+                {cycle2SkipMutation.isPending ? "…" : "Skip to next focus this week"}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
   }
 
   function renderLateDinnerDays() {
+    const isDinnerFocusCycle2 = cycle2Focus === "late_dinner";
     return (
       <Card>
         <CardHeader>
@@ -1240,6 +1298,21 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: lateDinnerDays.length })}</p>
+          {isDinnerFocusCycle2 && lateDinnerDays.length === 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                Late Dinner is your focus this week — schedule at least one late dinner day, or skip to another focus.
+              </p>
+              <button
+                className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
+                onClick={() => cycle2SkipMutation.mutate("late_dinner")}
+                disabled={cycle2SkipMutation.isPending}
+                data-testid="button-cycle2-skip-late-dinner"
+              >
+                {cycle2SkipMutation.isPending ? "…" : "Skip to next focus this week"}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -1393,13 +1466,18 @@ export default function WeeklyPlanner() {
         ? [...difficult2, previousStruggle] : difficult2;
       const hypTriedBefore2 = [...new Set([...hypSkipped2, ...hypDifficult2])];
 
-      const activeStruggles2 = struggles2.filter(s => !(s === "eat_out" && !hasEatOutDays));
-      const untried2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && !hypMastered2.includes(s) && !mastered1.includes(s) && !hypTriedBefore2.includes(s));
-      const triedNotMastered2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && hypTriedBefore2.includes(s));
-      const fallback2 = STRUGGLE_PRIORITY.find(s => {
-        if (s === "eat_out" && !hasEatOutDays) return false;
-        return !mastered1.includes(s) && !hypMastered2.includes(s) && !hypTriedBefore2.includes(s);
-      }) || "sugary_food_drink";
+      // Bug 2 fix: do NOT filter eat_out based on hasEatOutDays in cycle 2.
+      // Bug 3 fix: allow late_dinner alongside STRUGGLE_PRIORITY items.
+      const activeStruggles2 = struggles2;
+      const effectiveDinnerMastered2 = !!(reflection?.dinnerMastered ?? profile?.dinnerMastered);
+      const isS2Valid = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      const isS2Mastered = (s: string) => {
+        if (s === "late_dinner") return effectiveDinnerMastered2 || hypMastered2.includes("late_dinner");
+        return mastered1.includes(s) || hypMastered2.includes(s);
+      };
+      const untried2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && !hypTriedBefore2.includes(s));
+      const triedNotMastered2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && (skipped2.includes(s) || difficult2.includes(s)));
+      const fallback2 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2Mastered(s) && !hypTriedBefore2.includes(s)) || "sugary_food_drink";
       const effectiveStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
       return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
     }
@@ -1678,7 +1756,7 @@ export default function WeeklyPlanner() {
             )}
           </div>
 
-          {lateDinnerDays.length > 0 && !profile?.dinnerMastered && (
+          {lateDinnerDays.length > 0 && !profile?.dinnerMastered && isDinnerFocus && (
             <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1" data-testid="section-preview-dinner-focus">
               <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <UtensilsCrossed className="w-3 h-3" /> {t("home.focus_dinner")}
@@ -1979,7 +2057,9 @@ export default function WeeklyPlanner() {
               currentStepId === "repick" ||
               (currentStepId === "dietTipSelection" && !selectedTip) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
-              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null)
+              (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null) ||
+              (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0) ||
+              (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0)
             }
             data-testid="button-next"
           >

@@ -177,7 +177,7 @@ export async function registerRoutes(
       if (!Array.isArray(struggles2) || struggles2.length === 0) {
         return res.status(400).json({ message: "struggles2 must be a non-empty array" });
       }
-      const filtered = (struggles2 as string[]).filter(s => typeof s === "string" && (STRUGGLE_PRIORITY as readonly string[]).includes(s));
+      const filtered = (struggles2 as string[]).filter(s => typeof s === "string" && ((STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner"));
       if (filtered.length === 0) {
         return res.status(400).json({ message: "No valid struggles provided" });
       }
@@ -190,6 +190,30 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error saving repick:", error);
       res.status(500).json({ message: error.message || "Failed to save repick" });
+    }
+  });
+
+  app.post("/api/profile/cycle2-skip", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { struggle } = req.body;
+      if (!struggle || typeof struggle !== "string") {
+        return res.status(400).json({ message: "struggle is required" });
+      }
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const struggles2 = (profile.struggles2 as string[]) || [];
+      const idx = struggles2.indexOf(struggle);
+      if (idx === -1 || idx >= struggles2.length - 1) {
+        return res.json({ struggles2 });
+      }
+      const newStruggles2 = [...struggles2];
+      [newStruggles2[idx], newStruggles2[idx + 1]] = [newStruggles2[idx + 1], newStruggles2[idx]];
+      const updated = await storage.updateProfile(userId, { struggles2: newStruggles2 });
+      res.json({ struggles2: (updated?.struggles2 as string[]) || newStruggles2 });
+    } catch (error: any) {
+      console.error("Error in cycle2-skip:", error);
+      res.status(500).json({ message: error.message || "Failed to swap struggle" });
     }
   });
 
@@ -439,6 +463,19 @@ export async function registerRoutes(
         }
       }
 
+      // Bug 4 fix: when dinner just graduated in cycle 2 and late_dinner is in struggles2,
+      // write "late_dinner" to masteredStruggles2 so the cycle-2 picker skips it.
+      if (dinnerGraduationResult.dinnerOutcomeType === "mastered" && currentCycle === 2) {
+        const latestProfileForDinner = await storage.getProfile(userId);
+        const struggles2ForDinner = (latestProfileForDinner?.struggles2 as string[]) || [];
+        const mastered2ForDinner = (latestProfileForDinner?.masteredStruggles2 as string[]) || [];
+        if (struggles2ForDinner.includes("late_dinner") && !mastered2ForDinner.includes("late_dinner")) {
+          await storage.updateProfile(userId, {
+            masteredStruggles2: [...mastered2ForDinner, "late_dinner"],
+          });
+        }
+      }
+
       let repickPending = false;
       let eatOutPickedButNeverScheduled = false;
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
@@ -592,54 +629,66 @@ export async function registerRoutes(
 
       {
         const freshProfile = await storage.getProfile(userId);
-        const actualDinnerFocus = (lateDinnerDays || []).length > 0 && !freshProfile?.dinnerMastered;
-        const planUpdate: any = { isDinnerFocus: actualDinnerFocus };
+        const planCycle = (freshProfile?.currentStruggleCycle as number) || 1;
+        const hasEatOutDays = (eatOutDays || []).length > 0;
+        const planUpdate: any = {};
         const profileUpdate: any = {};
 
-        if (actualDinnerFocus) {
+        // Bug 1 fix: determine cycle first, then decide isDinnerFocus based on picked struggle.
+        // In cycle 2, isDinnerFocus is true only when "late_dinner" is the pre-determined focus.
+        // In cycle 1, isDinnerFocus is true when lateDinnerDays > 0 (original behaviour).
+        let currentStruggle: string = "sugary_food_drink";
+        let isDinnerFocusComputed = false;
+
+        if (planCycle === 2) {
+          if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
+          const struggles2 = (freshProfile?.struggles2 || []) as string[];
+          const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
+          const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
+          const skipped2 = (freshProfile?.skippedStruggles2 || []) as string[];
+          const difficult2 = (freshProfile?.difficultStruggles2 || []) as string[];
+
+          // Bug 2 fix: remove eat_out hasEatOutDays gate from cycle-2 picker.
+          // eat_out's position in struggles2 is honoured regardless of this week's eat-out days.
+          // Bug 3 fix: allow "late_dinner" through alongside STRUGGLE_PRIORITY items.
+          const isLateDinnerMastered = freshProfile?.dinnerMastered === true || mastered2.includes("late_dinner");
+          const isS2Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
+          const isS2Mastered = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered;
+            return mastered1.includes(s) || mastered2.includes(s);
+          };
+          const untried2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && !skipped2.includes(s) && !difficult2.includes(s));
+          const triedNotMastered2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && (skipped2.includes(s) || difficult2.includes(s)));
+          const fallback2 = STRUGGLE_PRIORITY.find(s => !isS2Mastered(s) && !skipped2.includes(s) && !difficult2.includes(s)) || "sugary_food_drink";
+          currentStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
+
+          // Bug 1 fix: set isDinnerFocus based on the picked struggle, not lateDinnerDays.
+          isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
+        } else {
+          // Cycle 1: original behaviour unchanged.
+          const struggles = (freshProfile?.struggles || []) as string[];
+          const masteredS = (freshProfile?.masteredStruggles || []) as string[];
+          const skippedS = (freshProfile?.skippedStruggles || []) as string[];
+          const difficultS = (freshProfile?.difficultStruggles || []) as string[];
+          const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
+          const effectiveStruggles = hasEatOutDays && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out") && !legacyTriedS.includes("eat_out") && !struggles.includes("eat_out")
+            ? [...struggles, "eat_out"]
+            : struggles;
+          const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s) && !legacyTriedS.includes(s));
+          const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)));
+          const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
+            if (s === "eat_out" && !hasEatOutDays) return false;
+            return !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s);
+          }) || "sugary_food_drink";
+          currentStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
+          isDinnerFocusComputed = (lateDinnerDays || []).length > 0 && !freshProfile?.dinnerMastered;
+        }
+
+        planUpdate.isDinnerFocus = isDinnerFocusComputed;
+        if (isDinnerFocusComputed) {
           planUpdate.dietStruggle = null;
           planUpdate.dietTip = null;
         } else {
-          const planCycle = (freshProfile?.currentStruggleCycle as number) || 1;
-          const hasEatOutDays = (eatOutDays || []).length > 0;
-          let currentStruggle: string;
-
-          if (planCycle === 2) {
-            if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
-            const struggles2 = (freshProfile?.struggles2 || []) as string[];
-            const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
-            const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
-            const skipped2 = (freshProfile?.skippedStruggles2 || []) as string[];
-            const difficult2 = (freshProfile?.difficultStruggles2 || []) as string[];
-            const activeStruggles2 = struggles2.filter(s => {
-              if (s === "eat_out" && !hasEatOutDays) return false;
-              return true;
-            });
-            const untried2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && !mastered1.includes(s) && !mastered2.includes(s) && !skipped2.includes(s) && !difficult2.includes(s));
-            const triedNotMastered2 = activeStruggles2.filter(s => STRUGGLE_PRIORITY.includes(s) && (skipped2.includes(s) || difficult2.includes(s)));
-            const fallback2 = STRUGGLE_PRIORITY.find(s => {
-              if (s === "eat_out" && !hasEatOutDays) return false;
-              return !mastered1.includes(s) && !mastered2.includes(s) && !skipped2.includes(s) && !difficult2.includes(s);
-            }) || "sugary_food_drink";
-            currentStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
-          } else {
-            const struggles = (freshProfile?.struggles || []) as string[];
-            const masteredS = (freshProfile?.masteredStruggles || []) as string[];
-            const skippedS = (freshProfile?.skippedStruggles || []) as string[];
-            const difficultS = (freshProfile?.difficultStruggles || []) as string[];
-            const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
-            const effectiveStruggles = hasEatOutDays && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out") && !legacyTriedS.includes("eat_out") && !struggles.includes("eat_out")
-              ? [...struggles, "eat_out"]
-              : struggles;
-            const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s) && !legacyTriedS.includes(s));
-            const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)));
-            const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
-              if (s === "eat_out" && !hasEatOutDays) return false;
-              return !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s);
-            }) || "sugary_food_drink";
-            currentStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
-          }
-
           planUpdate.dietStruggle = currentStruggle;
           const ladder = DIET_TIP_LADDERS[currentStruggle] || [];
           if (selectedTip && ladder.includes(selectedTip)) {
