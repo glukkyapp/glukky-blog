@@ -79,8 +79,7 @@ function computeFocusPanel(
 
     const tips: TipEntry[] = [];
     if (isDrink) tips.push({ key: "diet_tip.dilute_juice", timing: "immediate" });
-    if (isFruit) tips.push({ key: "diet_tip.limit_fruit", timing: "future" });
-    if (!isDrink && !isFruit && isFood) tips.push({ key: "diet_tip.swap_dessert", timing: "future" });
+    if (!isDrink && (isFruit || isFood)) tips.push({ key: "diet_tip.swap_dessert", timing: "future" });
     return { struggleKey: struggle, tips };
   }
 

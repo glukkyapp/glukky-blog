@@ -554,8 +554,7 @@
   },
   "diet_tip": {
     "dilute_juice": "果汁加1:1清水稀釋",
-    "swap_dessert": "以乳酪加漿果代替甜品",
-    "limit_fruit": "每星期最多一次生果",
+    "swap_dessert": "以無糖乳酪加漿果代替甜品",
     "steam_then_sear": "先蒸後略煎",
     "grilled_over_fried": "揀烤嘅代替炸嘅",
     "decouple": "先喺屋企食飽，再出去傾偈",
@@ -564,7 +563,17 @@
     "plate_method": "餐盤法（½蔬菜、¼蛋白質、¼碳水）",
     "kitchen_closure": "晚飯後關閉廚房",
     "switch_edamame_nuts": "改食毛豆或堅果",
-    "food_switch": "食物替換"
+    "food_switch": "食物替換",
+    "dilute_juice_desc": "盡量唔好飲果汁——果汁含糖，纖維就好少，好容易令血糖急升。如果一定要飲，限制喺150毫升以內，其餘用清水代替。",
+    "swap_dessert_desc": "大多數甜品含有大量精製糖，纖維就好少，好易令血糖急升。無糖乳酪配漿果係控制血糖嘅完美組合。",
+    "steam_then_sear_desc": "油炸食物含大量脂肪熱量，長期會令體重增加——係胰島素失效嘅主要成因。先蒸熟，之後只需略為煎香，唔使用大量油。",
+    "grilled_over_fried_desc": "炸物通常裹上麵糊或麵包糠，仲吸收大量油脂，令整體熱量同碳水化合物增加。燒烤就唔使咁，有助降低血糖反應。",
+    "decouple_desc": "餐廳嘅份量通常比家常菜大，精製碳水化合物含量亦更高。提前喺屋企食飽，出去就減少身體負荷喇。",
+    "share_mains_desc": "你食幾多嘢直接決定有幾多葡萄糖進入血液。分享主菜，減少攝取量，就唔需要刻意計卡路里或者強迫自己節制喇。",
+    "swap_sides_veggies_desc": "常見配菜如薯條、白飯同麵包含大量澱粉，分解後迅速轉化為葡萄糖。非澱粉類蔬菜（咩菜？睇下資訊欄）碳水化合物含量低、纖維豐富，對血糖嘅影響細好多。",
+    "plate_method_desc": "餐盤上面各種營養嘅比例會影響餐後血糖升幅。蔬菜中嘅纖維同蛋白質都可減慢消化速度，而控制碳水化合物嘅份量則能減少整體血糖負荷。",
+    "kitchen_closure_desc": "夜晚係身體胰島素反應最弱嘅時候。晚飯後停止進食，比身體休息下。",
+    "switch_edamame_nuts_desc": "大多數零食含大量精製碳水化合物，好易令血糖急升。毛豆同堅果富含蛋白質、纖維同健康脂肪，對血糖嘅直接影響極小。"
   },
   "info_card": {
     "got_it": "知道喇",
@@ -718,7 +727,6 @@
     "food_switch_content_tip": "喺廚房準備一小份堅果（約一小把）或者一袋冷凍毛豆。越容易攞到，你就越大機會揀佢哋。",
     "tip_detail_dilute_juice": "稀釋果汁嘅詳細說明即將推出。",
     "tip_detail_swap_dessert": "以乳酪替代甜品嘅詳細說明即將推出。",
-    "tip_detail_limit_fruit": "限制水果攝取嘅詳細說明即將推出。",
     "tip_detail_steam_then_sear": "先蒸後煎嘅詳細說明即將推出。",
     "tip_detail_grilled_over_fried": "揀烤物唔揀炸物嘅詳細說明即將推出。",
     "tip_detail_decouple": "喺屋企食飽先嘅詳細說明即將推出。",
@@ -754,8 +762,7 @@
     },
     "tipName": {
       "Dilute juice 1:1 with water": "果汁加水 1:1 稀釋",
-      "Swap dessert for yogurt + berries": "甜品換成乳酪加莓果",
-      "Limit fruit to 1x per week": "每週最多食一次水果",
+      "Swap dessert for plain yogurt + berries": "甜品換成無糖乳酪加莓果",
       "Steam your food first, then sear briefly": "先蒸熟再略煎",
       "Choose grilled over fried": "揀烤物唔揀炸物",
       "Decouple (eat at home first, socialize out)": "喺屋企食飽先，出去食少啲",

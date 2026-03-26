@@ -11,8 +11,7 @@ const FOOD_SWITCH_TIP_KEY2 = "Food Switch";
 
 const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
   "Dilute juice 1:1 with water": "health_info.tip_detail_dilute_juice",
-  "Swap dessert for yogurt + berries": "health_info.tip_detail_swap_dessert",
-  "Limit fruit to 1x per week": "health_info.tip_detail_limit_fruit",
+  "Swap dessert for plain yogurt + berries": "health_info.tip_detail_swap_dessert",
   "Steam your food first, then sear briefly": "health_info.tip_detail_steam_then_sear",
   "Choose grilled over fried": "health_info.tip_detail_grilled_over_fried",
   "Decouple (eat at home first, socialize out)": "health_info.tip_detail_decouple",

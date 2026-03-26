@@ -28,8 +28,7 @@ export interface MonthlyReportData {
 
 const TIP_ICON_MAP: Record<string, LucideIcon> = {
   "Dilute juice 1:1 with water": CupSoda,
-  "Swap dessert for yogurt + berries": Cherry,
-  "Limit fruit to 1x per week": Apple,
+  "Swap dessert for plain yogurt + berries": Cherry,
   "Steam your food first, then sear briefly": ChefHat,
   "Choose grilled over fried": Beef,
   "Decouple (eat at home first, socialize out)": House,

@@ -549,8 +549,7 @@
   },
   "diet_tip": {
     "dilute_juice": "Dilute juice 1:1 with water",
-    "swap_dessert": "Swap dessert for yogurt + berries",
-    "limit_fruit": "Limit fruit to 1x per week",
+    "swap_dessert": "Swap dessert for plain yogurt + berries",
     "steam_then_sear": "Steam your food first, then sear briefly",
     "grilled_over_fried": "Choose grilled over fried",
     "decouple": "Decouple (eat at home first, socialize out)",
@@ -559,7 +558,17 @@
     "plate_method": "Use the plate method (½ veggies, ¼ protein, ¼ carbs)",
     "kitchen_closure": "Kitchen Closure after dinner",
     "switch_edamame_nuts": "Switch to edamame or nuts",
-    "food_switch": "Food Switch"
+    "food_switch": "Food Switch",
+    "dilute_juice_desc": "Avoid fruit juice if you can - they contain sugar, not fibre. This means that juice can cause your blood sugar to spike quickly. If you have to, limit to 150ml, remove the rest of it, and add water to substitute.",
+    "swap_dessert_desc": "Most desserts are high in refined sugar with little fibre, leading to a sharp glucose rise. Plain yogurt without sugar and berries (the ideal food for glucose control) is the perfect combo.",
+    "steam_then_sear_desc": "Deep-frying adds significant fat calories, which over time contributes to weight gain — a key driver of insulin resistance. Steaming first cooks the food through without excess oil, so only a brief sear is needed for texture.",
+    "grilled_over_fried_desc": "Fried foods are often coated in batter or breadcrumbs and soaked in oil, increasing the overall calorie and carbohydrate load. Grilling removes both, keeping the meal's glycaemic impact lower.",
+    "decouple_desc": "Restaurant portions tend to be larger and higher in refined carbs than home-cooked meals. Eating beforehand means you take on little to no extra glucose load from the outing.",
+    "share_mains_desc": "How much you eat directly determines how much glucose enters your bloodstream. Sharing dishes naturally reduces your portion without requiring willpower or calorie counting.",
+    "swap_sides_veggies_desc": "Typical sides — chips, rice, and bread — are high in starch, which breaks down rapidly into glucose. Non-starchy vegetables are low in carbohydrates and high in fibre, producing a much smaller blood sugar response.",
+    "plate_method_desc": "The balance of nutrients on your plate affects how quickly glucose rises after eating. Fibre from vegetables and protein both slow digestion, while limiting the carb quarter caps the total glucose load.",
+    "kitchen_closure_desc": "Snacking at night adds carbohydrates when your body's insulin response is naturally weaker, leading to higher overnight blood sugar. Stopping food intake after dinner gives your glucose levels time to return to baseline before sleep.",
+    "switch_edamame_nuts_desc": "Most snacks are high in refined carbs, which spike glucose quickly. Edamame and nuts are rich in protein, fibre, and healthy fats — nutrients that have minimal direct impact on blood glucose."
   },
   "info_card": {
     "got_it": "Got it",
@@ -713,7 +722,6 @@
     "food_switch_content_tip": "Keep a small portion of nuts (about a small handful) or a bag of frozen edamame ready in your kitchen. The easier they are to reach, the more likely you are to choose them.",
     "tip_detail_dilute_juice": "More detail about diluting juice is coming soon.",
     "tip_detail_swap_dessert": "More detail about swapping dessert is coming soon.",
-    "tip_detail_limit_fruit": "More detail about limiting fruit is coming soon.",
     "tip_detail_steam_then_sear": "More detail about steaming then searing is coming soon.",
     "tip_detail_grilled_over_fried": "More detail about choosing grilled over fried is coming soon.",
     "tip_detail_decouple": "More detail about the decouple tip is coming soon.",
@@ -749,8 +757,7 @@
     },
     "tipName": {
       "Dilute juice 1:1 with water": "Dilute juice 1:1 with water",
-      "Swap dessert for yogurt + berries": "Swap dessert for yogurt + berries",
-      "Limit fruit to 1x per week": "Limit fruit to 1x per week",
+      "Swap dessert for plain yogurt + berries": "Swap dessert for plain yogurt + berries",
       "Steam your food first, then sear briefly": "Steam your food first, then sear briefly",
       "Choose grilled over fried": "Choose grilled over fried",
       "Decouple (eat at home first, socialize out)": "Decouple (eat at home first, socialize out)",

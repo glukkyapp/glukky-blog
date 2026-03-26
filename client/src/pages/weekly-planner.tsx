@@ -19,6 +19,15 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
   return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
 }
+
+function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => string): string {
+  const i18nKey = DIET_TIP_I18N_KEYS[tip];
+  if (!i18nKey) return "";
+  if (i18nKey === "diet_tip.food_switch") {
+    return t("health_info.food_switch_desc", { defaultValue: "" });
+  }
+  return t(i18nKey + "_desc", { defaultValue: "" });
+}
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
@@ -151,6 +160,7 @@ export default function WeeklyPlanner() {
   const [graduationPopupShownThisSession, setGraduationPopupShownThisSession] = useState(false);
   const [selectedStruggles2, setSelectedStruggles2] = useState<string[]>([]);
   const [repickStepNeeded, setRepickStepNeeded] = useState(false);
+  const [expandedTip, setExpandedTip] = useState<string | null>(null);
 
   const cardDietFocus = useInfoCard("diet_focus");
   const cardWalkEscalation = useInfoCard("walk_escalation");
@@ -1543,20 +1553,44 @@ export default function WeeklyPlanner() {
           <p className="text-sm text-muted-foreground">
             {t("planner.choose_tip_desc")}
           </p>
-          {tipLadder.map((tip, i) => (
-            <button
-              key={i}
-              data-testid={`button-tip-${i}`}
-              className={`w-full text-left rounded-lg border p-3 transition-colors ${
-                selectedTip === tip
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "border-border hover:border-primary/50"
-              }`}
-              onClick={() => setSelectedTip(tip)}
-            >
-              <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{translateDietTip(tip, t)}</p>
-            </button>
-          ))}
+          {tipLadder.map((tip, i) => {
+            const desc = translateDietTipDesc(tip, t);
+            const isExpanded = expandedTip === tip;
+            return (
+              <div
+                key={i}
+                data-testid={`button-tip-${i}`}
+                className={`w-full text-left rounded-lg border transition-colors cursor-pointer ${
+                  selectedTip === tip
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "border-border hover:border-primary/50"
+                }`}
+                onClick={() => {
+                  setSelectedTip(tip);
+                  setExpandedTip(isExpanded ? null : tip);
+                }}
+              >
+                <div className="flex items-center justify-between p-3">
+                  <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{translateDietTip(tip, t)}</p>
+                  <div
+                    className="ml-2 shrink-0 text-muted-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedTip(isExpanded ? null : tip);
+                    }}
+                    data-testid={`chevron-tip-${i}`}
+                  >
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </div>
+                {isExpanded && desc && (
+                  <div className="px-3 pb-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     );
