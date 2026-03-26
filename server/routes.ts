@@ -206,16 +206,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: "cycle2-skip is only allowed in cycle 2" });
       }
       const struggles2 = (profile.struggles2 as string[]) || [];
-      // Verify the requested struggle is the current effective focus (first unmastered item).
+      // Verify the requested struggle is the current effective focus, using the same
+      // algorithm as the cycle-2 plan picker (untried first, then tried-not-mastered).
       const mastered1Skip = (profile.masteredStruggles as string[]) || [];
       const mastered2Skip = (profile.masteredStruggles2 as string[]) || [];
+      const skipped2Skip = (profile.skippedStruggles2 as string[]) || [];
+      const difficult2Skip = (profile.difficultStruggles2 as string[]) || [];
       const isLateDinnerMasteredSkip = profile.dinnerMastered === true || mastered2Skip.includes("late_dinner");
+      const isS2ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
       const isS2MasteredSkip = (s: string) => {
         if (s === "late_dinner") return isLateDinnerMasteredSkip;
         return mastered1Skip.includes(s) || mastered2Skip.includes(s);
       };
-      const isS2ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
-      const currentFocus = struggles2.find(s => isS2ValidSkip(s) && !isS2MasteredSkip(s));
+      const untried2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s));
+      const triedNotMastered2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && (skipped2Skip.includes(s) || difficult2Skip.includes(s)));
+      const fallback2Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredSkip(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s)) || "sugary_food_drink";
+      const currentFocus = [...untried2Skip, ...triedNotMastered2Skip][0] || fallback2Skip;
       if (currentFocus !== struggle) {
         return res.status(400).json({ message: "struggle is not the current cycle-2 focus" });
       }
