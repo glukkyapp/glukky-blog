@@ -288,6 +288,12 @@ export class DatabaseStorage implements IStorage {
       piggyBankCoins: 0,
       piggyBankReward: null,
       piggyBankNeedsRewardSetup: true,
+      repickPending: false,
+      currentStruggleCycle: 1,
+      struggles2: [],
+      masteredStruggles2: [],
+      skippedStruggles2: [],
+      difficultStruggles2: [],
     }).where(eq(userProfiles.userId, userId));
   }
 }

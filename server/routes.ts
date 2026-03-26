@@ -1377,9 +1377,8 @@ export async function registerRoutes(
       const week6Sunday = "2026-03-22";
       const week6Start = new Date("2026-03-16"); // Monday of week 6
 
-      // Create onboarding profile with the 3 struggles
-      await storage.createProfile({
-        userId,
+      // Overwrite profile fields with scenario values (resetUser already cleared cycle/mastery fields)
+      await storage.updateProfile(userId, {
         walksPerWeek: 3,
         walkDuration: 20,
         dinnerTime: "before_9pm",
