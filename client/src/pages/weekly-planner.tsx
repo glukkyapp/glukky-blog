@@ -9,9 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Check, ChevronLeft, ChevronRight, Footprints, UtensilsCrossed,
+  Check, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils,
+  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -148,6 +148,8 @@ export default function WeeklyPlanner() {
   const [negotiationInitialized, setNegotiationInitialized] = useState(false);
   const [graduationPopupOpen, setGraduationPopupOpen] = useState(false);
   const [graduationPopupShownThisSession, setGraduationPopupShownThisSession] = useState(false);
+  const [selectedStruggles2, setSelectedStruggles2] = useState<string[]>([]);
+  const [repickStepNeeded, setRepickStepNeeded] = useState(false);
 
   const cardDietFocus = useInfoCard("diet_focus");
   const cardWalkEscalation = useInfoCard("walk_escalation");
@@ -181,12 +183,13 @@ export default function WeeklyPlanner() {
     if (noWalkDays) s.push("standingTapSuggest");
     if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
+      if (repickStepNeeded) s.push("repick");
       s.push("dietReview");
       s.push("dietTipSelection");
     }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, noWalkDays]);
+  }, [isFirstWeek, isDinnerFocus, noWalkDays, repickStepNeeded]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -219,6 +222,26 @@ export default function WeeklyPlanner() {
       setGraduationPopupShownThisSession(true);
     }
   }, [currentStepId, reflection, graduationPopupShownThisSession]);
+
+  useEffect(() => {
+    if (reflection?.repickPending && !repickStepNeeded) {
+      setRepickStepNeeded(true);
+    }
+  }, [reflection?.repickPending]);
+
+  const repickMutation = useMutation({
+    mutationFn: async (struggles2: string[]) => {
+      const res = await apiRequest("POST", "/api/profile/repick", { struggles2 });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      goNext();
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
 
   const effectiveStruggleForReset = getEffectiveStruggle().effectiveStruggle;
   useEffect(() => {
@@ -658,6 +681,150 @@ export default function WeeklyPlanner() {
               </p>
             </div>
           )}
+          {reflection.repickPending && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4" data-testid="section-repick-message">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-primary">{t("planner.repick_message")}</p>
+                  {reflection.eatOutPickedButNeverScheduled && (
+                    <p className="text-xs text-muted-foreground">{t("planner.repick_eatout_note")}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function renderRepick() {
+    const struggles1 = (profile?.struggles as string[]) || [];
+    const mastered1 = (profile?.masteredStruggles as string[]) || [];
+    const skipped1 = (profile?.skippedStruggles as string[]) || [];
+    const difficult1 = (profile?.difficultStruggles as string[]) || [];
+    const appeared = (reflection?.appearedDietStruggles as string[]) || [];
+
+    const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => !mastered1.includes(s));
+
+    const inProgress = pickingPool.filter(s =>
+      struggles1.includes(s) && appeared.includes(s) && !skipped1.includes(s) && !difficult1.includes(s)
+    );
+    const movedOn = pickingPool.filter(s => difficult1.includes(s));
+    const skippedG = pickingPool.filter(s => skipped1.includes(s));
+    const upcoming = pickingPool.filter(s => struggles1.includes(s) && !appeared.includes(s));
+    const inactive = pickingPool.filter(s => !struggles1.includes(s));
+
+    const groups = [
+      { key: "inprogress", labelKey: "planner.repick_group_inprogress", items: inProgress },
+      { key: "moved_on", labelKey: "planner.repick_group_moved_on", items: movedOn },
+      { key: "skipped", labelKey: "planner.repick_group_skipped", items: skippedG },
+      { key: "upcoming", labelKey: "planner.repick_group_upcoming", items: upcoming },
+      { key: "inactive", labelKey: "planner.repick_group_inactive", items: inactive },
+    ].filter(g => g.items.length > 0);
+
+    const toggleStruggle2 = (s: string) => {
+      setSelectedStruggles2(prev =>
+        prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+      );
+    };
+
+    const moveUp = (index: number) => {
+      setSelectedStruggles2(prev => {
+        if (index === 0) return prev;
+        const next = [...prev];
+        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+        return next;
+      });
+    };
+
+    const moveDown = (index: number) => {
+      setSelectedStruggles2(prev => {
+        if (index === prev.length - 1) return prev;
+        const next = [...prev];
+        [next[index], next[index + 1]] = [next[index + 1], next[index]];
+        return next;
+      });
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle data-testid="text-repick-title">{t("planner.repick_title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>
+
+          {selectedStruggles2.length > 0 && (
+            <div className="rounded-lg border bg-primary/5 p-3 space-y-2" data-testid="section-repick-picks">
+              <p className="text-xs font-medium text-muted-foreground">{t("planner.repick_your_picks")}</p>
+              {selectedStruggles2.map((s, i) => (
+                <div key={s} className="flex items-center gap-2" data-testid={`item-repick-pick-${s}`}>
+                  <span className="text-xs font-bold text-primary w-4 text-center">{i + 1}</span>
+                  <span className="text-sm flex-1">{STRUGGLE_NAMES[s] || s}</span>
+                  <div className="flex gap-0.5">
+                    <button
+                      disabled={i === 0}
+                      onClick={() => moveUp(i)}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      data-testid={`button-repick-up-${s}`}
+                    >
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      disabled={i === selectedStruggles2.length - 1}
+                      onClick={() => moveDown(i)}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      data-testid={`button-repick-down-${s}`}
+                    >
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => toggleStruggle2(s)}
+                      className="p-1 text-muted-foreground hover:text-destructive"
+                      data-testid={`button-repick-remove-${s}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {groups.map(({ key, labelKey, items }) => (
+            <div key={key} className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t(labelKey)}</p>
+              {items.map(s => {
+                const isSelected = selectedStruggles2.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleStruggle2(s)}
+                    className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                    data-testid={`button-repick-struggle-${s}`}
+                  >
+                    <span className="text-sm">{STRUGGLE_NAMES[s] || s}</span>
+                    {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          <Button
+            className="w-full"
+            disabled={selectedStruggles2.length === 0 || repickMutation.isPending}
+            onClick={() => repickMutation.mutate(selectedStruggles2)}
+            data-testid="button-repick-confirm"
+          >
+            {repickMutation.isPending ? "…" : t("planner.repick_confirm")}
+          </Button>
         </CardContent>
       </Card>
     );
@@ -1158,6 +1325,38 @@ export default function WeeklyPlanner() {
   }
 
   function getEffectiveStruggle() {
+    const cycle = (profile?.currentStruggleCycle as number) || 1;
+    const serverEval = reflection?.dietEvaluation;
+    const isTransition = serverEval?.type === "mastered" || serverEval?.type === "not_relevant" || serverEval?.type === "moved_on";
+    const previousStruggle = isTransition ? (serverEval?.struggle || null) : null;
+    const hasEatOutDays = eatOutDays.length > 0;
+
+    if (cycle === 2) {
+      const struggles2 = (profile?.struggles2 as string[]) || [];
+      const mastered1 = (profile?.masteredStruggles as string[]) || [];
+      const mastered2 = (profile?.masteredStruggles2 as string[]) || [];
+      const skipped2 = (profile?.skippedStruggles2 as string[]) || [];
+      const difficult2 = (profile?.difficultStruggles2 as string[]) || [];
+
+      const hypMastered2 = (isTransition && serverEval?.type === "mastered" && previousStruggle)
+        ? [...mastered2, previousStruggle] : mastered2;
+      const hypSkipped2 = (isTransition && serverEval?.type === "not_relevant" && previousStruggle)
+        ? [...skipped2, previousStruggle] : skipped2;
+      const hypDifficult2 = (isTransition && serverEval?.type === "moved_on" && previousStruggle)
+        ? [...difficult2, previousStruggle] : difficult2;
+      const hypTriedBefore2 = [...new Set([...hypSkipped2, ...hypDifficult2])];
+
+      const activeStruggles2 = struggles2.filter(s => !(s === "eat_out" && !hasEatOutDays));
+      const untried2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && !hypMastered2.includes(s) && !mastered1.includes(s) && !hypTriedBefore2.includes(s));
+      const triedNotMastered2 = STRUGGLE_PRIORITY.filter(s => activeStruggles2.includes(s) && hypTriedBefore2.includes(s));
+      const fallback2 = STRUGGLE_PRIORITY.find(s => {
+        if (s === "eat_out" && !hasEatOutDays) return false;
+        return !mastered1.includes(s) && !hypMastered2.includes(s) && !hypTriedBefore2.includes(s);
+      }) || "sugary_food_drink";
+      const effectiveStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
+      return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
+    }
+
     const struggles = (profile?.struggles as string[]) || [];
     const mastered = (profile?.masteredStruggles as string[]) || [];
     const skippedArr = (profile?.skippedStruggles as string[]) || [];
@@ -1165,22 +1364,17 @@ export default function WeeklyPlanner() {
     const legacyTried = (profile?.triedBeforeStruggles as string[]) || [];
     const triedBefore = [...new Set([...skippedArr, ...difficultArr, ...legacyTried])];
 
-    const serverEval = reflection?.dietEvaluation;
-    const isTransition = serverEval?.type === "mastered" || serverEval?.type === "not_relevant" || serverEval?.type === "moved_on";
-    const previousStruggle = isTransition ? (serverEval?.struggle || null) : null;
-
     const hypMastered = (isTransition && serverEval?.type === "mastered" && previousStruggle)
       ? [...mastered, previousStruggle] : mastered;
     const hypTriedBefore = (isTransition && (serverEval?.type === "not_relevant" || serverEval?.type === "moved_on") && previousStruggle)
       ? [...triedBefore, previousStruggle] : triedBefore;
 
-    const effectiveStruggles = eatOutDays.length > 0 && !hypMastered.includes("eat_out") && !hypTriedBefore.includes("eat_out") && !struggles.includes("eat_out")
+    const effectiveStruggles = hasEatOutDays && !hypMastered.includes("eat_out") && !hypTriedBefore.includes("eat_out") && !struggles.includes("eat_out")
       ? [...struggles, "eat_out"]
       : struggles;
 
     const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s));
     const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && hypTriedBefore.includes(s));
-    const hasEatOutDays = eatOutDays.length > 0;
     const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
       if (s === "eat_out" && !hasEatOutDays) return false;
       return !hypMastered.includes(s) && !hypTriedBefore.includes(s);
@@ -1459,6 +1653,7 @@ export default function WeeklyPlanner() {
       case "lateDinnerDays": return renderLateDinnerDays();
       case "standingTapSuggest": return renderStandingTapSuggest();
       case "dinnerFocusReview": return renderDinnerFocusReview();
+      case "repick": return renderRepick();
       case "dietReview": return renderDietReview();
       case "dietTipSelection": return renderDietTipSelection();
       case "preview": return renderPreview();
@@ -1710,6 +1905,7 @@ export default function WeeklyPlanner() {
             size="sm"
             onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
             disabled={
+              currentStepId === "repick" ||
               (currentStepId === "dietTipSelection" && !selectedTip) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null)

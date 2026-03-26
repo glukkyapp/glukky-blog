@@ -44,6 +44,12 @@ export const userProfiles = pgTable("user_profiles", {
   piggyBankNeedsRewardSetup: boolean("piggy_bank_needs_reward_setup").notNull().default(true),
   preferredLanguage: varchar("preferred_language").notNull().default("en"),
   dinnerExitType: varchar("dinner_exit_type"),
+  repickPending: boolean("repick_pending").notNull().default(false),
+  currentStruggleCycle: integer("current_struggle_cycle").notNull().default(1),
+  struggles2: text("struggles2").array().notNull().default(sql`'{}'::text[]`),
+  masteredStruggles2: text("mastered_struggles2").array().notNull().default(sql`'{}'::text[]`),
+  skippedStruggles2: text("skipped_struggles2").array().notNull().default(sql`'{}'::text[]`),
+  difficultStruggles2: text("difficult_struggles2").array().notNull().default(sql`'{}'::text[]`),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

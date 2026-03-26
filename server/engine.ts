@@ -930,3 +930,38 @@ export function getFirstWeekPlan(profile: {
     dietTip,
   };
 }
+
+export async function checkRepickCondition(userId: string): Promise<{
+  conditionMet: boolean;
+  eatOutPickedButNeverScheduled: boolean;
+}> {
+  const profile = await storage.getProfile(userId);
+  if (!profile) return { conditionMet: false, eatOutPickedButNeverScheduled: false };
+
+  const struggles = (profile.struggles || []) as string[];
+  if (struggles.length === 0) return { conditionMet: false, eatOutPickedButNeverScheduled: false };
+
+  const allPlans = await storage.getAllWeeklyPlans(userId);
+
+  const appearedSet = new Set<string>();
+  for (const plan of allPlans) {
+    if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
+  }
+
+  const eatOutPickedInList = struggles.includes("eat_out");
+  const eatOutEverAppeared = appearedSet.has("eat_out");
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverAppeared;
+
+  const mastered = (profile.masteredStruggles || []) as string[];
+
+  const mustGoThrough = struggles.filter(s => {
+    if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
+    return true;
+  });
+
+  if (mustGoThrough.length === 0) return { conditionMet: false, eatOutPickedButNeverScheduled };
+
+  const conditionMet = mustGoThrough.every(s => appearedSet.has(s) || mastered.includes(s));
+
+  return { conditionMet, eatOutPickedButNeverScheduled };
+}
