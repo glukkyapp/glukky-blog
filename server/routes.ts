@@ -202,6 +202,9 @@ export async function registerRoutes(
       }
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if ((profile.currentStruggleCycle as number) !== 2) {
+        return res.status(400).json({ message: "cycle2-skip is only allowed in cycle 2" });
+      }
       const struggles2 = (profile.struggles2 as string[]) || [];
       const idx = struggles2.indexOf(struggle);
       if (idx === -1 || idx >= struggles2.length - 1) {
