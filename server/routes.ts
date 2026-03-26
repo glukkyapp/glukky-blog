@@ -410,9 +410,10 @@ export async function registerRoutes(
           const mastered2 = (profileBeforeMastery?.masteredStruggles2 || []) as string[];
           const skipped2 = (profileBeforeMastery?.skippedStruggles2 || []) as string[];
           const difficult2 = (profileBeforeMastery?.difficultStruggles2 || []) as string[];
+          const cycle2Active = profileBeforeMastery?.cycle2Active;
 
           if (dietEvaluation.type === "mastered") {
-            if (!mastered2.includes(currentStruggleForReflection)) {
+            if (cycle2Active !== false && !mastered2.includes(currentStruggleForReflection)) {
               await storage.updateProfile(userId, {
                 masteredStruggles2: [...mastered2, currentStruggleForReflection],
                 skippedStruggles2: skipped2.filter(s => s !== currentStruggleForReflection),
@@ -422,14 +423,14 @@ export async function registerRoutes(
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
-            if (!skipped2.includes(currentStruggleForReflection)) {
+            if (cycle2Active !== false && !skipped2.includes(currentStruggleForReflection)) {
               await storage.updateProfile(userId, {
                 skippedStruggles2: [...skipped2, currentStruggleForReflection],
               });
             }
             dietJustSkipped = true;
           } else if (dietEvaluation.type === "moved_on") {
-            if (!difficult2.includes(currentStruggleForReflection)) {
+            if (cycle2Active !== false && !difficult2.includes(currentStruggleForReflection)) {
               await storage.updateProfile(userId, {
                 difficultStruggles2: [...difficult2, currentStruggleForReflection],
               });
@@ -444,7 +445,7 @@ export async function registerRoutes(
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
-          await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2 });
+          await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false });
           repickPending = true;
         }
         eatOutPickedButNeverScheduled = repickResult.eatOutPickedButNeverScheduled;
@@ -605,6 +606,7 @@ export async function registerRoutes(
           let currentStruggle: string;
 
           if (planCycle === 2) {
+            if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
             const struggles2 = (freshProfile?.struggles2 || []) as string[];
             const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
             const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
@@ -1352,7 +1354,7 @@ export async function registerRoutes(
         "masteredStruggles", "skippedStruggles", "difficultStruggles", "triedBeforeStruggles",
         "currentWeek", "tipCycleStartWeek", "tipStayCycles", "isStretchMode", "stretchSuccessWeeks",
         "currentStruggleCycle", "repickPending", "struggles2", "masteredStruggles2",
-        "skippedStruggles2", "difficultStruggles2", "dinnerExitType",
+        "skippedStruggles2", "difficultStruggles2", "dinnerExitType", "cycle2Active",
       ];
       const update: any = {};
       for (const key of allowed) {

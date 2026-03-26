@@ -38,7 +38,7 @@ export default function WeeklyPlanner() {
 
   const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
-  const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"] });
+  const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"], refetchOnWindowFocus: false });
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const { data: monthlyReport, isLoading: monthlyReportLoading } = useQuery<MonthlyReportData>({
     queryKey: ["/api/report/monthly", "0"],

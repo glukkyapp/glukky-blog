@@ -294,6 +294,7 @@ export class DatabaseStorage implements IStorage {
       masteredStruggles2: [],
       skippedStruggles2: [],
       difficultStruggles2: [],
+      cycle2Active: null,
     }).where(eq(userProfiles.userId, userId));
   }
 }

@@ -50,6 +50,7 @@ export const userProfiles = pgTable("user_profiles", {
   masteredStruggles2: text("mastered_struggles2").array().notNull().default(sql`'{}'::text[]`),
   skippedStruggles2: text("skipped_struggles2").array().notNull().default(sql`'{}'::text[]`),
   difficultStruggles2: text("difficult_struggles2").array().notNull().default(sql`'{}'::text[]`),
+  cycle2Active: boolean("cycle2_active"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
