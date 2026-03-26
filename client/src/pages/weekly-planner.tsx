@@ -706,21 +706,23 @@ export default function WeeklyPlanner() {
     const difficult1 = (profile?.difficultStruggles as string[]) || [];
     const appeared = (reflection?.appearedDietStruggles as string[]) || [];
 
-    const eatOutNeverScheduled = !!(reflection?.eatOutPickedButNeverScheduled);
+    const currentActive = profile?.currentStruggle as string | null;
     const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {
-      if (s === "eat_out" && eatOutNeverScheduled) return false;
+      if (s === "eat_out" && eatOutDays.length === 0) return false;
       return !mastered1.includes(s);
     });
 
+    const currentGroup = pickingPool.filter(s => s === currentActive);
     const inProgress = pickingPool.filter(s =>
-      struggles1.includes(s) && appeared.includes(s) && !skipped1.includes(s) && !difficult1.includes(s)
+      s !== currentActive && struggles1.includes(s) && appeared.includes(s) && !skipped1.includes(s) && !difficult1.includes(s)
     );
     const movedOn = pickingPool.filter(s => difficult1.includes(s));
     const skippedG = pickingPool.filter(s => skipped1.includes(s));
-    const upcoming = pickingPool.filter(s => struggles1.includes(s) && !appeared.includes(s));
+    const upcoming = pickingPool.filter(s => s !== currentActive && struggles1.includes(s) && !appeared.includes(s));
     const inactive = pickingPool.filter(s => !struggles1.includes(s));
 
     const groups = [
+      { key: "current", labelKey: "planner.repick_group_current", items: currentGroup },
       { key: "inprogress", labelKey: "planner.repick_group_inprogress", items: inProgress },
       { key: "moved_on", labelKey: "planner.repick_group_moved_on", items: movedOn },
       { key: "skipped", labelKey: "planner.repick_group_skipped", items: skippedG },

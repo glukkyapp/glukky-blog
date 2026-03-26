@@ -300,6 +300,7 @@
     "repick_subtitle": "Select the areas you want to keep working on. Tap to add, then reorder by priority.",
     "repick_your_picks": "Your picks (in order)",
     "repick_confirm": "Confirm my picks",
+    "repick_group_current": "Currently Practicing",
     "repick_group_inprogress": "In Progress",
     "repick_group_moved_on": "Moved On",
     "repick_group_skipped": "Skipped",

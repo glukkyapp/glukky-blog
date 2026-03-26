@@ -959,7 +959,7 @@ export async function checkRepickCondition(userId: string): Promise<{
     return true;
   });
 
-  if (mustGoThrough.length === 0) return { conditionMet: false, eatOutPickedButNeverScheduled };
+  if (mustGoThrough.length === 0) return { conditionMet: true, eatOutPickedButNeverScheduled };
 
   const conditionMet = mustGoThrough.every(s => appearedSet.has(s) || mastered.includes(s));
 
