@@ -544,8 +544,6 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid negotiation choice" });
       }
 
-      let dietEvaluation: { type: string; struggle?: string | null } = { type: "in_cycle" };
-
       if (profile.currentWeek > 1) {
         let updatedStretchSuccessWeeks = profile.stretchSuccessWeeks;
         if (profile.isStretchMode) {
@@ -721,71 +719,10 @@ export async function registerRoutes(
         const dinnerCheckData = await getDinnerGraduationData(userId);
         if (!profile.dinnerMastered && !profile.dinnerExitType && dinnerCheckData.dinnerWeeksFound > 0) {
           await processDinnerGraduation(userId, planWeekEventDate);
-        } else {
-          const lastWeekPlan = await storage.getWeeklyPlan(userId, profile.currentWeek - 1);
-          const lastStruggle = lastWeekPlan?.dietStruggle;
-          if (lastStruggle) {
-            const planEvalCycle = (profile.currentStruggleCycle as number) || 1;
-            if (planEvalCycle === 1) {
-              const mastered = (profile.masteredStruggles || []) as string[];
-              const skipped = (profile.skippedStruggles || []) as string[];
-              const difficult = (profile.difficultStruggles || []) as string[];
-              if (!mastered.includes(lastStruggle)) {
-                dietEvaluation = await evaluateDietStruggle(userId, lastStruggle, profile.currentWeek - 1);
-                if (dietEvaluation.type === "mastered") {
-                  await storage.updateProfile(userId, {
-                    masteredStruggles: [...mastered, lastStruggle],
-                    skippedStruggles: skipped.filter(s => s !== lastStruggle),
-                    difficultStruggles: difficult.filter(s => s !== lastStruggle),
-                  });
-                  try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
-                } else if (dietEvaluation.type === "not_relevant") {
-                  if (!skipped.includes(lastStruggle)) {
-                    await storage.updateProfile(userId, {
-                      skippedStruggles: [...skipped, lastStruggle],
-                    });
-                  }
-                } else if (dietEvaluation.type === "moved_on") {
-                  if (!difficult.includes(lastStruggle)) {
-                    await storage.updateProfile(userId, {
-                      difficultStruggles: [...difficult, lastStruggle],
-                    });
-                  }
-                }
-              }
-            } else {
-              const mastered2 = (profile.masteredStruggles2 || []) as string[];
-              const skipped2 = (profile.skippedStruggles2 || []) as string[];
-              const difficult2 = (profile.difficultStruggles2 || []) as string[];
-              if (!mastered2.includes(lastStruggle)) {
-                dietEvaluation = await evaluateDietStruggle(userId, lastStruggle, profile.currentWeek - 1);
-                if (dietEvaluation.type === "mastered") {
-                  await storage.updateProfile(userId, {
-                    masteredStruggles2: [...mastered2, lastStruggle],
-                    skippedStruggles2: skipped2.filter(s => s !== lastStruggle),
-                    difficultStruggles2: difficult2.filter(s => s !== lastStruggle),
-                  });
-                  try { await awardStruggleGraduationCoin(userId, lastStruggle, planWeekEventDate); } catch {}
-                } else if (dietEvaluation.type === "not_relevant") {
-                  if (!skipped2.includes(lastStruggle)) {
-                    await storage.updateProfile(userId, {
-                      skippedStruggles2: [...skipped2, lastStruggle],
-                    });
-                  }
-                } else if (dietEvaluation.type === "moved_on") {
-                  if (!difficult2.includes(lastStruggle)) {
-                    await storage.updateProfile(userId, {
-                      difficultStruggles2: [...difficult2, lastStruggle],
-                    });
-                  }
-                }
-              }
-            }
-          }
         }
       }
 
-      res.json({ ...result, dietEvaluation });
+      res.json(result);
     } catch (error: any) {
       console.error("Error creating weekly plan:", error);
       res.status(500).json({ message: error.message || "Failed to create plan" });

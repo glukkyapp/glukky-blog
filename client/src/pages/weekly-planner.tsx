@@ -234,8 +234,8 @@ export default function WeeklyPlanner() {
       const res = await apiRequest("POST", "/api/profile/repick", { struggles2 });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       goNext();
     },
     onError: (error: Error) => {
@@ -706,7 +706,11 @@ export default function WeeklyPlanner() {
     const difficult1 = (profile?.difficultStruggles as string[]) || [];
     const appeared = (reflection?.appearedDietStruggles as string[]) || [];
 
-    const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => !mastered1.includes(s));
+    const eatOutNeverScheduled = !!(reflection?.eatOutPickedButNeverScheduled);
+    const pickingPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {
+      if (s === "eat_out" && eatOutNeverScheduled) return false;
+      return !mastered1.includes(s);
+    });
 
     const inProgress = pickingPool.filter(s =>
       struggles1.includes(s) && appeared.includes(s) && !skipped1.includes(s) && !difficult1.includes(s)

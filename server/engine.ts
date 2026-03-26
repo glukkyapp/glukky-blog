@@ -949,8 +949,8 @@ export async function checkRepickCondition(userId: string): Promise<{
   }
 
   const eatOutPickedInList = struggles.includes("eat_out");
-  const eatOutEverAppeared = appearedSet.has("eat_out");
-  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverAppeared;
+  const eatOutEverScheduled = eatOutPickedInList ? await storage.hasAnyEatOutScheduled(userId) : false;
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverScheduled;
 
   const mastered = (profile.masteredStruggles || []) as string[];
 
