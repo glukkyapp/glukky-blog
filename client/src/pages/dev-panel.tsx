@@ -81,7 +81,7 @@ export default function DevPanel() {
       queryClient.clear();
       localStorage.clear();
       toast({ title: "Repick scenario ready", description: data.message });
-      window.location.href = "/weekly-planner";
+      window.location.href = "/plan";
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
