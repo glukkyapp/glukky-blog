@@ -150,6 +150,7 @@ export default function WeeklyPlanner() {
   const [initialized, setInitialized] = useState(false);
   const [stretchDays, setStretchDays] = useState<number[]>([]);
   const [stretchAccepted, setStretchAccepted] = useState(false);
+  const [cycle2GateReleased, setCycle2GateReleased] = useState<Set<string>>(new Set());
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
   const [standingTapDay, setStandingTapDay] = useState<number | null>(null);
@@ -272,10 +273,13 @@ export default function WeeklyPlanner() {
   const cycle2SkipMutation = useMutation({
     mutationFn: async (struggle: string) => {
       const res = await apiRequest("POST", "/api/profile/cycle2-skip", { struggle });
-      return res.json();
+      return { data: await res.json(), struggle };
     },
-    onSuccess: (data: { struggles2: string[] }) => {
+    onSuccess: ({ data, struggle }: { data: { struggles2: string[] }; struggle: string }) => {
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles2: data.struggles2 } : old);
+      // Release the gate so the user is not trapped even if the swap was a no-op
+      // (e.g. focus is the last item in struggles2 and cannot move forward).
+      setCycle2GateReleased(prev => new Set([...prev, struggle]));
     },
     onError: (error: Error) => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -2060,8 +2064,8 @@ export default function WeeklyPlanner() {
               (currentStepId === "dietTipSelection" && !selectedTip) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null) ||
-              (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0) ||
-              (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0)
+              (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0 && !cycle2GateReleased.has("eat_out")) ||
+              (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner"))
             }
             data-testid="button-next"
           >
