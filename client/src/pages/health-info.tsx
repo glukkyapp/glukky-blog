@@ -1,15 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
+import { Info, Lightbulb } from "lucide-react";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
-const PLATE_METHOD_TIP = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
-const FOOD_SWITCH_TIP = "Switch to edamame or nuts";
+const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
+const FOOD_SWITCH_TIP_KEY = "Switch to edamame or nuts";
+const FOOD_SWITCH_TIP_KEY2 = "Food Switch";
+
+const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
+  "Dilute juice 1:1 with water": "health_info.tip_detail_dilute_juice",
+  "Swap dessert for yogurt + berries": "health_info.tip_detail_swap_dessert",
+  "Limit fruit to 1x per week": "health_info.tip_detail_limit_fruit",
+  "Steam your food first, then sear briefly": "health_info.tip_detail_steam_then_sear",
+  "Choose grilled over fried": "health_info.tip_detail_grilled_over_fried",
+  "Decouple (eat at home first, socialize out)": "health_info.tip_detail_decouple",
+  "Share main dishes": "health_info.tip_detail_share_mains",
+  "Swap sides for vegetables": "health_info.tip_detail_swap_sides_veggies",
+  "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": null,
+  "Kitchen Closure after dinner": "health_info.tip_detail_kitchen_closure",
+  "Switch to edamame or nuts": null,
+  "Food Switch": "health_info.tip_detail_food_switch",
+};
+
+const FOOD_SWITCH_TABS = [
+  { key: "edamame", labelKey: "health_info.food_switch_tab_edamame" },
+  { key: "nuts", labelKey: "health_info.food_switch_tab_nuts" },
+  { key: "why", labelKey: "health_info.food_switch_tab_why" },
+  { key: "when", labelKey: "health_info.food_switch_tab_when" },
+  { key: "tip", labelKey: "health_info.food_switch_tab_tip" },
+];
 
 function PlateMethodDetail({ t }: { t: (key: string, opts?: any) => string }) {
   return (
-    <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+    <div className="space-y-3 text-sm text-muted-foreground">
       <p>{t("health_info.plate_method_desc")}</p>
       <div className="grid grid-cols-3 gap-2 pt-1">
         <div className="rounded-lg bg-green-100 dark:bg-green-950/40 p-3 flex flex-col items-center gap-1">
@@ -30,19 +55,11 @@ function PlateMethodDetail({ t }: { t: (key: string, opts?: any) => string }) {
   );
 }
 
-const FOOD_SWITCH_TABS = [
-  { key: "edamame", labelKey: "health_info.food_switch_tab_edamame" },
-  { key: "nuts", labelKey: "health_info.food_switch_tab_nuts" },
-  { key: "why", labelKey: "health_info.food_switch_tab_why" },
-  { key: "when", labelKey: "health_info.food_switch_tab_when" },
-  { key: "tip", labelKey: "health_info.food_switch_tab_tip" },
-];
-
 function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
   const [activeTab, setActiveTab] = useState(0);
 
   return (
-    <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+    <div className="space-y-3 text-sm text-muted-foreground">
       <p>{t("health_info.food_switch_desc")}</p>
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {FOOD_SWITCH_TABS.map((tab, i) => (
@@ -67,59 +84,62 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
   );
 }
 
-interface DietTipAccordionProps {
+interface DietTipRowProps {
   tipKey: string;
   tipLabel: string;
-  t: (key: string, opts?: any) => string;
+  onInfo: () => void;
 }
 
-function DietTipAccordion({ tipKey, tipLabel, t }: DietTipAccordionProps) {
-  const [open, setOpen] = useState(false);
-
-  const renderDetail = () => {
-    if (tipKey === PLATE_METHOD_TIP) return <PlateMethodDetail t={t} />;
-    if (tipKey === FOOD_SWITCH_TIP) return <FoodSwitchDetail t={t} />;
-    return (
-      <p className="mt-3 text-sm text-muted-foreground">{t("health_info.tip_no_detail")}</p>
-    );
-  };
-
+function DietTipRow({ tipKey, tipLabel, onInfo }: DietTipRowProps) {
   const safeId = tipKey.replace(/[^a-z0-9]/gi, "-").toLowerCase();
 
   return (
     <div
-      className="border border-border rounded-xl overflow-hidden"
-      data-testid={`accordion-diet-tip-${safeId}`}
+      className="border border-border rounded-xl overflow-hidden bg-card"
+      data-testid={`row-diet-tip-${safeId}`}
     >
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 p-4 text-left bg-card hover:bg-muted/50 transition-colors"
-        data-testid={`button-expand-diet-tip-${safeId}`}
-      >
+      <div className="flex items-center justify-between gap-3 p-4">
         <span className="text-sm font-medium">{tipLabel}</span>
-        {open ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="px-4 pb-4 bg-card">
-          {renderDetail()}
-        </div>
-      )}
+        <button
+          onClick={onInfo}
+          className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          data-testid={`button-info-diet-tip-${safeId}`}
+          aria-label={tipLabel}
+        >
+          <Info className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
 
 export default function HealthInfo() {
   const { t } = useTranslation();
+  const sheet = useInfoSheet();
 
   const { data, isLoading } = useQuery<{ activeTips: string[] }>({
     queryKey: ["/api/health-info/diet-tips"],
   });
 
   const activeTips = data?.activeTips ?? [];
+
+  function openTipSheet(tipKey: string, tipLabel: string) {
+    let body: React.ReactNode;
+    if (tipKey === PLATE_METHOD_TIP_KEY) {
+      body = <PlateMethodDetail t={t} />;
+    } else if (tipKey === FOOD_SWITCH_TIP_KEY || tipKey === FOOD_SWITCH_TIP_KEY2) {
+      body = <FoodSwitchDetail t={t} />;
+    } else {
+      const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
+      body = (
+        <p className="text-sm text-muted-foreground">
+          {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
+        </p>
+      );
+    }
+
+    sheet.openSheet({ title: tipLabel, body });
+  }
 
   return (
     <div className="max-w-sm sm:max-w-none mx-auto px-4 pt-6 pb-32" data-testid="page-health-info">
@@ -152,17 +172,19 @@ export default function HealthInfo() {
               const i18nKey = DIET_TIP_I18N_KEYS[tip];
               const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
               return (
-                <DietTipAccordion
+                <DietTipRow
                   key={tip}
                   tipKey={tip}
                   tipLabel={label}
-                  t={t}
+                  onInfo={() => openTipSheet(tip, label)}
                 />
               );
             })}
           </div>
         )}
       </section>
+
+      <InfoSheet open={sheet.open} onClose={sheet.closeSheet} config={sheet.config} />
     </div>
   );
 }

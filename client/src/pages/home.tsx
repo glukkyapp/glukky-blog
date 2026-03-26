@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
-import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer } from "lucide-react";
+import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -70,6 +71,7 @@ export default function Home() {
   const cardDinnerTiming = useInfoCard("dinner_timing");
   const cardDinnerTactics = useInfoCard("dinner_tactics");
   const foodSwitchPopup = useFoodSwitchPopup();
+  const tacticInfoSheet = useInfoSheet();
 
   const effectiveHour = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
     ? devTime.timeOverride
@@ -500,16 +502,29 @@ export default function Home() {
         <div className="space-y-3" data-testid="section-dinner-tactic">
           <p className="text-sm font-medium">{catchUpDayName ? t("home.dinner_catchup_tactic", { day: catchUpDayName }) : t("home.dinner_pick_plan")}</p>
           {MITIGATION_OPTION_KEYS.map(opt => (
-            <button
+            <div
               key={opt.value}
-              onClick={() => handleTacticPick(opt.value)}
-              className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
-              data-testid={`button-tactic-${opt.value}`}
-              disabled={dinnerLabelMutation.isPending}
+              className="w-full flex items-center rounded-lg text-sm bg-muted overflow-hidden"
+              data-testid={`row-tactic-${opt.value}`}
             >
-              <span className="font-medium">{t(opt.labelKey)}</span>
-              <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
-            </button>
+              <button
+                onClick={() => handleTacticPick(opt.value)}
+                className="flex-1 text-left p-3 hover:bg-primary/10 transition-colors"
+                data-testid={`button-tactic-${opt.value}`}
+                disabled={dinnerLabelMutation.isPending}
+              >
+                <span className="font-medium">{t(opt.labelKey)}</span>
+                <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); tacticInfoSheet.openSheet({ title: t(opt.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${opt.value}_detail`)}</p> }); }}
+                className="shrink-0 px-3 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                data-testid={`button-info-tactic-${opt.value}`}
+                aria-label={t(opt.labelKey)}
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            </div>
           ))}
         </div>
       );
@@ -660,16 +675,29 @@ export default function Home() {
           <div className="space-y-3" data-testid="section-dinner-tactic">
             <p className="text-sm font-medium">{t("home.dinner_pick_plan")}</p>
             {MITIGATION_OPTION_KEYS.map(opt => (
-              <button
+              <div
                 key={opt.value}
-                onClick={() => handleTacticPick(opt.value)}
-                className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
-                data-testid={`button-tactic-${opt.value}`}
-                disabled={dinnerLabelMutation.isPending}
+                className="w-full flex items-center rounded-lg text-sm bg-muted overflow-hidden"
+                data-testid={`row-tactic-${opt.value}`}
               >
-                <span className="font-medium">{t(opt.labelKey)}</span>
-                <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
-              </button>
+                <button
+                  onClick={() => handleTacticPick(opt.value)}
+                  className="flex-1 text-left p-3 hover:bg-primary/10 transition-colors"
+                  data-testid={`button-tactic-${opt.value}`}
+                  disabled={dinnerLabelMutation.isPending}
+                >
+                  <span className="font-medium">{t(opt.labelKey)}</span>
+                  <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); tacticInfoSheet.openSheet({ title: t(opt.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${opt.value}_detail`)}</p> }); }}
+                  className="shrink-0 px-3 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                  data-testid={`button-info-tactic-${opt.value}`}
+                  aria-label={t(opt.labelKey)}
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
             ))}
           </div>
         );
@@ -715,16 +743,29 @@ export default function Home() {
         <div className="space-y-3" data-testid="section-dinner-pivot-tactics">
           <p className="text-sm font-medium">{t("home.dinner_pick_plan")}</p>
           {MITIGATION_OPTION_KEYS.map(opt => (
-            <button
+            <div
               key={opt.value}
-              onClick={() => handleTacticPick(opt.value)}
-              className="w-full text-left p-3 rounded-lg text-sm transition-colors bg-muted hover:bg-primary/10"
-              data-testid={`button-tactic-${opt.value}`}
-              disabled={dinnerLabelMutation.isPending}
+              className="w-full flex items-center rounded-lg text-sm bg-muted overflow-hidden"
+              data-testid={`row-tactic-${opt.value}`}
             >
-              <span className="font-medium">{t(opt.labelKey)}</span>
-              <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
-            </button>
+              <button
+                onClick={() => handleTacticPick(opt.value)}
+                className="flex-1 text-left p-3 hover:bg-primary/10 transition-colors"
+                data-testid={`button-tactic-${opt.value}`}
+                disabled={dinnerLabelMutation.isPending}
+              >
+                <span className="font-medium">{t(opt.labelKey)}</span>
+                <span className="text-muted-foreground"> — {t(opt.descKey)}</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); tacticInfoSheet.openSheet({ title: t(opt.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${opt.value}_detail`)}</p> }); }}
+                className="shrink-0 px-3 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                data-testid={`button-info-tactic-${opt.value}`}
+                aria-label={t(opt.labelKey)}
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            </div>
           ))}
         </div>
       );
@@ -1358,9 +1399,25 @@ export default function Home() {
                       <p className="text-xs text-muted-foreground">{t("home.which_tactic")}</p>
                       <div className="flex flex-col gap-1">
                         {MITIGATION_OPTION_KEYS.map(opt => (
-                          <Button key={opt.value} size="sm" variant={catchupTacticPick === opt.value ? "default" : "outline"} onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }} data-testid={`button-catchup-tactic-${opt.value}`}>
-                            {t(opt.labelKey)}
-                          </Button>
+                          <div key={opt.value} className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant={catchupTacticPick === opt.value ? "default" : "outline"}
+                              onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }}
+                              data-testid={`button-catchup-tactic-${opt.value}`}
+                              className="flex-1"
+                            >
+                              {t(opt.labelKey)}
+                            </Button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); tacticInfoSheet.openSheet({ title: t(opt.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${opt.value}_detail`)}</p> }); }}
+                              className="shrink-0 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-full transition-colors"
+                              data-testid={`button-info-catchup-tactic-${opt.value}`}
+                              aria-label={t(opt.labelKey)}
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1760,6 +1817,7 @@ export default function Home() {
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />
     <InfoCardPopup visible={cardDinnerTactics.visible} onDismiss={cardDinnerTactics.dismiss} icon={UtensilsCrossed} titleKey="info_card.dinner_tactics.title" panelKeys={["info_card.dinner_tactics.p1","info_card.dinner_tactics.p2","info_card.dinner_tactics.p3"]} testId="dialog-card-dinner-tactics" />
     <FoodSwitchPopup visible={foodSwitchPopup.visible} onDismiss={foodSwitchPopup.dismiss} />
+    <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
     </>
   );
 }

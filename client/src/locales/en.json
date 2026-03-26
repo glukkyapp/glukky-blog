@@ -153,7 +153,10 @@
     "split_short": "Split",
     "fiber_starter_short": "eat veggies first",
     "dusk_prep_short": "light snack at 5 PM",
-    "split_dinner_short": "split into two smaller meals"
+    "split_dinner_short": "split into two smaller meals",
+    "fiber_starter_detail": "More detail about the Fiber Starter tactic is coming soon.",
+    "dusk_prep_detail": "More detail about the Dusk Prep tactic is coming soon.",
+    "split_dinner_detail": "More detail about the Split Dinner tactic is coming soon."
   },
   "onboarding": {
     "step_of": "Step {{step}} of {{total}}",
@@ -707,7 +710,19 @@
     "food_switch_content_nuts": "Nuts like almonds, walnuts, and pistachios are rich in healthy fats and protein. They slow digestion and reduce the glycaemic impact of the meal or snack that follows.",
     "food_switch_content_why": "Most packaged snacks are high in refined carbohydrates, which cause rapid blood sugar spikes. Edamame and nuts provide sustained energy without the sharp rise and fall.",
     "food_switch_content_when": "Try them as a mid-afternoon snack (around 3–4pm) or when you feel like something between meals. Eating them before a larger meal can also help blunt the overall blood sugar response.",
-    "food_switch_content_tip": "Keep a small portion of nuts (about a small handful) or a bag of frozen edamame ready in your kitchen. The easier they are to reach, the more likely you are to choose them."
+    "food_switch_content_tip": "Keep a small portion of nuts (about a small handful) or a bag of frozen edamame ready in your kitchen. The easier they are to reach, the more likely you are to choose them.",
+    "tip_detail_dilute_juice": "More detail about diluting juice is coming soon.",
+    "tip_detail_swap_dessert": "More detail about swapping dessert is coming soon.",
+    "tip_detail_limit_fruit": "More detail about limiting fruit is coming soon.",
+    "tip_detail_steam_then_sear": "More detail about steaming then searing is coming soon.",
+    "tip_detail_grilled_over_fried": "More detail about choosing grilled over fried is coming soon.",
+    "tip_detail_decouple": "More detail about the decouple tip is coming soon.",
+    "tip_detail_share_mains": "More detail about sharing main dishes is coming soon.",
+    "tip_detail_swap_sides_veggies": "More detail about swapping sides for vegetables is coming soon.",
+    "tip_detail_kitchen_closure": "More detail about kitchen closure is coming soon.",
+    "tip_detail_food_switch": "More detail about the food switch is coming soon.",
+    "tip_detail_plate_method": "More detail about the plate method is coming soon.",
+    "tip_detail_switch_edamame_nuts": "More detail about switching to edamame or nuts is coming soon."
   },
   "monthlyReport": {
     "title": "{{month}} Deep Dive",

@@ -153,7 +153,10 @@
     "split_short": "分餐",
     "fiber_starter_short": "先吃蔬菜",
     "dusk_prep_short": "下午5點吃少量",
-    "split_dinner_short": "分成兩小餐"
+    "split_dinner_short": "分成兩小餐",
+    "fiber_starter_detail": "纖維優先策略的詳細說明即將推出。",
+    "dusk_prep_detail": "黃昏預備策略的詳細說明即將推出。",
+    "split_dinner_detail": "分開晚餐策略的詳細說明即將推出。"
   },
   "onboarding": {
     "step_of": "第{{step}}步，共{{total}}步",
@@ -708,7 +711,19 @@
     "food_switch_content_nuts": "杏仁、核桃、開心果等堅果富含健康脂肪和蛋白質，能減慢消化速度，降低後續餐食或零食對血糖的影響。",
     "food_switch_content_why": "大多數包裝零食含有大量精製碳水化合物，會令血糖急速上升。毛豆和堅果能提供持久能量，避免血糖大起大落。",
     "food_switch_content_when": "可在下午3至4點左右作為下午茶，或在正餐之間想吃東西時食用。在較大餐食前食用，也能幫助減緩整體血糖反應。",
-    "food_switch_content_tip": "在廚房準備一小份堅果（約一小把）或一袋冷凍毛豆。越容易取得，你就越有可能選擇它們。"
+    "food_switch_content_tip": "在廚房準備一小份堅果（約一小把）或一袋冷凍毛豆。越容易取得，你就越有可能選擇它們。",
+    "tip_detail_dilute_juice": "稀釋果汁的詳細說明即將推出。",
+    "tip_detail_swap_dessert": "以乳酪替代甜品的詳細說明即將推出。",
+    "tip_detail_limit_fruit": "限制水果攝取的詳細說明即將推出。",
+    "tip_detail_steam_then_sear": "先蒸後煎的詳細說明即將推出。",
+    "tip_detail_grilled_over_fried": "選烤代炸的詳細說明即將推出。",
+    "tip_detail_decouple": "先在家吃飽的詳細說明即將推出。",
+    "tip_detail_share_mains": "主菜分享的詳細說明即將推出。",
+    "tip_detail_swap_sides_veggies": "配菜換成蔬菜的詳細說明即將推出。",
+    "tip_detail_kitchen_closure": "廚房關閉策略的詳細說明即將推出。",
+    "tip_detail_food_switch": "食物轉換的詳細說明即將推出。",
+    "tip_detail_plate_method": "餐盤法的詳細說明即將推出。",
+    "tip_detail_switch_edamame_nuts": "改食毛豆或堅果的詳細說明即將推出。"
   },
   "monthlyReport": {
     "title": "{{month}}月 深度回顧",

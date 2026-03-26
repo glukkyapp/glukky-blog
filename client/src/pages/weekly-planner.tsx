@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X,
+  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X, Info,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
 
@@ -21,6 +21,7 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
 }
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
+import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
 export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
@@ -159,6 +160,7 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroPortions = useInfoCard("struggle_intro_portions");
   const cardStruggleIntroSnacks = useInfoCard("struggle_intro_snacks");
   const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
+  const tacticInfoSheet = useInfoSheet();
 
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
@@ -1321,15 +1323,25 @@ export default function WeeklyPlanner() {
           <div className="bg-card border rounded-lg p-4 space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{t("planner.available_tactics")}</p>
             <div className="space-y-1">
-              <p className="text-sm" data-testid="text-tactic-fiber">
-                <span className="font-medium text-amber-600">{t("mitigation.fiber_starter_label")}</span> — {t("mitigation.fiber_starter_short")}
-              </p>
-              <p className="text-sm" data-testid="text-tactic-dusk">
-                <span className="font-medium text-amber-600">{t("mitigation.dusk_prep_label")}</span> — {t("mitigation.dusk_prep_short")}
-              </p>
-              <p className="text-sm" data-testid="text-tactic-split">
-                <span className="font-medium text-amber-600">{t("mitigation.split_dinner_label")}</span> — {t("mitigation.split_dinner_short")}
-              </p>
+              {[
+                { key: "fiber_starter", testId: "text-tactic-fiber", labelKey: "mitigation.fiber_starter_label", shortKey: "mitigation.fiber_starter_short" },
+                { key: "dusk_prep", testId: "text-tactic-dusk", labelKey: "mitigation.dusk_prep_label", shortKey: "mitigation.dusk_prep_short" },
+                { key: "split_dinner", testId: "text-tactic-split", labelKey: "mitigation.split_dinner_label", shortKey: "mitigation.split_dinner_short" },
+              ].map(tactic => (
+                <div key={tactic.key} className="flex items-center justify-between gap-2">
+                  <p className="text-sm flex-1" data-testid={tactic.testId}>
+                    <span className="font-medium text-amber-600">{t(tactic.labelKey)}</span> — {t(tactic.shortKey)}
+                  </p>
+                  <button
+                    onClick={() => tacticInfoSheet.openSheet({ title: t(tactic.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${tactic.key}_detail`)}</p> })}
+                    className="shrink-0 p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-full transition-colors"
+                    data-testid={`button-info-planner-tactic-${tactic.key}`}
+                    aria-label={t(tactic.labelKey)}
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1953,6 +1965,7 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardStruggleIntroPortions.visible} onDismiss={cardStruggleIntroPortions.dismiss} icon={Soup} titleKey="info_card.struggle_intro_portions.title" panelKeys={["info_card.struggle_intro_portions.body"]} testId="dialog-card-struggle-intro-portions" />
     <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
     <InfoCardPopup visible={cardStruggleIntroEatOut.visible} onDismiss={cardStruggleIntroEatOut.dismiss} icon={Utensils} titleKey="info_card.struggle_intro_eat_out.title" panelKeys={["info_card.struggle_intro_eat_out.body"]} testId="dialog-card-struggle-intro-eat-out" />
+    <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated
         ? t("planner.late_dinner")
