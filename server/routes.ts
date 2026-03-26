@@ -1343,6 +1343,154 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/dev/patch-profile", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const allowed = [
+        "walkDuration", "walksPerWeek", "dinnerMastered", "hasLateDinner", "dinnerSuccessWeeks",
+        "restDay", "dinnerTime", "struggles", "currentStruggle", "currentTipIndex",
+        "masteredStruggles", "skippedStruggles", "difficultStruggles", "triedBeforeStruggles",
+        "currentWeek", "tipCycleStartWeek", "tipStayCycles", "isStretchMode", "stretchSuccessWeeks",
+        "currentStruggleCycle", "repickPending", "struggles2", "masteredStruggles2",
+        "skippedStruggles2", "difficultStruggles2", "dinnerExitType",
+      ];
+      const update: any = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) update[key] = req.body[key];
+      }
+      await storage.updateProfile(userId, update);
+      const profile = await storage.getProfile(userId);
+      res.json({ success: true, profile });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to patch profile" });
+    }
+  });
+
+  app.post("/api/dev/setup-repick-scenario", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Reset everything
+      await storage.resetUser(userId);
+
+      // Week 6 ends on this Sunday; set all 6 week start dates accordingly
+      const week6Sunday = "2026-03-22";
+      const week6Start = new Date("2026-03-16"); // Monday of week 6
+
+      // Create onboarding profile with the 3 struggles
+      await storage.createProfile({
+        userId,
+        walksPerWeek: 3,
+        walkDuration: 20,
+        dinnerTime: "before_9pm",
+        sleepPattern: "regular_10_6",
+        eatingOutFrequency: "1_2",
+        struggles: ["sugary_food_drink", "eat_out", "portions"],
+        hasLateDinner: false,
+        onboardingComplete: true,
+        currentWeek: 1,
+      } as any);
+
+      // Week config: weeks 1-3 = sugary (high success), weeks 4-6 = portions (high no_chance)
+      const weekConfig = [
+        { struggle: "sugary_food_drink" },
+        { struggle: "sugary_food_drink" },
+        { struggle: "sugary_food_drink" },
+        { struggle: "portions" },
+        { struggle: "portions" },
+        { struggle: "portions" },
+      ];
+
+      for (let wi = 0; wi < 6; wi++) {
+        const weekNumber = wi + 1;
+        const startDate = new Date(week6Start);
+        startDate.setDate(week6Start.getDate() - (5 - wi) * 7);
+        const startDateStr = startDate.toISOString().split("T")[0];
+        const { struggle } = weekConfig[wi];
+
+        // Create plan directly via storage (bypass engine struggle selection)
+        const plan = await storage.createWeeklyPlan({
+          userId,
+          weekNumber,
+          startDate: startDateStr,
+          walkFrequencyGoal: 3,
+          walkDurationGoal: 20,
+          dietStruggle: struggle,
+          dietTip: (DIET_TIP_LADDERS[struggle] || [])[0] || null,
+          isDinnerFocus: false,
+          firstActiveDay: 0,
+          isStretchWeek: false,
+        });
+
+        // Create plan days (Mon/Wed/Fri walk, no eat-out)
+        const planDays = Array.from({ length: 7 }, (_, d) => ({
+          weeklyPlanId: plan.id,
+          dayOfWeek: d,
+          walkScheduled: [0, 2, 4].includes(d),
+          eatOutScheduled: false,
+          lateDinnerScheduled: false,
+          dinnerLabel: "none" as const,
+          walkDuration: [0, 2, 4].includes(d) ? 20 : 0,
+          isStretchDay: false,
+          standingTap: false,
+        }));
+        await storage.createWeeklyPlanDays(planDays);
+
+        // Create daily logs with deterministic diet responses
+        // Weeks 1-3 (sugary): 6 "yes" + 1 "no" → yesRate 6/7 = 0.857 ≥ 0.762 → mastered
+        // Weeks 4-6 (portions): 6 "no_chance" + 1 "no" → noChanceRate 0.857 ≥ 0.762 → not_relevant
+        for (let d = 0; d < 7; d++) {
+          const logDate = new Date(startDate);
+          logDate.setDate(startDate.getDate() + d);
+          const dateStr = logDate.toISOString().split("T")[0];
+          let dietResponse: "yes" | "no" | "no_chance";
+          if (wi < 3) {
+            dietResponse = d === 6 ? "no" : "yes";
+          } else {
+            dietResponse = d === 6 ? "no" : "no_chance";
+          }
+          await storage.createDailyLog({
+            userId,
+            date: dateStr,
+            walkCompleted: [0, 2, 4].includes(d) ? true : null,
+            walkTired: false,
+            dietResponse,
+            dinnerSuccess: null,
+          });
+        }
+
+        // Advance currentWeek after each plan is created
+        await storage.updateProfile(userId, { currentWeek: weekNumber + 1 });
+      }
+
+      // Set mastery state: sugary mastered after week 3 reflection (portions still unevaluated)
+      await storage.updateProfile(userId, {
+        masteredStruggles: ["sugary_food_drink"],
+        currentWeek: 7,
+      });
+
+      // Set date + time override: Sunday 2026-03-22 at 22:00 (planning window open)
+      devDateOverrides.set(userId, week6Sunday);
+      devTimeOverrides.set(userId, 22);
+
+      res.json({
+        success: true,
+        message: "Repick scenario ready",
+        dateOverride: week6Sunday,
+        timeOverride: 22,
+        weeks: weekConfig.map((wc, i) => ({
+          week: i + 1,
+          struggle: wc.struggle,
+          dietOutcome: i < 3 ? "→ mastered" : "→ not_relevant (skipped)",
+        })),
+        expectedRepickTrigger: "yes — all mustGoThrough (sugary ✓ appeared + mastered, portions ✓ appeared) satisfied; eat_out never scheduled so exempted",
+      });
+    } catch (error: any) {
+      console.error("Error setting up repick scenario:", error);
+      res.status(500).json({ message: error.message || "Failed to set up scenario" });
+    }
+  });
+
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

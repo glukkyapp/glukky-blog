@@ -72,6 +72,22 @@ export default function DevPanel() {
     },
   });
 
+  const setupRepickMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/dev/setup-repick-scenario", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.clear();
+      localStorage.clear();
+      toast({ title: "Repick scenario ready", description: data.message });
+      window.location.href = "/weekly-planner";
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetAccountMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/dev/reset-account", {});
@@ -290,6 +306,23 @@ export default function DevPanel() {
               {generateHistoryMutation.isPending ? "Generating..." : `Generate ${historyWeeks} weeks`}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-amber-200 dark:border-amber-900">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Repick Scenario (6-week seed)</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Resets account then seeds 6 weeks: sugary×3 (mastered) + portions×3 (skipped). Sets date to Sun 2026-03-22 22:00 and opens the weekly planner.</p>
+          <Button
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => { if (confirm("Reset account and seed repick scenario?")) setupRepickMutation.mutate(); }}
+            disabled={setupRepickMutation.isPending}
+            data-testid="button-setup-repick-scenario"
+          >
+            {setupRepickMutation.isPending ? "Setting up..." : "Setup Repick Scenario"}
+          </Button>
         </CardContent>
       </Card>
 
