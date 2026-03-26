@@ -1254,7 +1254,7 @@ export default function WeeklyPlanner() {
                 disabled={cycle2SkipMutation.isPending}
                 data-testid="button-cycle2-skip-eat-out"
               >
-                {cycle2SkipMutation.isPending ? "…" : "Skip to next focus this week"}
+                {cycle2SkipMutation.isPending ? "…" : "I don't have any eat-out days this week"}
               </button>
             </div>
           )}
@@ -1309,7 +1309,7 @@ export default function WeeklyPlanner() {
                 disabled={cycle2SkipMutation.isPending}
                 data-testid="button-cycle2-skip-late-dinner"
               >
-                {cycle2SkipMutation.isPending ? "…" : "Skip to next focus this week"}
+                {cycle2SkipMutation.isPending ? "…" : "I don't have any late dinners this week"}
               </button>
             </div>
           )}
