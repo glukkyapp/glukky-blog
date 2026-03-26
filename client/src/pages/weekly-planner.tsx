@@ -1476,7 +1476,9 @@ export default function WeeklyPlanner() {
         return mastered1.includes(s) || hypMastered2.includes(s);
       };
       const untried2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && !hypTriedBefore2.includes(s));
-      const triedNotMastered2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && (skipped2.includes(s) || difficult2.includes(s)));
+      // Use hypTriedBefore2 (not raw skipped2/difficult2) so stale-profile compensation
+      // from the optimistic reflection transition is preserved in the client picker.
+      const triedNotMastered2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && hypTriedBefore2.includes(s));
       const fallback2 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2Mastered(s) && !hypTriedBefore2.includes(s)) || "sugary_food_drink";
       const effectiveStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
       return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
