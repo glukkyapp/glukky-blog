@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Info, Lightbulb } from "lucide-react";
+import { ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
-import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Switch to edamame or nuts";
@@ -86,35 +85,59 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
 interface DietTipRowProps {
   tipKey: string;
   tipLabel: string;
-  onInfo: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
+  t: (key: string, opts?: any) => string;
 }
 
-function DietTipRow({ tipKey, tipLabel, onInfo }: DietTipRowProps) {
+function DietTipRow({ tipKey, tipLabel, isOpen, onToggle, t }: DietTipRowProps) {
   const safeId = tipKey.replace(/[^a-z0-9]/gi, "-").toLowerCase();
+
+  let detailContent: React.ReactNode;
+  if (tipKey === PLATE_METHOD_TIP_KEY) {
+    detailContent = <PlateMethodDetail t={t} />;
+  } else if (tipKey === FOOD_SWITCH_TIP_KEY || tipKey === FOOD_SWITCH_TIP_KEY2) {
+    detailContent = <FoodSwitchDetail t={t} />;
+  } else {
+    const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
+    detailContent = (
+      <p className="text-sm text-muted-foreground">
+        {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
+      </p>
+    );
+  }
 
   return (
     <div
-      className="border border-border rounded-xl overflow-hidden bg-card"
+      className="border border-border rounded-lg overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-colors"
       data-testid={`row-diet-tip-${safeId}`}
+      onClick={onToggle}
     >
-      <div className="flex items-center justify-between gap-3 p-4">
+      <div className="flex items-center justify-between gap-3 p-3">
         <span className="text-sm font-medium">{tipLabel}</span>
-        <button
-          onClick={onInfo}
-          className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-          data-testid={`button-info-diet-tip-${safeId}`}
-          aria-label={tipLabel}
+        <div
+          className="ml-2 shrink-0 text-muted-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          data-testid={`chevron-diet-tip-${safeId}`}
         >
-          <Info className="w-4 h-4" />
-        </button>
+          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </div>
       </div>
+      {isOpen && (
+        <div className="px-3 pb-3" data-testid={`detail-diet-tip-${safeId}`}>
+          {detailContent}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function HealthInfo() {
   const { t } = useTranslation();
-  const sheet = useInfoSheet();
+  const [expandedTip, setExpandedTip] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<{ activeTips: string[] }>({
     queryKey: ["/api/health-info/diet-tips"],
@@ -122,22 +145,8 @@ export default function HealthInfo() {
 
   const activeTips = data?.activeTips ?? [];
 
-  function openTipSheet(tipKey: string, tipLabel: string) {
-    let body: React.ReactNode;
-    if (tipKey === PLATE_METHOD_TIP_KEY) {
-      body = <PlateMethodDetail t={t} />;
-    } else if (tipKey === FOOD_SWITCH_TIP_KEY || tipKey === FOOD_SWITCH_TIP_KEY2) {
-      body = <FoodSwitchDetail t={t} />;
-    } else {
-      const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
-      body = (
-        <p className="text-sm text-muted-foreground">
-          {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
-        </p>
-      );
-    }
-
-    sheet.openSheet({ title: tipLabel, body });
+  function handleToggle(tip: string) {
+    setExpandedTip(prev => (prev === tip ? null : tip));
   }
 
   return (
@@ -158,8 +167,8 @@ export default function HealthInfo() {
 
         {isLoading ? (
           <div className="animate-pulse space-y-3">
-            <div className="h-14 bg-muted rounded-xl" />
-            <div className="h-14 bg-muted rounded-xl" />
+            <div className="h-14 bg-muted rounded-lg" />
+            <div className="h-14 bg-muted rounded-lg" />
           </div>
         ) : activeTips.length === 0 ? (
           <p className="text-sm text-muted-foreground" data-testid="text-no-diet-advice">
@@ -175,15 +184,15 @@ export default function HealthInfo() {
                   key={tip}
                   tipKey={tip}
                   tipLabel={label}
-                  onInfo={() => openTipSheet(tip, label)}
+                  isOpen={expandedTip === tip}
+                  onToggle={() => handleToggle(tip)}
+                  t={t}
                 />
               );
             })}
           </div>
         )}
       </section>
-
-      <InfoSheet open={sheet.open} onClose={sheet.closeSheet} config={sheet.config} />
     </div>
   );
 }
