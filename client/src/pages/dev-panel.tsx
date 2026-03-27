@@ -88,6 +88,22 @@ export default function DevPanel() {
     },
   });
 
+  const setupCycle3Mutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/dev/setup-cycle3-scenario", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.clear();
+      localStorage.clear();
+      toast({ title: "Cycle 3 scenario ready", description: data.message });
+      window.location.href = "/plan";
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetAccountMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/dev/reset-account", {});
@@ -322,6 +338,23 @@ export default function DevPanel() {
             data-testid="button-setup-repick-scenario"
           >
             {setupRepickMutation.isPending ? "Setting up..." : "Setup Repick Scenario"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-purple-200 dark:border-purple-900">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-purple-700 dark:text-purple-400">Cycle 3 Scenario (12-week seed)</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Resets account then seeds 12 weeks across 2 cycles: sugary×3 (mastered) + eat_out×3 (skipped) in cycle 1; eat_out×3 (mastered) + portions×3 (skipped) in cycle 2. Lands at cycle 2→3 repick screen.</p>
+          <Button
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={() => { if (confirm("Reset account and seed cycle 3 scenario?")) setupCycle3Mutation.mutate(); }}
+            disabled={setupCycle3Mutation.isPending}
+            data-testid="button-setup-cycle3-scenario"
+          >
+            {setupCycle3Mutation.isPending ? "Setting up..." : "Setup Cycle 3 Scenario"}
           </Button>
         </CardContent>
       </Card>

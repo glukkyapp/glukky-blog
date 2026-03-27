@@ -1255,13 +1255,37 @@ export async function registerRoutes(
       const pastDietStruggles = [...new Set(pastPlans.map(p => p.dietStruggle).filter(Boolean))] as string[];
       const eatOutEver = await storage.hasAnyEatOutScheduled(userId);
 
-      const profileStruggles = (profile.struggles || []) as string[];
-      const masteredS = (profile.masteredStruggles || []) as string[];
-      const skippedS = (profile.skippedStruggles || []) as string[];
-      const difficultS = (profile.difficultStruggles || []) as string[];
-      const legacyTriedS = (profile.triedBeforeStruggles || []) as string[];
+      const currentCycle = (profile.currentStruggleCycle as number) || 1;
 
-      const resolvedDifficult = [...new Set([...difficultS, ...legacyTriedS.filter(s => !skippedS.includes(s))])];
+      let profileStruggles: string[];
+      let masteredS: string[];
+      let skippedS: string[];
+      let difficultS: string[];
+      let legacyTriedS: string[] = [];
+      let cycle1MasteredS: string[] = [];
+
+      if (currentCycle === 3) {
+        profileStruggles = (profile.struggles3 || []) as string[];
+        masteredS = (profile.masteredStruggles3 || []) as string[];
+        skippedS = (profile.skippedStruggles3 || []) as string[];
+        difficultS = (profile.difficultStruggles3 || []) as string[];
+      } else if (currentCycle === 2) {
+        profileStruggles = (profile.struggles2 || []) as string[];
+        masteredS = (profile.masteredStruggles2 || []) as string[];
+        skippedS = (profile.skippedStruggles2 || []) as string[];
+        difficultS = (profile.difficultStruggles2 || []) as string[];
+        cycle1MasteredS = (profile.masteredStruggles || []) as string[];
+      } else {
+        profileStruggles = (profile.struggles || []) as string[];
+        masteredS = (profile.masteredStruggles || []) as string[];
+        skippedS = (profile.skippedStruggles || []) as string[];
+        difficultS = (profile.difficultStruggles || []) as string[];
+        legacyTriedS = (profile.triedBeforeStruggles || []) as string[];
+      }
+
+      const resolvedDifficult = currentCycle === 1
+        ? [...new Set([...difficultS, ...legacyTriedS.filter(s => !skippedS.includes(s))])]
+        : [...difficultS];
 
       const visibleStruggles = new Set([
         ...profileStruggles,
@@ -1273,7 +1297,8 @@ export async function registerRoutes(
       const inProgressStruggles = STRUGGLE_PRIORITY.filter(s =>
         pastDietStruggles.includes(s) &&
         s !== activeStruggle &&
-        !terminalSet.has(s)
+        !terminalSet.has(s) &&
+        visibleStruggles.has(s)
       );
 
       const everActive = new Set([...pastDietStruggles, ...(activeStruggle ? [activeStruggle] : [])]);
@@ -1284,8 +1309,11 @@ export async function registerRoutes(
         !terminalSet.has(s)
       );
 
+      // Cycle 2 only: hide cycle 1 mastered items entirely (not inactive, not shown anywhere).
+      // Cycle 3: no filtering — inactive is everything not in struggles3.
       const inactiveStruggles = STRUGGLE_PRIORITY.filter(s =>
-        !visibleStruggles.has(s)
+        !visibleStruggles.has(s) &&
+        (currentCycle !== 2 || !cycle1MasteredS.includes(s))
       );
 
       let dinnerQueueStatus: string | null = null;
@@ -1729,6 +1757,130 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error setting up repick scenario:", error);
       res.status(500).json({ message: error.message || "Failed to set up scenario" });
+    }
+  });
+
+  app.post("/api/dev/setup-cycle3-scenario", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Reset everything
+      await storage.resetUser(userId);
+
+      // Anchor: week 12 ends Sunday 2026-03-22, starts Monday 2026-03-16
+      const week12Sunday = "2026-03-22";
+      const week12Start = new Date("2026-03-16");
+      const totalWeeks = 12;
+
+      await storage.updateProfile(userId, {
+        walksPerWeek: 3,
+        walkDuration: 20,
+        dinnerTime: "before_9pm",
+        sleepPattern: "regular_10_6",
+        eatingOutFrequency: "1_2",
+        struggles: ["sugary_food_drink", "eat_out", "portions"],
+        hasLateDinner: false,
+        onboardingComplete: true,
+        currentWeek: 1,
+      } as any);
+
+      // Weeks 1-3:  sugary (mastered)     — cycle 1
+      // Weeks 4-6:  eat_out (no_chance)   — cycle 1, skipped
+      // Weeks 7-9:  eat_out (mastered)    — cycle 2
+      // Weeks 10-12: portions (no_chance) — cycle 2, skipped
+      const weekConfig = [
+        { struggle: "sugary_food_drink",  outcome: "yes" as const },
+        { struggle: "sugary_food_drink",  outcome: "yes" as const },
+        { struggle: "sugary_food_drink",  outcome: "yes" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "yes" as const },
+        { struggle: "eat_out",            outcome: "yes" as const },
+        { struggle: "eat_out",            outcome: "yes" as const },
+        { struggle: "portions",           outcome: "no_chance" as const },
+        { struggle: "portions",           outcome: "no_chance" as const },
+        { struggle: "portions",           outcome: "no_chance" as const },
+      ];
+
+      for (let wi = 0; wi < totalWeeks; wi++) {
+        const weekNumber = wi + 1;
+        const startDate = new Date(week12Start);
+        startDate.setDate(week12Start.getDate() - (totalWeeks - 1 - wi) * 7);
+        const startDateStr = startDate.toISOString().split("T")[0];
+        const { struggle, outcome } = weekConfig[wi];
+
+        const plan = await storage.createWeeklyPlan({
+          userId,
+          weekNumber,
+          startDate: startDateStr,
+          walkFrequencyGoal: 3,
+          walkDurationGoal: 20,
+          dietStruggle: struggle,
+          dietTip: (DIET_TIP_LADDERS[struggle] || [])[0] || null,
+          isDinnerFocus: false,
+          firstActiveDay: 0,
+          isStretchWeek: false,
+        });
+
+        const planDays = Array.from({ length: 7 }, (_, d) => ({
+          weeklyPlanId: plan.id,
+          dayOfWeek: d,
+          walkScheduled: [0, 2, 4].includes(d),
+          eatOutScheduled: false,
+          lateDinnerScheduled: false,
+          dinnerLabel: "none" as const,
+          walkDuration: [0, 2, 4].includes(d) ? 20 : 0,
+          isStretchDay: false,
+          standingTap: false,
+        }));
+        await storage.createWeeklyPlanDays(planDays);
+
+        for (let d = 0; d < 7; d++) {
+          const logDate = new Date(startDate);
+          logDate.setDate(startDate.getDate() + d);
+          const dateStr = logDate.toISOString().split("T")[0];
+          // Last day of each week: "no" so it isn't a perfect streak
+          const dietResponse: "yes" | "no" | "no_chance" = d === 6 ? "no" : outcome;
+          await storage.createDailyLog({
+            userId,
+            date: dateStr,
+            walkCompleted: [0, 2, 4].includes(d) ? true : null,
+            walkTired: false,
+            dietResponse,
+            dinnerSuccess: null,
+          });
+        }
+
+        await storage.updateProfile(userId, { currentWeek: weekNumber + 1 });
+      }
+
+      // Set final profile state reflecting two completed cycles and entering cycle 3 repick
+      await storage.updateProfile(userId, {
+        masteredStruggles: ["sugary_food_drink"],
+        skippedStruggles: ["eat_out"],
+        struggles2: ["eat_out", "portions", "oily_fried_food"],
+        masteredStruggles2: ["eat_out"],
+        skippedStruggles2: ["portions"],
+        currentStruggleCycle: 3,
+        repickPending: true,
+        cycle2Active: true,
+        cycle3Active: false,
+        currentWeek: 13,
+      } as any);
+
+      devDateOverrides.set(userId, week12Sunday);
+      devTimeOverrides.set(userId, 22);
+
+      res.json({
+        success: true,
+        message: "Cycle 3 scenario ready — 12 weeks seeded, at cycle 2→3 repick",
+        dateOverride: week12Sunday,
+        timeOverride: 22,
+      });
+    } catch (error: any) {
+      console.error("Error setting up cycle 3 scenario:", error);
+      res.status(500).json({ message: error.message || "Failed to set up cycle 3 scenario" });
     }
   });
 
