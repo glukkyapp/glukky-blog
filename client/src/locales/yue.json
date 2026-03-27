@@ -483,7 +483,12 @@
     "plan_set_sunday": "今週做得好！你已回顧報告——下週計劃已準備好！",
     "plan_set_other": "你嘅計劃聽日開始。星期日晚上10點返嚟睇每週報告。",
     "duration_min_short": "{{duration}}分",
-    "got_it": "好"
+    "got_it": "好",
+    "this_weeks_focus": "今週重點",
+    "eat_out_focus_reminder": "出外食飯／外賣係你今週嘅重點——至少安排一日繼續，或者跳過去另一個重點。",
+    "eat_out_focus_skip": "我今週冇出外食飯嘅日子",
+    "late_dinner_focus_reminder": "晚餐偏遲係你今週嘅重點——至少安排一日晚餐偏遲，或者跳過去另一個重點。",
+    "late_dinner_focus_skip": "我今週冇晚餐偏遲嘅日子"
   },
   "profile": {
     "title": "你嘅個人資料",

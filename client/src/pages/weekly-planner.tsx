@@ -283,7 +283,7 @@ export default function WeeklyPlanner() {
       // Release the gate so the user is not trapped even if the swap was a no-op
       // (e.g. focus is the last item in struggles2 and cannot move forward).
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
-      // Signal that we need to navigate to dietReview once steps recomputes.
+      // Signal that we need to navigate to the correct next step once steps recomputes.
       setPendingSkipNavigation(true);
     },
     onError: (error: Error) => {
@@ -296,18 +296,26 @@ export default function WeeklyPlanner() {
     setSelectedTip(null);
   }, [effectiveStruggleForReset]);
 
-  // Bug 5 fix: after cycle2SkipMutation, navigate to dietReview once steps recomputes.
+  // Bug 5 fix: after cycle2SkipMutation, navigate to the correct step once steps recomputes.
   // We defer via a flag so that isDinnerFocus (and thus steps) updates first when
   // the profile cache changes (e.g. late_dinner → other struggle removes dinnerFocusReview).
   // No cleanup: clear only on successful navigation to avoid cancelling deferred transitions.
   useEffect(() => {
     if (!pendingSkipNavigation) return;
-    const idx = steps.indexOf("dietReview");
+    let targetStep: string;
+    if (isDinnerFocus) {
+      targetStep = "lateDinnerDays";
+    } else if (cycle2Focus === "eat_out") {
+      targetStep = "eatOutDays";
+    } else {
+      targetStep = "dietReview";
+    }
+    const idx = steps.indexOf(targetStep);
     if (idx !== -1) {
       setStepIndex(idx);
       setPendingSkipNavigation(false);
     }
-  }, [pendingSkipNavigation, steps]);
+  }, [pendingSkipNavigation, steps, isDinnerFocus, cycle2Focus]);
 
   useEffect(() => {
     if (initialized) return;
@@ -1265,19 +1273,21 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: eatOutDays.length })}</p>
-          {isEatOutFocus && eatOutDays.length === 0 && (
+          {isEatOutFocus && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
               <p className="text-sm text-amber-800 dark:text-amber-300">
-                Eat Out is your focus this week — schedule at least one day to continue, or skip to another focus.
+                {t("planner.eat_out_focus_reminder")}
               </p>
-              <button
-                className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                onClick={() => cycle2SkipMutation.mutate("eat_out")}
-                disabled={cycle2SkipMutation.isPending}
-                data-testid="button-cycle2-skip-eat-out"
-              >
-                {cycle2SkipMutation.isPending ? "…" : "I don't have any eat-out days this week"}
-              </button>
+              {eatOutDays.length === 0 && (
+                <button
+                  className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
+                  onClick={() => cycle2SkipMutation.mutate("eat_out")}
+                  disabled={cycle2SkipMutation.isPending}
+                  data-testid="button-cycle2-skip-eat-out"
+                >
+                  {cycle2SkipMutation.isPending ? "…" : t("planner.eat_out_focus_skip")}
+                </button>
+              )}
             </div>
           )}
         </CardContent>
@@ -1320,19 +1330,21 @@ export default function WeeklyPlanner() {
             })}
           </div>
           <p className="text-center text-sm text-muted-foreground">{t("planner.days_selected", { count: lateDinnerDays.length })}</p>
-          {isDinnerFocusCycle2 && lateDinnerDays.length === 0 && (
+          {isDinnerFocusCycle2 && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
               <p className="text-sm text-amber-800 dark:text-amber-300">
-                Late Dinner is your focus this week — schedule at least one late dinner day, or skip to another focus.
+                {t("planner.late_dinner_focus_reminder")}
               </p>
-              <button
-                className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                onClick={() => cycle2SkipMutation.mutate("late_dinner")}
-                disabled={cycle2SkipMutation.isPending}
-                data-testid="button-cycle2-skip-late-dinner"
-              >
-                {cycle2SkipMutation.isPending ? "…" : "I don't have any late dinners this week"}
-              </button>
+              {lateDinnerDays.length === 0 && (
+                <button
+                  className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
+                  onClick={() => cycle2SkipMutation.mutate("late_dinner")}
+                  disabled={cycle2SkipMutation.isPending}
+                  data-testid="button-cycle2-skip-late-dinner"
+                >
+                  {cycle2SkipMutation.isPending ? "…" : t("planner.late_dinner_focus_skip")}
+                </button>
+              )}
             </div>
           )}
         </CardContent>

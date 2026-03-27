@@ -478,7 +478,12 @@
     "week_plan_set": "Week {{week}} plan is set!",
     "plan_set_sunday": "Great work this week! You've already reviewed your report — your next plan is ready to go!",
     "plan_set_other": "Your plan starts tomorrow. Check back on Sunday at 10pm for your weekly report.",
-    "duration_min_short": "{{duration}}m"
+    "duration_min_short": "{{duration}}m",
+    "this_weeks_focus": "This week's focus",
+    "eat_out_focus_reminder": "Eating Out / Takeaway is your focus this week — schedule at least one day to continue, or skip to another focus.",
+    "eat_out_focus_skip": "I don't have any eat-out days this week",
+    "late_dinner_focus_reminder": "Late Dinner is your focus this week — schedule at least one late dinner day, or skip to another focus.",
+    "late_dinner_focus_skip": "I don't have any late dinners this week"
   },
   "profile": {
     "title": "Your Profile",
