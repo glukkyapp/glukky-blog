@@ -931,6 +931,45 @@ export function getFirstWeekPlan(profile: {
   };
 }
 
+export async function checkCycle3RepickCondition(userId: string): Promise<{
+  conditionMet: boolean;
+}> {
+  const profile = await storage.getProfile(userId);
+  if (!profile) return { conditionMet: false };
+
+  const struggles2 = (profile.struggles2 || []) as string[];
+  if (struggles2.length === 0) return { conditionMet: false };
+
+  const allPlans = await storage.getAllWeeklyPlans(userId);
+
+  const appearedSet = new Set<string>();
+  for (const plan of allPlans) {
+    if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
+  }
+
+  const eatOutPickedInList = struggles2.includes("eat_out");
+  const eatOutEverScheduled = eatOutPickedInList ? await storage.hasAnyEatOutScheduled(userId) : false;
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverScheduled;
+
+  const lateDinnerPickedInList = struggles2.includes("late_dinner");
+  const lateDinnerEverScheduled = lateDinnerPickedInList ? await storage.hasAnyLateDinnerScheduled(userId) : false;
+  const lateDinnerPickedButNeverScheduled = lateDinnerPickedInList && !lateDinnerEverScheduled;
+
+  const mastered2 = (profile.masteredStruggles2 || []) as string[];
+
+  const mustGoThrough = struggles2.filter(s => {
+    if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
+    if (s === "late_dinner" && lateDinnerPickedButNeverScheduled) return false;
+    return true;
+  });
+
+  if (mustGoThrough.length === 0) return { conditionMet: true };
+
+  const conditionMet = mustGoThrough.every(s => appearedSet.has(s) || mastered2.includes(s));
+
+  return { conditionMet };
+}
+
 export async function checkRepickCondition(userId: string): Promise<{
   conditionMet: boolean;
   eatOutPickedButNeverScheduled: boolean;

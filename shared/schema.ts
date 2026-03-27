@@ -51,6 +51,11 @@ export const userProfiles = pgTable("user_profiles", {
   skippedStruggles2: text("skipped_struggles2").array().notNull().default(sql`'{}'::text[]`),
   difficultStruggles2: text("difficult_struggles2").array().notNull().default(sql`'{}'::text[]`),
   cycle2Active: boolean("cycle2_active"),
+  struggles3: text("struggles3").array().notNull().default(sql`'{}'::text[]`),
+  masteredStruggles3: text("mastered_struggles3").array().notNull().default(sql`'{}'::text[]`),
+  skippedStruggles3: text("skipped_struggles3").array().notNull().default(sql`'{}'::text[]`),
+  difficultStruggles3: text("difficult_struggles3").array().notNull().default(sql`'{}'::text[]`),
+  cycle3Active: boolean("cycle3_active"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

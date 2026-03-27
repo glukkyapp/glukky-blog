@@ -309,6 +309,8 @@
     "repick_group_skipped": "Skipped",
     "repick_group_upcoming": "Upcoming",
     "repick_group_inactive": "Inactive",
+    "repick3_group_mastered": "Mastered in Earlier Cycles",
+    "repick3_group_all_else": "All Other Focuses",
     "transition_title": "Let's do next week's planning!",
     "transition_desc": "Based on last week, let's set up your goals for the coming week.",
     "walk_days_title": "Which days work best for a walk?",

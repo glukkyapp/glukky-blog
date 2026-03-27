@@ -313,6 +313,8 @@
     "repick_group_skipped": "已跳過",
     "repick_group_upcoming": "待嘗試",
     "repick_group_inactive": "未試過",
+    "repick3_group_mastered": "已掌握的目標",
+    "repick3_group_all_else": "所有其他目標",
     "transition_title": "來規劃下週吧！",
     "transition_desc": "根據上週的情況，來設定下週的目標。",
     "walk_days_title": "哪幾天適合散步？",

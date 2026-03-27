@@ -8,7 +8,7 @@ import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData,
   processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
-  getWeekStartDate, evaluateDietStruggle, checkRepickCondition,
+  getWeekStartDate, evaluateDietStruggle, checkRepickCondition, checkCycle3RepickCondition,
 } from "./engine";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_PRIORITY, type InsertUserProfile } from "@shared/schema";
 import {
@@ -193,6 +193,34 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/profile/repick3", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if ((profile.currentStruggleCycle as number) !== 3) {
+        return res.status(400).json({ message: "repick3 is only allowed in cycle 3" });
+      }
+      const { struggles3 } = req.body;
+      if (!Array.isArray(struggles3) || struggles3.length === 0) {
+        return res.status(400).json({ message: "struggles3 must be a non-empty array" });
+      }
+      const filtered = (struggles3 as string[]).filter(s => typeof s === "string" && ((STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner"));
+      if (filtered.length === 0) {
+        return res.status(400).json({ message: "No valid struggles provided" });
+      }
+      const updated = await storage.updateProfile(userId, {
+        struggles3: filtered,
+        repickPending: false,
+      });
+      if (!updated) return res.status(404).json({ message: "Profile not found" });
+      res.json({ ok: true, struggles3: updated.struggles3, repickPending: updated.repickPending });
+    } catch (error: any) {
+      console.error("Error saving repick3:", error);
+      res.status(500).json({ message: error.message || "Failed to save repick3" });
+    }
+  });
+
   app.post("/api/profile/cycle2-skip", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -241,6 +269,56 @@ export async function registerRoutes(
       res.json({ struggles2: (updated?.struggles2 as string[]) || newStruggles2 });
     } catch (error: any) {
       console.error("Error in cycle2-skip:", error);
+      res.status(500).json({ message: error.message || "Failed to swap struggle" });
+    }
+  });
+
+  app.post("/api/profile/cycle3-skip", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { struggle } = req.body;
+      if (!struggle || typeof struggle !== "string") {
+        return res.status(400).json({ message: "struggle is required" });
+      }
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if ((profile.currentStruggleCycle as number) !== 3) {
+        return res.status(400).json({ message: "cycle3-skip is only allowed in cycle 3" });
+      }
+      const struggles3 = (profile.struggles3 as string[]) || [];
+      const mastered1Skip = (profile.masteredStruggles as string[]) || [];
+      const mastered2Skip = (profile.masteredStruggles2 as string[]) || [];
+      const mastered3Skip = (profile.masteredStruggles3 as string[]) || [];
+      const skipped3Skip = (profile.skippedStruggles3 as string[]) || [];
+      const difficult3Skip = (profile.difficultStruggles3 as string[]) || [];
+      const isLateDinnerMasteredSkip = profile.dinnerMastered === true || mastered3Skip.includes("late_dinner");
+      const isS3ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      const isS3MasteredSkip = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMasteredSkip;
+        return mastered3Skip.includes(s);
+      };
+      const isS3MasteredSkipFallback = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMasteredSkip;
+        return mastered1Skip.includes(s) || mastered2Skip.includes(s) || mastered3Skip.includes(s);
+      };
+      const untried3Skip = struggles3.filter(s => isS3ValidSkip(s) && !isS3MasteredSkip(s) && !skipped3Skip.includes(s) && !difficult3Skip.includes(s));
+      const triedNotMastered3Skip = struggles3.filter(s => isS3ValidSkip(s) && !isS3MasteredSkip(s) && (skipped3Skip.includes(s) || difficult3Skip.includes(s)));
+      const fallback3Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS3MasteredSkipFallback(s) && !skipped3Skip.includes(s) && !difficult3Skip.includes(s)) || "sugary_food_drink";
+      const currentFocus = [...untried3Skip, ...triedNotMastered3Skip][0] || fallback3Skip;
+      if (currentFocus !== struggle) {
+        return res.status(400).json({ message: "struggle is not the current cycle-3 focus" });
+      }
+
+      const idx = struggles3.indexOf(struggle);
+      if (idx === -1 || idx >= struggles3.length - 1) {
+        return res.json({ struggles3 });
+      }
+      const newStruggles3 = [...struggles3];
+      [newStruggles3[idx], newStruggles3[idx + 1]] = [newStruggles3[idx + 1], newStruggles3[idx]];
+      const updated = await storage.updateProfile(userId, { struggles3: newStruggles3 });
+      res.json({ struggles3: (updated?.struggles3 as string[]) || newStruggles3 });
+    } catch (error: any) {
+      console.error("Error in cycle3-skip:", error);
       res.status(500).json({ message: error.message || "Failed to swap struggle" });
     }
   });
@@ -457,7 +535,7 @@ export async function registerRoutes(
             }
             dietJustMovedOn = true;
           }
-        } else {
+        } else if (currentCycle === 2) {
           const mastered2 = (profileBeforeMastery?.masteredStruggles2 || []) as string[];
           const skipped2 = (profileBeforeMastery?.skippedStruggles2 || []) as string[];
           const difficult2 = (profileBeforeMastery?.difficultStruggles2 || []) as string[];
@@ -488,6 +566,37 @@ export async function registerRoutes(
             }
             dietJustMovedOn = true;
           }
+        } else if (currentCycle === 3) {
+          const mastered3 = (profileBeforeMastery?.masteredStruggles3 || []) as string[];
+          const skipped3 = (profileBeforeMastery?.skippedStruggles3 || []) as string[];
+          const difficult3 = (profileBeforeMastery?.difficultStruggles3 || []) as string[];
+          const cycle3Active = profileBeforeMastery?.cycle3Active;
+
+          if (dietEvaluation.type === "mastered") {
+            if (cycle3Active !== false && !mastered3.includes(currentStruggleForReflection)) {
+              await storage.updateProfile(userId, {
+                masteredStruggles3: [...mastered3, currentStruggleForReflection],
+                skippedStruggles3: skipped3.filter(s => s !== currentStruggleForReflection),
+                difficultStruggles3: difficult3.filter(s => s !== currentStruggleForReflection),
+              });
+              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch {}
+            }
+            dietJustGraduated = true;
+          } else if (dietEvaluation.type === "not_relevant") {
+            if (cycle3Active !== false && !skipped3.includes(currentStruggleForReflection)) {
+              await storage.updateProfile(userId, {
+                skippedStruggles3: [...skipped3, currentStruggleForReflection],
+              });
+            }
+            dietJustSkipped = true;
+          } else if (dietEvaluation.type === "moved_on") {
+            if (cycle3Active !== false && !difficult3.includes(currentStruggleForReflection)) {
+              await storage.updateProfile(userId, {
+                difficultStruggles3: [...difficult3, currentStruggleForReflection],
+              });
+            }
+            dietJustMovedOn = true;
+          }
         }
       }
 
@@ -504,6 +613,18 @@ export async function registerRoutes(
         }
       }
 
+      // When dinner graduates in cycle 3 and late_dinner is in struggles3, mark it mastered there too.
+      if (dinnerGraduationResult.dinnerOutcomeType === "mastered" && currentCycle === 3) {
+        const latestProfileForDinner = await storage.getProfile(userId);
+        const struggles3ForDinner = (latestProfileForDinner?.struggles3 as string[]) || [];
+        const mastered3ForDinner = (latestProfileForDinner?.masteredStruggles3 as string[]) || [];
+        if (struggles3ForDinner.includes("late_dinner") && !mastered3ForDinner.includes("late_dinner")) {
+          await storage.updateProfile(userId, {
+            masteredStruggles3: [...mastered3ForDinner, "late_dinner"],
+          });
+        }
+      }
+
       let repickPending = false;
       let eatOutPickedButNeverScheduled = false;
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
@@ -513,6 +634,14 @@ export async function registerRoutes(
           repickPending = true;
         }
         eatOutPickedButNeverScheduled = repickResult.eatOutPickedButNeverScheduled;
+      } else if (currentCycle === 2 && !(profileBeforeMastery?.repickPending)) {
+        const cycle3Result = await checkCycle3RepickCondition(userId);
+        if (cycle3Result.conditionMet) {
+          await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 3, cycle3Active: false });
+          repickPending = true;
+        } else {
+          repickPending = false;
+        }
       } else {
         repickPending = !!(profileBeforeMastery?.repickPending);
       }
@@ -668,7 +797,34 @@ export async function registerRoutes(
         let currentStruggle: string = "sugary_food_drink";
         let isDinnerFocusComputed = false;
 
-        if (planCycle === 2) {
+        if (planCycle === 3) {
+          if (!freshProfile?.cycle3Active) profileUpdate.cycle3Active = true;
+          const struggles3 = (freshProfile?.struggles3 || []) as string[];
+          const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
+          const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
+          const mastered3 = (freshProfile?.masteredStruggles3 || []) as string[];
+          const skipped3 = (freshProfile?.skippedStruggles3 || []) as string[];
+          const difficult3 = (freshProfile?.difficultStruggles3 || []) as string[];
+
+          const isLateDinnerMastered3 = freshProfile?.dinnerMastered === true || mastered3.includes("late_dinner");
+          const isS3Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
+          // Only check mastered3 for struggles3 items — mastered1/mastered2 must not block repicked cycle-3 struggles.
+          const isS3Mastered = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered3;
+            return mastered3.includes(s);
+          };
+          // For the global fallback, also exclude mastered1 + mastered2.
+          const isS3MasteredFallback = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered3;
+            return mastered1.includes(s) || mastered2.includes(s) || mastered3.includes(s);
+          };
+          const untried3 = struggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && !skipped3.includes(s) && !difficult3.includes(s));
+          const triedNotMastered3 = struggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && (skipped3.includes(s) || difficult3.includes(s)));
+          const fallback3 = STRUGGLE_PRIORITY.find(s => !isS3MasteredFallback(s) && !skipped3.includes(s) && !difficult3.includes(s)) || "sugary_food_drink";
+          currentStruggle = [...untried3, ...triedNotMastered3][0] || fallback3;
+
+          isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
+        } else if (planCycle === 2) {
           if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
           const struggles2 = (freshProfile?.struggles2 || []) as string[];
           const mastered1 = (freshProfile?.masteredStruggles || []) as string[];

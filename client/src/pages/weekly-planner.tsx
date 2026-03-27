@@ -151,6 +151,7 @@ export default function WeeklyPlanner() {
   const [stretchDays, setStretchDays] = useState<number[]>([]);
   const [stretchAccepted, setStretchAccepted] = useState(false);
   const [cycle2GateReleased, setCycle2GateReleased] = useState<Set<string>>(new Set());
+  const [cycle3GateReleased, setCycle3GateReleased] = useState<Set<string>>(new Set());
   const [pendingSkipNavigation, setPendingSkipNavigation] = useState(false);
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
@@ -162,6 +163,7 @@ export default function WeeklyPlanner() {
   const [graduationPopupOpen, setGraduationPopupOpen] = useState(false);
   const [graduationPopupShownThisSession, setGraduationPopupShownThisSession] = useState(false);
   const [selectedStruggles2, setSelectedStruggles2] = useState<string[]>([]);
+  const [selectedStruggles3, setSelectedStruggles3] = useState<string[]>([]);
   const [repickStepNeeded, setRepickStepNeeded] = useState(false);
   const [expandedTip, setExpandedTip] = useState<string | null>(null);
 
@@ -186,6 +188,15 @@ export default function WeeklyPlanner() {
     return getEffectiveStruggle().effectiveStruggle;
   }, [profile, reflection, eatOutDays]);
 
+  // cycle3Focus: the effective cycle-3 focus struggle (null when not in cycle 3)
+  const cycle3Focus = useMemo(() => {
+    const cycle = (profile?.currentStruggleCycle as number) || 1;
+    if (cycle !== 3) return null;
+    const struggles3 = (profile?.struggles3 as string[]) || [];
+    if (struggles3.length === 0) return null;
+    return getEffectiveStruggle().effectiveStruggle;
+  }, [profile, reflection, eatOutDays]);
+
   const isDinnerFocus = useMemo(() => {
     const effectiveDinnerMastered = reflection?.dinnerMastered ?? profile?.dinnerMastered;
     const effectiveDinnerExited = reflection?.dinnerExitType ?? profile?.dinnerExitType;
@@ -194,8 +205,11 @@ export default function WeeklyPlanner() {
     if (cycle === 2) {
       return cycle2Focus === "late_dinner";
     }
+    if (cycle === 3) {
+      return cycle3Focus === "late_dinner";
+    }
     return lateDinnerDays.length > 0;
-  }, [lateDinnerDays, profile, reflection, cycle2Focus]);
+  }, [lateDinnerDays, profile, reflection, cycle2Focus, cycle3Focus]);
 
   const noWalkDays = walkDays.length === 0;
 
@@ -273,6 +287,35 @@ export default function WeeklyPlanner() {
     },
   });
 
+  const repickMutation3 = useMutation({
+    mutationFn: async (struggles3: string[]) => {
+      const res = await apiRequest("POST", "/api/profile/repick3", { struggles3 });
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+      goNext();
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cycle3SkipMutation = useMutation({
+    mutationFn: async (struggle: string) => {
+      const res = await apiRequest("POST", "/api/profile/cycle3-skip", { struggle });
+      return { data: await res.json(), struggle };
+    },
+    onSuccess: ({ data, struggle }: { data: { struggles3: string[] }; struggle: string }) => {
+      queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles3: data.struggles3 } : old);
+      setCycle3GateReleased(prev => new Set([...prev, struggle]));
+      setPendingSkipNavigation(true);
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
+
   const cycle2SkipMutation = useMutation({
     mutationFn: async (struggle: string) => {
       const res = await apiRequest("POST", "/api/profile/cycle2-skip", { struggle });
@@ -296,7 +339,7 @@ export default function WeeklyPlanner() {
     setSelectedTip(null);
   }, [effectiveStruggleForReset]);
 
-  // Bug 5 fix: after cycle2SkipMutation, navigate to the correct step once steps recomputes.
+  // Bug 5 fix: after cycle2SkipMutation/cycle3SkipMutation, navigate to the correct step once steps recomputes.
   // We defer via a flag so that isDinnerFocus (and thus steps) updates first when
   // the profile cache changes (e.g. late_dinner → other struggle removes dinnerFocusReview).
   // No cleanup: clear only on successful navigation to avoid cancelling deferred transitions.
@@ -305,7 +348,7 @@ export default function WeeklyPlanner() {
     let targetStep: string;
     if (isDinnerFocus) {
       targetStep = "lateDinnerDays";
-    } else if (cycle2Focus === "eat_out") {
+    } else if (cycle2Focus === "eat_out" || cycle3Focus === "eat_out") {
       targetStep = "eatOutDays";
     } else {
       targetStep = "dietReview";
@@ -315,7 +358,7 @@ export default function WeeklyPlanner() {
       setStepIndex(idx);
       setPendingSkipNavigation(false);
     }
-  }, [pendingSkipNavigation, steps, isDinnerFocus, cycle2Focus]);
+  }, [pendingSkipNavigation, steps, isDinnerFocus, cycle2Focus, cycle3Focus]);
 
   useEffect(() => {
     if (initialized) return;
@@ -769,6 +812,126 @@ export default function WeeklyPlanner() {
   }
 
   function renderRepick() {
+    if (cycle === 3) {
+      const mastered1 = (profile?.masteredStruggles as string[]) || [];
+      const mastered2 = (profile?.masteredStruggles2 as string[]) || [];
+
+      const pool3 = [...(STRUGGLE_PRIORITY as readonly string[]), "late_dinner"];
+
+      const priorMastered = pool3.filter(s => mastered1.includes(s) || mastered2.includes(s));
+      const notPriorMastered = pool3.filter(s => !mastered1.includes(s) && !mastered2.includes(s));
+
+      const groups3 = [
+        { key: "mastered_prior", labelKey: "planner.repick3_group_mastered", items: priorMastered },
+        { key: "all_else", labelKey: "planner.repick3_group_all_else", items: notPriorMastered },
+      ].filter(g => g.items.length > 0);
+
+      const toggleStruggle3 = (s: string) => {
+        setSelectedStruggles3(prev =>
+          prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+        );
+      };
+
+      const moveUp3 = (index: number) => {
+        setSelectedStruggles3(prev => {
+          if (index === 0) return prev;
+          const next = [...prev];
+          [next[index - 1], next[index]] = [next[index], next[index - 1]];
+          return next;
+        });
+      };
+
+      const moveDown3 = (index: number) => {
+        setSelectedStruggles3(prev => {
+          if (index === prev.length - 1) return prev;
+          const next = [...prev];
+          [next[index], next[index + 1]] = [next[index + 1], next[index]];
+          return next;
+        });
+      };
+
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle data-testid="text-repick-title">{t("planner.repick_title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>
+
+            {selectedStruggles3.length > 0 && (
+              <div className="rounded-lg border bg-primary/5 p-3 space-y-2" data-testid="section-repick3-picks">
+                <p className="text-xs font-medium text-muted-foreground">{t("planner.repick_your_picks")}</p>
+                {selectedStruggles3.map((s, i) => (
+                  <div key={s} className="flex items-center gap-2" data-testid={`item-repick3-pick-${s}`}>
+                    <span className="text-xs font-bold text-primary w-4 text-center">{i + 1}</span>
+                    <span className="text-sm flex-1">{STRUGGLE_NAMES[s] || s}</span>
+                    <div className="flex gap-0.5">
+                      <button
+                        disabled={i === 0}
+                        onClick={() => moveUp3(i)}
+                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        data-testid={`button-repick3-up-${s}`}
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        disabled={i === selectedStruggles3.length - 1}
+                        onClick={() => moveDown3(i)}
+                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        data-testid={`button-repick3-down-${s}`}
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => toggleStruggle3(s)}
+                        className="p-1 text-muted-foreground hover:text-destructive"
+                        data-testid={`button-repick3-remove-${s}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {groups3.map(({ key, labelKey, items }) => (
+              <div key={key} className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t(labelKey)}</p>
+                {items.map(s => {
+                  const isSelected = selectedStruggles3.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleStruggle3(s)}
+                      className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                      data-testid={`button-repick3-struggle-${s}`}
+                    >
+                      <span className="text-sm">{STRUGGLE_NAMES[s] || s}</span>
+                      {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            <Button
+              className="w-full"
+              disabled={selectedStruggles3.length === 0 || repickMutation3.isPending}
+              onClick={() => repickMutation3.mutate(selectedStruggles3)}
+              data-testid="button-repick3-confirm"
+            >
+              {repickMutation3.isPending ? "…" : t("planner.repick_confirm")}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
     const struggles1 = (profile?.struggles as string[]) || [];
     const mastered1 = (profile?.masteredStruggles as string[]) || [];
     const appeared = (reflection?.appearedDietStruggles as string[]) || [];
@@ -936,11 +1099,11 @@ export default function WeeklyPlanner() {
             <p className="text-sm text-muted-foreground">
               {t("planner.plan_transition_desc")}
             </p>
-            {cycle2Focus && (
+            {(cycle2Focus || cycle3Focus) && (
               <div className="mt-2 bg-primary/5 rounded-lg px-4 py-3 w-full text-center">
                 <p className="text-xs text-muted-foreground">{t("planner.this_weeks_focus") || "This week's focus"}</p>
-                <p className="font-semibold text-primary" data-testid="text-cycle2-focus">
-                  {STRUGGLE_NAMES[cycle2Focus] || cycle2Focus}
+                <p className="font-semibold text-primary" data-testid="text-cycle-focus">
+                  {STRUGGLE_NAMES[cycle2Focus ?? cycle3Focus!] || (cycle2Focus ?? cycle3Focus)}
                 </p>
               </div>
             )}
@@ -1239,7 +1402,7 @@ export default function WeeklyPlanner() {
   }
 
   function renderEatOutDays() {
-    const isEatOutFocus = cycle2Focus === "eat_out";
+    const isEatOutFocus = cycle2Focus === "eat_out" || cycle3Focus === "eat_out";
     return (
       <Card>
         <CardHeader>
@@ -1281,11 +1444,11 @@ export default function WeeklyPlanner() {
               {eatOutDays.length === 0 && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle2SkipMutation.mutate("eat_out")}
-                  disabled={cycle2SkipMutation.isPending}
-                  data-testid="button-cycle2-skip-eat-out"
+                  onClick={() => cycle === 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out")}
+                  disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
+                  data-testid={cycle === 3 ? "button-cycle3-skip-eat-out" : "button-cycle2-skip-eat-out"}
                 >
-                  {cycle2SkipMutation.isPending ? "…" : t("planner.eat_out_focus_skip")}
+                  {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.eat_out_focus_skip")}
                 </button>
               )}
             </div>
@@ -1296,7 +1459,7 @@ export default function WeeklyPlanner() {
   }
 
   function renderLateDinnerDays() {
-    const isDinnerFocusCycle2 = cycle2Focus === "late_dinner";
+    const isDinnerFocusCycle2 = cycle2Focus === "late_dinner" || cycle3Focus === "late_dinner";
     return (
       <Card>
         <CardHeader>
@@ -1338,11 +1501,11 @@ export default function WeeklyPlanner() {
               {lateDinnerDays.length === 0 && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle2SkipMutation.mutate("late_dinner")}
-                  disabled={cycle2SkipMutation.isPending}
-                  data-testid="button-cycle2-skip-late-dinner"
+                  onClick={() => cycle === 3 ? cycle3SkipMutation.mutate("late_dinner") : cycle2SkipMutation.mutate("late_dinner")}
+                  disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
+                  data-testid={cycle === 3 ? "button-cycle3-skip-late-dinner" : "button-cycle2-skip-late-dinner"}
                 >
-                  {cycle2SkipMutation.isPending ? "…" : t("planner.late_dinner_focus_skip")}
+                  {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.late_dinner_focus_skip")}
                 </button>
               )}
             </div>
@@ -1526,6 +1689,44 @@ export default function WeeklyPlanner() {
       const fallback2 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredFallback(s) && !hypTriedBefore2.includes(s)) || "sugary_food_drink";
       const effectiveStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
       return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
+    }
+
+    if (cycle === 3) {
+      const struggles3 = (profile?.struggles3 as string[]) || [];
+      const mastered1 = (profile?.masteredStruggles as string[]) || [];
+      const mastered2 = (profile?.masteredStruggles2 as string[]) || [];
+      const mastered3 = (profile?.masteredStruggles3 as string[]) || [];
+      const skipped3 = (profile?.skippedStruggles3 as string[]) || [];
+      const difficult3 = (profile?.difficultStruggles3 as string[]) || [];
+
+      const isTransitionWithinCycle3 = isTransition && !!previousStruggle
+        && struggles3.includes(previousStruggle)
+        && profile?.cycle3Active === true;
+
+      const hypMastered3 = (isTransitionWithinCycle3 && serverEval?.type === "mastered" && previousStruggle)
+        ? [...mastered3, previousStruggle] : mastered3;
+      const hypSkipped3 = (isTransitionWithinCycle3 && serverEval?.type === "not_relevant" && previousStruggle)
+        ? [...skipped3, previousStruggle] : skipped3;
+      const hypDifficult3 = (isTransitionWithinCycle3 && serverEval?.type === "moved_on" && previousStruggle)
+        ? [...difficult3, previousStruggle] : difficult3;
+      const hypTriedBefore3 = [...new Set([...hypSkipped3, ...hypDifficult3])];
+
+      const activeStruggles3 = struggles3;
+      const effectiveDinnerMastered3 = !!(reflection?.dinnerMastered ?? profile?.dinnerMastered);
+      const isS3Valid = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      const isS3Mastered = (s: string) => {
+        if (s === "late_dinner") return effectiveDinnerMastered3 || hypMastered3.includes("late_dinner");
+        return hypMastered3.includes(s);
+      };
+      const isS3MasteredFallback = (s: string) => {
+        if (s === "late_dinner") return effectiveDinnerMastered3 || hypMastered3.includes("late_dinner");
+        return mastered1.includes(s) || mastered2.includes(s) || hypMastered3.includes(s);
+      };
+      const untried3 = activeStruggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && !hypTriedBefore3.includes(s));
+      const triedNotMastered3 = activeStruggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && hypTriedBefore3.includes(s));
+      const fallback3 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS3MasteredFallback(s) && !hypTriedBefore3.includes(s)) || "sugary_food_drink";
+      const effectiveStruggle = [...untried3, ...triedNotMastered3][0] || fallback3;
+      return { effectiveStruggle, isFallback: !activeStruggles3.includes(effectiveStruggle), isTransition, previousStruggle };
     }
 
     const struggles = (profile?.struggles as string[]) || [];
@@ -2113,7 +2314,9 @@ export default function WeeklyPlanner() {
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null) ||
               (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0 && !cycle2GateReleased.has("eat_out")) ||
-              (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner"))
+              (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner")) ||
+              (currentStepId === "eatOutDays" && cycle3Focus === "eat_out" && eatOutDays.length === 0 && !cycle3GateReleased.has("eat_out")) ||
+              (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner"))
             }
             data-testid="button-next"
           >
