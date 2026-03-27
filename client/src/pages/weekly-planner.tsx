@@ -1762,6 +1762,24 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
+          {standingTapDay !== null && (
+            <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.standing_tap_legend")}</div>
+              {DAY_NAMES.map((_, i) => {
+                const inactive = i < firstActiveDay;
+                return (
+                  <div key={i} className={`h-7 rounded flex items-center justify-center ${
+                    inactive ? "bg-muted/30" :
+                    standingTapDay === i ? "bg-amber-100 text-amber-700" : "bg-muted"
+                  }`}>
+                    {inactive ? <Minus className="w-3 h-3 text-muted-foreground/30" /> :
+                     standingTapDay === i ? <Timer className="w-3 h-3" /> : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex items-center gap-4 pt-1 text-[10px] text-muted-foreground" data-testid="preview-legend">
             <div className="flex items-center gap-1">
               {isStretchActive && acceptedEscalation !== true ? <Activity className="w-3 h-3" /> : <Footprints className="w-3 h-3" />}
@@ -1772,6 +1790,9 @@ export default function WeeklyPlanner() {
             )}
             {eatOutDays.length > 0 && (
               <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
+            )}
+            {standingTapDay !== null && (
+              <div className="flex items-center gap-1"><Timer className="w-3 h-3" /> {t("home.standing_tap_legend")}</div>
             )}
           </div>
 
