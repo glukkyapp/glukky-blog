@@ -23,9 +23,6 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
 function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
   if (!i18nKey) return "";
-  if (i18nKey === "diet_tip.food_switch") {
-    return t("health_info.food_switch_desc", { defaultValue: "" });
-  }
   return t(i18nKey + "_desc", { defaultValue: "" });
 }
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";

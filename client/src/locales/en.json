@@ -575,7 +575,8 @@
     "swap_sides_veggies_desc": "Typical sides — chips, rice, and bread — are high in starch, which breaks down rapidly into glucose. Non-starchy vegetables are low in carbohydrates and high in fibre, producing a much smaller blood sugar response.",
     "plate_method_desc": "The balance of nutrients on your plate affects how quickly glucose rises after eating. Fibre from vegetables and protein both slow digestion, while limiting the carb quarter caps the total glucose load.",
     "kitchen_closure_desc": "Snacking at night adds carbohydrates when your body's insulin response is naturally weaker, leading to higher overnight blood sugar. Stopping food intake after dinner gives your glucose levels time to return to baseline before sleep.",
-    "switch_edamame_nuts_desc": "Most snacks are high in refined carbs, which spike glucose quickly. Edamame and nuts are rich in protein, fibre, and healthy fats — nutrients that have minimal direct impact on blood glucose."
+    "switch_edamame_nuts_desc": "Most snacks are high in refined carbs, which spike glucose quickly. Edamame and nuts are rich in protein, fibre, and healthy fats — nutrients that have minimal direct impact on blood glucose.",
+    "food_switch_desc": "Replace part of your meal with these foods that have lower impact on glucose spike: Legumes & Pulses (kidney beans, lentils, chickpeas, split peas, soybeans, baked beans), Non-Starchy Vegetables (leafy greens, broccoli, tomatoes, raw carrots, green beans), Whole Grains & Cereals (rolled oats, barley, quinoa, buckwheat, stone-ground whole wheat bread)."
   },
   "info_card": {
     "got_it": "Got it",

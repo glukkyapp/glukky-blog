@@ -5,21 +5,20 @@ import { ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
-const FOOD_SWITCH_TIP_KEY = "Switch to edamame or nuts";
-const FOOD_SWITCH_TIP_KEY2 = "Food Switch";
+const FOOD_SWITCH_TIP_KEY = "Food Switch";
 
 const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
-  "Dilute juice 1:1 with water": "health_info.tip_detail_dilute_juice",
-  "Swap dessert for plain yogurt + berries": "health_info.tip_detail_swap_dessert",
-  "Steam your food first, then sear briefly": "health_info.tip_detail_steam_then_sear",
-  "Choose grilled over fried": "health_info.tip_detail_grilled_over_fried",
-  "Decouple (eat at home first, socialize out)": "health_info.tip_detail_decouple",
-  "Share main dishes": "health_info.tip_detail_share_mains",
-  "Swap sides for vegetables": "health_info.tip_detail_swap_sides_veggies",
+  "Dilute juice 1:1 with water": "diet_tip.dilute_juice_desc",
+  "Swap dessert for plain yogurt + berries": "diet_tip.swap_dessert_desc",
+  "Steam your food first, then sear briefly": "diet_tip.steam_then_sear_desc",
+  "Choose grilled over fried": "diet_tip.grilled_over_fried_desc",
+  "Decouple (eat at home first, socialize out)": "diet_tip.decouple_desc",
+  "Share main dishes": "diet_tip.share_mains_desc",
+  "Swap sides for vegetables": "diet_tip.swap_sides_veggies_desc",
   "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": null,
-  "Kitchen Closure after dinner": "health_info.tip_detail_kitchen_closure",
-  "Switch to edamame or nuts": null,
-  "Food Switch": "health_info.tip_detail_food_switch",
+  "Kitchen Closure after dinner": "diet_tip.kitchen_closure_desc",
+  "Switch to edamame or nuts": "diet_tip.switch_edamame_nuts_desc",
+  "Food Switch": null,
 };
 
 const FOOD_SWITCH_TABS = [
@@ -96,7 +95,7 @@ function DietTipRow({ tipKey, tipLabel, isOpen, onToggle, t }: DietTipRowProps) 
   let detailContent: React.ReactNode;
   if (tipKey === PLATE_METHOD_TIP_KEY) {
     detailContent = <PlateMethodDetail t={t} />;
-  } else if (tipKey === FOOD_SWITCH_TIP_KEY || tipKey === FOOD_SWITCH_TIP_KEY2) {
+  } else if (tipKey === FOOD_SWITCH_TIP_KEY) {
     detailContent = <FoodSwitchDetail t={t} />;
   } else {
     const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
