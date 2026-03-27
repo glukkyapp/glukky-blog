@@ -273,6 +273,18 @@ export default function WeeklyPlanner() {
     }
   }, [reflection?.repickPending]);
 
+  // When entering the cycle-3 repick step, pre-populate selectedStruggles3 from
+  // profile.struggles3 if the user had previously saved a partial selection.
+  useEffect(() => {
+    if (!reflection?.repickPending) return;
+    const profileCycle = (profile?.currentStruggleCycle as number) || 1;
+    if (profileCycle !== 3) return;
+    const saved = (profile?.struggles3 as string[]) || [];
+    if (saved.length > 0 && selectedStruggles3.length === 0) {
+      setSelectedStruggles3(saved);
+    }
+  }, [reflection?.repickPending, profile?.currentStruggleCycle, profile?.struggles3]);
+
   const repickMutation = useMutation({
     mutationFn: async (struggles2: string[]) => {
       const res = await apiRequest("POST", "/api/profile/repick", { struggles2 });
