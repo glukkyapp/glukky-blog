@@ -1309,12 +1309,16 @@ export async function registerRoutes(
         !terminalSet.has(s)
       );
 
-      // Cycle 2 only: hide cycle 1 mastered items entirely (not inactive, not shown anywhere).
-      // Cycle 3: no filtering — inactive is everything not in struggles3.
-      const inactiveStruggles = STRUGGLE_PRIORITY.filter(s =>
-        !visibleStruggles.has(s) &&
-        (currentCycle !== 2 || !cycle1MasteredS.includes(s))
-      );
+      // Inactive = strictly "not in current cycle's pool".
+      // Cycle 1: uses visibleStruggles (includes eatOutEver override).
+      // Cycle 2: uses profileStruggles (struggles2) directly; hides cycle 1 mastered items.
+      // Cycle 3: uses profileStruggles (struggles3) directly; no filtering.
+      const profileStrugglesSet = new Set(profileStruggles);
+      const inactiveStruggles = currentCycle === 3
+        ? STRUGGLE_PRIORITY.filter(s => !profileStrugglesSet.has(s))
+        : currentCycle === 2
+          ? STRUGGLE_PRIORITY.filter(s => !profileStrugglesSet.has(s) && !cycle1MasteredS.includes(s))
+          : STRUGGLE_PRIORITY.filter(s => !visibleStruggles.has(s));
 
       let dinnerQueueStatus: string | null = null;
       if (profile.hasLateDinner) {
@@ -1784,23 +1788,22 @@ export async function registerRoutes(
         currentWeek: 1,
       } as any);
 
-      // Weeks 1-3:  sugary (mastered)     — cycle 1
-      // Weeks 4-6:  eat_out (no_chance)   — cycle 1, skipped
-      // Weeks 7-9:  eat_out (mastered)    — cycle 2
-      // Weeks 10-12: portions (no_chance) — cycle 2, skipped
+      // Weeks 1-3:  sugary (yes→mastered)      — cycle 1
+      // Weeks 4-6:  portions (no_chance→skipped) — cycle 1
+      // Weeks 7-12: eat_out (no_chance→skipped)  — cycle 2
       const weekConfig = [
         { struggle: "sugary_food_drink",  outcome: "yes" as const },
         { struggle: "sugary_food_drink",  outcome: "yes" as const },
         { struggle: "sugary_food_drink",  outcome: "yes" as const },
-        { struggle: "eat_out",            outcome: "no_chance" as const },
-        { struggle: "eat_out",            outcome: "no_chance" as const },
-        { struggle: "eat_out",            outcome: "no_chance" as const },
-        { struggle: "eat_out",            outcome: "yes" as const },
-        { struggle: "eat_out",            outcome: "yes" as const },
-        { struggle: "eat_out",            outcome: "yes" as const },
         { struggle: "portions",           outcome: "no_chance" as const },
         { struggle: "portions",           outcome: "no_chance" as const },
         { struggle: "portions",           outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
+        { struggle: "eat_out",            outcome: "no_chance" as const },
       ];
 
       for (let wi = 0; wi < totalWeeks; wi++) {
@@ -1855,13 +1858,13 @@ export async function registerRoutes(
         await storage.updateProfile(userId, { currentWeek: weekNumber + 1 });
       }
 
-      // Set final profile state reflecting two completed cycles and entering cycle 3 repick
+      // Final profile: cycle 1 mastered sugary, skipped portions; cycle 2 focused on eat_out (skipped)
       await storage.updateProfile(userId, {
         masteredStruggles: ["sugary_food_drink"],
-        skippedStruggles: ["eat_out"],
-        struggles2: ["eat_out", "portions", "oily_fried_food"],
-        masteredStruggles2: ["eat_out"],
-        skippedStruggles2: ["portions"],
+        skippedStruggles: ["portions"],
+        struggles2: ["eat_out", "oily_fried_food", "snacks"],
+        masteredStruggles2: [],
+        skippedStruggles2: ["eat_out"],
         currentStruggleCycle: 3,
         repickPending: true,
         cycle2Active: true,

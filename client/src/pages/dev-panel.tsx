@@ -347,7 +347,7 @@ export default function DevPanel() {
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-purple-700 dark:text-purple-400">Cycle 3 Scenario (12-week seed)</p>
           </div>
-          <p className="text-xs text-muted-foreground">Resets account then seeds 12 weeks across 2 cycles: sugary×3 (mastered) + eat_out×3 (skipped) in cycle 1; eat_out×3 (mastered) + portions×3 (skipped) in cycle 2. Lands at cycle 2→3 repick screen.</p>
+          <p className="text-xs text-muted-foreground">Resets account then seeds 12 weeks across 2 cycles: sugary×3 (mastered) + portions×3 (skipped) in cycle 1; eat_out×6 (skipped via no_chance) in cycle 2. Lands at cycle 2→3 repick screen.</p>
           <Button
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
             onClick={() => { if (confirm("Reset account and seed cycle 3 scenario?")) setupCycle3Mutation.mutate(); }}
