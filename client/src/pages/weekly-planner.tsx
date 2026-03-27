@@ -297,6 +297,7 @@ export default function WeeklyPlanner() {
   // Bug 5 fix: after cycle2SkipMutation, navigate to dietReview once steps recomputes.
   // We defer via a flag so that isDinnerFocus (and thus steps) updates first when
   // the profile cache changes (e.g. late_dinner → other struggle removes dinnerFocusReview).
+  // No cleanup: clear only on successful navigation to avoid cancelling deferred transitions.
   useEffect(() => {
     if (!pendingSkipNavigation) return;
     const idx = steps.indexOf("dietReview");
@@ -304,7 +305,6 @@ export default function WeeklyPlanner() {
       setStepIndex(idx);
       setPendingSkipNavigation(false);
     }
-    return () => { setPendingSkipNavigation(false); };
   }, [pendingSkipNavigation, steps]);
 
   useEffect(() => {
