@@ -175,6 +175,8 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
   const tacticInfoSheet = useInfoSheet();
 
+  const cycle = (profile?.currentStruggleCycle as number) || 1;
+
   // cycle2Focus: the effective cycle-2 focus struggle (null when not in cycle 2)
   const cycle2Focus = useMemo(() => {
     const cycle = (profile?.currentStruggleCycle as number) || 1;
@@ -223,7 +225,7 @@ export default function WeeklyPlanner() {
   const currentStepId = steps[clampedStepIndex] || steps[0];
 
   useEffect(() => {
-    if (currentStepId === "dietTipSelection") {
+    if (cycle < 2 && currentStepId === "dietTipSelection") {
       cardDietFocus.trigger();
       const dietFocusSeen = !!localStorage.getItem("glukky_card_diet_focus_seen");
       if (dietFocusSeen) {
@@ -235,9 +237,9 @@ export default function WeeklyPlanner() {
         else if (effectiveStruggle === "eat_out") cardStruggleIntroEatOut.trigger();
       }
     }
-  }, [currentStepId]);
+  }, [currentStepId, cycle]);
   useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
-  useEffect(() => { if (negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep]);
+  useEffect(() => { if (cycle < 2 && negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep, cycle]);
 
   useEffect(() => {
     if (

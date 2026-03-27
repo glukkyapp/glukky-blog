@@ -147,10 +147,12 @@ export default function Home() {
   const calendarPlan = calendarData?.plan;
   const planFirstActiveDay = calendarPlan?.firstActiveDay ?? 0;
 
+  const cycle = (profile?.currentStruggleCycle as number) || 1;
+
   useEffect(() => { if (profile?.isStretchMode) cardStretchSwitch.trigger(); }, [profile?.isStretchMode]);
-  useEffect(() => { if (calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus]);
-  useEffect(() => { if (pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep]);
-  useEffect(() => { if (calendarPlan?.dietTip === "Food Switch") foodSwitchPopup.trigger(); }, [calendarPlan?.dietTip]);
+  useEffect(() => { if (cycle < 2 && calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus, cycle]);
+  useEffect(() => { if (cycle < 2 && pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep, cycle]);
+  useEffect(() => { if (cycle < 2 && calendarPlan?.dietTip === "Food Switch") foodSwitchPopup.trigger(); }, [calendarPlan?.dietTip, cycle]);
 
   const sundayCheckInDone = (() => {
     if (!isCatchUp) return false;
@@ -199,7 +201,7 @@ export default function Home() {
   const todayPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === checkInDayOfWeek);
   const todayLog = calendarData?.calendar?.find((d: any) => d.date === checkInDate);
 
-  useEffect(() => { if (todayPlan?.walkScheduled && effectiveHour >= 8) cardFirstWalkDay.trigger(); }, [todayPlan?.walkScheduled, effectiveHour]);
+  useEffect(() => { if (cycle < 2 && todayPlan?.walkScheduled && effectiveHour >= 8) cardFirstWalkDay.trigger(); }, [todayPlan?.walkScheduled, effectiveHour, cycle]);
   const tomorrowDow = (dayOfWeek + 1) % 7;
   const tomorrowPlan = calendarData?.calendar?.find((d: any) => d.dayOfWeek === tomorrowDow);
   const tomorrowInPlanWeek = planSundayStr ? todayStr < planSundayStr : false;
