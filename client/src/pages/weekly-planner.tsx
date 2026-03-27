@@ -304,6 +304,7 @@ export default function WeeklyPlanner() {
       setStepIndex(idx);
       setPendingSkipNavigation(false);
     }
+    return () => { setPendingSkipNavigation(false); };
   }, [pendingSkipNavigation, steps]);
 
   useEffect(() => {
