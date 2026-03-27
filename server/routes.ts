@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replit_integrations/auth";
@@ -118,7 +119,7 @@ export async function registerRoutes(
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage } = req.body;
+      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal } = req.body;
 
       let sortedStruggles = sortStruggles(struggles || []);
       if (sortedStruggles.length === 0) {
@@ -142,6 +143,8 @@ export async function registerRoutes(
         preferredLanguage: preferredLanguage || "en",
         restDay: null,
         currentWeek: 1,
+        name: name || null,
+        goal: goal || null,
       };
 
       let profile;
@@ -361,6 +364,28 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating health markers:", error);
       res.status(500).json({ message: "Failed to update health markers" });
+    }
+  });
+
+  app.patch("/api/profile/name-goal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const schema = z.object({
+        name: z.string().max(100).nullable().optional(),
+        goal: z.string().max(500).nullable().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      const { name, goal } = parsed.data;
+      const updateData: Partial<InsertUserProfile> = {};
+      if (name !== undefined) updateData.name = name || null;
+      if (goal !== undefined) updateData.goal = goal || null;
+      const profile = await storage.updateProfile(userId, updateData);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ name: profile.name, goal: profile.goal });
+    } catch (error) {
+      console.error("Error updating name/goal:", error);
+      res.status(500).json({ message: "Failed to update name/goal" });
     }
   });
 

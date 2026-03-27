@@ -138,7 +138,10 @@
     "diet_chance_day": "Did you get a chance to try this on {{day}}?",
     "duration_min_short": "{{duration}}m",
     "dinner_yes": "Yes",
-    "dinner_no": "No"
+    "dinner_no": "No",
+    "greeting_with_name": "Hi, {{name}} 👋",
+    "greeting_no_name": "Hi there 👋",
+    "goal_reminder": "Remember your goal — {{goal}}! Keep it up!"
   },
   "mitigation": {
     "fiber_starter_label": "Fiber Starter",
@@ -160,6 +163,12 @@
   },
   "onboarding": {
     "step_of": "Step {{step}} of {{total}}",
+    "name_title": "What's your name?",
+    "name_placeholder": "Enter your name",
+    "social_proof_title": "You're in good company",
+    "social_proof_message": "Join thousands improving their blood sugar with Glukky",
+    "why_title": "Why do you want to improve your blood sugar?",
+    "why_placeholder": "Type your reason...",
     "q1_title": "After meals, what do you usually do?",
     "q1_sit_rest": "Sit/rest",
     "q1_walk_10": "Walk about 10 min",
@@ -489,6 +498,10 @@
   },
   "profile": {
     "title": "Your Profile",
+    "your_name": "Your Name",
+    "your_goal": "Your Goal",
+    "tap_to_add_name": "Tap to add your name",
+    "tap_to_add_goal": "Tap to add your goal",
     "diabetes_profile": "Your Diabetes Profile",
     "post_meal_walks": "Post-meal walks:",
     "dinner_time": "Usual dinner time:",

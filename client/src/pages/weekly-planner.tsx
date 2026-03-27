@@ -13,7 +13,7 @@ import {
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
   Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X, Info,
 } from "lucide-react";
-import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY } from "@shared/schema";
+import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY, type UserProfile } from "@shared/schema";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -43,7 +43,7 @@ export default function WeeklyPlanner() {
     late_dinner: t("planner.late_dinner"),
   };
 
-  const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
+  const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const { data: currentPlan } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: reflection } = useQuery({ queryKey: ["/api/plan/reflection"], refetchOnWindowFocus: false });
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
@@ -2267,6 +2267,21 @@ export default function WeeklyPlanner() {
   return (
     <>
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+
+      <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
+        {profile?.name
+          ? t("home.greeting_with_name", { name: profile.name })
+          : t("home.greeting_no_name")}
+      </p>
+
+      {profile?.goal && (
+        <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
+          <p className="text-sm text-primary/80">
+            {t("home.goal_reminder", { goal: profile.goal })}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold" data-testid="text-planner-title">

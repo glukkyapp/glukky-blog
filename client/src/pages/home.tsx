@@ -10,7 +10,7 @@ import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
@@ -45,7 +45,7 @@ export default function Home() {
     none: "",
   };
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
-  const { data: profile } = useQuery({ queryKey: ["/api/profile"] });
+  const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
 
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
@@ -1315,6 +1315,20 @@ export default function Home() {
         <Target className="w-5 h-5 text-primary" />
         <h1 className="text-lg font-bold">{formatWeekday()}</h1>
       </div>
+
+      <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
+        {profile?.name
+          ? t("home.greeting_with_name", { name: profile.name })
+          : t("home.greeting_no_name")}
+      </p>
+
+      {profile?.goal && (
+        <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
+          <p className="text-sm text-primary/80">
+            {t("home.goal_reminder", { goal: profile.goal })}
+          </p>
+        </div>
+      )}
 
       {isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">

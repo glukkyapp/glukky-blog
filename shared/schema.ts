@@ -14,6 +14,8 @@ export const dietResponseEnum = pgEnum("diet_response", ["yes", "no", "no_chance
 export const userProfiles = pgTable("user_profiles", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: varchar("user_id").notNull().unique(),
+  name: text("name"),
+  goal: text("goal"),
   walksPerWeek: integer("walks_per_week").notNull().default(0),
   walkDuration: integer("walk_duration").notNull().default(10),
   dinnerTime: dinnerTimeEnum("dinner_time").notNull().default("before_9pm"),

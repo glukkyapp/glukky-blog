@@ -6,12 +6,13 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 9;
 
 export default function Onboarding() {
   const { t } = useTranslation();
@@ -21,6 +22,8 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
+  const [userName, setUserName] = useState("");
+  const [userGoal, setUserGoal] = useState("");
   const [walkOption, setWalkOption] = useState<string>("");
   const [dinnerTime, setDinnerTime] = useState<string>("");
   const [sleepPattern, setSleepPattern] = useState<string>("");
@@ -59,6 +62,8 @@ export default function Onboarding() {
         struggles,
         notificationEmail,
         preferredLanguage: i18n.language || "en",
+        name: userName.trim() || null,
+        goal: userGoal.trim() || null,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       setLocation("/plan");
@@ -80,10 +85,12 @@ export default function Onboarding() {
   };
 
   const isNextDisabled = () => {
-    if (step === 1) return !walkOption;
-    if (step === 2) return !dinnerTime;
-    if (step === 3) return !sleepPattern;
-    if (step === 4) return !eatingOutFrequency;
+    if (step === 1) return !userName.trim();
+    if (step === 3) return !userGoal.trim();
+    if (step === 4) return !walkOption;
+    if (step === 5) return !dinnerTime;
+    if (step === 6) return !sleepPattern;
+    if (step === 7) return !eatingOutFrequency;
     return false;
   };
 
@@ -129,6 +136,57 @@ export default function Onboarding() {
       </p>
 
       {step === 1 && (
+        <Card data-testid="card-step-name">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.name_title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Label htmlFor="user-name" className="sr-only">{t("onboarding.name_placeholder")}</Label>
+            <Input
+              id="user-name"
+              type="text"
+              placeholder={t("onboarding.name_placeholder")}
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              data-testid="input-name"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 2 && (
+        <Card data-testid="card-step-social-proof">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.social_proof_title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm" data-testid="text-social-proof">
+              {t("onboarding.social_proof_message")}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 3 && (
+        <Card data-testid="card-step-why">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.why_title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Label htmlFor="user-goal" className="sr-only">{t("onboarding.why_placeholder")}</Label>
+            <Textarea
+              id="user-goal"
+              placeholder={t("onboarding.why_placeholder")}
+              value={userGoal}
+              onChange={(e) => setUserGoal(e.target.value)}
+              className="min-h-[80px]"
+              data-testid="input-goal"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 4 && (
         <Card data-testid="card-step-1">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q1_title")}</CardTitle>
@@ -141,7 +199,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 2 && (
+      {step === 5 && (
         <Card data-testid="card-step-2">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q2_title")}</CardTitle>
@@ -153,7 +211,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 3 && (
+      {step === 6 && (
         <Card data-testid="card-step-3">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q3_title")}</CardTitle>
@@ -167,7 +225,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 4 && (
+      {step === 7 && (
         <Card data-testid="card-step-4">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q4_title")}</CardTitle>
@@ -181,7 +239,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 5 && (
+      {step === 8 && (
         <Card data-testid="card-step-5">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q5_title")}</CardTitle>
@@ -205,7 +263,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 6 && (
+      {step === 9 && (
         <Card data-testid="card-step-6">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q6_title")}</CardTitle>

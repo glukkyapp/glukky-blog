@@ -138,7 +138,10 @@
     "diet_chance_day": "你喺{{day}}有冇做到？",
     "duration_min_short": "{{duration}}分",
     "dinner_yes": "可以",
-    "dinner_no": "唔可以"
+    "dinner_no": "唔可以",
+    "greeting_with_name": "你好，{{name}} 👋",
+    "greeting_no_name": "你好 👋",
+    "goal_reminder": "記住你嘅目標 — {{goal}}！繼續加油！"
   },
   "mitigation": {
     "fiber_starter_label": "纖維行先",
@@ -160,6 +163,12 @@
   },
   "onboarding": {
     "step_of": "第{{step}}步，共{{total}}步",
+    "name_title": "你叫咩名？",
+    "name_placeholder": "輸入你的名字",
+    "social_proof_title": "你並唔係一個人",
+    "social_proof_message": "加入數千位用緊 Glukky 改善血糖嘅朋友",
+    "why_title": "透過改善血糖你想達到咩目標？",
+    "why_placeholder": "輸入你嘅原因...",
     "q1_title": "飯後你通常做咩？",
     "q1_sit_rest": "坐低/休息",
     "q1_walk_10": "散步約10分鐘",
@@ -494,6 +503,10 @@
   },
   "profile": {
     "title": "你嘅個人資料",
+    "your_name": "你嘅名字",
+    "your_goal": "你嘅目標",
+    "tap_to_add_name": "撳下新增名字",
+    "tap_to_add_goal": "撳下新增目標",
     "diabetes_profile": "你嘅糖尿病資料",
     "post_meal_walks": "飯後散步：",
     "dinner_time": "慣常晚飯時間：",
