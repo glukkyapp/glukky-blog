@@ -151,6 +151,7 @@ export default function WeeklyPlanner() {
   const [stretchDays, setStretchDays] = useState<number[]>([]);
   const [stretchAccepted, setStretchAccepted] = useState(false);
   const [cycle2GateReleased, setCycle2GateReleased] = useState<Set<string>>(new Set());
+  const [pendingSkipNavigation, setPendingSkipNavigation] = useState(false);
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
   const [standingTapDay, setStandingTapDay] = useState<number | null>(null);
@@ -280,6 +281,8 @@ export default function WeeklyPlanner() {
       // Release the gate so the user is not trapped even if the swap was a no-op
       // (e.g. focus is the last item in struggles2 and cannot move forward).
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
+      // Signal that we need to navigate to dietReview once steps recomputes.
+      setPendingSkipNavigation(true);
     },
     onError: (error: Error) => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -290,6 +293,18 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     setSelectedTip(null);
   }, [effectiveStruggleForReset]);
+
+  // Bug 5 fix: after cycle2SkipMutation, navigate to dietReview once steps recomputes.
+  // We defer via a flag so that isDinnerFocus (and thus steps) updates first when
+  // the profile cache changes (e.g. late_dinner → other struggle removes dinnerFocusReview).
+  useEffect(() => {
+    if (!pendingSkipNavigation) return;
+    const idx = steps.indexOf("dietReview");
+    if (idx !== -1) {
+      setStepIndex(idx);
+      setPendingSkipNavigation(false);
+    }
+  }, [pendingSkipNavigation, steps]);
 
   useEffect(() => {
     if (initialized) return;
@@ -1456,11 +1471,14 @@ export default function WeeklyPlanner() {
       const skipped2 = (profile?.skippedStruggles2 as string[]) || [];
       const difficult2 = (profile?.difficultStruggles2 as string[]) || [];
 
-      // Only apply the hypothetical transition to cycle-2 state when the previous
-      // struggle is actually a cycle-2 struggle (normal within-cycle-2 week transition).
-      // If the previous struggle is a cycle-1 relic (not in struggles2), the cycle-1
-      // evaluation must NOT pollute cycle-2 untried/triedNotMastered computation.
-      const isTransitionWithinCycle2 = isTransition && !!previousStruggle && struggles2.includes(previousStruggle);
+      // Only apply the hypothetical transition to cycle-2 state when:
+      // 1. The previous struggle is actually a cycle-2 struggle (in struggles2), AND
+      // 2. cycle2Active === true, confirming a prior cycle-2 plan exists.
+      // Without the cycle2Active guard, the last cycle-1 reflection would be mistakenly
+      // treated as a within-cycle-2 transition on the very first cycle-2 planning session.
+      const isTransitionWithinCycle2 = isTransition && !!previousStruggle
+        && struggles2.includes(previousStruggle)
+        && profile?.cycle2Active === true;
 
       const hypMastered2 = (isTransitionWithinCycle2 && serverEval?.type === "mastered" && previousStruggle)
         ? [...mastered2, previousStruggle] : mastered2;
@@ -1475,7 +1493,14 @@ export default function WeeklyPlanner() {
       const activeStruggles2 = struggles2;
       const effectiveDinnerMastered2 = !!(reflection?.dinnerMastered ?? profile?.dinnerMastered);
       const isS2Valid = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      // Bug 3 fix (client): only check hypMastered2 (not mastered1) for struggles2 items —
+      // cycle-1 mastery must not block an explicitly repicked cycle-2 struggle.
       const isS2Mastered = (s: string) => {
+        if (s === "late_dinner") return effectiveDinnerMastered2 || hypMastered2.includes("late_dinner");
+        return hypMastered2.includes(s);
+      };
+      // For the global fallback, also exclude mastered1 (correct: fallback picks outside struggles2).
+      const isS2MasteredFallback = (s: string) => {
         if (s === "late_dinner") return effectiveDinnerMastered2 || hypMastered2.includes("late_dinner");
         return mastered1.includes(s) || hypMastered2.includes(s);
       };
@@ -1483,7 +1508,7 @@ export default function WeeklyPlanner() {
       // Use hypTriedBefore2 (not raw skipped2/difficult2) so stale-profile compensation
       // from the optimistic reflection transition is preserved in the client picker.
       const triedNotMastered2 = activeStruggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && hypTriedBefore2.includes(s));
-      const fallback2 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2Mastered(s) && !hypTriedBefore2.includes(s)) || "sugary_food_drink";
+      const fallback2 = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredFallback(s) && !hypTriedBefore2.includes(s)) || "sugary_food_drink";
       const effectiveStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
       return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
     }
@@ -1516,14 +1541,12 @@ export default function WeeklyPlanner() {
   }
 
   function renderDietReview() {
-    const { effectiveStruggle, isFallback, isTransition, previousStruggle } = getEffectiveStruggle();
+    const { effectiveStruggle, isFallback, previousStruggle } = getEffectiveStruggle();
 
-    const hasReflection = !!reflection;
-
-    const serverEval = reflection?.dietEvaluation;
-    const evalType: "mastered" | "not_relevant" | "moved_on" | "in_cycle" = serverEval?.type || "in_cycle";
-    const nextStruggleLabel = isTransition ? (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle) : "";
-    const isTransitionType = evalType === "mastered" || evalType === "not_relevant" || evalType === "moved_on";
+    // Show "New focus:" when the struggle actually changes from last week.
+    // Show "This week's focus:" when the same struggle continues.
+    const isFocusChange = !!previousStruggle && previousStruggle !== effectiveStruggle;
+    const focusLabel = isFocusChange ? "New focus:" : "This week's focus:";
 
     return (
       <Card>
@@ -1539,25 +1562,14 @@ export default function WeeklyPlanner() {
           )}
 
           <div className="bg-primary/5 rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">{t("planner.current_struggle")}</p>
+            <p className="text-sm text-muted-foreground">{focusLabel}</p>
             <p className="font-semibold text-lg" data-testid="text-current-struggle">
-              {isTransition && previousStruggle ? (STRUGGLE_NAMES[previousStruggle] || previousStruggle) : (STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle)}
+              {STRUGGLE_NAMES[effectiveStruggle] || effectiveStruggle}
             </p>
             {isFirstWeek && firstActiveDay > 0 && (
               <p className="text-xs text-muted-foreground mt-1" data-testid="text-diet-mid-week-notice">{t("planner.diet_mid_week_notice")}</p>
             )}
           </div>
-
-          {hasReflection && isTransitionType && nextStruggleLabel && (
-            <div className="rounded-lg border p-4" data-testid="section-diet-next-struggle">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("planner.next_focus", { name: nextStruggleLabel })}</p>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     );

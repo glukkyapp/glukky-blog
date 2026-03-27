@@ -214,13 +214,18 @@ export async function registerRoutes(
       const difficult2Skip = (profile.difficultStruggles2 as string[]) || [];
       const isLateDinnerMasteredSkip = profile.dinnerMastered === true || mastered2Skip.includes("late_dinner");
       const isS2ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      // Bug 2 fix: only check mastered2 for struggles2 items — mastered1 must not block repicked struggles.
       const isS2MasteredSkip = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMasteredSkip;
+        return mastered2Skip.includes(s);
+      };
+      const isS2MasteredSkipFallback = (s: string) => {
         if (s === "late_dinner") return isLateDinnerMasteredSkip;
         return mastered1Skip.includes(s) || mastered2Skip.includes(s);
       };
       const untried2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s));
       const triedNotMastered2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && (skipped2Skip.includes(s) || difficult2Skip.includes(s)));
-      const fallback2Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredSkip(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s)) || "sugary_food_drink";
+      const fallback2Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredSkipFallback(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s)) || "sugary_food_drink";
       const currentFocus = [...untried2Skip, ...triedNotMastered2Skip][0] || fallback2Skip;
       if (currentFocus !== struggle) {
         return res.status(400).json({ message: "struggle is not the current cycle-2 focus" });
@@ -676,13 +681,21 @@ export async function registerRoutes(
           // Bug 3 fix: allow "late_dinner" through alongside STRUGGLE_PRIORITY items.
           const isLateDinnerMastered = freshProfile?.dinnerMastered === true || mastered2.includes("late_dinner");
           const isS2Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
+          // Bug 1 fix: only check mastered2 (not mastered1) for struggles2 items —
+          // cycle-1 mastery must not block an explicitly repicked cycle-2 struggle.
           const isS2Mastered = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered;
+            return mastered2.includes(s);
+          };
+          // For the global fallback (items outside struggles2), also exclude mastered1
+          // so we don't re-introduce things the user fully beat in cycle 1.
+          const isS2MasteredFallback = (s: string) => {
             if (s === "late_dinner") return isLateDinnerMastered;
             return mastered1.includes(s) || mastered2.includes(s);
           };
           const untried2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && !skipped2.includes(s) && !difficult2.includes(s));
           const triedNotMastered2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && (skipped2.includes(s) || difficult2.includes(s)));
-          const fallback2 = STRUGGLE_PRIORITY.find(s => !isS2Mastered(s) && !skipped2.includes(s) && !difficult2.includes(s)) || "sugary_food_drink";
+          const fallback2 = STRUGGLE_PRIORITY.find(s => !isS2MasteredFallback(s) && !skipped2.includes(s) && !difficult2.includes(s)) || "sugary_food_drink";
           currentStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
 
           // Bug 1 fix: set isDinnerFocus based on the picked struggle, not lateDinnerDays.
