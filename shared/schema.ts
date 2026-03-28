@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -141,7 +141,9 @@ export const cycleHistory = pgTable("cycle_history", {
   mastered: text("mastered").array().notNull().default(sql`'{}'::text[]`),
   movedOn: text("moved_on").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userCycleUniq: uniqueIndex("cycle_history_user_cycle_uniq").on(table.userId, table.cycleNumber),
+}));
 
 export const insertCycleHistorySchema = createInsertSchema(cycleHistory).omit({ id: true, createdAt: true });
 export type InsertCycleHistory = z.infer<typeof insertCycleHistorySchema>;

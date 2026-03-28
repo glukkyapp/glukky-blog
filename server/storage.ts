@@ -322,16 +322,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow> {
-    const [existing] = await db.select({ id: cycleHistory.id })
-      .from(cycleHistory)
+    const [created] = await db.insert(cycleHistory)
+      .values(entry)
+      .onConflictDoNothing()
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(cycleHistory)
       .where(and(eq(cycleHistory.userId, entry.userId), eq(cycleHistory.cycleNumber, entry.cycleNumber)))
       .limit(1);
-    if (existing) {
-      const [row] = await db.select().from(cycleHistory).where(eq(cycleHistory.id, existing.id));
-      return row;
-    }
-    const [created] = await db.insert(cycleHistory).values(entry).returning();
-    return created;
+    return existing;
   }
 
   async getCycleHistory(userId: string): Promise<CycleHistoryRow[]> {
