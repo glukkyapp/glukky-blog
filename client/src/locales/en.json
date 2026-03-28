@@ -295,6 +295,7 @@
     "mastered_badge": "Mastered!",
     "graduation_popup_heading": "Congratulations!",
     "graduation_popup_body": "You have graduated from {{name}}!",
+    "got_it": "Got it",
     "dinner_success_pct": "{{pct}}% dinner success",
     "dinner_early_report": "You moved dinner early {{count}}/{{total}} days",
     "dinner_tactic_report": "You followed dinner tactic {{count}}/{{total}} days",

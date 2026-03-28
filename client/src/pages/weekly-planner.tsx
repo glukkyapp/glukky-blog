@@ -2434,7 +2434,7 @@ export default function WeeklyPlanner() {
     <EatOutNonFocusPopup visible={eatOutNonFocusPopup.visible} onDismiss={eatOutNonFocusPopup.dismiss} />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated
-        ? t("planner.late_dinner")
+        ? t("planner.late_dinner_management")
         : (reflection?.dietStruggle ? (STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle) : "");
       return (
         <div
