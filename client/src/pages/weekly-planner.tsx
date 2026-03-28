@@ -149,6 +149,7 @@ export default function WeeklyPlanner() {
   const [stretchAccepted, setStretchAccepted] = useState(false);
   const [cycle2GateReleased, setCycle2GateReleased] = useState<Set<string>>(new Set());
   const [cycle3GateReleased, setCycle3GateReleased] = useState<Set<string>>(new Set());
+  const [repickSummaryDismissed, setRepickSummaryDismissed] = useState(false);
   const [pendingSkipNavigation, setPendingSkipNavigation] = useState(false);
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
   const [keepSameTip, setKeepSameTip] = useState<boolean | null>(null);
@@ -188,7 +189,7 @@ export default function WeeklyPlanner() {
   // cycle3Focus: the effective cycle-3 focus struggle (null when not in cycle 3)
   const cycle3Focus = useMemo(() => {
     const cycle = (profile?.currentStruggleCycle as number) || 1;
-    if (cycle !== 3) return null;
+    if (cycle < 3) return null;
     const struggles3 = (profile?.struggles3 as string[]) || [];
     if (struggles3.length === 0) return null;
     return getEffectiveStruggle().effectiveStruggle;
@@ -202,7 +203,7 @@ export default function WeeklyPlanner() {
     if (cycle === 2) {
       return cycle2Focus === "late_dinner";
     }
-    if (cycle === 3) {
+    if (cycle >= 3) {
       return cycle3Focus === "late_dinner";
     }
     return lateDinnerDays.length > 0;
@@ -275,7 +276,7 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     if (!reflection?.repickPending) return;
     const profileCycle = (profile?.currentStruggleCycle as number) || 1;
-    if (profileCycle !== 3) return;
+    if (profileCycle < 3) return;
     const saved = (profile?.struggles3 as string[]) || [];
     if (saved.length > 0 && selectedStruggles3.length === 0) {
       setSelectedStruggles3(saved);
@@ -807,7 +808,7 @@ export default function WeeklyPlanner() {
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-primary">{t("planner.repick_message")}</p>
+                  <p className="text-sm font-medium text-primary">{t("planner.repick_message", { cycle })}</p>
                   {reflection.eatOutPickedButNeverScheduled && (
                     <p className="text-xs text-muted-foreground">{t("planner.repick_eatout_note")}</p>
                   )}
@@ -821,9 +822,60 @@ export default function WeeklyPlanner() {
   }
 
   function renderRepick() {
-    if (cycle === 3) {
+    if (cycle >= 3) {
       const mastered1 = (profile?.masteredStruggles as string[]) || [];
       const mastered2 = (profile?.masteredStruggles2 as string[]) || [];
+      const mastered3 = (profile?.masteredStruggles3 as string[]) || [];
+      const skipped3 = (profile?.skippedStruggles3 as string[]) || [];
+      const difficult3 = (profile?.difficultStruggles3 as string[]) || [];
+      const movedOn3 = [...new Set([...skipped3, ...difficult3])];
+
+      // For cycle >= 4: show a summary of the just-completed cycle before the picker
+      if (cycle >= 4 && !repickSummaryDismissed) {
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle data-testid="text-cycle-complete-title">
+                {t("planner.cycle_complete_title", { cycle: cycle - 1 })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mastered3.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t("roadmap.journey_mastered")}
+                  </p>
+                  {mastered3.map(s => (
+                    <div key={s} className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                      <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                      <span className="text-sm">{STRUGGLE_NAMES[s] || s}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {movedOn3.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t("roadmap.journey_moved_on")}
+                  </p>
+                  {movedOn3.map(s => (
+                    <div key={s} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+                      <span className="text-sm">{STRUGGLE_NAMES[s] || s}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                className="w-full"
+                onClick={() => setRepickSummaryDismissed(true)}
+                data-testid="button-cycle-complete-cta"
+              >
+                {t("planner.cycle_complete_cta")}
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      }
 
       const pool3 = [...(STRUGGLE_PRIORITY as readonly string[]), "late_dinner"];
 
@@ -862,7 +914,7 @@ export default function WeeklyPlanner() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle data-testid="text-repick-title">{t("planner.repick_title")}</CardTitle>
+            <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>
@@ -1017,7 +1069,7 @@ export default function WeeklyPlanner() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle data-testid="text-repick-title">{t("planner.repick_title")}</CardTitle>
+          <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>
@@ -1453,9 +1505,9 @@ export default function WeeklyPlanner() {
               {eatOutDays.length === 0 && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle === 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out")}
+                  onClick={() => cycle >= 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out")}
                   disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
-                  data-testid={cycle === 3 ? "button-cycle3-skip-eat-out" : "button-cycle2-skip-eat-out"}
+                  data-testid={cycle >= 3 ? "button-cycle3-skip-eat-out" : "button-cycle2-skip-eat-out"}
                 >
                   {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.eat_out_focus_skip")}
                 </button>
@@ -1510,9 +1562,9 @@ export default function WeeklyPlanner() {
               {lateDinnerDays.length === 0 && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle === 3 ? cycle3SkipMutation.mutate("late_dinner") : cycle2SkipMutation.mutate("late_dinner")}
+                  onClick={() => cycle >= 3 ? cycle3SkipMutation.mutate("late_dinner") : cycle2SkipMutation.mutate("late_dinner")}
                   disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
-                  data-testid={cycle === 3 ? "button-cycle3-skip-late-dinner" : "button-cycle2-skip-late-dinner"}
+                  data-testid={cycle >= 3 ? "button-cycle3-skip-late-dinner" : "button-cycle2-skip-late-dinner"}
                 >
                   {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.late_dinner_focus_skip")}
                 </button>
@@ -1700,7 +1752,7 @@ export default function WeeklyPlanner() {
       return { effectiveStruggle, isFallback: !activeStruggles2.includes(effectiveStruggle), isTransition, previousStruggle };
     }
 
-    if (cycle === 3) {
+    if (cycle >= 3) {
       const struggles3 = (profile?.struggles3 as string[]) || [];
       const mastered1 = (profile?.masteredStruggles as string[]) || [];
       const mastered2 = (profile?.masteredStruggles2 as string[]) || [];

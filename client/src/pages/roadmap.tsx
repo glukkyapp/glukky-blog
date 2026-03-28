@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, AlertCircle, EyeOff, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, EyeOff, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -24,6 +24,14 @@ function translateDietTip(tip: string, t: (key: string, opts?: any) => string): 
   return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
 }
 
+interface CycleHistoryEntry {
+  id: number;
+  cycleNumber: number;
+  strugglesPicked: string[];
+  mastered: string[];
+  movedOn: string[];
+}
+
 interface RoadmapData {
   activeStruggle: string | null;
   inProgressStruggles: string[];
@@ -40,6 +48,8 @@ interface RoadmapData {
   dinnerSuccessAvg: number;
   dietTipCompletionCount: number;
   tipLadders: Record<string, string[]>;
+  currentStruggleCycle: number;
+  cycleHistory: CycleHistoryEntry[];
 }
 
 interface PiggyBankData {
@@ -307,7 +317,11 @@ export default function RoadmapPage() {
     dinnerSuccessAvg,
     dietTipCompletionCount,
     tipLadders,
+    currentStruggleCycle,
+    cycleHistory,
   } = data;
+
+  const movedOnDisplay = [...new Set([...skippedStruggles, ...difficultStruggles])];
 
   const STRUGGLE_LABELS: Record<string, string> = {
     sugary_food_drink: t("struggle.sugary_food_drink"),
@@ -324,13 +338,14 @@ export default function RoadmapPage() {
     dinnerQueueStatus === "upcoming" ? "upcoming" :
     null;
 
+  const movedOnHasDinner = dinnerCategoryKey === "skipped";
+
   const struggleCategories: { key: string; icon: LucideIcon; struggles: string[]; highlight?: boolean; hasDinner?: boolean }[] = [
     { key: "active", icon: TrendingUp, struggles: activeStruggle ? [activeStruggle] : [], highlight: true, hasDinner: dinnerCategoryKey === "active" },
     { key: "in_progress", icon: Clock, struggles: inProgressStruggles },
     { key: "mastered", icon: CheckCircle2, struggles: masteredStruggles, hasDinner: dinnerCategoryKey === "mastered" },
     { key: "upcoming", icon: Lock, struggles: upcomingStruggles, hasDinner: dinnerCategoryKey === "upcoming" },
-    { key: "skipped", icon: SkipForward, struggles: skippedStruggles, hasDinner: dinnerCategoryKey === "skipped" },
-    { key: "difficult", icon: AlertCircle, struggles: difficultStruggles },
+    { key: "moved_on", icon: SkipForward, struggles: movedOnDisplay, hasDinner: movedOnHasDinner },
     { key: "inactive", icon: EyeOff, struggles: inactiveStruggles },
   ];
 
@@ -412,9 +427,7 @@ export default function RoadmapPage() {
             ? "bg-primary text-primary-foreground font-medium"
             : key === "mastered"
             ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
-            : key === "difficult"
-            ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
-            : key === "skipped"
+            : key === "moved_on"
             ? "bg-muted/50 text-muted-foreground"
             : key === "inactive"
             ? "text-muted-foreground opacity-40"
@@ -453,6 +466,47 @@ export default function RoadmapPage() {
           );
         })}
       </div>
+
+      {cycleHistory && cycleHistory.length > 0 && (
+        <div className="pt-2 space-y-3" data-testid="section-journey">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            {t("roadmap.journey_title")}
+          </p>
+          {cycleHistory.map((entry) => (
+            <Card key={entry.id} data-testid={`card-journey-cycle-${entry.cycleNumber}`} className="border-border">
+              <CardContent className="pt-4 pb-3 space-y-2">
+                <p className="text-sm font-semibold">
+                  {t("roadmap.journey_cycle_n", { cycle: entry.cycleNumber })}
+                </p>
+                {entry.mastered.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_mastered")}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {entry.mastered.map(s => (
+                        <span key={s} className="text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded px-2 py-0.5 border border-green-200 dark:border-green-800">
+                          {STRUGGLE_LABELS[s] || s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {entry.movedOn.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_moved_on")}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {entry.movedOn.map(s => (
+                        <span key={s} className="text-xs bg-muted/50 text-muted-foreground rounded px-2 py-0.5 border border-border">
+                          {STRUGGLE_LABELS[s] || s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
         <DialogContent data-testid="modal-reward-setup">

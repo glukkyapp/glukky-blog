@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -130,6 +130,22 @@ export const piggyBankEvents = pgTable("piggy_bank_events", {
   eventDate: date("event_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const cycleHistory = pgTable("cycle_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  cycleNumber: integer("cycle_number").notNull(),
+  startWeek: integer("start_week"),
+  endWeek: integer("end_week"),
+  strugglesPicked: text("struggles_picked").array().notNull().default(sql`'{}'::text[]`),
+  mastered: text("mastered").array().notNull().default(sql`'{}'::text[]`),
+  movedOn: text("moved_on").array().notNull().default(sql`'{}'::text[]`),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCycleHistorySchema = createInsertSchema(cycleHistory).omit({ id: true, createdAt: true });
+export type InsertCycleHistory = z.infer<typeof insertCycleHistorySchema>;
+export type CycleHistoryRow = typeof cycleHistory.$inferSelect;
 
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true });

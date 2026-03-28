@@ -9,7 +9,7 @@ import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData,
   processDinnerGraduation, getDinnerGraduationData, checkBiWeeklyTriggers, getStretchProgression,
-  getWeekStartDate, evaluateDietStruggle, checkRepickCondition, checkCycle3RepickCondition,
+  getWeekStartDate, evaluateDietStruggle, checkRepickCondition, checkCycle3RepickCondition, checkCurrentCycleRepickCondition,
 } from "./engine";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_PRIORITY, type InsertUserProfile } from "@shared/schema";
 import {
@@ -201,8 +201,8 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
-      if ((profile.currentStruggleCycle as number) !== 3) {
-        return res.status(400).json({ message: "repick3 is only allowed in cycle 3" });
+      if ((profile.currentStruggleCycle as number) < 3) {
+        return res.status(400).json({ message: "repick3 is only allowed in cycle 3+" });
       }
       const { struggles3 } = req.body;
       if (!Array.isArray(struggles3) || struggles3.length === 0) {
@@ -214,6 +214,10 @@ export async function registerRoutes(
       }
       const updated = await storage.updateProfile(userId, {
         struggles3: filtered,
+        masteredStruggles3: [],
+        skippedStruggles3: [],
+        difficultStruggles3: [],
+        cycle3Active: null,
         repickPending: false,
       });
       if (!updated) return res.status(404).json({ message: "Profile not found" });
@@ -285,8 +289,8 @@ export async function registerRoutes(
       }
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
-      if ((profile.currentStruggleCycle as number) !== 3) {
-        return res.status(400).json({ message: "cycle3-skip is only allowed in cycle 3" });
+      if ((profile.currentStruggleCycle as number) < 3) {
+        return res.status(400).json({ message: "cycle3-skip is only allowed in cycle 3+" });
       }
       const struggles3 = (profile.struggles3 as string[]) || [];
       const mastered1Skip = (profile.masteredStruggles as string[]) || [];
@@ -591,7 +595,7 @@ export async function registerRoutes(
             }
             dietJustMovedOn = true;
           }
-        } else if (currentCycle === 3) {
+        } else if (currentCycle >= 3) {
           const mastered3 = (profileBeforeMastery?.masteredStruggles3 || []) as string[];
           const skipped3 = (profileBeforeMastery?.skippedStruggles3 || []) as string[];
           const difficult3 = (profileBeforeMastery?.difficultStruggles3 || []) as string[];
@@ -638,8 +642,8 @@ export async function registerRoutes(
         }
       }
 
-      // When dinner graduates in cycle 3 and late_dinner is in struggles3, mark it mastered there too.
-      if (dinnerGraduationResult.dinnerOutcomeType === "mastered" && currentCycle === 3) {
+      // When dinner graduates in cycle 3+ and late_dinner is in struggles3, mark it mastered there too.
+      if (dinnerGraduationResult.dinnerOutcomeType === "mastered" && currentCycle >= 3) {
         const latestProfileForDinner = await storage.getProfile(userId);
         const struggles3ForDinner = (latestProfileForDinner?.struggles3 as string[]) || [];
         const mastered3ForDinner = (latestProfileForDinner?.masteredStruggles3 as string[]) || [];
@@ -663,6 +667,30 @@ export async function registerRoutes(
         const cycle3Result = await checkCycle3RepickCondition(userId);
         if (cycle3Result.conditionMet) {
           await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 3, cycle3Active: false });
+          repickPending = true;
+        } else {
+          repickPending = false;
+        }
+      } else if (currentCycle >= 3 && !(profileBeforeMastery?.repickPending)) {
+        const cycleNResult = await checkCurrentCycleRepickCondition(userId);
+        if (cycleNResult.conditionMet) {
+          const latestProfileForHistory = await storage.getProfile(userId);
+          const skipped3H = (latestProfileForHistory?.skippedStruggles3 || []) as string[];
+          const difficult3H = (latestProfileForHistory?.difficultStruggles3 || []) as string[];
+          const movedOnH = [...new Set([...skipped3H, ...difficult3H])];
+          await storage.saveCycleHistory({
+            userId,
+            cycleNumber: currentCycle,
+            endWeek: profile?.currentWeek ?? undefined,
+            strugglesPicked: (latestProfileForHistory?.struggles3 || []) as string[],
+            mastered: (latestProfileForHistory?.masteredStruggles3 || []) as string[],
+            movedOn: movedOnH,
+          });
+          await storage.updateProfile(userId, {
+            repickPending: true,
+            currentStruggleCycle: currentCycle + 1,
+            cycle3Active: false,
+          });
           repickPending = true;
         } else {
           repickPending = false;
@@ -822,7 +850,7 @@ export async function registerRoutes(
         let currentStruggle: string = "sugary_food_drink";
         let isDinnerFocusComputed = false;
 
-        if (planCycle === 3) {
+        if (planCycle >= 3) {
           if (!freshProfile?.cycle3Active) profileUpdate.cycle3Active = true;
           const struggles3 = (freshProfile?.struggles3 || []) as string[];
           const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
@@ -1289,7 +1317,7 @@ export async function registerRoutes(
       let legacyTriedS: string[] = [];
       let cycle1MasteredS: string[] = [];
 
-      if (currentCycle === 3) {
+      if (currentCycle >= 3) {
         profileStruggles = (profile.struggles3 || []) as string[];
         masteredS = (profile.masteredStruggles3 || []) as string[];
         skippedS = (profile.skippedStruggles3 || []) as string[];
@@ -1339,7 +1367,7 @@ export async function registerRoutes(
       // Cycle 2: uses profileStruggles (struggles2) directly; hides cycle 1 mastered items.
       // Cycle 3: uses profileStruggles (struggles3) directly; no filtering.
       const profileStrugglesSet = new Set(profileStruggles);
-      const inactiveStruggles = currentCycle === 3
+      const inactiveStruggles = currentCycle >= 3
         ? STRUGGLE_PRIORITY.filter(s => !profileStrugglesSet.has(s))
         : currentCycle === 2
           ? STRUGGLE_PRIORITY.filter(s => !profileStrugglesSet.has(s) && !cycle1MasteredS.includes(s))
@@ -1370,6 +1398,8 @@ export async function registerRoutes(
         dinnerSuccessAvg,
         dietTipCompletionCount,
         tipLadders: DIET_TIP_LADDERS,
+        currentStruggleCycle: currentCycle,
+        cycleHistory: await storage.getCycleHistory(userId),
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch roadmap" });

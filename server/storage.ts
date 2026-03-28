@@ -6,7 +6,8 @@ import {
   type WeeklyReport, type InsertWeeklyReport,
   type MonthlyReport, type InsertMonthlyReport,
   type PiggyBankEvent, type InsertPiggyBankEvent,
-  userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents,
+  type CycleHistoryRow, type InsertCycleHistory,
+  userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
@@ -52,6 +53,9 @@ export interface IStorage {
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
   resetUser(userId: string): Promise<void>;
+
+  saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow>;
+  getCycleHistory(userId: string): Promise<CycleHistoryRow[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -277,6 +281,25 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow> {
+    const [existing] = await db.select({ id: cycleHistory.id })
+      .from(cycleHistory)
+      .where(and(eq(cycleHistory.userId, entry.userId), eq(cycleHistory.cycleNumber, entry.cycleNumber)))
+      .limit(1);
+    if (existing) {
+      const [row] = await db.select().from(cycleHistory).where(eq(cycleHistory.id, existing.id));
+      return row;
+    }
+    const [created] = await db.insert(cycleHistory).values(entry).returning();
+    return created;
+  }
+
+  async getCycleHistory(userId: string): Promise<CycleHistoryRow[]> {
+    return db.select().from(cycleHistory)
+      .where(eq(cycleHistory.userId, userId))
+      .orderBy(cycleHistory.cycleNumber);
+  }
+
   async resetUser(userId: string): Promise<void> {
     const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
     if (plans.length > 0) {
@@ -288,6 +311,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(weeklyReports).where(eq(weeklyReports.userId, userId));
     await db.delete(monthlyReports).where(eq(monthlyReports.userId, userId));
     await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
+    await db.delete(cycleHistory).where(eq(cycleHistory.userId, userId));
     await db.update(userProfiles).set({
       currentWeek: 1,
       isStretchMode: false,
