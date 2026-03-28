@@ -316,7 +316,7 @@
     "missed_diet_checkins": "You missed a few diet check-ins this week — that's okay! Try to log your diet daily next week for more accurate tracking.",
     "repick_message": "You've worked through every area in your Diet List! Next up: build your Diet List {{cycle}}.0 and choose what to keep working on.",
     "repick_eatout_note": "Note: You included eating out in your list, but no eat-out days were scheduled, so it hasn't been practiced yet.",
-    "repick_title": "Build Your Diet List {{cycle}}.0",
+    "repick_title": "Build Your Diet List {{cycle}}.0!",
     "repick_subtitle": "Select the areas you want to keep working on. Tap to add, then reorder by priority.",
     "repick_your_picks": "Your picks (in order)",
     "repick_confirm": "Confirm my picks",

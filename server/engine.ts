@@ -941,26 +941,50 @@ export async function checkCurrentCycleRepickCondition(userId: string): Promise<
   if (struggles3.length === 0) return { conditionMet: false };
 
   const currentCycle = (profile.currentStruggleCycle as number) || 1;
+  const mastered3 = (profile.masteredStruggles3 || []) as string[];
+  const skipped3 = (profile.skippedStruggles3 || []) as string[];
+  const difficult3 = (profile.difficultStruggles3 || []) as string[];
+  const resolved = new Set([...mastered3, ...skipped3, ...difficult3]);
 
-  // Determine when the current cycle started by finding the previous cycle's history entry.
-  // Plans from the current cycle are those with weekNumber > prevCycleEndWeek.
+  // Determine cycle start from previous cycle's history entry.
+  // If no prior history row, fall back to checking all-time scheduling (conservative for legacy users).
   const historyEntries = await storage.getCycleHistory(userId);
   const prevCycleEntry = historyEntries.find(h => h.cycleNumber === currentCycle - 1);
-  const cycleStartWeek = (prevCycleEntry?.endWeek as number | null) ?? 0;
+  const cycleStartWeek = prevCycleEntry?.endWeek != null ? (prevCycleEntry.endWeek as number) : null;
 
-  const allPlans = await storage.getAllWeeklyPlans(userId);
-  const currentCyclePlans = allPlans.filter(p => ((p.weekNumber as number) || 0) > cycleStartWeek);
-
+  // Build appearedSet only when we have a reliable cycle boundary.
+  // dietStruggle column is null during dinner-focus weeks, so late_dinner never appears here.
+  // appearedSet is only used for non-dinner non-eat_out struggles.
   const appearedSet = new Set<string>();
-  for (const plan of currentCyclePlans) {
-    if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
+  if (cycleStartWeek !== null) {
+    const allPlans = await storage.getAllWeeklyPlans(userId);
+    const currentCyclePlans = allPlans.filter(p => ((p.weekNumber as number) || 0) > cycleStartWeek);
+    for (const plan of currentCyclePlans) {
+      if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
+    }
   }
 
-  const mastered3 = (profile.masteredStruggles3 || []) as string[];
+  // eat_out / late_dinner exemption: use weeklyPlanDays scheduling (not dietStruggle column),
+  // scoped to current cycle when a boundary is available.
+  const eatOutPickedInList = struggles3.includes("eat_out");
+  const lateDinnerPickedInList = struggles3.includes("late_dinner");
 
-  // Exempt eat_out / late_dinner if they were never scheduled as a focus in the current cycle
-  const eatOutPickedButNeverScheduled = struggles3.includes("eat_out") && !appearedSet.has("eat_out");
-  const lateDinnerPickedButNeverScheduled = struggles3.includes("late_dinner") && !appearedSet.has("late_dinner");
+  let eatOutScheduledThisCycle = false;
+  let lateDinnerScheduledThisCycle = false;
+
+  if (eatOutPickedInList) {
+    eatOutScheduledThisCycle = cycleStartWeek !== null
+      ? await storage.hasEatOutScheduledSince(userId, cycleStartWeek)
+      : await storage.hasAnyEatOutScheduled(userId);
+  }
+  if (lateDinnerPickedInList) {
+    lateDinnerScheduledThisCycle = cycleStartWeek !== null
+      ? await storage.hasLateDinnerScheduledSince(userId, cycleStartWeek)
+      : await storage.hasAnyLateDinnerScheduled(userId);
+  }
+
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutScheduledThisCycle;
+  const lateDinnerPickedButNeverScheduled = lateDinnerPickedInList && !lateDinnerScheduledThisCycle;
 
   const mustGoThrough = struggles3.filter(s => {
     if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
@@ -970,7 +994,13 @@ export async function checkCurrentCycleRepickCondition(userId: string): Promise<
 
   if (mustGoThrough.length === 0) return { conditionMet: true };
 
-  const conditionMet = mustGoThrough.every(s => appearedSet.has(s) || mastered3.includes(s));
+  // With a known cycle boundary: allow completion when struggle is resolved OR appeared as diet focus this cycle.
+  // Without a boundary (legacy/no-history users): only allow completion when resolved (prevents cross-cycle false positives).
+  const conditionMet = mustGoThrough.every(s => {
+    if (resolved.has(s)) return true;
+    if (cycleStartWeek !== null && appearedSet.has(s)) return true;
+    return false;
+  });
 
   return { conditionMet };
 }

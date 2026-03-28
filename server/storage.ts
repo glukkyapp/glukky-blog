@@ -10,7 +10,7 @@ import {
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, gt } from "drizzle-orm";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -46,6 +46,8 @@ export interface IStorage {
   getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]>;
   hasAnyEatOutScheduled(userId: string): Promise<boolean>;
   hasAnyLateDinnerScheduled(userId: string): Promise<boolean>;
+  hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
+  hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
 
   getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
@@ -227,6 +229,44 @@ export class DatabaseStorage implements IStorage {
       .where(eq(weeklyPlans.userId, userId));
     if (allPlans.length === 0) return false;
     const planIds = allPlans.map(p => p.id);
+    const [row] = await db.select({ id: weeklyPlanDays.id })
+      .from(weeklyPlanDays)
+      .where(and(
+        inArray(weeklyPlanDays.weeklyPlanId, planIds),
+        eq(weeklyPlanDays.lateDinnerScheduled, true),
+      ))
+      .limit(1);
+    return !!row;
+  }
+
+  async hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean> {
+    const plans = await db.select({ id: weeklyPlans.id })
+      .from(weeklyPlans)
+      .where(and(
+        eq(weeklyPlans.userId, userId),
+        gt(weeklyPlans.weekNumber, afterWeekNumber),
+      ));
+    if (plans.length === 0) return false;
+    const planIds = plans.map(p => p.id);
+    const [row] = await db.select({ id: weeklyPlanDays.id })
+      .from(weeklyPlanDays)
+      .where(and(
+        inArray(weeklyPlanDays.weeklyPlanId, planIds),
+        eq(weeklyPlanDays.eatOutScheduled, true),
+      ))
+      .limit(1);
+    return !!row;
+  }
+
+  async hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean> {
+    const plans = await db.select({ id: weeklyPlans.id })
+      .from(weeklyPlans)
+      .where(and(
+        eq(weeklyPlans.userId, userId),
+        gt(weeklyPlans.weekNumber, afterWeekNumber),
+      ));
+    if (plans.length === 0) return false;
+    const planIds = plans.map(p => p.id);
     const [row] = await db.select({ id: weeklyPlanDays.id })
       .from(weeklyPlanDays)
       .where(and(
