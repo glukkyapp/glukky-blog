@@ -565,6 +565,10 @@
     "logging_in": "Logging in...",
     "registering": "Registering..."
   },
+  "eat_out_nonfocus_popup": {
+    "title": "Heads up about your eat-out days",
+    "body": "It looks like you've got some eat-out or takeaway meals planned this week! Even though it's not your main focus right now, eating out can have a bigger effect on your blood glucose than your other habits. Why not give it some attention this week and see how it goes?"
+  },
   "food_switch_popup": {
     "tab1_title": "Food Switch",
     "tab1": "Replace part of your meal with these foods that have lower impact on glucose spike. Equally filling, more healthy.",

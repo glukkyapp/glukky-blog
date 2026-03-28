@@ -5,6 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
+import { EatOutNonFocusPopup, useEatOutNonFocusPopup } from "@/components/eat-out-nonfocus-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -174,6 +175,7 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroSnacks = useInfoCard("struggle_intro_snacks");
   const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
   const tacticInfoSheet = useInfoSheet();
+  const eatOutNonFocusPopup = useEatOutNonFocusPopup(profile?.id);
 
   const cycle = (profile?.currentStruggleCycle as number) || 1;
 
@@ -252,6 +254,15 @@ export default function WeeklyPlanner() {
   }, [currentStepId, cycle]);
   useEffect(() => { if (isStretchMode && reflection?.autoEscalation && acceptedEscalation === null) cardWalkEscalation.trigger(); }, [isStretchMode, reflection?.autoEscalation, acceptedEscalation]);
   useEffect(() => { if (cycle < 2 && negotiationStep === "glycemic_gap") cardGlycemicGap.trigger(); }, [negotiationStep, cycle]);
+
+  useEffect(() => {
+    if (currentStepId === "preview" && cycle === 1 && eatOutDays.length > 0) {
+      const { effectiveStruggle } = getEffectiveStruggle();
+      if (effectiveStruggle !== "eat_out") {
+        eatOutNonFocusPopup.trigger();
+      }
+    }
+  }, [currentStepId, cycle, eatOutDays.length]);
 
   useEffect(() => {
     if (
@@ -2420,6 +2431,7 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
     <InfoCardPopup visible={cardStruggleIntroEatOut.visible} onDismiss={cardStruggleIntroEatOut.dismiss} icon={Utensils} titleKey="info_card.struggle_intro_eat_out.title" panelKeys={["info_card.struggle_intro_eat_out.body"]} testId="dialog-card-struggle-intro-eat-out" />
     <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
+    <EatOutNonFocusPopup visible={eatOutNonFocusPopup.visible} onDismiss={eatOutNonFocusPopup.dismiss} />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated
         ? t("planner.late_dinner")
