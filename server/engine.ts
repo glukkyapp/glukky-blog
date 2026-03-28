@@ -579,7 +579,7 @@ export async function getDinnerGraduationData(userId: string): Promise<{
   dinnerWeeksFound: number;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile || profile.dinnerMastered || profile.dinnerExitType) {
+  if (!profile) {
     return { ready: false, dinnerSuccessPct: 0, dinnerDaysScheduled: 0, dinnerSuccessCount: 0, dinnerWeeksFound: 0 };
   }
 
@@ -596,6 +596,10 @@ export async function getDinnerGraduationData(userId: string): Promise<{
     if (hasDinnerDays) {
       dinnerWeeks.push({ weekNumber: w, plan: wp });
     }
+  }
+
+  if (profile.dinnerMastered || profile.dinnerExitType) {
+    return { ready: false, dinnerSuccessPct: 0, dinnerDaysScheduled: 0, dinnerSuccessCount: 0, dinnerWeeksFound: dinnerWeeks.length };
   }
 
   if (dinnerWeeks.length < 3) {

@@ -286,13 +286,13 @@ export default function WeeklyPlanner() {
   // profile.struggles3 if the user had previously saved a partial selection.
   useEffect(() => {
     if (!reflection?.repickPending) return;
-    const profileCycle = (profile?.currentStruggleCycle as number) || 1;
-    if (profileCycle < 3) return;
+    const effectiveCycle = (reflection?.currentStruggleCycle as number) || (profile?.currentStruggleCycle as number) || 1;
+    if (effectiveCycle < 3) return;
     const saved = (profile?.struggles3 as string[]) || [];
     if (saved.length > 0 && selectedStruggles3.length === 0) {
       setSelectedStruggles3(saved);
     }
-  }, [reflection?.repickPending, profile?.currentStruggleCycle, profile?.struggles3]);
+  }, [reflection?.repickPending, reflection?.currentStruggleCycle, profile?.currentStruggleCycle, profile?.struggles3]);
 
   useEffect(() => {
     setRepickSummaryDismissed(false);
@@ -826,7 +826,7 @@ export default function WeeklyPlanner() {
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-primary">{t("planner.repick_message", { cycle })}</p>
+                  <p className="text-sm font-medium text-primary">{t("planner.repick_message", { cycle: (reflection?.currentStruggleCycle as number) || cycle })}</p>
                   {reflection.eatOutPickedButNeverScheduled && (
                     <p className="text-xs text-muted-foreground">{t("planner.repick_eatout_note")}</p>
                   )}
@@ -840,7 +840,8 @@ export default function WeeklyPlanner() {
   }
 
   function renderRepick() {
-    if (cycle >= 3) {
+    const cycleForRepick = (reflection?.currentStruggleCycle as number) || cycle;
+    if (cycleForRepick >= 3) {
       const mastered1 = (profile?.masteredStruggles as string[]) || [];
       const mastered2 = (profile?.masteredStruggles2 as string[]) || [];
       const mastered3 = (profile?.masteredStruggles3 as string[]) || [];
@@ -849,12 +850,12 @@ export default function WeeklyPlanner() {
       const movedOn3 = [...new Set([...skipped3, ...difficult3])];
 
       // For cycle >= 4: show a summary of the just-completed cycle before the picker
-      if (cycle >= 4 && !repickSummaryDismissed) {
+      if (cycleForRepick >= 4 && !repickSummaryDismissed) {
         return (
           <Card>
             <CardHeader>
               <CardTitle data-testid="text-cycle-complete-title">
-                {t("planner.cycle_complete_title", { cycle: cycle - 1 })}
+                {t("planner.cycle_complete_title", { cycle: cycleForRepick - 1 })}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -935,7 +936,7 @@ export default function WeeklyPlanner() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle })}</CardTitle>
+            <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle: cycleForRepick })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>
@@ -1090,7 +1091,7 @@ export default function WeeklyPlanner() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle })}</CardTitle>
+          <CardTitle data-testid="text-repick-title">{t("planner.repick_title", { cycle: cycleForRepick })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t("planner.repick_subtitle")}</p>

@@ -519,7 +519,6 @@ export async function registerRoutes(
 
       const today = new Date().toISOString().split("T")[0];
       const dinnerGraduationResult = await processDinnerGraduation(userId, today);
-      const freshProfile = await storage.getProfile(userId);
 
       const dietEvaluation = currentStruggleForReflection
         ? await evaluateDietStruggle(userId, currentStruggleForReflection, profile?.currentWeek)
@@ -734,6 +733,10 @@ export async function registerRoutes(
       const dietStruggleValues = allPlansForAppeared.map(p => p.dietStruggle).filter((s): s is string => !!s);
       const appearedDietStruggles = Array.from(new Set(dietStruggleValues));
 
+      // Fetch the truly-final profile after all mutations (including repick/cycle transitions)
+      // so that currentStruggleCycle reflects the updated value, not the stale pre-mutation value.
+      const finalProfile = await storage.getProfile(userId);
+
       res.json({
         ...reflection,
         walkDaysScheduled: adjustedWalkDaysScheduled,
@@ -750,21 +753,22 @@ export async function registerRoutes(
         activeDaysYes: (dietEvaluation as any).yesDays ?? 0,
         dietEvaluation,
         dinnerGraduation,
-        dinnerMastered: freshProfile?.dinnerMastered || false,
-        dinnerExitType: freshProfile?.dinnerExitType ?? null,
+        dinnerMastered: finalProfile?.dinnerMastered || false,
+        dinnerExitType: finalProfile?.dinnerExitType ?? null,
         dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered"
-          || !!(freshProfile?.dinnerMastered),
+          || !!(finalProfile?.dinnerMastered),
         dinnerJustExited: dinnerGraduationResult.dinnerOutcomeType === "moved_on"
           || dinnerGraduationResult.dinnerOutcomeType === "not_relevant"
-          || !!(freshProfile?.dinnerExitType),
+          || !!(finalProfile?.dinnerExitType),
         dinnerGraduationSuccessPct: dinnerGraduationResult.dinnerSuccessPct,
-        dinnerOutcomeType: freshProfile?.dinnerMastered ? "mastered"
-          : freshProfile?.dinnerExitType ?? null,
+        dinnerOutcomeType: finalProfile?.dinnerMastered ? "mastered"
+          : finalProfile?.dinnerExitType ?? null,
         dietJustGraduated,
         dietJustSkipped,
         dietJustMovedOn,
         dietOutcomeType: dietEvaluation.type !== "in_cycle" ? dietEvaluation.type : null,
         repickPending,
+        currentStruggleCycle: finalProfile?.currentStruggleCycle ?? profile?.currentStruggleCycle,
         eatOutPickedButNeverScheduled,
         appearedDietStruggles,
       });
