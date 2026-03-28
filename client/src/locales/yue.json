@@ -418,7 +418,7 @@
     "sunday_checkin_first": "請先完成星期日簽到",
     "sunday_checkin_desc": "喺規劃下週之前，先完成星期日嘅每日簽到。唔好忘記今日嘅簽到！",
     "go_home": "去主頁",
-    "monthly_report": "月度報告",
+    "monthly_report": "每月報告",
     "monthly_not_enough": "完成至少4週先可以睇月度報告。",
     "monthly_available": "你嘅月度報告將於{{month}}{{day}}號提供",
     "nailed_stretching_one": "你已連續{{count}}週完成伸展！",
@@ -730,7 +730,7 @@
   "health_info": {
     "title": "健康資訊",
     "diet_advice_heading": "飲食建議",
-    "no_advice_yet": "你仲未有任何活躍嘅飲食建議。等你第一個飲食建議分配咗之後，再嚟睇睇。",
+    "no_advice_yet": "你仲未有任何進行中嘅飲食建議。等你第一個飲食建議分配咗之後，再嚟睇睇。",
     "tip_no_detail": "繼續練習呢個建議——每一小步都有意義！",
     "plate_method_desc": "用呢個簡單嘅方法填滿你嘅餐盤，平衡營養同控制血糖：",
     "plate_veggies": "蔬菜",

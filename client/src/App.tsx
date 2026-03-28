@@ -82,8 +82,18 @@ function AuthenticatedApp() {
   );
 }
 
+const TEXT_SELECTABLE_EMAILS = ["yusycyn@gmail.com", "cynthiayuyu@hotmail.com"];
+
 function Router() {
   const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (user && TEXT_SELECTABLE_EMAILS.includes(user.email)) {
+      document.documentElement.classList.add("text-selectable");
+    } else {
+      document.documentElement.classList.remove("text-selectable");
+    }
+  }, [user]);
 
   if (isLoading) {
     return (
