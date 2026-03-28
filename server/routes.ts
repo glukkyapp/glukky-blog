@@ -892,7 +892,7 @@ export async function registerRoutes(
             ? [...struggles, "eat_out"]
             : struggles;
           const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s) && !legacyTriedS.includes(s) && !(s === "eat_out" && !hasEatOutDays));
-          const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)));
+          const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && (difficultS.includes(s) || legacyTriedS.includes(s)) && !(s === "eat_out" && !hasEatOutDays));
           const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
             if (s === "eat_out" && !hasEatOutDays) return false;
             return !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s);
