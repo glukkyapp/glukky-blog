@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 export default function Onboarding() {
   const { t } = useTranslation();
@@ -87,10 +87,10 @@ export default function Onboarding() {
   const isNextDisabled = () => {
     if (step === 1) return !userName.trim();
     if (step === 3) return !userGoal.trim();
-    if (step === 4) return !walkOption;
-    if (step === 5) return !dinnerTime;
-    if (step === 6) return !sleepPattern;
-    if (step === 7) return !eatingOutFrequency;
+    if (step === 5) return !walkOption;
+    if (step === 6) return !dinnerTime;
+    if (step === 7) return !sleepPattern;
+    if (step === 8) return !eatingOutFrequency;
     return false;
   };
 
@@ -187,6 +187,19 @@ export default function Onboarding() {
       )}
 
       {step === 4 && (
+        <Card data-testid="card-step-questions-intro">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.questions_intro_title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm" data-testid="text-questions-intro">
+              {t("onboarding.questions_intro_body")}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 5 && (
         <Card data-testid="card-step-1">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q1_title")}</CardTitle>
@@ -199,7 +212,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <Card data-testid="card-step-2">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q2_title")}</CardTitle>
@@ -211,7 +224,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <Card data-testid="card-step-3">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q3_title")}</CardTitle>
@@ -225,7 +238,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 7 && (
+      {step === 8 && (
         <Card data-testid="card-step-4">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q4_title")}</CardTitle>
@@ -239,7 +252,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 8 && (
+      {step === 9 && (
         <Card data-testid="card-step-5">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q5_title")}</CardTitle>
@@ -263,7 +276,7 @@ export default function Onboarding() {
         </Card>
       )}
 
-      {step === 9 && (
+      {step === 10 && (
         <Card data-testid="card-step-6">
           <CardHeader>
             <CardTitle className="text-lg">{t("onboarding.q6_title")}</CardTitle>
