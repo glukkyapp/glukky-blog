@@ -19,14 +19,12 @@
  *   node scripts/wipe-test-account.mjs
  */
 
-import { drizzle } from "drizzle-orm/node-postgres";
 import pkg from "pg";
 const { Pool } = pkg;
 
 const TARGET_USER_ID = "352049ea-0f08-4ca5-a980-62bef203e2a3";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool);
 
 async function wipe() {
   const client = await pool.connect();
