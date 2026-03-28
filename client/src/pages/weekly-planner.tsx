@@ -283,6 +283,10 @@ export default function WeeklyPlanner() {
     }
   }, [reflection?.repickPending, profile?.currentStruggleCycle, profile?.struggles3]);
 
+  useEffect(() => {
+    setRepickSummaryDismissed(false);
+  }, [profile?.currentStruggleCycle, reflection?.repickPending]);
+
   const repickMutation = useMutation({
     mutationFn: async (struggles2: string[]) => {
       const res = await apiRequest("POST", "/api/profile/repick", { struggles2 });
