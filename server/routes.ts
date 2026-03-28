@@ -804,7 +804,7 @@ export async function registerRoutes(
   app.post("/api/plan/weekly", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays, stretchOnly, selectedTip, standingTapDay, walkDayDurations } = req.body;
+      const { negotiationChoice, walkDays, eatOutDays, lateDinnerDays, stretchOnly, selectedTip, standingTapDay, walkDayDurations, clientDate } = req.body;
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
@@ -853,7 +853,8 @@ export async function registerRoutes(
       const effectiveStretchOnly = stretchOnly || freshProfileForStretch?.isStretchMode;
 
       const dateOverride = devDateOverrides.get(userId);
-      const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : new Date();
+      const clientDateStr = !dateOverride && typeof clientDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : null;
+      const effectiveDate = dateOverride ? new Date(dateOverride + "T00:00:00") : clientDateStr ? new Date(clientDateStr + "T00:00:00") : new Date();
       effectiveDate.setHours(0, 0, 0, 0);
 
       const result = await createWeeklyPlan({

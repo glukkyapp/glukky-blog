@@ -210,7 +210,8 @@ export default function Home() {
   const dinnerLabelSet = todayPlan?.dinnerLabel && todayPlan.dinnerLabel !== "none";
 
   const show2pmWindow = !isCatchUp && effectiveHour >= 14 && isLateDinnerDay;
-  const show10pmWindow = (isCatchUp && !sundayCheckInDone) || effectiveHour >= 22;
+  const isPlanFirstDayNoLog = planFirstActiveDay > 0 && planFirstActiveDay === dayOfWeek && !todayLog;
+  const show10pmWindow = ((isCatchUp && !sundayCheckInDone) || effectiveHour >= 22) && !isPlanFirstDayNoLog;
 
   async function checkAllDoneAfterInteraction() {
     userInteracted.current = true;

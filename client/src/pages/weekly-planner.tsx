@@ -446,6 +446,8 @@ export default function WeeklyPlanner() {
           durationsPayload[String(d)] = walkDayDurations[d];
         }
       }
+      const now = new Date();
+      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
         walkDays: effectiveWalkDays,
@@ -455,6 +457,7 @@ export default function WeeklyPlanner() {
         selectedTip: selectedTip || undefined,
         standingTapDay: standingTapDay !== null ? standingTapDay : undefined,
         walkDayDurations: Object.keys(durationsPayload).length > 0 ? durationsPayload : undefined,
+        clientDate: localDate,
       });
       return res.json();
     },
