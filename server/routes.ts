@@ -665,6 +665,7 @@ export async function registerRoutes(
           await storage.saveCycleHistory({
             userId,
             cycleNumber: 1,
+            startWeek: 1,
             endWeek: latestProfileC1?.currentWeek ?? undefined,
             strugglesPicked: (latestProfileC1?.struggles as string[]) || [],
             mastered: (latestProfileC1?.masteredStruggles as string[]) || [],
@@ -680,9 +681,13 @@ export async function registerRoutes(
           const latestProfileC2 = await storage.getProfile(userId);
           const skipped2H = (latestProfileC2?.skippedStruggles2 as string[]) || [];
           const difficult2H = (latestProfileC2?.difficultStruggles2 as string[]) || [];
+          const histForC2 = await storage.getCycleHistory(userId);
+          const c1Entry = histForC2.find(h => h.cycleNumber === 1);
+          const c2StartWeek = c1Entry?.endWeek != null ? (c1Entry.endWeek as number) + 1 : undefined;
           await storage.saveCycleHistory({
             userId,
             cycleNumber: 2,
+            startWeek: c2StartWeek,
             endWeek: latestProfileC2?.currentWeek ?? undefined,
             strugglesPicked: (latestProfileC2?.struggles2 as string[]) || [],
             mastered: (latestProfileC2?.masteredStruggles2 as string[]) || [],
@@ -700,9 +705,13 @@ export async function registerRoutes(
           const skipped3H = (latestProfileForHistory?.skippedStruggles3 || []) as string[];
           const difficult3H = (latestProfileForHistory?.difficultStruggles3 || []) as string[];
           const movedOnH = [...new Set([...skipped3H, ...difficult3H])];
+          const histForCN = await storage.getCycleHistory(userId);
+          const prevCycleH = histForCN.find(h => h.cycleNumber === currentCycle - 1);
+          const cNStartWeek = prevCycleH?.endWeek != null ? (prevCycleH.endWeek as number) + 1 : undefined;
           await storage.saveCycleHistory({
             userId,
             cycleNumber: currentCycle,
+            startWeek: cNStartWeek,
             endWeek: profile?.currentWeek ?? undefined,
             strugglesPicked: (latestProfileForHistory?.struggles3 || []) as string[],
             mastered: (latestProfileForHistory?.masteredStruggles3 || []) as string[],

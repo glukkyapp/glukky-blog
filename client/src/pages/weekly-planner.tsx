@@ -840,6 +840,9 @@ export default function WeeklyPlanner() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground" data-testid="text-cycle-complete-summary">
+                {mastered3.length} {t("roadmap.journey_mastered")} · {movedOn3.length} {t("roadmap.journey_moved_on")}
+              </p>
               {mastered3.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
