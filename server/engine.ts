@@ -940,22 +940,27 @@ export async function checkCurrentCycleRepickCondition(userId: string): Promise<
   const struggles3 = (profile.struggles3 || []) as string[];
   if (struggles3.length === 0) return { conditionMet: false };
 
+  const currentCycle = (profile.currentStruggleCycle as number) || 1;
+
+  // Determine when the current cycle started by finding the previous cycle's history entry.
+  // Plans from the current cycle are those with weekNumber > prevCycleEndWeek.
+  const historyEntries = await storage.getCycleHistory(userId);
+  const prevCycleEntry = historyEntries.find(h => h.cycleNumber === currentCycle - 1);
+  const cycleStartWeek = (prevCycleEntry?.endWeek as number | null) ?? 0;
+
   const allPlans = await storage.getAllWeeklyPlans(userId);
+  const currentCyclePlans = allPlans.filter(p => ((p.weekNumber as number) || 0) > cycleStartWeek);
 
   const appearedSet = new Set<string>();
-  for (const plan of allPlans) {
+  for (const plan of currentCyclePlans) {
     if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
   }
 
-  const eatOutPickedInList = struggles3.includes("eat_out");
-  const eatOutEverScheduled = eatOutPickedInList ? await storage.hasAnyEatOutScheduled(userId) : false;
-  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverScheduled;
-
-  const lateDinnerPickedInList = struggles3.includes("late_dinner");
-  const lateDinnerEverScheduled = lateDinnerPickedInList ? await storage.hasAnyLateDinnerScheduled(userId) : false;
-  const lateDinnerPickedButNeverScheduled = lateDinnerPickedInList && !lateDinnerEverScheduled;
-
   const mastered3 = (profile.masteredStruggles3 || []) as string[];
+
+  // Exempt eat_out / late_dinner if they were never scheduled as a focus in the current cycle
+  const eatOutPickedButNeverScheduled = struggles3.includes("eat_out") && !appearedSet.has("eat_out");
+  const lateDinnerPickedButNeverScheduled = struggles3.includes("late_dinner") && !appearedSet.has("late_dinner");
 
   const mustGoThrough = struggles3.filter(s => {
     if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;

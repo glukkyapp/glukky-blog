@@ -659,6 +659,17 @@ export async function registerRoutes(
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
+          const latestProfileC1 = await storage.getProfile(userId);
+          const skipped1H = (latestProfileC1?.skippedStruggles as string[]) || [];
+          const difficult1H = (latestProfileC1?.difficultStruggles as string[]) || [];
+          await storage.saveCycleHistory({
+            userId,
+            cycleNumber: 1,
+            endWeek: latestProfileC1?.currentWeek ?? undefined,
+            strugglesPicked: (latestProfileC1?.struggles as string[]) || [],
+            mastered: (latestProfileC1?.masteredStruggles as string[]) || [],
+            movedOn: [...new Set([...skipped1H, ...difficult1H])],
+          });
           await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false });
           repickPending = true;
         }
@@ -666,6 +677,17 @@ export async function registerRoutes(
       } else if (currentCycle === 2 && !(profileBeforeMastery?.repickPending)) {
         const cycle3Result = await checkCycle3RepickCondition(userId);
         if (cycle3Result.conditionMet) {
+          const latestProfileC2 = await storage.getProfile(userId);
+          const skipped2H = (latestProfileC2?.skippedStruggles2 as string[]) || [];
+          const difficult2H = (latestProfileC2?.difficultStruggles2 as string[]) || [];
+          await storage.saveCycleHistory({
+            userId,
+            cycleNumber: 2,
+            endWeek: latestProfileC2?.currentWeek ?? undefined,
+            strugglesPicked: (latestProfileC2?.struggles2 as string[]) || [],
+            mastered: (latestProfileC2?.masteredStruggles2 as string[]) || [],
+            movedOn: [...new Set([...skipped2H, ...difficult2H])],
+          });
           await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 3, cycle3Active: false });
           repickPending = true;
         } else {

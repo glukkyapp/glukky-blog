@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, EyeOff, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, EyeOff, UtensilsCrossed, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -76,6 +76,106 @@ function LoadingSkeleton() {
 }
 
 const DEV_STATES = [0, 10, 25, 40, 55] as const;
+
+const STRUGGLE_KEY_MAP: Record<string, string> = {
+  sugary_food_drink: "struggle.sugary_food_drink",
+  oily_fried_food: "struggle.oily_fried_food",
+  eat_out: "struggle.eat_out",
+  portions: "struggle.portions",
+  snacks: "struggle.snacks",
+  late_dinner: "struggle.late_dinner",
+};
+
+function JourneySection({ cycleHistory, t }: {
+  cycleHistory: CycleHistoryEntry[];
+  t: (key: string, opts?: any) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [expandedCycles, setExpandedCycles] = useState<Set<number>>(new Set());
+
+  function ts(key: string) {
+    return STRUGGLE_KEY_MAP[key] ? t(STRUGGLE_KEY_MAP[key]) : key;
+  }
+  function toggleCycle(n: number) {
+    setExpandedCycles(prev => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n); else next.add(n);
+      return next;
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-full text-left"
+        data-testid="button-toggle-journey"
+      >
+        {t("roadmap.journey_title")}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="space-y-2">
+          {cycleHistory.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1" data-testid="text-journey-empty">
+              {t("roadmap.journey_empty")}
+            </p>
+          ) : (
+            cycleHistory.map(entry => (
+              <div key={entry.id} data-testid={`card-journey-cycle-${entry.cycleNumber}`}>
+                <button
+                  className="flex items-center justify-between w-full text-left py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleCycle(entry.cycleNumber)}
+                  data-testid={`button-journey-cycle-${entry.cycleNumber}`}
+                >
+                  <span className="text-sm font-medium">
+                    {t("roadmap.journey_cycle", { cycle: entry.cycleNumber })}
+                  </span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-2">
+                    <span>{entry.mastered.length} {t("roadmap.journey_mastered")}</span>
+                    <span>·</span>
+                    <span>{entry.movedOn.length} {t("roadmap.journey_moved_on")}</span>
+                    {expandedCycles.has(entry.cycleNumber)
+                      ? <ChevronUp className="h-3 w-3 ml-1" />
+                      : <ChevronDown className="h-3 w-3 ml-1" />}
+                  </span>
+                </button>
+                {expandedCycles.has(entry.cycleNumber) && (
+                  <div className="px-3 pt-2 pb-1 space-y-2">
+                    {entry.mastered.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_mastered")}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {entry.mastered.map(s => (
+                            <span key={s} className="text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded px-2 py-0.5 border border-green-200 dark:border-green-800">
+                              {ts(s)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {entry.movedOn.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_moved_on")}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {entry.movedOn.map(s => (
+                            <span key={s} className="text-xs bg-muted/50 text-muted-foreground rounded px-2 py-0.5 border border-border">
+                              {ts(s)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
   data: PiggyBankData;
@@ -467,46 +567,9 @@ export default function RoadmapPage() {
         })}
       </div>
 
-      {cycleHistory && cycleHistory.length > 0 && (
-        <div className="pt-2 space-y-3" data-testid="section-journey">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {t("roadmap.journey_title")}
-          </p>
-          {cycleHistory.map((entry) => (
-            <Card key={entry.id} data-testid={`card-journey-cycle-${entry.cycleNumber}`} className="border-border">
-              <CardContent className="pt-4 pb-3 space-y-2">
-                <p className="text-sm font-semibold">
-                  {t("roadmap.journey_cycle_n", { cycle: entry.cycleNumber })}
-                </p>
-                {entry.mastered.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_mastered")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {entry.mastered.map(s => (
-                        <span key={s} className="text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded px-2 py-0.5 border border-green-200 dark:border-green-800">
-                          {STRUGGLE_LABELS[s] || s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {entry.movedOn.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">{t("roadmap.journey_moved_on")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {entry.movedOn.map(s => (
-                        <span key={s} className="text-xs bg-muted/50 text-muted-foreground rounded px-2 py-0.5 border border-border">
-                          {STRUGGLE_LABELS[s] || s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="pt-2" data-testid="section-journey">
+        <JourneySection cycleHistory={cycleHistory || []} t={t} />
+      </div>
 
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
         <DialogContent data-testid="modal-reward-setup">
