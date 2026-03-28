@@ -352,6 +352,10 @@ export class DatabaseStorage implements IStorage {
     await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
     await db.delete(cycleHistory).where(eq(cycleHistory.userId, userId));
     await db.update(userProfiles).set({
+      name: null,
+      goal: null,
+      hba1cLevel: null,
+      bloodTestDate: null,
       currentWeek: 1,
       isStretchMode: false,
       stretchSuccessWeeks: 0,
