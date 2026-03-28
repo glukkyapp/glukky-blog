@@ -1196,7 +1196,7 @@ export default function Home() {
               <span className="font-semibold text-foreground">{t("home.today")}</span> — {formatDate()}
             </div>
             <div className="flex items-center justify-center py-10" data-testid="section-tick-animation">
-              <CheckCircle2 className="w-20 h-20 text-green-500 animate-bounce" />
+              <CheckCircle2 className="w-20 h-20 text-green-500 animate-pop-in" />
             </div>
           </CardContent>
         </Card>
@@ -1278,7 +1278,12 @@ export default function Home() {
           </div>
 
           {sections.map(({ num, content }) => (
-            <div key={num} className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid={`section-checkin-task-${num}`}>
+            <div
+              key={num}
+              className="rounded-lg bg-muted/50 p-3 space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both"
+              style={{ animationDelay: `${(num - 1) * 80}ms` }}
+              data-testid={`section-checkin-task-${num}`}
+            >
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                   {num}
@@ -1311,7 +1316,7 @@ export default function Home() {
 
   return (
     <>
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4 animate-in fade-in-0 duration-300">
       <div className="flex items-center gap-2" data-testid="text-week-header">
         <Target className="w-5 h-5 text-primary" />
         <h1 className="text-lg font-bold">{formatWeekday()}</h1>

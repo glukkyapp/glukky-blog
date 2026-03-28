@@ -5,6 +5,9 @@ import { Home, TrendingUp, CalendarDays, User, Camera, Lightbulb } from "lucide-
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+const NAV_TAP = { scale: 0.82 };
+const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
+
 export default function FloatingNavBar() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
@@ -50,10 +53,12 @@ export default function FloatingNavBar() {
         {navItems.map(({ key, label, path, icon: Icon }) => {
           const active = isActive(path);
           return (
-            <button
+            <motion.button
               key={key}
               onClick={() => handleNavClick(path)}
-              className={`relative z-10 flex flex-col items-center justify-center${isMobile ? " flex-shrink-0" : " flex-1"}`}
+              whileTap={NAV_TAP}
+              transition={NAV_TAP_TRANSITION}
+              className={`relative z-10 flex flex-col items-center justify-center select-none${isMobile ? " flex-shrink-0" : " flex-1"}`}
               style={{
                 ...(isMobile ? { width: "25%", minWidth: "25%" } : {}),
                 height: "100%",
@@ -72,7 +77,7 @@ export default function FloatingNavBar() {
               >
                 {label}
               </motion.span>
-            </button>
+            </motion.button>
           );
         })}
       </div>

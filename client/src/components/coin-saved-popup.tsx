@@ -40,14 +40,15 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        animation: "coinPopupFadeIn 0.3s ease-out",
+        animation: "coinPopupFadeIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
       }}
       data-testid="popup-coin-saved"
     >
       <style>{`
         @keyframes coinPopupFadeIn {
-          from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.4); }
+          65%  { opacity: 1; transform: translate(-50%, -52%) scale(1.08); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
       `}</style>
       <div
