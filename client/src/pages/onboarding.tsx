@@ -44,14 +44,7 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
-    let struggles = selectedStruggles;
-    if (struggles.length === 0) {
-      struggles = ["sugary_food_drink"];
-      toast({
-        title: t("onboarding.get_started"),
-        description: t("onboarding.saving"),
-      });
-    }
+    const struggles = selectedStruggles;
     try {
       await apiRequest("POST", "/api/profile", {
         walksPerWeek,
