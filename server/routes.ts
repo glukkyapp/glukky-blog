@@ -888,12 +888,17 @@ export async function registerRoutes(
 
         if (planCycle >= 3) {
           if (!freshProfile?.cycle3Active) profileUpdate.cycle3Active = true;
-          const struggles3 = (freshProfile?.struggles3 || []) as string[];
+          let struggles3 = (freshProfile?.struggles3 || []) as string[];
           const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
           const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
           const mastered3 = (freshProfile?.masteredStruggles3 || []) as string[];
           const skipped3 = (freshProfile?.skippedStruggles3 || []) as string[];
           const difficult3 = (freshProfile?.difficultStruggles3 || []) as string[];
+
+          if (hasEatOutDays && !struggles3.includes("eat_out") && !mastered3.includes("eat_out") && !skipped3.includes("eat_out") && !difficult3.includes("eat_out")) {
+            struggles3 = [...struggles3, "eat_out"];
+            profileUpdate.struggles3 = struggles3;
+          }
 
           const isLateDinnerMastered3 = freshProfile?.dinnerMastered === true || mastered3.includes("late_dinner");
           const isS3Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
@@ -915,11 +920,16 @@ export async function registerRoutes(
           isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
         } else if (planCycle === 2) {
           if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
-          const struggles2 = (freshProfile?.struggles2 || []) as string[];
+          let struggles2 = (freshProfile?.struggles2 || []) as string[];
           const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
           const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
           const skipped2 = (freshProfile?.skippedStruggles2 || []) as string[];
           const difficult2 = (freshProfile?.difficultStruggles2 || []) as string[];
+
+          if (hasEatOutDays && !struggles2.includes("eat_out") && !mastered2.includes("eat_out") && !skipped2.includes("eat_out") && !difficult2.includes("eat_out")) {
+            struggles2 = [...struggles2, "eat_out"];
+            profileUpdate.struggles2 = struggles2;
+          }
 
           // Bug 2 fix: remove eat_out hasEatOutDays gate from cycle-2 picker.
           // eat_out's position in struggles2 is honoured regardless of this week's eat-out days.
@@ -947,11 +957,17 @@ export async function registerRoutes(
           isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
         } else {
           // Cycle 1: original behaviour unchanged.
-          const struggles = (freshProfile?.struggles || []) as string[];
+          let struggles = (freshProfile?.struggles || []) as string[];
           const masteredS = (freshProfile?.masteredStruggles || []) as string[];
           const skippedS = (freshProfile?.skippedStruggles || []) as string[];
           const difficultS = (freshProfile?.difficultStruggles || []) as string[];
           const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
+
+          if (hasEatOutDays && !struggles.includes("eat_out") && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out")) {
+            struggles = sortStruggles([...struggles, "eat_out"]);
+            profileUpdate.struggles = struggles;
+          }
+
           const effectiveStruggles = hasEatOutDays && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out") && !legacyTriedS.includes("eat_out") && !struggles.includes("eat_out")
             ? [...struggles, "eat_out"]
             : struggles;
