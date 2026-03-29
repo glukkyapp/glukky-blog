@@ -121,10 +121,7 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal } = req.body;
 
-      let sortedStruggles = sortStruggles(struggles || []);
-      if (sortedStruggles.length === 0) {
-        sortedStruggles = ["sugary_food_drink"];
-      }
+      const sortedStruggles = sortStruggles(struggles || []);
       const hasLateDinner = dinnerTime === "after_9pm";
 
       const existingProfile = await storage.getProfile(userId);
