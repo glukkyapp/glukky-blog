@@ -748,6 +748,7 @@ export async function registerRoutes(
         stretchSuccessWeeks: biWeekly.consecutiveStretchWeeks,
         activeDays: (dietEvaluation as any).activeDays ?? 0,
         activeDaysYes: (dietEvaluation as any).yesDays ?? 0,
+        eatOutDaysScheduled: (dietEvaluation as any).eatOutDaysScheduled ?? 0,
         dietEvaluation,
         dinnerGraduation,
         dinnerMastered: finalProfile?.dinnerMastered || false,

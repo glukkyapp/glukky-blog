@@ -757,7 +757,9 @@ export default function WeeklyPlanner() {
               </p>
               {(reflection.activeDays || 0) > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
-                  {t("planner.diet_days_progress", { yesDays: reflection.activeDaysYes || 0, activeDays: reflection.activeDays || 0 })}
+                  {reflection.dietEvaluation?.struggle === "eat_out"
+                    ? t("planner.eat_out_days_progress", { yesDays: reflection.activeDaysYes || 0, eatOutDays: reflection.eatOutDaysScheduled || 0 })
+                    : t("planner.diet_days_progress", { yesDays: reflection.activeDaysYes || 0, activeDays: reflection.activeDays || 0 })}
                 </p>
               )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
