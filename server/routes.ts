@@ -755,11 +755,9 @@ export async function registerRoutes(
         dinnerGraduation,
         dinnerMastered: finalProfile?.dinnerMastered || false,
         dinnerExitType: finalProfile?.dinnerExitType ?? null,
-        dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered"
-          || !!(finalProfile?.dinnerMastered),
+        dinnerJustGraduated: dinnerGraduationResult.dinnerOutcomeType === "mastered",
         dinnerJustExited: dinnerGraduationResult.dinnerOutcomeType === "moved_on"
-          || dinnerGraduationResult.dinnerOutcomeType === "not_relevant"
-          || !!(finalProfile?.dinnerExitType),
+          || dinnerGraduationResult.dinnerOutcomeType === "not_relevant",
         dinnerGraduationSuccessPct: dinnerGraduationResult.dinnerSuccessPct,
         dinnerOutcomeType: finalProfile?.dinnerMastered ? "mastered"
           : finalProfile?.dinnerExitType ?? null,
