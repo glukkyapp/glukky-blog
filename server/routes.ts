@@ -871,6 +871,10 @@ export async function registerRoutes(
         baseDate: effectiveDate,
       });
 
+      let eatOutAutoAdded = false;
+      let sugaryAutoAdded = false;
+      let sugaryAlongsideEatOut = false;
+
       {
         const freshProfile = await storage.getProfile(userId);
         const planCycle = (freshProfile?.currentStruggleCycle as number) || 1;
@@ -954,23 +958,30 @@ export async function registerRoutes(
           // Bug 1 fix: set isDinnerFocus based on the picked struggle, not lateDinnerDays.
           isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
         } else {
-          // Cycle 1: original behaviour unchanged.
+          // Cycle 1
           let struggles = (freshProfile?.struggles || []) as string[];
           const masteredS = (freshProfile?.masteredStruggles || []) as string[];
           const skippedS = (freshProfile?.skippedStruggles || []) as string[];
           const difficultS = (freshProfile?.difficultStruggles || []) as string[];
           const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
 
-          // Safety net: if struggles is empty (dev-reset or edge case bypassing onboarding),
-          // seed with sugary_food_drink so checkRepickCondition has a real focus to evaluate.
-          if (struggles.length === 0) {
-            struggles = ["sugary_food_drink"];
-            profileUpdate.struggles = struggles;
-          }
-
+          // Step 1: eat_out guard — runs FIRST so the sugary guard below sees it already in the list.
           if (hasEatOutDays && !struggles.includes("eat_out") && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out")) {
             struggles = sortStruggles([...struggles, "eat_out"]);
             profileUpdate.struggles = struggles;
+            eatOutAutoAdded = true;
+          }
+
+          // Step 2: sugary guard — fires under exactly two structural cases (only once; gate closes once sugary is in list):
+          // Case A: struggles is still empty (no eat_out days and nothing from onboarding).
+          // Case B: eat_out is the only item in struggles AND no eat_out days this week.
+          const isCaseA = struggles.length === 0;
+          const isCaseB = struggles.length === 1 && struggles[0] === "eat_out" && !hasEatOutDays;
+          if ((isCaseA || isCaseB) && !struggles.includes("sugary_food_drink") && !masteredS.includes("sugary_food_drink") && !skippedS.includes("sugary_food_drink") && !difficultS.includes("sugary_food_drink")) {
+            struggles = sortStruggles([...struggles, "sugary_food_drink"]);
+            profileUpdate.struggles = struggles;
+            sugaryAutoAdded = true;
+            sugaryAlongsideEatOut = isCaseB;
           }
 
           const effectiveStruggles = hasEatOutDays && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out") && !legacyTriedS.includes("eat_out") && !struggles.includes("eat_out")
@@ -1074,7 +1085,7 @@ export async function registerRoutes(
         }
       }
 
-      res.json(result);
+      res.json({ ...result, eatOutAutoAdded, sugaryAutoAdded, sugaryAlongsideEatOut });
     } catch (error: any) {
       console.error("Error creating weekly plan:", error);
       res.status(500).json({ message: error.message || "Failed to create plan" });

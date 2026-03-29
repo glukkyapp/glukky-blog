@@ -505,7 +505,14 @@
     "eat_out_focus_reminder": "Eating Out / Takeaway is your focus this week — schedule at least one day to continue, or skip to another focus.",
     "eat_out_focus_skip": "I don't have any eat-out days this week",
     "late_dinner_focus_reminder": "Late Dinner is your focus this week — schedule at least one late dinner day, or skip to another focus.",
-    "late_dinner_focus_skip": "I don't have any late dinners this week"
+    "late_dinner_focus_skip": "I don't have any late dinners this week",
+    "auto_focus_eat_out_title": "Eating Out added as your focus",
+    "auto_focus_eat_out_body": "You have eat-out days scheduled but no diet focus yet, so we've added Eating Out automatically.",
+    "auto_focus_sugary_second_title": "Sugary Food & Drink added as a second focus",
+    "auto_focus_sugary_second_body": "You have no eat-out days this week, so we've added Sugary Food & Drink alongside Eating Out. Both are now tracked.",
+    "auto_focus_sugary_only_title": "Sugary Food & Drink added as your focus",
+    "auto_focus_sugary_only_body": "You don't have any diet focus yet, so we've started you on Sugary Food & Drink.",
+    "auto_focus_got_it": "Got it"
   },
   "profile": {
     "title": "Your Profile",

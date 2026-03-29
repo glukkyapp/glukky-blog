@@ -175,6 +175,7 @@ export default function WeeklyPlanner() {
   const cardStruggleIntroSnacks = useInfoCard("struggle_intro_snacks");
   const cardStruggleIntroEatOut = useInfoCard("struggle_intro_eat_out");
   const tacticInfoSheet = useInfoSheet();
+  const autoFocusSheet = useInfoSheet();
   const eatOutNonFocusPopup = useEatOutNonFocusPopup(profile?.id);
 
   const cycle = (profile?.currentStruggleCycle as number) || 1;
@@ -461,11 +462,25 @@ export default function WeeklyPlanner() {
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
-      setLocation("/");
+      if (data?.eatOutAutoAdded) {
+        autoFocusSheet.openSheet({
+          title: t("planner.auto_focus_eat_out_title"),
+          body: <p className="text-sm text-muted-foreground">{t("planner.auto_focus_eat_out_body")}</p>,
+        });
+      } else if (data?.sugaryAutoAdded) {
+        const titleKey = data.sugaryAlongsideEatOut ? "planner.auto_focus_sugary_second_title" : "planner.auto_focus_sugary_only_title";
+        const bodyKey = data.sugaryAlongsideEatOut ? "planner.auto_focus_sugary_second_body" : "planner.auto_focus_sugary_only_body";
+        autoFocusSheet.openSheet({
+          title: t(titleKey),
+          body: <p className="text-sm text-muted-foreground">{t(bodyKey)}</p>,
+        });
+      } else {
+        setLocation("/");
+      }
     },
     onError: (error: Error) => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -2435,6 +2450,25 @@ export default function WeeklyPlanner() {
     <InfoCardPopup visible={cardStruggleIntroSnacks.visible} onDismiss={cardStruggleIntroSnacks.dismiss} icon={ShoppingBag} titleKey="info_card.struggle_intro_snacks.title" panelKeys={["info_card.struggle_intro_snacks.body"]} testId="dialog-card-struggle-intro-snacks" />
     <InfoCardPopup visible={cardStruggleIntroEatOut.visible} onDismiss={cardStruggleIntroEatOut.dismiss} icon={Utensils} titleKey="info_card.struggle_intro_eat_out.title" panelKeys={["info_card.struggle_intro_eat_out.body"]} testId="dialog-card-struggle-intro-eat-out" />
     <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
+    <InfoSheet
+      open={autoFocusSheet.open}
+      onClose={() => { autoFocusSheet.closeSheet(); setLocation("/"); }}
+      config={autoFocusSheet.config ? {
+        title: autoFocusSheet.config.title,
+        body: (
+          <div className="space-y-4">
+            {autoFocusSheet.config.body}
+            <Button
+              className="w-full mt-2"
+              data-testid="button-auto-focus-got-it"
+              onClick={() => { autoFocusSheet.closeSheet(); setLocation("/"); }}
+            >
+              {t("planner.auto_focus_got_it")}
+            </Button>
+          </div>
+        ),
+      } : null}
+    />
     <EatOutNonFocusPopup visible={eatOutNonFocusPopup.visible} onDismiss={eatOutNonFocusPopup.dismiss} />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated

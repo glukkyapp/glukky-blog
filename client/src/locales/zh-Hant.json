@@ -509,7 +509,14 @@
     "eat_out_focus_reminder": "外出用餐／外賣是你本週的重點——至少安排一天繼續，或跳過至另一個重點。",
     "eat_out_focus_skip": "我這週沒有外出用餐的日子",
     "late_dinner_focus_reminder": "晚餐偏晚是你本週的重點——至少安排一天晚餐偏晚，或跳過至另一個重點。",
-    "late_dinner_focus_skip": "我這週沒有晚餐偏晚的日子"
+    "late_dinner_focus_skip": "我這週沒有晚餐偏晚的日子",
+    "auto_focus_eat_out_title": "外出用餐已加入為你的飲食重點",
+    "auto_focus_eat_out_body": "你本週有安排外出用餐的日子，但尚未設定飲食重點，我們已自動加入外出用餐。",
+    "auto_focus_sugary_second_title": "含糖食品飲料已加入為第二個重點",
+    "auto_focus_sugary_second_body": "你本週沒有外出用餐的日子，我們已在外出用餐旁加入含糖食品飲料。兩個重點現在都會追蹤。",
+    "auto_focus_sugary_only_title": "含糖食品飲料已加入為你的飲食重點",
+    "auto_focus_sugary_only_body": "你尚未設定任何飲食重點，我們已為你從含糖食品飲料開始。",
+    "auto_focus_got_it": "明白了"
   },
   "profile": {
     "title": "你的個人資料",
