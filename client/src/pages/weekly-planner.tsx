@@ -580,8 +580,16 @@ export default function WeeklyPlanner() {
     if (!reflection) return null;
 
     const dietTotalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
-    const dietDenominator = reflection.dietDaysTotal || dietTotalResponses;
-    const dietSuccessPct = dietDenominator > 0 ? Math.round(((reflection.dietYesCount + reflection.dietNoChanceCount) / dietDenominator) * 100) : null;
+    const eatOutDaysThisWeek = reflection.dietStruggle === "eat_out"
+      ? (reflection.lastWeekSchedule || []).filter((d: any) => d.eatOutScheduled).length
+      : 0;
+    const dietDenominator = reflection.dietStruggle === "eat_out"
+      ? (eatOutDaysThisWeek || dietTotalResponses)
+      : (reflection.dietDaysTotal || dietTotalResponses);
+    const dietSuccessNumerator = reflection.dietStruggle === "eat_out"
+      ? reflection.dietYesCount
+      : (reflection.dietYesCount + reflection.dietNoChanceCount);
+    const dietSuccessPct = dietDenominator > 0 ? Math.round((dietSuccessNumerator / dietDenominator) * 100) : null;
 
     return (
       <Card>
@@ -755,10 +763,10 @@ export default function WeeklyPlanner() {
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
                 {t("planner.tip_label", { tip: translateDietTip(reflection.dietTip, t) })}
               </p>
-              {(reflection.activeDays || 0) > 0 && (
+              {(reflection.dietStruggle === "eat_out" ? eatOutDaysThisWeek > 0 : (reflection.activeDays || 0) > 0) && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
-                  {reflection.dietEvaluation?.struggle === "eat_out"
-                    ? t("planner.eat_out_days_progress", { yesDays: reflection.activeDaysYes || 0, eatOutDays: reflection.eatOutDaysScheduled || 0 })
+                  {reflection.dietStruggle === "eat_out"
+                    ? t("planner.eat_out_days_progress", { yesDays: reflection.dietYesCount || 0, eatOutDays: eatOutDaysThisWeek })
                     : t("planner.diet_days_progress", { yesDays: reflection.activeDaysYes || 0, activeDays: reflection.activeDays || 0 })}
                 </p>
               )}
