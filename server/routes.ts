@@ -963,6 +963,13 @@ export async function registerRoutes(
           const difficultS = (freshProfile?.difficultStruggles || []) as string[];
           const legacyTriedS = (freshProfile?.triedBeforeStruggles || []) as string[];
 
+          // Safety net: if struggles is empty (dev-reset or edge case bypassing onboarding),
+          // seed with sugary_food_drink so checkRepickCondition has a real focus to evaluate.
+          if (struggles.length === 0) {
+            struggles = ["sugary_food_drink"];
+            profileUpdate.struggles = struggles;
+          }
+
           if (hasEatOutDays && !struggles.includes("eat_out") && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out")) {
             struggles = sortStruggles([...struggles, "eat_out"]);
             profileUpdate.struggles = struggles;
