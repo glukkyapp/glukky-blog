@@ -46,7 +46,7 @@ function AuthenticatedApp() {
     );
   }
 
-  if (!profile) {
+  if (!profile || !(profile as any).onboardingComplete) {
     return <Onboarding />;
   }
 
