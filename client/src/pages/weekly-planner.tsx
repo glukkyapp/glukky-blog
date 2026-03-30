@@ -30,6 +30,7 @@ import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
+import { EatOutCommitmentPrompt, useEatOutCommitmentPrompt } from "@/components/eat-out-commitment-prompt";
 
 export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
@@ -179,6 +180,7 @@ export default function WeeklyPlanner() {
   const autoFocusSheet = useInfoSheet();
   const eatOutNonFocusPopup = useEatOutNonFocusPopup(profile?.id);
   const autoFocusPopup = useAutoFocusPopup();
+  const eatOutCommitmentPrompt = useEatOutCommitmentPrompt();
 
   const cycle = (profile?.currentStruggleCycle as number) || 1;
 
@@ -310,6 +312,12 @@ export default function WeeklyPlanner() {
     }
   }, [reflection?.repickPending]);
 
+  useEffect(() => {
+    if (currentStepId === "weeklyReport" && cycle === 1 && reflection?.eatOutNeedsCommitment && !reflection?.repickPending) {
+      eatOutCommitmentPrompt.trigger();
+    }
+  }, [currentStepId, cycle, reflection?.eatOutNeedsCommitment, reflection?.repickPending]);
+
   // When entering the cycle-3 repick step, pre-populate selectedStruggles3 from
   // profile.struggles3 if the user had previously saved a partial selection.
   useEffect(() => {
@@ -381,6 +389,35 @@ export default function WeeklyPlanner() {
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
       // Signal that we need to navigate to the correct next step once steps recomputes.
       setPendingSkipNavigation(true);
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
+
+  const eatOutCommitMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/eat-out/commit-extended", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, eatOutExtendedCommitment: true } : old);
+      eatOutCommitmentPrompt.dismiss();
+    },
+    onError: (error: Error) => {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    },
+  });
+
+  const eatOutSkipCycle1Mutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/eat-out/skip-cycle1", {});
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/plan/reflection"] });
+      eatOutCommitmentPrompt.dismiss();
     },
     onError: (error: Error) => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -582,6 +619,14 @@ export default function WeeklyPlanner() {
   }
 
   function goNext() {
+    // Rule C: eat_out sole struggle — if user clicks Next past lateDinnerDays with no eat-out days, redirect back
+    if (currentStepId === "lateDinnerDays" && cycle === 1) {
+      const struggles1 = (profile?.struggles as string[]) || [];
+      if (struggles1.length === 1 && struggles1[0] === "eat_out" && lateDinnerDays.length === 0 && eatOutDays.length === 0) {
+        const idx = steps.indexOf("eatOutDays");
+        if (idx !== -1) { setStepIndex(idx); return; }
+      }
+    }
     if (clampedStepIndex + 1 < steps.length) {
       setStepIndex(clampedStepIndex + 1);
     }
@@ -1549,6 +1594,7 @@ export default function WeeklyPlanner() {
 
   function renderEatOutDays() {
     const isEatOutFocus = cycle2Focus === "eat_out" || cycle3Focus === "eat_out";
+    const isSoleStruggle = cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })();
     return (
       <Card>
         <CardHeader>
@@ -1597,6 +1643,13 @@ export default function WeeklyPlanner() {
                   {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.eat_out_focus_skip")}
                 </button>
               )}
+            </div>
+          )}
+          {isSoleStruggle && eatOutDays.length === 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3" data-testid="section-eat-out-sole-struggle-gate">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                {t("planner.eat_out_sole_struggle_gate")}
+              </p>
             </div>
           )}
         </CardContent>
@@ -1887,14 +1940,18 @@ export default function WeeklyPlanner() {
     const hypTriedBefore = (isTransition && (serverEval?.type === "not_relevant" || serverEval?.type === "moved_on") && previousStruggle)
       ? [...triedBefore, previousStruggle] : triedBefore;
 
-    const effectiveStruggles = hasEatOutDays && !hypMastered.includes("eat_out") && !hypTriedBefore.includes("eat_out") && !struggles.includes("eat_out")
+    // Task 9: when eatOutExtendedCommitment is set, force eat_out as active focus
+    const eatOutCommitted = !!(profile?.eatOutExtendedCommitment);
+    const eatOutAvailable = hasEatOutDays || eatOutCommitted;
+
+    const effectiveStruggles = eatOutAvailable && !hypMastered.includes("eat_out") && !hypTriedBefore.includes("eat_out") && !struggles.includes("eat_out")
       ? [...struggles, "eat_out"]
       : struggles;
 
-    const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s) && !(s === "eat_out" && !hasEatOutDays));
-    const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && hypTriedBefore.includes(s) && !(s === "eat_out" && !hasEatOutDays));
+    const untried = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && !hypMastered.includes(s) && !hypTriedBefore.includes(s) && !(s === "eat_out" && !eatOutAvailable));
+    const triedNotMastered = STRUGGLE_PRIORITY.filter(s => effectiveStruggles.includes(s) && hypTriedBefore.includes(s) && !(s === "eat_out" && !eatOutAvailable));
     const fallbackStruggle = STRUGGLE_PRIORITY.find(s => {
-      if (s === "eat_out" && !hasEatOutDays) return false;
+      if (s === "eat_out" && !eatOutAvailable) return false;
       return !hypMastered.includes(s) && !hypTriedBefore.includes(s);
     }) || "sugary_food_drink";
     const effectiveStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
@@ -2181,14 +2238,31 @@ export default function WeeklyPlanner() {
             );
           })()}
 
-          <Button
-            className="w-full mt-4"
-            onClick={() => createPlanMutation.mutate()}
-            disabled={createPlanMutation.isPending}
-            data-testid="button-confirm-plan"
-          >
-            {createPlanMutation.isPending ? t("planner.creating_plan") : t("planner.confirm_start_week")}
-          </Button>
+          {(() => {
+            const eatOutCommitGateActive = cycle === 1 && !!(profile?.eatOutExtendedCommitment) && eatOutDays.length === 0;
+            return (
+              <>
+                <Button
+                  className="w-full mt-4"
+                  onClick={() => createPlanMutation.mutate()}
+                  disabled={createPlanMutation.isPending || eatOutCommitGateActive}
+                  data-testid="button-confirm-plan"
+                >
+                  {createPlanMutation.isPending ? t("planner.creating_plan") : t("planner.confirm_start_week")}
+                </Button>
+                {eatOutCommitGateActive && (
+                  <button
+                    className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2 mt-2"
+                    onClick={() => eatOutSkipCycle1Mutation.mutate()}
+                    disabled={eatOutSkipCycle1Mutation.isPending}
+                    data-testid="button-eat-out-commit-skip"
+                  >
+                    {eatOutSkipCycle1Mutation.isPending ? "…" : t("planner.eat_out_focus_skip")}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
     );
@@ -2477,7 +2551,8 @@ export default function WeeklyPlanner() {
               (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0 && !cycle2GateReleased.has("eat_out")) ||
               (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner")) ||
               (currentStepId === "eatOutDays" && cycle3Focus === "eat_out" && eatOutDays.length === 0 && !cycle3GateReleased.has("eat_out")) ||
-              (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner"))
+              (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner")) ||
+              (currentStepId === "eatOutDays" && cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })() && eatOutDays.length === 0)
             }
             data-testid="button-next"
           >
@@ -2523,6 +2598,13 @@ export default function WeeklyPlanner() {
       type={autoFocusPopup.type}
       nextFocusName={autoFocusPopup.nextFocusName}
       onDismiss={autoFocusPopup.dismiss}
+    />
+    <EatOutCommitmentPrompt
+      visible={eatOutCommitmentPrompt.visible}
+      eatOutFocusWeeks={reflection?.eatOutFocusWeeks ?? 1}
+      onYes={() => eatOutCommitMutation.mutate()}
+      onNo={() => eatOutSkipCycle1Mutation.mutate()}
+      isPending={eatOutCommitMutation.isPending || eatOutSkipCycle1Mutation.isPending}
     />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated

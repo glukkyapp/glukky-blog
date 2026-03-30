@@ -45,6 +45,7 @@ export interface IStorage {
   getRecentWeeklyPlans(userId: string, limit: number): Promise<WeeklyPlan[]>;
   getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]>;
   hasAnyEatOutScheduled(userId: string): Promise<boolean>;
+  countEatOutFocusWeeks(userId: string): Promise<number>;
   hasAnyLateDinnerScheduled(userId: string): Promise<boolean>;
   hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
   hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
@@ -223,6 +224,13 @@ export class DatabaseStorage implements IStorage {
     return !!row;
   }
 
+  async countEatOutFocusWeeks(userId: string): Promise<number> {
+    const plans = await db.select({ id: weeklyPlans.id })
+      .from(weeklyPlans)
+      .where(and(eq(weeklyPlans.userId, userId), eq(weeklyPlans.dietStruggle, "eat_out")));
+    return plans.length;
+  }
+
   async hasAnyLateDinnerScheduled(userId: string): Promise<boolean> {
     const allPlans = await db.select({ id: weeklyPlans.id })
       .from(weeklyPlans)
@@ -383,6 +391,7 @@ export class DatabaseStorage implements IStorage {
       piggyBankReward: null,
       piggyBankNeedsRewardSetup: true,
       repickPending: false,
+      eatOutExtendedCommitment: false,
       currentStruggleCycle: 1,
       struggles2: [],
       masteredStruggles2: [],

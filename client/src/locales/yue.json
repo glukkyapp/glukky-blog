@@ -516,7 +516,14 @@
     "auto_focus_sugary_second_body": "你今週冇出外食飯嘅日子，我哋已喺出外食飯旁加入含糖食品飲品。兩個重點而家都會追蹤。",
     "auto_focus_sugary_only_title": "含糖食品飲品已加入做你嘅飲食重點",
     "auto_focus_sugary_only_body": "你未設定任何飲食重點，我哋已為你由含糖食品飲品開始。",
-    "auto_focus_got_it": "明白喇"
+    "auto_focus_got_it": "明白喇",
+    "eat_out_sole_struggle_gate": "外食／外賣係你唯一追蹤嘅習慣。你需要安排至少一日外食日先可以繼續。"
+  },
+  "eat_out_commitment_prompt": {
+    "title": "繼續追蹤外食？",
+    "body": "你已追蹤外食 {{weeks}} 週，但未完成完整週期。你想繼續以外食作為下週嘅重點嗎？",
+    "yes": "係，繼續以外食為重點",
+    "no": "唔，轉換到其他目標"
   },
   "profile": {
     "title": "你嘅個人資料",

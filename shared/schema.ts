@@ -58,6 +58,7 @@ export const userProfiles = pgTable("user_profiles", {
   skippedStruggles3: text("skipped_struggles3").array().notNull().default(sql`'{}'::text[]`),
   difficultStruggles3: text("difficult_struggles3").array().notNull().default(sql`'{}'::text[]`),
   cycle3Active: boolean("cycle3_active"),
+  eatOutExtendedCommitment: boolean("eat_out_extended_commitment").notNull().default(false),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

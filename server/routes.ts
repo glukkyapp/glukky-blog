@@ -650,8 +650,37 @@ export async function registerRoutes(
         }
       }
 
+      // Task 4: at week 3 of eat_out focus with no resolution, force moved_on directly
+      if (
+        currentCycle === 1 &&
+        currentStruggleForReflection === "eat_out" &&
+        dietEvaluation.type === "in_cycle" &&
+        !dietJustGraduated && !dietJustSkipped && !dietJustMovedOn
+      ) {
+        const mastered4 = (profileBeforeMastery?.masteredStruggles || []) as string[];
+        const skipped4 = (profileBeforeMastery?.skippedStruggles || []) as string[];
+        const difficult4 = (profileBeforeMastery?.difficultStruggles || []) as string[];
+        const struggles4 = (profileBeforeMastery?.struggles || []) as string[];
+        const otherStruggles4 = struggles4.filter(s => s !== "eat_out");
+        const eatOutResolved4 = mastered4.includes("eat_out") || skipped4.includes("eat_out") || difficult4.includes("eat_out");
+        if (!eatOutResolved4 && otherStruggles4.length > 0) {
+          const allOthersResolved = otherStruggles4.every(s => mastered4.includes(s) || skipped4.includes(s) || difficult4.includes(s));
+          if (allOthersResolved) {
+            const focusWeeks4 = await storage.countEatOutFocusWeeks(userId);
+            if (focusWeeks4 === 3) {
+              await storage.updateProfile(userId, {
+                difficultStruggles: [...difficult4, "eat_out"],
+              });
+              dietJustMovedOn = true;
+            }
+          }
+        }
+      }
+
       let repickPending = false;
       let eatOutPickedButNeverScheduled = false;
+      let eatOutNeedsCommitment = false;
+      let eatOutFocusWeeksResult = 0;
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
@@ -671,6 +700,10 @@ export async function registerRoutes(
           repickPending = true;
         }
         eatOutPickedButNeverScheduled = repickResult.eatOutPickedButNeverScheduled;
+        eatOutNeedsCommitment = repickResult.eatOutNeedsCommitment;
+        eatOutFocusWeeksResult = repickResult.eatOutFocusWeeks;
+      } else if (currentCycle === 1 && profileBeforeMastery?.repickPending) {
+        repickPending = true;
       } else if (currentCycle === 2 && !(profileBeforeMastery?.repickPending)) {
         const cycle3Result = await checkCycle3RepickCondition(userId);
         if (cycle3Result.conditionMet) {
@@ -766,6 +799,9 @@ export async function registerRoutes(
         repickPending,
         currentStruggleCycle: finalProfile?.currentStruggleCycle ?? profile?.currentStruggleCycle,
         eatOutPickedButNeverScheduled,
+        eatOutNeedsCommitment,
+        eatOutFocusWeeks: eatOutFocusWeeksResult,
+        eatOutExtendedCommitment: finalProfile?.eatOutExtendedCommitment ?? false,
         appearedDietStruggles,
       });
     } catch (error) {
@@ -798,6 +834,60 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error in report-seen:", error);
       res.status(500).json({ message: "Failed to evaluate weekly achievements" });
+    }
+  });
+
+  app.post("/api/eat-out/commit-extended", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const updated = await storage.updateProfile(userId, { eatOutExtendedCommitment: true });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error in eat-out/commit-extended:", error);
+      res.status(500).json({ message: "Failed to commit extended eat-out" });
+    }
+  });
+
+  app.post("/api/eat-out/skip-cycle1", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const skipped = (profile.skippedStruggles || []) as string[];
+      if (!skipped.includes("eat_out")) {
+        await storage.updateProfile(userId, {
+          skippedStruggles: [...skipped, "eat_out"],
+          eatOutExtendedCommitment: false,
+        });
+      } else {
+        await storage.updateProfile(userId, { eatOutExtendedCommitment: false });
+      }
+
+      const repickResult = await checkRepickCondition(userId);
+      if (repickResult.conditionMet) {
+        const latestProfile = await storage.getProfile(userId);
+        const skipped1H = (latestProfile?.skippedStruggles as string[]) || [];
+        const difficult1H = (latestProfile?.difficultStruggles as string[]) || [];
+        await storage.saveCycleHistory({
+          userId,
+          cycleNumber: 1,
+          startWeek: 1,
+          endWeek: latestProfile?.currentWeek ?? undefined,
+          strugglesPicked: (latestProfile?.struggles as string[]) || [],
+          mastered: (latestProfile?.masteredStruggles as string[]) || [],
+          movedOn: [...new Set([...skipped1H, ...difficult1H])],
+        });
+        await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false });
+      }
+
+      const finalProfile = await storage.getProfile(userId);
+      res.json(finalProfile);
+    } catch (error) {
+      console.error("Error in eat-out/skip-cycle1:", error);
+      res.status(500).json({ message: "Failed to skip eat-out cycle 1" });
     }
   });
 
@@ -992,6 +1082,12 @@ export async function registerRoutes(
             return !masteredS.includes(s) && !skippedS.includes(s) && !difficultS.includes(s);
           }) || "sugary_food_drink";
           currentStruggle = [...untried, ...triedNotMastered][0] || fallbackStruggle;
+
+          // Task 9: force eat_out as focus during extended commitment weeks
+          if (freshProfile?.eatOutExtendedCommitment && struggles.includes("eat_out") && !masteredS.includes("eat_out") && !skippedS.includes("eat_out") && !difficultS.includes("eat_out")) {
+            currentStruggle = "eat_out";
+          }
+
           isDinnerFocusComputed = (lateDinnerDays || []).length > 0 && !freshProfile?.dinnerMastered;
         }
 

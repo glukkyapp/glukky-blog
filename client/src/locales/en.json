@@ -512,7 +512,14 @@
     "auto_focus_sugary_second_body": "You have no eat-out days this week, so we've added Sugary Food & Drink alongside Eating Out. Both are now tracked.",
     "auto_focus_sugary_only_title": "Sugary Food & Drink added as your focus",
     "auto_focus_sugary_only_body": "You don't have any diet focus yet, so we've started you on Sugary Food & Drink.",
-    "auto_focus_got_it": "Got it"
+    "auto_focus_got_it": "Got it",
+    "eat_out_sole_struggle_gate": "Eating Out is your only tracked habit. You need to schedule at least one eat-out day to continue."
+  },
+  "eat_out_commitment_prompt": {
+    "title": "Keep going with Eating Out?",
+    "body": "You've been tracking Eating Out for {{weeks}} week(s) without completing a full cycle. Would you like to continue focusing on it next week?",
+    "yes": "Yes, keep Eating Out as my focus",
+    "no": "No, move on to something else"
   },
   "profile": {
     "title": "Your Profile",

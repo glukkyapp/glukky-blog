@@ -513,7 +513,12 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
       return null;
     };
 
-    if (activeDays >= 21 && activeDays < 28) return evalPhase(3) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+    if (activeDays >= 21 && activeDays < 28) {
+      const phase3Result = evalPhase(3);
+      if (phase3Result) return phase3Result;
+      if (profile?.eatOutExtendedCommitment) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+      return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+    }
     if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays === 35) return evalPhase(5) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     if (activeDays >= 42) {
@@ -1051,29 +1056,40 @@ export async function checkCycle3RepickCondition(userId: string): Promise<{
 export async function checkRepickCondition(userId: string): Promise<{
   conditionMet: boolean;
   eatOutPickedButNeverScheduled: boolean;
+  eatOutNeedsCommitment: boolean;
+  eatOutFocusWeeks: number;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile) return { conditionMet: false, eatOutPickedButNeverScheduled: false };
+  if (!profile) return { conditionMet: false, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0 };
 
   const struggles = (profile.struggles || []) as string[];
-  if (struggles.length === 0) return { conditionMet: !!(profile.dinnerMastered) || !profile.hasLateDinner, eatOutPickedButNeverScheduled: false };
+  if (struggles.length === 0) return { conditionMet: !!(profile.dinnerMastered) || !profile.hasLateDinner, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0 };
 
   const eatOutPickedInList = struggles.includes("eat_out");
-  const eatOutEverScheduled = eatOutPickedInList ? await storage.hasAnyEatOutScheduled(userId) : false;
-  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverScheduled;
+  const hasOtherStruggles = struggles.filter(s => s !== "eat_out").length > 0;
+  const eatOutFocusWeeks = eatOutPickedInList ? await storage.countEatOutFocusWeeks(userId) : 0;
+
+  // Rule A: eat_out exempted if 0 focus weeks AND there are other struggles
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0;
 
   const mastered = (profile.masteredStruggles || []) as string[];
   const skipped = (profile.skippedStruggles || []) as string[];
   const difficult = (profile.difficultStruggles || []) as string[];
+  const eatOutResolved = mastered.includes("eat_out") || skipped.includes("eat_out") || difficult.includes("eat_out");
+
+  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome and other struggles exist
+  const eatOutNeedsCommitment = eatOutPickedInList && hasOtherStruggles
+    && eatOutFocusWeeks >= 1 && eatOutFocusWeeks <= 2
+    && !eatOutResolved;
 
   const mustGoThrough = struggles.filter(s => {
     if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
     return true;
   });
 
-  if (mustGoThrough.length === 0) return { conditionMet: true, eatOutPickedButNeverScheduled };
+  if (mustGoThrough.length === 0) return { conditionMet: true, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks };
 
   const conditionMet = mustGoThrough.every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
 
-  return { conditionMet, eatOutPickedButNeverScheduled };
+  return { conditionMet, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks };
 }
