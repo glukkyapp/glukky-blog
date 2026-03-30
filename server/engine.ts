@@ -517,7 +517,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
     if (activeDays >= 21 && activeDays < 28) {
       const phase3Result = evalPhase(3);
       if (phase3Result) return phase3Result;
-      if (profile?.eatOutExtendedCommitment) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
+      if (profile?.eatOutExtendedCommitment && profile?.currentStruggleCycle === 1) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
       return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
     }
     if (activeDays === 28) return evalPhase(4) ?? { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };

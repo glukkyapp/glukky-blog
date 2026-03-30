@@ -696,7 +696,7 @@ export async function registerRoutes(
             mastered: (latestProfileC1?.masteredStruggles as string[]) || [],
             movedOn: [...new Set([...skipped1H, ...difficult1H])],
           });
-          await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false });
+          await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false, eatOutExtendedCommitment: false });
           repickPending = true;
         }
         eatOutPickedButNeverScheduled = repickResult.eatOutPickedButNeverScheduled;
