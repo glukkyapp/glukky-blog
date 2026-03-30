@@ -1910,6 +1910,7 @@ export async function registerRoutes(
           isDinnerFocus: false,
           firstActiveDay: 0,
           isStretchWeek: false,
+          planStruggleCycle: 1,
         });
 
         // Create plan days (Mon/Wed/Fri walk, no eat-out)

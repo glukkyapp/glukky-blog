@@ -227,7 +227,7 @@ export class DatabaseStorage implements IStorage {
   async countEatOutFocusWeeks(userId: string): Promise<number> {
     const plans = await db.select({ id: weeklyPlans.id })
       .from(weeklyPlans)
-      .where(and(eq(weeklyPlans.userId, userId), eq(weeklyPlans.dietStruggle, "eat_out")));
+      .where(and(eq(weeklyPlans.userId, userId), eq(weeklyPlans.dietStruggle, "eat_out"), eq(weeklyPlans.planStruggleCycle, 1)));
     return plans.length;
   }
 

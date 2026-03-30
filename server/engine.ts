@@ -411,6 +411,7 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
     dietTip,
     isDinnerFocus,
     isStretchWeek: !!input.isStretchMode,
+    planStruggleCycle: profile.currentStruggleCycle,
   });
 
   for (const entry of dayEntries) {
@@ -1077,8 +1078,12 @@ export async function checkRepickCondition(userId: string): Promise<{
   const difficult = (profile.difficultStruggles || []) as string[];
   const eatOutResolved = mastered.includes("eat_out") || skipped.includes("eat_out") || difficult.includes("eat_out");
 
-  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome and other struggles exist
+  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome, other struggles exist AND all other struggles resolved
+  const allOtherResolved = struggles
+    .filter(s => s !== "eat_out")
+    .every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
   const eatOutNeedsCommitment = eatOutPickedInList && hasOtherStruggles
+    && allOtherResolved
     && eatOutFocusWeeks >= 1 && eatOutFocusWeeks <= 2
     && !eatOutResolved;
 

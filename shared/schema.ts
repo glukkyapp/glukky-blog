@@ -73,6 +73,7 @@ export const weeklyPlans = pgTable("weekly_plans", {
   isDinnerFocus: boolean("is_dinner_focus").notNull().default(false),
   firstActiveDay: integer("first_active_day").notNull().default(0),
   isStretchWeek: boolean("is_stretch_week").notNull().default(false),
+  planStruggleCycle: integer("plan_struggle_cycle").notNull().default(1),
 });
 
 export const weeklyPlanDays = pgTable("weekly_plan_days", {
