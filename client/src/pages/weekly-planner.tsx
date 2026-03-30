@@ -29,6 +29,7 @@ function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => strin
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
+import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
 
 export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
@@ -177,6 +178,7 @@ export default function WeeklyPlanner() {
   const tacticInfoSheet = useInfoSheet();
   const autoFocusSheet = useInfoSheet();
   const eatOutNonFocusPopup = useEatOutNonFocusPopup(profile?.id);
+  const autoFocusPopup = useAutoFocusPopup();
 
   const cycle = (profile?.currentStruggleCycle as number) || 1;
 
@@ -263,6 +265,28 @@ export default function WeeklyPlanner() {
       const { effectiveStruggle } = getEffectiveStruggle();
       if (effectiveStruggle !== "eat_out") {
         eatOutNonFocusPopup.trigger();
+      }
+    }
+  }, [currentStepId, cycle, eatOutDays.length]);
+
+  useEffect(() => {
+    if (currentStepId !== "preview" || cycle !== 1) return;
+    const struggles1 = (profile?.struggles as string[]) || [];
+
+    // Scenario 1: user has no diet struggles but has scheduled eat-out days.
+    // Eating Out will become their focus automatically — explain why.
+    if (eatOutDays.length > 0 && struggles1.length === 0) {
+      autoFocusPopup.trigger("no_struggles_eat_out");
+      return;
+    }
+
+    // Scenario 2: eat_out is in the user's struggles but no eat-out days scheduled.
+    // Eating Out is skipped this week and another focus takes its place — explain what and why.
+    if (eatOutDays.length === 0 && struggles1.includes("eat_out") && !isDinnerFocus) {
+      const { effectiveStruggle } = getEffectiveStruggle();
+      if (effectiveStruggle !== "eat_out") {
+        const focusName = t(`struggle.${effectiveStruggle}`, { defaultValue: effectiveStruggle });
+        autoFocusPopup.trigger("eat_out_no_days", focusName);
       }
     }
   }, [currentStepId, cycle, eatOutDays.length]);
@@ -2493,6 +2517,12 @@ export default function WeeklyPlanner() {
       } : null}
     />
     <EatOutNonFocusPopup visible={eatOutNonFocusPopup.visible} onDismiss={eatOutNonFocusPopup.dismiss} />
+    <AutoFocusPopup
+      visible={autoFocusPopup.visible}
+      type={autoFocusPopup.type}
+      nextFocusName={autoFocusPopup.nextFocusName}
+      onDismiss={autoFocusPopup.dismiss}
+    />
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated
         ? t("planner.late_dinner_management")

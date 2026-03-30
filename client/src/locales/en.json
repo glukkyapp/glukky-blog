@@ -573,6 +573,12 @@
     "logging_in": "Logging in...",
     "registering": "Registering..."
   },
+  "auto_focus_popup": {
+    "no_struggles_eat_out_title": "Eating Out is your focus this week",
+    "no_struggles_eat_out_body": "You've scheduled eat-out or takeaway days but haven't picked any diet areas to work on yet. Since eating out tends to have the biggest impact on blood sugar, we've made it your focus this week.",
+    "eat_out_no_days_title": "Focus adjusted for this week",
+    "eat_out_no_days_body": "You haven't scheduled any eat-out days this week, so Eating Out can't be practiced. Your focus will be {{name}} instead."
+  },
   "eat_out_nonfocus_popup": {
     "title": "Heads up about your eat-out days",
     "body": "It looks like you've got some eat-out or takeaway meals planned this week! Even though it's not your main focus right now, eating out can have a bigger effect on your blood glucose than your other habits. Why not give it some attention this week and see how it goes?"

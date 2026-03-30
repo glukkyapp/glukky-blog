@@ -577,6 +577,12 @@
     "logging_in": "登入中...",
     "registering": "註冊中..."
   },
+  "auto_focus_popup": {
+    "no_struggles_eat_out_title": "外出用餐是本週你的重點",
+    "no_struggles_eat_out_body": "你安排了外出用餐或外帶的日子，但尚未選擇任何飲食重點。由於外出用餐通常對血糖影響最大，我們將其設為你本週的重點。",
+    "eat_out_no_days_title": "本週重點已調整",
+    "eat_out_no_days_body": "你本週沒有安排外出用餐的日子，因此無法練習外出用餐。本週的重點將改為{{name}}。"
+  },
   "eat_out_nonfocus_popup": {
     "title": "留意一下你的外食日",
     "body": "你這週好像安排了一些外食或外賣！雖然這不是你目前的主要重點，但外食對血糖的影響可能比其他習慣更大。不如趁這週多留意一下，看看效果如何？"
