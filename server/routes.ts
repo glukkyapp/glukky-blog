@@ -862,6 +862,15 @@ export async function registerRoutes(
       if (eatOutResolved) {
         return res.status(400).json({ message: "eat_out is already resolved" });
       }
+      const mastered = (profile.masteredStruggles || []) as string[];
+      const skipped = (profile.skippedStruggles || []) as string[];
+      const difficult = (profile.difficultStruggles || []) as string[];
+      const allOtherResolved = struggles
+        .filter(s => s !== "eat_out")
+        .every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
+      if (!allOtherResolved) {
+        return res.status(400).json({ message: "Extended commitment requires all other Cycle 1 struggles to be resolved first" });
+      }
       const focusWeeks = await storage.countEatOutFocusWeeks(userId);
       if (focusWeeks < 1 || focusWeeks > 2) {
         return res.status(400).json({ message: "Extended commitment only allowed at 1–2 eat_out focus weeks" });
