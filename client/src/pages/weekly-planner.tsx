@@ -269,9 +269,10 @@ export default function WeeklyPlanner() {
     }
   }, [currentStepId, cycle, eatOutDays.length]);
 
+  const profileStruggles = profile?.struggles;
   useEffect(() => {
     if (currentStepId !== "preview" || cycle !== 1) return;
-    const struggles1 = (profile?.struggles as string[]) || [];
+    const struggles1 = (profileStruggles as string[]) || [];
 
     // Scenario 1: user has no diet struggles but has scheduled eat-out days.
     // Eating Out will become their focus automatically — explain why.
@@ -289,7 +290,7 @@ export default function WeeklyPlanner() {
         autoFocusPopup.trigger("eat_out_no_days", focusName);
       }
     }
-  }, [currentStepId, cycle, eatOutDays.length]);
+  }, [currentStepId, cycle, eatOutDays.length, profileStruggles, isDinnerFocus, t, getEffectiveStruggle]);
 
   useEffect(() => {
     if (
