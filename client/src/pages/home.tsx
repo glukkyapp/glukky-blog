@@ -1731,7 +1731,7 @@ export default function Home() {
               })}
             </div>
 
-            {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
+            {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (cycle < 2 || calendarPlan?.isDinnerFocus) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
@@ -1760,7 +1760,7 @@ export default function Home() {
               </div>
             )}
 
-            {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
+            {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (cycle < 2 || calendarPlan?.dietStruggle === 'eat_out') && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
                 <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
@@ -1823,13 +1823,13 @@ export default function Home() {
               {calendarData?.calendar?.some((d: any) => d.standingTap) && (
                 <div className="flex items-center gap-1"><Timer className="w-3 h-3 text-amber-500" /> {t("home.standing_tap_legend")}</div>
               )}
-              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
+              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (cycle < 2 || calendarPlan?.isDinnerFocus) && (
                 <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> {t("home.late_dinner_legend")}</div>
               )}
-              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
+              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (cycle < 2 || calendarPlan?.isDinnerFocus) && (
                 <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> {t("home.tactic_set")}</div>
               )}
-              {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
+              {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (cycle < 2 || calendarPlan?.dietStruggle === 'eat_out') && (
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
               )}
             </div>

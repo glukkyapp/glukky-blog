@@ -2087,7 +2087,7 @@ export default function WeeklyPlanner() {
             })}
           </div>
 
-          {lateDinnerDays.length > 0 && (
+          {lateDinnerDays.length > 0 && (cycle < 2 || isDinnerFocus) && (
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
               <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
               {DAY_NAMES.map((_, i) => {
@@ -2105,7 +2105,7 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {eatOutDays.length > 0 && (
+          {eatOutDays.length > 0 && (cycle < 2 || cycle2Focus === 'eat_out' || cycle3Focus === 'eat_out') && (
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
               <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
               {DAY_NAMES.map((_, i) => {
