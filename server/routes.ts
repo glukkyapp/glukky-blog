@@ -842,6 +842,31 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const struggles = (profile.struggles || []) as string[];
+      const hasEatOut = struggles.includes("eat_out");
+      const hasOtherStruggles = struggles.filter(s => s !== "eat_out").length > 0;
+      const eatOutResolved = ((profile.masteredStruggles || []) as string[]).includes("eat_out")
+        || ((profile.skippedStruggles || []) as string[]).includes("eat_out")
+        || ((profile.difficultStruggles || []) as string[]).includes("eat_out");
+
+      if (profile.currentStruggleCycle !== 1) {
+        return res.status(400).json({ message: "Extended commitment only applies in Cycle 1" });
+      }
+      if (!hasEatOut) {
+        return res.status(400).json({ message: "eat_out not in struggle list" });
+      }
+      if (!hasOtherStruggles) {
+        return res.status(400).json({ message: "Extended commitment not applicable for sole eat_out struggle" });
+      }
+      if (eatOutResolved) {
+        return res.status(400).json({ message: "eat_out is already resolved" });
+      }
+      const focusWeeks = await storage.countEatOutFocusWeeks(userId);
+      if (focusWeeks < 1 || focusWeeks > 2) {
+        return res.status(400).json({ message: "Extended commitment only allowed at 1–2 eat_out focus weeks" });
+      }
+
       const updated = await storage.updateProfile(userId, { eatOutExtendedCommitment: true });
       res.json(updated);
     } catch (error) {
@@ -855,6 +880,20 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const struggles = (profile.struggles || []) as string[];
+      const hasEatOut = struggles.includes("eat_out");
+      const hasOtherStruggles = struggles.filter(s => s !== "eat_out").length > 0;
+
+      if (profile.currentStruggleCycle !== 1) {
+        return res.status(400).json({ message: "skip-cycle1 only applies in Cycle 1" });
+      }
+      if (!hasEatOut) {
+        return res.status(400).json({ message: "eat_out not in struggle list" });
+      }
+      if (!hasOtherStruggles) {
+        return res.status(400).json({ message: "Cannot skip eat_out when it is the only struggle (Rule C)" });
+      }
 
       const skipped = (profile.skippedStruggles || []) as string[];
       if (!skipped.includes("eat_out")) {
