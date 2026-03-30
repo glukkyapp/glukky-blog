@@ -17,9 +17,9 @@ import Snap from "@/pages/snap";
 import HealthInfo from "@/pages/health-info";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
-import glukkyLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
+import { useEffect, useState, useRef } from "react";
 import i18n from "./i18n";
+import { SplashScreen } from "@/components/splash-screen";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -96,11 +96,7 @@ function Router() {
   }, [user]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3 bg-white">
-        <img src={glukkyLogo} alt="Glukky" style={{ width: 440 }} />
-      </div>
-    );
+    return null;
   }
 
   if (!user) {
@@ -111,14 +107,41 @@ function Router() {
 }
 
 function App() {
+  const { isLoading } = useAuth();
+  const [timerDone, setTimerDone] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => {
+      setTimerDone(true);
+    }, 2000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (timerDone && !isLoading) {
+      setSplashVisible(false);
+    }
+  }, [timerDone, isLoading]);
+
+  return (
+    <TooltipProvider>
+      <Toaster />
+      <Router />
+      <SplashScreen visible={splashVisible} />
+    </TooltipProvider>
+  );
+}
+
+function AppWithProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <App />
     </QueryClientProvider>
   );
 }
 
-export default App;
+export default AppWithProviders;
