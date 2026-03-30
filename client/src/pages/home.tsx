@@ -1823,8 +1823,12 @@ export default function Home() {
               {calendarData?.calendar?.some((d: any) => d.standingTap) && (
                 <div className="flex items-center gap-1"><Timer className="w-3 h-3 text-amber-500" /> {t("home.standing_tap_legend")}</div>
               )}
-              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> {t("home.late_dinner_legend")}</div>
-              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> {t("home.tactic_set")}</div>
+              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
+                <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> {t("home.late_dinner_legend")}</div>
+              )}
+              {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (
+                <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> {t("home.tactic_set")}</div>
+              )}
               {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
               )}
