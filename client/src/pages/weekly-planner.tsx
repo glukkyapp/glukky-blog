@@ -225,7 +225,9 @@ export default function WeeklyPlanner() {
       if (repickStepNeeded) s.push("repick");
       s.push("planTransition");
     }
-    s.push("walkDays", "eatOutDays", "lateDinnerDays");
+    s.push("walkDays");
+    if (cycle < 2 || cycle2Focus === "eat_out" || cycle3Focus === "eat_out") s.push("eatOutDays");
+    if (cycle < 2 || isDinnerFocus) s.push("lateDinnerDays");
     if (noWalkDays) s.push("standingTapSuggest");
     if (isDinnerFocus) s.push("dinnerFocusReview");
     if (!isDinnerFocus) {
@@ -234,7 +236,7 @@ export default function WeeklyPlanner() {
     }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, noWalkDays, repickStepNeeded]);
+  }, [isFirstWeek, isDinnerFocus, noWalkDays, repickStepNeeded, cycle, cycle2Focus, cycle3Focus]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -449,11 +451,13 @@ export default function WeeklyPlanner() {
       }
       const now = new Date();
       const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const isEatOutStepHidden = cycle >= 2 && cycle2Focus !== "eat_out" && cycle3Focus !== "eat_out";
+      const isLateDinnerStepHidden = cycle >= 2 && !isDinnerFocus;
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
         walkDays: effectiveWalkDays,
-        eatOutDays,
-        lateDinnerDays,
+        eatOutDays: isEatOutStepHidden ? [] : eatOutDays,
+        lateDinnerDays: isLateDinnerStepHidden ? [] : lateDinnerDays,
         stretchOnly: acceptedEscalation === true ? false : isStretchActive,
         selectedTip: selectedTip || undefined,
         standingTapDay: standingTapDay !== null ? standingTapDay : undefined,
@@ -580,6 +584,7 @@ export default function WeeklyPlanner() {
     if (!reflection) return null;
 
     const dietTotalResponses = reflection.dietYesCount + reflection.dietNoCount + reflection.dietNoChanceCount;
+    const isEatOutHiddenInReport = cycle >= 2 && reflection.dietStruggle === "eat_out" && cycle2Focus !== "eat_out" && cycle3Focus !== "eat_out";
     const eatOutDaysThisWeek = reflection.dietStruggle === "eat_out"
       ? (reflection.lastWeekSchedule || []).filter((d: any) => d.eatOutScheduled).length
       : 0;
@@ -755,7 +760,7 @@ export default function WeeklyPlanner() {
                 <TrendingUp className="w-4 h-4 text-green-500" />
                 <p className="font-semibold text-sm">{t("planner.diet_label", { name: STRUGGLE_NAMES[reflection.dietStruggle] || reflection.dietStruggle })}</p>
               </div>
-              {dietSuccessPct !== null && (
+              {dietSuccessPct !== null && !isEatOutHiddenInReport && (
                 <p className="text-2xl font-bold text-center text-green-600" data-testid="text-diet-success-pct">
                   {t("planner.diet_success_pct", { pct: dietSuccessPct })}
                 </p>
@@ -763,7 +768,7 @@ export default function WeeklyPlanner() {
               <p className="text-sm font-medium" data-testid="text-diet-tip-last">
                 {t("planner.tip_label", { tip: translateDietTip(reflection.dietTip, t) })}
               </p>
-              {(reflection.dietStruggle === "eat_out" ? eatOutDaysThisWeek > 0 : (reflection.activeDays || 0) > 0) && (
+              {!isEatOutHiddenInReport && (reflection.dietStruggle === "eat_out" ? eatOutDaysThisWeek > 0 : (reflection.activeDays || 0) > 0) && (
                 <p className="text-xs text-muted-foreground" data-testid="text-diet-cycle-info">
                   {reflection.dietStruggle === "eat_out"
                     ? t("planner.eat_out_days_progress", { yesDays: reflection.dietYesCount || 0, eatOutDays: eatOutDaysThisWeek })
