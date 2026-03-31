@@ -1024,6 +1024,18 @@ export async function checkCycle3RepickCondition(userId: string): Promise<{
   const struggles2 = (profile.struggles2 || []) as string[];
   if (struggles2.length === 0) return { conditionMet: false };
 
+  const mastered2 = (profile.masteredStruggles2 || []) as string[];
+  const skipped2 = (profile.skippedStruggles2 || []) as string[];
+  const difficult2 = (profile.difficultStruggles2 || []) as string[];
+
+  const hasOutcome = (s: string) =>
+    mastered2.includes(s) || skipped2.includes(s) || difficult2.includes(s);
+
+  // If eat_out is in struggles2 but has no outcome yet, Cycle 2 must not end.
+  if (struggles2.includes("eat_out") && !hasOutcome("eat_out")) {
+    return { conditionMet: false };
+  }
+
   const allPlans = await storage.getAllWeeklyPlans(userId);
 
   const appearedSet = new Set<string>();
@@ -1031,25 +1043,18 @@ export async function checkCycle3RepickCondition(userId: string): Promise<{
     if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
   }
 
-  const eatOutPickedInList = struggles2.includes("eat_out");
-  const eatOutEverScheduled = eatOutPickedInList ? await storage.hasAnyEatOutScheduled(userId) : false;
-  const eatOutPickedButNeverScheduled = eatOutPickedInList && !eatOutEverScheduled;
-
   const lateDinnerPickedInList = struggles2.includes("late_dinner");
   const lateDinnerEverScheduled = lateDinnerPickedInList ? await storage.hasAnyLateDinnerScheduled(userId) : false;
   const lateDinnerPickedButNeverScheduled = lateDinnerPickedInList && !lateDinnerEverScheduled;
 
-  const mastered2 = (profile.masteredStruggles2 || []) as string[];
-
   const mustGoThrough = struggles2.filter(s => {
-    if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
     if (s === "late_dinner" && lateDinnerPickedButNeverScheduled) return false;
     return true;
   });
 
   if (mustGoThrough.length === 0) return { conditionMet: true };
 
-  const conditionMet = mustGoThrough.every(s => appearedSet.has(s) || mastered2.includes(s));
+  const conditionMet = mustGoThrough.every(s => hasOutcome(s) || appearedSet.has(s));
 
   return { conditionMet };
 }

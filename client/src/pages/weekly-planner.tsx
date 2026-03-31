@@ -2673,7 +2673,7 @@ export default function WeeklyPlanner() {
               (currentStepId === "dietTipSelection" && !selectedTip) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null) ||
-              (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0 && !cycle2GateReleased.has("eat_out")) ||
+              (currentStepId === "eatOutDays" && cycle2Focus === "eat_out" && eatOutDays.length === 0) ||
               (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner")) ||
               (currentStepId === "eatOutDays" && cycle3Focus === "eat_out" && eatOutDays.length === 0 && !cycle3GateReleased.has("eat_out")) ||
               (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner")) ||
