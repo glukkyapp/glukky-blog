@@ -927,6 +927,12 @@ export default function WeeklyPlanner() {
                         </p>
                       </div>
                     )}
+                    {!reflection.dietJustGraduated && !reflection.dietJustSkipped && !reflection.dietJustMovedOn
+                      && activeDays >= 21 && dietSuccessPct !== null && (
+                      <p className="text-xs text-muted-foreground text-center" data-testid="text-diet-stay-message">
+                        {t("planner.stay_struggle", { pct: dietSuccessPct })}
+                      </p>
+                    )}
                   </div>
                 );
               })()}
