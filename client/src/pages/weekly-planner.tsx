@@ -289,16 +289,24 @@ export default function WeeklyPlanner() {
       return;
     }
 
-    // Scenario 2: eat_out is in the user's struggles but no eat-out days scheduled.
-    // Eating Out is skipped this week and another focus takes its place — explain what and why.
-    if (eatOutDays.length === 0 && struggles1.includes("eat_out") && !isDinnerFocus) {
+    // Scenario 2: last week's focus was eat_out but no eat-out days scheduled this week.
+    // Focus has switched away from eat_out — explain what and why.
+    if (eatOutDays.length === 0 && reflection?.dietStruggle === "eat_out" && !isDinnerFocus) {
       const { effectiveStruggle } = getEffectiveStruggle();
       if (effectiveStruggle !== "eat_out") {
         const focusName = t(`struggle.${effectiveStruggle}`, { defaultValue: effectiveStruggle });
         autoFocusPopup.trigger("eat_out_no_days", focusName);
       }
     }
-  }, [currentStepId, cycle, eatOutDays.length, profileStruggles, isDinnerFocus, t, getEffectiveStruggle]);
+
+    // Scenario 3: last week's focus was late dinner but no late dinner days scheduled this week.
+    // Focus has switched away from late dinner — explain what and why.
+    if (reflection?.isDinnerFocus === true && lateDinnerDays.length === 0 && !isDinnerFocus) {
+      const { effectiveStruggle } = getEffectiveStruggle();
+      const focusName = t(`struggle.${effectiveStruggle}`, { defaultValue: effectiveStruggle });
+      autoFocusPopup.trigger("late_dinner_no_days", focusName);
+    }
+  }, [currentStepId, cycle, eatOutDays.length, lateDinnerDays.length, profileStruggles, isDinnerFocus, reflection?.dietStruggle, reflection?.isDinnerFocus, t, getEffectiveStruggle]);
 
   useEffect(() => {
     if (

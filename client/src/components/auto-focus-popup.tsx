@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { UtensilsCrossed, Candy } from "lucide-react";
 
-export type AutoFocusPopupType = "no_struggles_eat_out" | "eat_out_no_days";
+export type AutoFocusPopupType = "no_struggles_eat_out" | "eat_out_no_days" | "late_dinner_no_days";
 
 export function useAutoFocusPopup() {
   const [visible, setVisible] = useState(false);
@@ -52,6 +52,8 @@ export function AutoFocusPopup({ visible, type, nextFocusName, onDismiss }: Auto
   const title = t(`auto_focus_popup.${type}_title`);
   const body = type === "eat_out_no_days"
     ? t("auto_focus_popup.eat_out_no_days_body", { name: nextFocusName })
+    : type === "late_dinner_no_days"
+    ? t("auto_focus_popup.late_dinner_no_days_body", { name: nextFocusName })
     : t("auto_focus_popup.no_struggles_eat_out_body");
 
   return (

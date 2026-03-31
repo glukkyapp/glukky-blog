@@ -599,7 +599,9 @@
     "no_struggles_eat_out_title": "今週你嘅重點係出外食飯",
     "no_struggles_eat_out_body": "你安排咗出外食飯或外賣嘅日子，但未揀選任何飲食重點。由於出外食飯通常對血糖影響最大，我哋今週將佢設定為你嘅重點。",
     "eat_out_no_days_title": "今週重點已調整",
-    "eat_out_no_days_body": "你今週冇安排出外食飯嘅日子，所以出外食飯無法練習。今週嘅重點將改為{{name}}。"
+    "eat_out_no_days_body": "你今週冇安排出外食飯嘅日子，所以出外食飯無法練習。今週嘅重點將改為{{name}}。",
+    "late_dinner_no_days_title": "今週重點已調整",
+    "late_dinner_no_days_body": "你今週冇安排食晏夜晚飯嘅日子，所以晚飯時間控制無法練習。今週嘅重點將改為{{name}}。"
   },
   "eat_out_nonfocus_popup": {
     "title": "留意吓你嘅外食日",
@@ -615,7 +617,7 @@
     "tab4_title": "全穀物",
     "tab4": "傳統燕麥片、大麥、藜麥、蕎麥、石磨全麥麵包",
     "tab5_title": "小提示",
-    "tab5": "記唔住都冇問題——隨時可以喺個人檔案嘅「健康資訊」重溫！"
+    "tab5": "唔記得都冇問題——隨時可以喺個人檔案嘅「健康資訊」重溫！"
   },
   "diet_tip": {
     "dilute_juice": "果汁加1:1清水稀釋",
