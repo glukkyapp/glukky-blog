@@ -1,4 +1,4 @@
-import glukkyLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
+import glukkyLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
 
 interface SplashScreenProps {
   visible: boolean;
@@ -24,7 +24,7 @@ export function SplashScreen({ visible }: SplashScreenProps) {
         src={glukkyLogo}
         alt="Glukky"
         style={{
-          width: 200,
+          width: "25vw",
           objectFit: "contain",
         }}
       />
