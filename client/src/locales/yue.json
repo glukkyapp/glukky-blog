@@ -782,7 +782,7 @@
     "food_switch_content_tip": "喺廚房準備一小份堅果（約一小把）或者一袋冷凍毛豆。越容易攞到，你就越大機會揀佢哋。"
   },
   "monthlyReport": {
-    "title": "{{month}}月 深度回顧",
+    "title": "{{month}}月深度回顧",
     "dietTips": {
       "cardHeader": "本月飲食貼士",
       "noData": "本月未有記錄飲食貼士。",
