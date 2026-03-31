@@ -1615,6 +1615,26 @@ export default function WeeklyPlanner() {
     const isEatOutFocus = cycle2Focus === "eat_out" || cycle3Focus === "eat_out";
     const isSoleStruggle = cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })();
     const isLastStruggle = cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation);
+
+    const isEatOutSoleOrLastCycle2Plus = (() => {
+      if (cycle === 2 && cycle2Focus === "eat_out") {
+        const s2 = (profile?.struggles2 as string[]) || [];
+        const m2 = (profile?.masteredStruggles2 as string[]) || [];
+        const sk2 = (profile?.skippedStruggles2 as string[]) || [];
+        const d2 = (profile?.difficultStruggles2 as string[]) || [];
+        const resolved2 = new Set([...m2, ...sk2, ...d2]);
+        return s2.filter(s => s !== "eat_out").every(s => resolved2.has(s));
+      }
+      if (cycle >= 3 && cycle3Focus === "eat_out") {
+        const s3 = (profile?.struggles3 as string[]) || [];
+        const m3 = (profile?.masteredStruggles3 as string[]) || [];
+        const sk3 = (profile?.skippedStruggles3 as string[]) || [];
+        const d3 = (profile?.difficultStruggles3 as string[]) || [];
+        const resolved3 = new Set([...m3, ...sk3, ...d3]);
+        return s3.filter(s => s !== "eat_out").every(s => resolved3.has(s));
+      }
+      return false;
+    })();
     return (
       <Card>
         <CardHeader>
@@ -1658,7 +1678,7 @@ export default function WeeklyPlanner() {
               <p className="text-sm text-amber-800 dark:text-amber-300">
                 {t("planner.eat_out_focus_reminder")}
               </p>
-              {eatOutDays.length === 0 && (
+              {eatOutDays.length === 0 && !isEatOutSoleOrLastCycle2Plus && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
                   onClick={() => cycle >= 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out")}
@@ -1668,6 +1688,13 @@ export default function WeeklyPlanner() {
                   {(cycle2SkipMutation.isPending || cycle3SkipMutation.isPending) ? "…" : t("planner.eat_out_focus_skip")}
                 </button>
               )}
+            </div>
+          )}
+          {isEatOutSoleOrLastCycle2Plus && eatOutDays.length === 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3" data-testid="section-eat-out-sole-struggle-gate-cycle2">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                {t("planner.eat_out_sole_struggle_gate")}
+              </p>
             </div>
           )}
           {isSoleStruggle && eatOutDays.length === 0 && (
