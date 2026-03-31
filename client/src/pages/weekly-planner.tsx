@@ -167,6 +167,9 @@ export default function WeeklyPlanner() {
   const [selectedStruggles3, setSelectedStruggles3] = useState<string[]>([]);
   const [repickStepNeeded, setRepickStepNeeded] = useState(false);
   const [expandedTip, setExpandedTip] = useState<string | null>(null);
+  const [eatOutLastStruggleSkipMsg, setEatOutLastStruggleSkipMsg] = useState(false);
+  const [cycle2IntroStepNeeded, setCycle2IntroStepNeeded] = useState(false);
+  const [pendingCycle2IntroNavigation, setPendingCycle2IntroNavigation] = useState(false);
 
   const cardDietFocus = useInfoCard("diet_focus");
   const cardWalkEscalation = useInfoCard("walk_escalation");
@@ -226,6 +229,7 @@ export default function WeeklyPlanner() {
     const s: string[] = [];
     if (!isFirstWeek) {
       s.push("weeklyReport");
+      if (cycle2IntroStepNeeded) s.push("cycle2Intro");
       if (repickStepNeeded) s.push("repick");
       s.push("planTransition");
     }
@@ -240,7 +244,7 @@ export default function WeeklyPlanner() {
     }
     s.push("preview");
     return s;
-  }, [isFirstWeek, isDinnerFocus, noWalkDays, repickStepNeeded, cycle, cycle2Focus, cycle3Focus]);
+  }, [isFirstWeek, isDinnerFocus, noWalkDays, repickStepNeeded, cycle2IntroStepNeeded, cycle, cycle2Focus, cycle3Focus]);
 
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStepId = steps[clampedStepIndex] || steps[0];
@@ -309,6 +313,8 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     if (reflection?.repickPending && !repickStepNeeded) {
       setRepickStepNeeded(true);
+      const targetCycle = (reflection?.currentStruggleCycle as number) || 1;
+      if (targetCycle === 2) setCycle2IntroStepNeeded(true);
     }
   }, [reflection?.repickPending]);
 
@@ -333,6 +339,15 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     setRepickSummaryDismissed(false);
   }, [profile?.currentStruggleCycle, reflection?.repickPending]);
+
+  useEffect(() => {
+    if (!pendingCycle2IntroNavigation) return;
+    const idx = steps.indexOf("cycle2Intro");
+    if (idx !== -1) {
+      setStepIndex(idx);
+      setPendingCycle2IntroNavigation(false);
+    }
+  }, [pendingCycle2IntroNavigation, steps]);
 
   const repickMutation = useMutation({
     mutationFn: async (struggles2: string[]) => {
@@ -410,16 +425,20 @@ export default function WeeklyPlanner() {
   });
 
   const eatOutSkipCycle1Mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: { fromLastStruggle?: boolean }) => {
       const res = await apiRequest("POST", "/api/eat-out/skip-cycle1", {});
-      return res.json();
+      return { data: await res.json(), fromLastStruggle: opts?.fromLastStruggle ?? false };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ fromLastStruggle }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       await queryClient.refetchQueries({ queryKey: ["/api/plan/reflection"] });
       eatOutCommitmentPrompt.dismiss();
+      if (fromLastStruggle) {
+        setPendingCycle2IntroNavigation(true);
+      }
     },
     onError: (error: Error) => {
+      setEatOutLastStruggleSkipMsg(false);
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -1595,6 +1614,7 @@ export default function WeeklyPlanner() {
   function renderEatOutDays() {
     const isEatOutFocus = cycle2Focus === "eat_out" || cycle3Focus === "eat_out";
     const isSoleStruggle = cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })();
+    const isLastStruggle = cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation);
     return (
       <Card>
         <CardHeader>
@@ -1605,6 +1625,11 @@ export default function WeeklyPlanner() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t("planner.eat_out_desc")}</p>
+          {isLastStruggle && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3" data-testid="section-eat-out-last-struggle-note">
+              <p className="text-sm text-primary/80">{t("planner.eat_out_last_struggle_note")}</p>
+            </div>
+          )}
           <div className="grid grid-cols-7 gap-1">
             {DAY_NAMES.map((name, i) => {
               const inactive = (isFirstWeek || isLatePlanningEarly) && i < firstActiveDay;
@@ -1650,6 +1675,24 @@ export default function WeeklyPlanner() {
               <p className="text-sm text-amber-800 dark:text-amber-300">
                 {t("planner.eat_out_sole_struggle_gate")}
               </p>
+            </div>
+          )}
+          {isLastStruggle && eatOutDays.length === 0 && !eatOutLastStruggleSkipMsg && (
+            <button
+              className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
+              onClick={() => {
+                setEatOutLastStruggleSkipMsg(true);
+                eatOutSkipCycle1Mutation.mutate({ fromLastStruggle: true });
+              }}
+              disabled={eatOutSkipCycle1Mutation.isPending}
+              data-testid="button-eat-out-last-struggle-skip"
+            >
+              {eatOutSkipCycle1Mutation.isPending ? "…" : t("planner.eat_out_last_struggle_skip")}
+            </button>
+          )}
+          {eatOutLastStruggleSkipMsg && (
+            <div className="bg-muted rounded-lg p-3" data-testid="section-eat-out-last-struggle-skip-msg">
+              <p className="text-sm text-muted-foreground">{t("planner.eat_out_last_struggle_skip_msg")}</p>
             </div>
           )}
         </CardContent>
@@ -2268,6 +2311,59 @@ export default function WeeklyPlanner() {
     );
   }
 
+  function renderCycle2Intro() {
+    const mastered1 = (profile?.masteredStruggles as string[]) || [];
+    const skipped1 = (profile?.skippedStruggles as string[]) || [];
+    const difficult1 = (profile?.difficultStruggles as string[]) || [];
+    const movedOn1 = [...new Set([...skipped1, ...difficult1])];
+    const struggles1 = (profile?.struggles as string[]) || [];
+    const resolved = struggles1.filter(s => mastered1.includes(s) || movedOn1.includes(s));
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle data-testid="text-cycle2-intro-title">{t("planner.cycle2_intro_title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t("planner.cycle2_intro_desc")}</p>
+
+          {resolved.length > 0 && (
+            <div className="rounded-lg border p-4 space-y-2" data-testid="section-cycle2-intro-summary">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("planner.cycle2_intro_cycle1_summary")}</p>
+              {resolved.map(s => {
+                const isMastered = mastered1.includes(s);
+                return (
+                  <div key={s} className="flex items-center gap-2" data-testid={`item-cycle2-intro-struggle-${s}`}>
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${isMastered ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
+                      {isMastered ? <Check className="w-2.5 h-2.5" /> : <Minus className="w-2.5 h-2.5" />}
+                    </span>
+                    <span className="text-sm flex-1">{STRUGGLE_NAMES[s] || s}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isMastered ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                      {isMastered ? t("planner.cycle2_intro_mastered_badge") : t("planner.cycle2_intro_skipped_badge")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-2" data-testid="section-cycle2-intro-how">
+            <p className="text-sm font-medium text-primary">{t("planner.cycle2_intro_how_title")}</p>
+            <p className="text-sm text-muted-foreground">{t("planner.cycle2_intro_how_desc")}</p>
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={goNext}
+            data-testid="button-cycle2-intro-cta"
+          >
+            {t("planner.cycle2_intro_cta")}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderStep() {
     switch (currentStepId) {
       case "weeklyReport": return renderWeeklyReport();
@@ -2278,6 +2374,7 @@ export default function WeeklyPlanner() {
       case "standingTapSuggest": return renderStandingTapSuggest();
       case "dinnerFocusReview": return renderDinnerFocusReview();
       case "repick": return renderRepick();
+      case "cycle2Intro": return renderCycle2Intro();
       case "dietReview": return renderDietReview();
       case "dietTipSelection": return renderDietTipSelection();
       case "preview": return renderPreview();
@@ -2545,6 +2642,7 @@ export default function WeeklyPlanner() {
             onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
             disabled={
               currentStepId === "repick" ||
+              currentStepId === "cycle2Intro" ||
               (currentStepId === "dietTipSelection" && !selectedTip) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted !== true) ||
               (currentStepId === "standingTapSuggest" && standingTapSuggestAccepted === true && standingTapDay === null) ||
@@ -2552,7 +2650,8 @@ export default function WeeklyPlanner() {
               (currentStepId === "lateDinnerDays" && cycle2Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle2GateReleased.has("late_dinner")) ||
               (currentStepId === "eatOutDays" && cycle3Focus === "eat_out" && eatOutDays.length === 0 && !cycle3GateReleased.has("eat_out")) ||
               (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner")) ||
-              (currentStepId === "eatOutDays" && cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })() && eatOutDays.length === 0)
+              (currentStepId === "eatOutDays" && cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })() && eatOutDays.length === 0) ||
+              (currentStepId === "eatOutDays" && cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation) && eatOutDays.length === 0)
             }
             data-testid="button-next"
           >

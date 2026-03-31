@@ -513,7 +513,18 @@
     "auto_focus_sugary_only_title": "Sugary Food & Drink added as your focus",
     "auto_focus_sugary_only_body": "You don't have any diet focus yet, so we've started you on Sugary Food & Drink.",
     "auto_focus_got_it": "Got it",
-    "eat_out_sole_struggle_gate": "Eating Out is your only tracked habit. You need to schedule at least one eat-out day to continue."
+    "eat_out_sole_struggle_gate": "Eating Out is your only tracked habit. You need to schedule at least one eat-out day to continue.",
+    "eat_out_last_struggle_note": "Eating Out is your last remaining habit — let's give it a proper week. Schedule at least one eat-out day to continue.",
+    "eat_out_last_struggle_skip": "I don't have any eat out this week",
+    "eat_out_last_struggle_skip_msg": "I see! We will proceed to Cycle 2. You still have plenty of chances to practice.",
+    "cycle2_intro_title": "Welcome to Cycle 2!",
+    "cycle2_intro_desc": "Great work on Cycle 1! In Cycle 2, you pick your own priority order and explore a broader range of diet areas. You're in charge.",
+    "cycle2_intro_cycle1_summary": "Your Cycle 1 journey",
+    "cycle2_intro_mastered_badge": "Mastered",
+    "cycle2_intro_skipped_badge": "Moved on",
+    "cycle2_intro_how_title": "How Cycle 2 works",
+    "cycle2_intro_how_desc": "You choose which habits to focus on and in what order. Select from a wider range of options and keep building on what you've already started.",
+    "cycle2_intro_cta": "Let's go!"
   },
   "eat_out_commitment_prompt": {
     "title": "Good job!",

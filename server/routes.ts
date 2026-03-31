@@ -681,6 +681,7 @@ export async function registerRoutes(
       let eatOutPickedButNeverScheduled = false;
       let eatOutNeedsCommitment = false;
       let eatOutFocusWeeksResult = 0;
+      let eatOutLastStruggleNeedsActivation = false;
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
@@ -702,6 +703,7 @@ export async function registerRoutes(
         eatOutPickedButNeverScheduled = repickResult.eatOutPickedButNeverScheduled;
         eatOutNeedsCommitment = repickResult.eatOutNeedsCommitment;
         eatOutFocusWeeksResult = repickResult.eatOutFocusWeeks;
+        eatOutLastStruggleNeedsActivation = repickResult.eatOutLastStruggleNeedsActivation;
       } else if (currentCycle === 1 && profileBeforeMastery?.repickPending) {
         repickPending = true;
       } else if (currentCycle === 2 && !(profileBeforeMastery?.repickPending)) {
@@ -802,6 +804,7 @@ export async function registerRoutes(
         eatOutNeedsCommitment,
         eatOutFocusWeeks: eatOutFocusWeeksResult,
         eatOutExtendedCommitment: finalProfile?.eatOutExtendedCommitment ?? false,
+        eatOutLastStruggleNeedsActivation,
         appearedDietStruggles,
       });
     } catch (error) {

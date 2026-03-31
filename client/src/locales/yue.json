@@ -517,7 +517,18 @@
     "auto_focus_sugary_only_title": "含糖食品飲品已加入做你嘅飲食重點",
     "auto_focus_sugary_only_body": "你未設定任何飲食重點，我哋已為你由含糖食品飲品開始。",
     "auto_focus_got_it": "明白喇",
-    "eat_out_sole_struggle_gate": "外食／外賣係你唯一追蹤嘅習慣。你需要安排至少一日外食日先可以繼續。"
+    "eat_out_sole_struggle_gate": "外食／外賣係你唯一追蹤嘅習慣。你需要安排至少一日外食日先可以繼續。",
+    "eat_out_last_struggle_note": "出外食飯係你最後一個未完成嘅習慣——等我哋俾佢一週時間吧。請安排至少一日外食日先可以繼續。",
+    "eat_out_last_struggle_skip": "我今週冇出外食飯",
+    "eat_out_last_struggle_skip_msg": "明白喇！我哋會進入第二週期。你之後仲有好多機會練習㗎。",
+    "cycle2_intro_title": "歡迎進入第二週期！",
+    "cycle2_intro_desc": "第一週期做得好好！喺第二週期，你可以自己揀優先次序，探索更多飲食改善範疇。由你話事。",
+    "cycle2_intro_cycle1_summary": "你嘅第一週期歷程",
+    "cycle2_intro_mastered_badge": "已掌握",
+    "cycle2_intro_skipped_badge": "已完成",
+    "cycle2_intro_how_title": "第二週期點運作",
+    "cycle2_intro_how_desc": "你可以揀想專注嘅習慣同順序，從更多選項中挑選，繼續喺已有基礎上進步。",
+    "cycle2_intro_cta": "出發啦！"
   },
   "eat_out_commitment_prompt": {
     "title": "做得好！",

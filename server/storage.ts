@@ -49,6 +49,7 @@ export interface IStorage {
   hasAnyLateDinnerScheduled(userId: string): Promise<boolean>;
   hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
   hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
+  countHistoricalEatOutDays(userId: string): Promise<number>;
 
   getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
@@ -264,6 +265,21 @@ export class DatabaseStorage implements IStorage {
       ))
       .limit(1);
     return !!row;
+  }
+
+  async countHistoricalEatOutDays(userId: string): Promise<number> {
+    const allPlans = await db.select({ id: weeklyPlans.id })
+      .from(weeklyPlans)
+      .where(eq(weeklyPlans.userId, userId));
+    if (allPlans.length === 0) return 0;
+    const planIds = allPlans.map(p => p.id);
+    const rows = await db.select({ count: sql<number>`count(*)` })
+      .from(weeklyPlanDays)
+      .where(and(
+        inArray(weeklyPlanDays.weeklyPlanId, planIds),
+        eq(weeklyPlanDays.eatOutScheduled, true),
+      ));
+    return Number(rows[0]?.count ?? 0);
   }
 
   async hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean> {

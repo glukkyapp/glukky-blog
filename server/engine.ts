@@ -1059,29 +1059,43 @@ export async function checkRepickCondition(userId: string): Promise<{
   eatOutPickedButNeverScheduled: boolean;
   eatOutNeedsCommitment: boolean;
   eatOutFocusWeeks: number;
+  eatOutLastStruggleNeedsActivation: boolean;
 }> {
   const profile = await storage.getProfile(userId);
-  if (!profile) return { conditionMet: false, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0 };
+  if (!profile) return { conditionMet: false, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0, eatOutLastStruggleNeedsActivation: false };
 
   const struggles = (profile.struggles || []) as string[];
-  if (struggles.length === 0) return { conditionMet: !!(profile.dinnerMastered) || !profile.hasLateDinner, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0 };
+  if (struggles.length === 0) return { conditionMet: !!(profile.dinnerMastered) || !profile.hasLateDinner, eatOutPickedButNeverScheduled: false, eatOutNeedsCommitment: false, eatOutFocusWeeks: 0, eatOutLastStruggleNeedsActivation: false };
 
   const eatOutPickedInList = struggles.includes("eat_out");
   const hasOtherStruggles = struggles.filter(s => s !== "eat_out").length > 0;
   const eatOutFocusWeeks = eatOutPickedInList ? await storage.countEatOutFocusWeeks(userId) : 0;
-
-  // Rule A: eat_out exempted if 0 focus weeks AND there are other struggles
-  const eatOutPickedButNeverScheduled = eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0;
 
   const mastered = (profile.masteredStruggles || []) as string[];
   const skipped = (profile.skippedStruggles || []) as string[];
   const difficult = (profile.difficultStruggles || []) as string[];
   const eatOutResolved = mastered.includes("eat_out") || skipped.includes("eat_out") || difficult.includes("eat_out");
 
-  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome, other struggles exist AND all other struggles resolved
   const allOtherResolved = struggles
     .filter(s => s !== "eat_out")
     .every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
+
+  // eatOutLastStruggleNeedsActivation: all other struggles resolved, eat_out has 0 focus weeks,
+  // but there is at least 1 historically scheduled eat-out day → must give it a proper week
+  const historicalEatOutDays = (eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0 && allOtherResolved)
+    ? await storage.countHistoricalEatOutDays(userId)
+    : 0;
+  const eatOutLastStruggleNeedsActivation = eatOutPickedInList && hasOtherStruggles
+    && eatOutFocusWeeks === 0
+    && allOtherResolved
+    && historicalEatOutDays >= 1
+    && !eatOutResolved;
+
+  // Rule A: eat_out exempted if 0 focus weeks AND there are other struggles,
+  // BUT NOT when eatOutLastStruggleNeedsActivation (must go through eat_out first)
+  const eatOutPickedButNeverScheduled = eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0 && !eatOutLastStruggleNeedsActivation;
+
+  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome, other struggles exist AND all other struggles resolved
   const eatOutNeedsCommitment = eatOutPickedInList && hasOtherStruggles
     && allOtherResolved
     && eatOutFocusWeeks >= 1 && eatOutFocusWeeks <= 2
@@ -1092,9 +1106,9 @@ export async function checkRepickCondition(userId: string): Promise<{
     return true;
   });
 
-  if (mustGoThrough.length === 0) return { conditionMet: true, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks };
+  if (mustGoThrough.length === 0) return { conditionMet: true, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks, eatOutLastStruggleNeedsActivation };
 
   const conditionMet = mustGoThrough.every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
 
-  return { conditionMet, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks };
+  return { conditionMet, eatOutPickedButNeverScheduled, eatOutNeedsCommitment, eatOutFocusWeeks, eatOutLastStruggleNeedsActivation };
 }
