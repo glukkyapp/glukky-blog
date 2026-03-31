@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1196,7 +1197,13 @@ export default function Home() {
               <span className="font-semibold text-foreground">{t("home.today")}</span> — {formatDate()}
             </div>
             <div className="flex items-center justify-center py-10" data-testid="section-tick-animation">
-              <CheckCircle2 className="w-20 h-20 text-green-500 animate-pop-in" />
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              >
+                <CheckCircle2 className="w-20 h-20 text-green-500" />
+              </motion.div>
             </div>
           </CardContent>
         </Card>
@@ -1278,10 +1285,12 @@ export default function Home() {
           </div>
 
           {sections.map(({ num, content }) => (
-            <div
+            <motion.div
               key={num}
-              className="rounded-lg bg-muted/50 p-3 space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both"
-              style={{ animationDelay: `${(num - 1) * 80}ms` }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: (num - 1) * 0.08, ease: "easeOut" }}
+              className="rounded-lg bg-muted/50 p-3 space-y-2"
               data-testid={`section-checkin-task-${num}`}
             >
               <div className="flex items-center gap-2">
@@ -1290,7 +1299,7 @@ export default function Home() {
                 </div>
               </div>
               {content}
-            </div>
+            </motion.div>
           ))}
 
         </CardContent>
@@ -1316,7 +1325,12 @@ export default function Home() {
 
   return (
     <>
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4 animate-in fade-in-0 duration-300">
+    <motion.div
+      className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
       <div className="flex items-center gap-2" data-testid="text-week-header">
         <Target className="w-5 h-5 text-primary" />
         <h1 className="text-lg font-bold">{formatWeekday()}</h1>
@@ -1836,7 +1850,7 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>)}
-    </div>
+    </motion.div>
     <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
     <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />

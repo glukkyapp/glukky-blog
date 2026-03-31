@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { TrendingUp, Lock, Gift, BarChart2, PiggyBank, Clock, CheckCircle2, SkipForward, EyeOff, UtensilsCrossed, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -177,6 +178,26 @@ function JourneySection({ cycleHistory, t }: {
   );
 }
 
+function AnimatedCoinCount({ target, capacity, t }: { target: number; capacity: number; t: (key: string, opts?: any) => string }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v));
+  const [displayVal, setDisplayVal] = useState(0);
+
+  useEffect(() => {
+    const controls = animate(count, target, {
+      duration: 0.6,
+      ease: "easeOut",
+    });
+    const unsubscribe = rounded.on("change", (v) => setDisplayVal(v));
+    return () => {
+      controls.stop();
+      unsubscribe();
+    };
+  }, [target]);
+
+  return <span>{t("roadmap.coins_count", { coins: displayVal, capacity })}</span>;
+}
+
 function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
   data: PiggyBankData;
   onClaim: () => void;
@@ -301,7 +322,7 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
             <div className="w-full mt-1">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs text-muted-foreground font-medium" data-testid="text-piggy-coins">
-                  {t("roadmap.coins_count", { coins: data.coins, capacity: data.capacity })}
+                  <AnimatedCoinCount target={data.coins} capacity={data.capacity} t={t} />
                 </span>
                 {isFull && (
                   <span className="text-xs font-semibold text-amber-600">{t("roadmap.full")}</span>
@@ -401,6 +422,12 @@ export default function RoadmapPage() {
     return <LoadingSkeleton />;
   }
 
+  const ContentFade = ({ children }: { children: React.ReactNode }) => (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+      {children}
+    </motion.div>
+  );
+
   const {
     activeStruggle,
     inProgressStruggles,
@@ -450,6 +477,7 @@ export default function RoadmapPage() {
   ];
 
   return (
+    <ContentFade>
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <div data-testid="focus-area-header">
         <div className="flex items-center gap-2 mb-1">
@@ -632,5 +660,6 @@ export default function RoadmapPage() {
     <InfoCardPopup visible={cardRoadmapProgress.visible} onDismiss={cardRoadmapProgress.dismiss} icon={BarChart2} titleKey="info_card.roadmap_progress.title" panelKeys={["info_card.roadmap_progress.p1","info_card.roadmap_progress.p2","info_card.roadmap_progress.p3"]} testId="dialog-card-roadmap-progress" />
     <InfoCardPopup visible={cardPiggyBank.visible} onDismiss={cardPiggyBank.dismiss} icon={PiggyBank} titleKey="info_card.piggy_bank.title" panelKeys={["info_card.piggy_bank.p1","info_card.piggy_bank.p2","info_card.piggy_bank.p3"]} testId="dialog-card-piggy-bank" />
     </div>
+    </ContentFade>
   );
 }

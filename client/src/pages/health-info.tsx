@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { motion, AnimatePresence } from "framer-motion";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
@@ -54,6 +55,12 @@ function PlateMethodDetail({ t }: { t: (key: string, opts?: any) => string }) {
 
 function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [direction, setDirection] = useState(1);
+
+  function handleTabChange(i: number) {
+    setDirection(i > activeTab ? 1 : -1);
+    setActiveTab(i);
+  }
 
   return (
     <div className="space-y-3 text-sm text-muted-foreground">
@@ -62,7 +69,7 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
         {FOOD_SWITCH_TABS.map((tab, i) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(i)}
+            onClick={() => handleTabChange(i)}
             data-testid={`tab-food-switch-${tab.key}`}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               activeTab === i
@@ -74,9 +81,22 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
           </button>
         ))}
       </div>
-      <p className="leading-relaxed" data-testid={`text-food-switch-content-${FOOD_SWITCH_TABS[activeTab].key}`}>
-        {t(`health_info.food_switch_content_${FOOD_SWITCH_TABS[activeTab].key}`)}
-      </p>
+      <div className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+          <motion.p
+            key={activeTab}
+            custom={direction}
+            initial={{ opacity: 0, x: direction * 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -20 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
+            className="leading-relaxed"
+            data-testid={`text-food-switch-content-${FOOD_SWITCH_TABS[activeTab].key}`}
+          >
+            {t(`health_info.food_switch_content_${FOOD_SWITCH_TABS[activeTab].key}`)}
+          </motion.p>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -170,11 +190,22 @@ export default function HealthInfo() {
             <div className="h-14 bg-muted rounded-lg" />
           </div>
         ) : activeTips.length === 0 ? (
-          <p className="text-sm text-muted-foreground" data-testid="text-no-diet-advice">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="text-sm text-muted-foreground"
+            data-testid="text-no-diet-advice"
+          >
             {t("health_info.no_advice_yet")}
-          </p>
+          </motion.p>
         ) : (
-          <div className="space-y-3">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
             {activeTips.map(tip => {
               const i18nKey = DIET_TIP_I18N_KEYS[tip];
               const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
@@ -189,7 +220,7 @@ export default function HealthInfo() {
                 />
               );
             })}
-          </div>
+          </motion.div>
         )}
       </section>
     </div>

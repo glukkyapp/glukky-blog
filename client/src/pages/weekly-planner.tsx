@@ -27,6 +27,7 @@ function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => strin
   return t(i18nKey + "_desc", { defaultValue: "" });
 }
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
@@ -139,6 +140,7 @@ export default function WeeklyPlanner() {
   })();
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [stepDirection, setStepDirection] = useState(1);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
@@ -344,6 +346,7 @@ export default function WeeklyPlanner() {
     if (!pendingCycle2IntroNavigation) return;
     const idx = steps.indexOf("cycle2Intro");
     if (idx !== -1) {
+      setStepDirection(1);
       setStepIndex(idx);
       setPendingCycle2IntroNavigation(false);
     }
@@ -464,6 +467,7 @@ export default function WeeklyPlanner() {
     }
     const idx = steps.indexOf(targetStep);
     if (idx !== -1) {
+      setStepDirection(1);
       setStepIndex(idx);
       setPendingSkipNavigation(false);
     }
@@ -643,10 +647,11 @@ export default function WeeklyPlanner() {
       const struggles1 = (profile?.struggles as string[]) || [];
       if (struggles1.length === 1 && struggles1[0] === "eat_out" && lateDinnerDays.length === 0 && eatOutDays.length === 0) {
         const idx = steps.indexOf("eatOutDays");
-        if (idx !== -1) { setStepIndex(idx); return; }
+        if (idx !== -1) { setStepDirection(1); setStepIndex(idx); return; }
       }
     }
     if (clampedStepIndex + 1 < steps.length) {
+      setStepDirection(1);
       setStepIndex(clampedStepIndex + 1);
     }
   }
@@ -665,6 +670,7 @@ export default function WeeklyPlanner() {
 
   function goBack() {
     if (clampedStepIndex - 1 >= 0) {
+      setStepDirection(-1);
       setStepIndex(clampedStepIndex - 1);
     }
   }
@@ -2463,30 +2469,38 @@ export default function WeeklyPlanner() {
 
     if (isLastDayOfMonth && monthlyReport && monthlyReport.weeksAnalyzed >= 4) {
       return (
-        <div className="mt-4" data-testid="card-monthly-report-status">
+        <motion.div
+          className="mt-4"
+          data-testid="card-monthly-report-status"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           <MonthlyReportContent data={monthlyReport} monthName={monthName} />
-        </div>
+        </motion.div>
       );
     }
 
     return (
-      <Card className="mt-4" data-testid="card-monthly-report-status">
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-semibold">{t("planner.monthly_report")}</p>
-          </div>
-          {isLastDayOfMonth ? (
-            <p className="text-sm text-muted-foreground" data-testid="text-monthly-not-enough-data">
-              {t("planner.monthly_not_enough")}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
-              {t("planner.monthly_pending", { month: monthName, day: lastDay })}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+        <Card className="mt-4" data-testid="card-monthly-report-status">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm font-semibold">{t("planner.monthly_report")}</p>
+            </div>
+            {isLastDayOfMonth ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-monthly-not-enough-data">
+                {t("planner.monthly_not_enough")}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
+                {t("planner.monthly_pending", { month: monthName, day: lastDay })}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
@@ -2650,7 +2664,18 @@ export default function WeeklyPlanner() {
         <Progress value={((clampedStepIndex + 1) / steps.length) * 100} className="h-2" />
       </div>
 
-      {renderStep()}
+      <AnimatePresence mode="wait" initial={false} custom={stepDirection}>
+        <motion.div
+          key={currentStepId}
+          custom={stepDirection}
+          initial={{ opacity: 0, x: stepDirection * 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: stepDirection * -30 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
 
       <div className="flex justify-between pt-2">
         <Button
