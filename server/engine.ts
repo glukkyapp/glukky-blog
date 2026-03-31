@@ -447,7 +447,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
   const activePlans: { weekNumber: number; plan: WeeklyPlan }[] = [];
   for (let w = 1; w <= (upToWeek ?? profile.currentWeek - 1); w++) {
     const wp = await storage.getWeeklyPlan(userId, w);
-    if (wp && wp.dietStruggle === struggle) {
+    if (wp && wp.dietStruggle === struggle && wp.planStruggleCycle === profile.currentStruggleCycle) {
       if (isPartialFirstWeek && w === 1) continue;
       activePlans.push({ weekNumber: w, plan: wp });
     }
@@ -558,19 +558,21 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
     if (count > bestTipYes) { bestTip = tip; bestTipYes = count; }
   }
 
-  if (actualActiveDays >= 42) {
+  if (activeDays >= 42) {
     if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
-  if (actualActiveDays >= 35) {
+  if (activeDays >= 35) {
     if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
-  if (actualActiveDays >= 28) {
+  if (activeDays >= 28) {
     if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
-  if (actualActiveDays >= 21 && actualActiveDays < 28) {
+  if (activeDays >= 21 && activeDays < 28) {
     if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
