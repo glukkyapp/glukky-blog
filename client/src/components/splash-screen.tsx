@@ -16,7 +16,6 @@ export function SplashScreen({ visible }: SplashScreenProps) {
         alignItems: "center",
         justifyContent: "center",
         opacity: visible ? 1 : 0,
-        transition: "opacity 0.4s ease",
         pointerEvents: visible ? "all" : "none",
       }}
     >

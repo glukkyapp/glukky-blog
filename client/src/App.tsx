@@ -115,7 +115,7 @@ function App() {
   useEffect(() => {
     timerRef.current = setTimeout(() => {
       setTimerDone(true);
-    }, 2000);
+    }, 3000);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
