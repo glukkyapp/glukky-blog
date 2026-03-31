@@ -11,7 +11,7 @@ export function SplashScreen({ visible }: SplashScreenProps) {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        backgroundColor: "hsl(170, 22%, 10%)",
+        backgroundColor: "hsl(215, 36%, 37%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
