@@ -1089,11 +1089,11 @@ export async function checkRepickCondition(userId: string): Promise<{
 
   // eatOutLastStruggleNeedsActivation: all other struggles resolved, eat_out has 0 focus weeks,
   // but there is at least 1 historically scheduled eat-out day → must give it a proper week
-  const historicalEatOutDays = (eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0 && allOtherResolved)
+  const historicalEatOutDays = (eatOutPickedInList && hasOtherStruggles && (eatOutFocusWeeks === 0 || eatOutFocusWeeks === 3) && allOtherResolved)
     ? await storage.countHistoricalEatOutDays(userId)
     : 0;
   const eatOutLastStruggleNeedsActivation = eatOutPickedInList && hasOtherStruggles
-    && eatOutFocusWeeks === 0
+    && (eatOutFocusWeeks === 0 || eatOutFocusWeeks === 3)
     && allOtherResolved
     && historicalEatOutDays >= 1
     && !eatOutResolved;
