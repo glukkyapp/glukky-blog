@@ -23,11 +23,9 @@ const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
 };
 
 const FOOD_SWITCH_TABS = [
-  { key: "edamame", labelKey: "health_info.food_switch_tab_edamame" },
-  { key: "nuts", labelKey: "health_info.food_switch_tab_nuts" },
-  { key: "why", labelKey: "health_info.food_switch_tab_why" },
-  { key: "when", labelKey: "health_info.food_switch_tab_when" },
-  { key: "tip", labelKey: "health_info.food_switch_tab_tip" },
+  { key: "legumes",      labelKey: "food_switch_popup.tab2_title", contentKey: "food_switch_popup.tab2" },
+  { key: "vegetables",   labelKey: "food_switch_popup.tab3_title", contentKey: "food_switch_popup.tab3" },
+  { key: "whole_grains", labelKey: "food_switch_popup.tab4_title", contentKey: "food_switch_popup.tab4" },
 ];
 
 function PlateMethodDetail({ t }: { t: (key: string, opts?: any) => string }) {
@@ -64,7 +62,7 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
 
   return (
     <div className="space-y-3 text-sm text-muted-foreground">
-      <p>{t("health_info.food_switch_desc")}</p>
+      <p>{t("food_switch_popup.tab1")}</p>
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {FOOD_SWITCH_TABS.map((tab, i) => (
           <button
@@ -93,7 +91,7 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
             className="leading-relaxed"
             data-testid={`text-food-switch-content-${FOOD_SWITCH_TABS[activeTab].key}`}
           >
-            {t(`health_info.food_switch_content_${FOOD_SWITCH_TABS[activeTab].key}`)}
+            {t(FOOD_SWITCH_TABS[activeTab].contentKey)}
           </motion.p>
         </AnimatePresence>
       </div>
