@@ -19,6 +19,16 @@ function getImage(coins: number): string {
   return img0;
 }
 
+export function PiggyBankPreloader() {
+  return (
+    <div style={{ display: "none" }} aria-hidden="true">
+      {[img0, img1, img2, img3, img4, img5].map((src, i) => (
+        <img key={i} src={src} alt="" />
+      ))}
+    </div>
+  );
+}
+
 export function PiggyBankSVG({ coins, className }: Props) {
   return (
     <img

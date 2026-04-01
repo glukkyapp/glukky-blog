@@ -20,6 +20,7 @@ import NotFound from "@/pages/not-found";
 import { useEffect, useState, useRef } from "react";
 import i18n from "./i18n";
 import { SplashScreen } from "@/components/splash-screen";
+import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -132,6 +133,7 @@ function App() {
       <Toaster />
       <Router />
       <SplashScreen visible={splashVisible} />
+      <PiggyBankPreloader />
     </TooltipProvider>
   );
 }
