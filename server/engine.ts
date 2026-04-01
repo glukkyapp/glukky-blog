@@ -1102,10 +1102,10 @@ export async function checkRepickCondition(userId: string): Promise<{
   // BUT NOT when eatOutLastStruggleNeedsActivation (must go through eat_out first)
   const eatOutPickedButNeverScheduled = eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0 && !eatOutLastStruggleNeedsActivation;
 
-  // Rule B: commitment needed when eat_out has 1-2 focus weeks with no outcome, other struggles exist AND all other struggles resolved
+  // Rule B: commitment needed when eat_out has 1-2 or 4-5 focus weeks with no outcome, other struggles exist AND all other struggles resolved
   const eatOutNeedsCommitment = eatOutPickedInList && hasOtherStruggles
     && allOtherResolved
-    && eatOutFocusWeeks >= 1 && eatOutFocusWeeks <= 2
+    && (eatOutFocusWeeks === 1 || eatOutFocusWeeks === 2 || eatOutFocusWeeks === 4 || eatOutFocusWeeks === 5)
     && !eatOutResolved;
 
   const mustGoThrough = struggles.filter(s => {

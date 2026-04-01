@@ -31,7 +31,7 @@ interface EatOutCommitmentPromptProps {
 
 export function EatOutCommitmentPrompt({ visible, eatOutFocusWeeks, onYes, onNo, isPending }: EatOutCommitmentPromptProps) {
   const { t } = useTranslation();
-  const weeksRemaining = eatOutFocusWeeks === 1 ? 2 : 1;
+  const weeksRemaining = (eatOutFocusWeeks === 1 || eatOutFocusWeeks === 4) ? 2 : 1;
 
   return (
     <Dialog open={visible} onOpenChange={() => {}}>

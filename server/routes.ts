@@ -650,7 +650,7 @@ export async function registerRoutes(
         }
       }
 
-      // Task 4: at week 3 of eat_out focus with no resolution, force moved_on directly
+      // Task 4: at week 6 of eat_out focus with no resolution, force moved_on directly
       if (
         currentCycle === 1 &&
         currentStruggleForReflection === "eat_out" &&
@@ -667,7 +667,7 @@ export async function registerRoutes(
           const allOthersResolved = otherStruggles4.every(s => mastered4.includes(s) || skipped4.includes(s) || difficult4.includes(s));
           if (allOthersResolved) {
             const focusWeeks4 = await storage.countEatOutFocusWeeks(userId);
-            if (focusWeeks4 === 3) {
+            if (focusWeeks4 === 6) {
               await storage.updateProfile(userId, {
                 difficultStruggles: [...difficult4, "eat_out"],
               });
@@ -875,8 +875,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Extended commitment requires all other Cycle 1 struggles to be resolved first" });
       }
       const focusWeeks = await storage.countEatOutFocusWeeks(userId);
-      if (focusWeeks < 1 || focusWeeks > 2) {
-        return res.status(400).json({ message: "Extended commitment only allowed at 1–2 eat_out focus weeks" });
+      if (focusWeeks !== 1 && focusWeeks !== 2 && focusWeeks !== 4 && focusWeeks !== 5) {
+        return res.status(400).json({ message: "Extended commitment only allowed at 1, 2, 4, or 5 eat_out focus weeks" });
       }
 
       const updated = await storage.updateProfile(userId, { eatOutExtendedCommitment: true });
