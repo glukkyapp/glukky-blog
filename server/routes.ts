@@ -240,25 +240,25 @@ export async function registerRoutes(
       const struggles2 = (profile.struggles2 as string[]) || [];
       // Verify the requested struggle is the current effective focus, using the same
       // algorithm as the cycle-2 plan picker (untried first, then tried-not-mastered).
-      const mastered1Skip = (profile.masteredStruggles as string[]) || [];
-      const mastered2Skip = (profile.masteredStruggles2 as string[]) || [];
-      const skipped2Skip = (profile.skippedStruggles2 as string[]) || [];
-      const difficult2Skip = (profile.difficultStruggles2 as string[]) || [];
-      const isLateDinnerMasteredSkip = profile.dinnerMastered === true || mastered2Skip.includes("late_dinner");
-      const isS2ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      const c1Mastered = (profile.masteredStruggles as string[]) || [];
+      const c2Mastered = (profile.masteredStruggles2 as string[]) || [];
+      const c2Skipped = (profile.skippedStruggles2 as string[]) || [];
+      const c2Difficult = (profile.difficultStruggles2 as string[]) || [];
+      const isLateDinnerMastered = profile.dinnerMastered === true || c2Mastered.includes("late_dinner");
+      const isValidStruggle = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
       // Bug 2 fix: only check mastered2 for struggles2 items — mastered1 must not block repicked struggles.
-      const isS2MasteredSkip = (s: string) => {
-        if (s === "late_dinner") return isLateDinnerMasteredSkip;
-        return mastered2Skip.includes(s);
+      const isMastered = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMastered;
+        return c2Mastered.includes(s);
       };
-      const isS2MasteredSkipFallback = (s: string) => {
-        if (s === "late_dinner") return isLateDinnerMasteredSkip;
-        return mastered1Skip.includes(s) || mastered2Skip.includes(s);
+      const isMasteredFallback = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMastered;
+        return c1Mastered.includes(s) || c2Mastered.includes(s);
       };
-      const untried2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s));
-      const triedNotMastered2Skip = struggles2.filter(s => isS2ValidSkip(s) && !isS2MasteredSkip(s) && (skipped2Skip.includes(s) || difficult2Skip.includes(s)));
-      const fallback2Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS2MasteredSkipFallback(s) && !skipped2Skip.includes(s) && !difficult2Skip.includes(s)) || "sugary_food_drink";
-      const currentFocus = [...untried2Skip, ...triedNotMastered2Skip][0] || fallback2Skip;
+      const untried = struggles2.filter(s => isValidStruggle(s) && !isMastered(s) && !c2Skipped.includes(s) && !c2Difficult.includes(s));
+      const triedNotMastered = struggles2.filter(s => isValidStruggle(s) && !isMastered(s) && (c2Skipped.includes(s) || c2Difficult.includes(s)));
+      const fallback = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isMasteredFallback(s) && !c2Skipped.includes(s) && !c2Difficult.includes(s)) || "sugary_food_drink";
+      const currentFocus = [...untried, ...triedNotMastered][0] || fallback;
       if (currentFocus !== struggle) {
         return res.status(400).json({ message: "struggle is not the current cycle-2 focus" });
       }
@@ -267,10 +267,10 @@ export async function registerRoutes(
       if (idx === -1 || idx >= struggles2.length - 1) {
         return res.json({ struggles2 });
       }
-      const newStruggles2 = [...struggles2];
-      [newStruggles2[idx], newStruggles2[idx + 1]] = [newStruggles2[idx + 1], newStruggles2[idx]];
-      const updated = await storage.updateProfile(userId, { struggles2: newStruggles2 });
-      res.json({ struggles2: (updated?.struggles2 as string[]) || newStruggles2 });
+      const reorderedStruggles = [...struggles2];
+      [reorderedStruggles[idx], reorderedStruggles[idx + 1]] = [reorderedStruggles[idx + 1], reorderedStruggles[idx]];
+      const updated = await storage.updateProfile(userId, { struggles2: reorderedStruggles });
+      res.json({ struggles2: (updated?.struggles2 as string[]) || reorderedStruggles });
     } catch (error: any) {
       console.error("Error in cycle2-skip:", error);
       res.status(500).json({ message: error.message || "Failed to swap struggle" });
@@ -290,25 +290,25 @@ export async function registerRoutes(
         return res.status(400).json({ message: "cycle3-skip is only allowed in cycle 3+" });
       }
       const struggles3 = (profile.struggles3 as string[]) || [];
-      const mastered1Skip = (profile.masteredStruggles as string[]) || [];
-      const mastered2Skip = (profile.masteredStruggles2 as string[]) || [];
-      const mastered3Skip = (profile.masteredStruggles3 as string[]) || [];
-      const skipped3Skip = (profile.skippedStruggles3 as string[]) || [];
-      const difficult3Skip = (profile.difficultStruggles3 as string[]) || [];
-      const isLateDinnerMasteredSkip = profile.dinnerMastered === true || mastered3Skip.includes("late_dinner");
-      const isS3ValidSkip = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
-      const isS3MasteredSkip = (s: string) => {
-        if (s === "late_dinner") return isLateDinnerMasteredSkip;
-        return mastered3Skip.includes(s);
+      const c1Mastered = (profile.masteredStruggles as string[]) || [];
+      const c2Mastered = (profile.masteredStruggles2 as string[]) || [];
+      const c3Mastered = (profile.masteredStruggles3 as string[]) || [];
+      const c3Skipped = (profile.skippedStruggles3 as string[]) || [];
+      const c3Difficult = (profile.difficultStruggles3 as string[]) || [];
+      const isLateDinnerMastered = profile.dinnerMastered === true || c3Mastered.includes("late_dinner");
+      const isValidStruggle = (s: string) => (STRUGGLE_PRIORITY as readonly string[]).includes(s) || s === "late_dinner";
+      const isMastered = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMastered;
+        return c3Mastered.includes(s);
       };
-      const isS3MasteredSkipFallback = (s: string) => {
-        if (s === "late_dinner") return isLateDinnerMasteredSkip;
-        return mastered1Skip.includes(s) || mastered2Skip.includes(s) || mastered3Skip.includes(s);
+      const isMasteredFallback = (s: string) => {
+        if (s === "late_dinner") return isLateDinnerMastered;
+        return c1Mastered.includes(s) || c2Mastered.includes(s) || c3Mastered.includes(s);
       };
-      const untried3Skip = struggles3.filter(s => isS3ValidSkip(s) && !isS3MasteredSkip(s) && !skipped3Skip.includes(s) && !difficult3Skip.includes(s));
-      const triedNotMastered3Skip = struggles3.filter(s => isS3ValidSkip(s) && !isS3MasteredSkip(s) && (skipped3Skip.includes(s) || difficult3Skip.includes(s)));
-      const fallback3Skip = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isS3MasteredSkipFallback(s) && !skipped3Skip.includes(s) && !difficult3Skip.includes(s)) || "sugary_food_drink";
-      const currentFocus = [...untried3Skip, ...triedNotMastered3Skip][0] || fallback3Skip;
+      const untried = struggles3.filter(s => isValidStruggle(s) && !isMastered(s) && !c3Skipped.includes(s) && !c3Difficult.includes(s));
+      const triedNotMastered = struggles3.filter(s => isValidStruggle(s) && !isMastered(s) && (c3Skipped.includes(s) || c3Difficult.includes(s)));
+      const fallback = (STRUGGLE_PRIORITY as readonly string[]).find(s => !isMasteredFallback(s) && !c3Skipped.includes(s) && !c3Difficult.includes(s)) || "sugary_food_drink";
+      const currentFocus = [...untried, ...triedNotMastered][0] || fallback;
       if (currentFocus !== struggle) {
         return res.status(400).json({ message: "struggle is not the current cycle-3 focus" });
       }
@@ -317,10 +317,10 @@ export async function registerRoutes(
       if (idx === -1 || idx >= struggles3.length - 1) {
         return res.json({ struggles3 });
       }
-      const newStruggles3 = [...struggles3];
-      [newStruggles3[idx], newStruggles3[idx + 1]] = [newStruggles3[idx + 1], newStruggles3[idx]];
-      const updated = await storage.updateProfile(userId, { struggles3: newStruggles3 });
-      res.json({ struggles3: (updated?.struggles3 as string[]) || newStruggles3 });
+      const reorderedStruggles = [...struggles3];
+      [reorderedStruggles[idx], reorderedStruggles[idx + 1]] = [reorderedStruggles[idx + 1], reorderedStruggles[idx]];
+      const updated = await storage.updateProfile(userId, { struggles3: reorderedStruggles });
+      res.json({ struggles3: (updated?.struggles3 as string[]) || reorderedStruggles });
     } catch (error: any) {
       console.error("Error in cycle3-skip:", error);
       res.status(500).json({ message: error.message || "Failed to swap struggle" });
@@ -657,19 +657,19 @@ export async function registerRoutes(
         dietEvaluation.type === "in_cycle" &&
         !dietJustGraduated && !dietJustSkipped && !dietJustMovedOn
       ) {
-        const mastered4 = (profileBeforeMastery?.masteredStruggles || []) as string[];
-        const skipped4 = (profileBeforeMastery?.skippedStruggles || []) as string[];
-        const difficult4 = (profileBeforeMastery?.difficultStruggles || []) as string[];
-        const struggles4 = (profileBeforeMastery?.struggles || []) as string[];
-        const otherStruggles4 = struggles4.filter(s => s !== "eat_out");
-        const eatOutResolved4 = mastered4.includes("eat_out") || skipped4.includes("eat_out") || difficult4.includes("eat_out");
-        if (!eatOutResolved4 && otherStruggles4.length > 0) {
-          const allOthersResolved = otherStruggles4.every(s => mastered4.includes(s) || skipped4.includes(s) || difficult4.includes(s));
+        const eatOutMastered = (profileBeforeMastery?.masteredStruggles || []) as string[];
+        const eatOutSkipped = (profileBeforeMastery?.skippedStruggles || []) as string[];
+        const eatOutDifficult = (profileBeforeMastery?.difficultStruggles || []) as string[];
+        const eatOutStruggles = (profileBeforeMastery?.struggles || []) as string[];
+        const nonEatOutStruggles = eatOutStruggles.filter(s => s !== "eat_out");
+        const isEatOutResolved = eatOutMastered.includes("eat_out") || eatOutSkipped.includes("eat_out") || eatOutDifficult.includes("eat_out");
+        if (!isEatOutResolved && nonEatOutStruggles.length > 0) {
+          const allOthersResolved = nonEatOutStruggles.every(s => eatOutMastered.includes(s) || eatOutSkipped.includes(s) || eatOutDifficult.includes(s));
           if (allOthersResolved) {
-            const focusWeeks4 = await storage.countEatOutFocusWeeks(userId);
-            if (focusWeeks4 === 6) {
+            const eatOutFocusWeekCount = await storage.countEatOutFocusWeeks(userId);
+            if (eatOutFocusWeekCount === 6) {
               await storage.updateProfile(userId, {
-                difficultStruggles: [...difficult4, "eat_out"],
+                difficultStruggles: [...eatOutDifficult, "eat_out"],
               });
               dietJustMovedOn = true;
             }
@@ -685,17 +685,17 @@ export async function registerRoutes(
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
-          const latestProfileC1 = await storage.getProfile(userId);
-          const skipped1H = (latestProfileC1?.skippedStruggles as string[]) || [];
-          const difficult1H = (latestProfileC1?.difficultStruggles as string[]) || [];
+          const latestProfileForHistory = await storage.getProfile(userId);
+          const cycle1Skipped = (latestProfileForHistory?.skippedStruggles as string[]) || [];
+          const cycle1Difficult = (latestProfileForHistory?.difficultStruggles as string[]) || [];
           await storage.saveCycleHistory({
             userId,
             cycleNumber: 1,
             startWeek: 1,
-            endWeek: latestProfileC1?.currentWeek ?? undefined,
-            strugglesPicked: (latestProfileC1?.struggles as string[]) || [],
-            mastered: (latestProfileC1?.masteredStruggles as string[]) || [],
-            movedOn: [...new Set([...skipped1H, ...difficult1H])],
+            endWeek: latestProfileForHistory?.currentWeek ?? undefined,
+            strugglesPicked: (latestProfileForHistory?.struggles as string[]) || [],
+            mastered: (latestProfileForHistory?.masteredStruggles as string[]) || [],
+            movedOn: [...new Set([...cycle1Skipped, ...cycle1Difficult])],
           });
           await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false, eatOutExtendedCommitment: false });
           repickPending = true;
@@ -709,20 +709,20 @@ export async function registerRoutes(
       } else if (currentCycle === 2 && !(profileBeforeMastery?.repickPending)) {
         const cycle3Result = await checkCycle3RepickCondition(userId);
         if (cycle3Result.conditionMet) {
-          const latestProfileC2 = await storage.getProfile(userId);
-          const skipped2H = (latestProfileC2?.skippedStruggles2 as string[]) || [];
-          const difficult2H = (latestProfileC2?.difficultStruggles2 as string[]) || [];
-          const histForC2 = await storage.getCycleHistory(userId);
-          const c1Entry = histForC2.find(h => h.cycleNumber === 1);
-          const c2StartWeek = c1Entry?.endWeek != null ? (c1Entry.endWeek as number) + 1 : undefined;
+          const latestProfileForHistory = await storage.getProfile(userId);
+          const cycle2Skipped = (latestProfileForHistory?.skippedStruggles2 as string[]) || [];
+          const cycle2Difficult = (latestProfileForHistory?.difficultStruggles2 as string[]) || [];
+          const cycleHistory = await storage.getCycleHistory(userId);
+          const cycle1HistoryEntry = cycleHistory.find(h => h.cycleNumber === 1);
+          const c2StartWeek = cycle1HistoryEntry?.endWeek != null ? (cycle1HistoryEntry.endWeek as number) + 1 : undefined;
           await storage.saveCycleHistory({
             userId,
             cycleNumber: 2,
             startWeek: c2StartWeek,
-            endWeek: latestProfileC2?.currentWeek ?? undefined,
-            strugglesPicked: (latestProfileC2?.struggles2 as string[]) || [],
-            mastered: (latestProfileC2?.masteredStruggles2 as string[]) || [],
-            movedOn: [...new Set([...skipped2H, ...difficult2H])],
+            endWeek: latestProfileForHistory?.currentWeek ?? undefined,
+            strugglesPicked: (latestProfileForHistory?.struggles2 as string[]) || [],
+            mastered: (latestProfileForHistory?.masteredStruggles2 as string[]) || [],
+            movedOn: [...new Set([...cycle2Skipped, ...cycle2Difficult])],
           });
           await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 3, cycle3Active: false });
           repickPending = true;
@@ -733,20 +733,20 @@ export async function registerRoutes(
         const cycleNResult = await checkCurrentCycleRepickCondition(userId);
         if (cycleNResult.conditionMet) {
           const latestProfileForHistory = await storage.getProfile(userId);
-          const skipped3H = (latestProfileForHistory?.skippedStruggles3 || []) as string[];
-          const difficult3H = (latestProfileForHistory?.difficultStruggles3 || []) as string[];
-          const movedOnH = [...new Set([...skipped3H, ...difficult3H])];
-          const histForCN = await storage.getCycleHistory(userId);
-          const prevCycleH = histForCN.find(h => h.cycleNumber === currentCycle - 1);
-          const cNStartWeek = prevCycleH?.endWeek != null ? (prevCycleH.endWeek as number) + 1 : undefined;
+          const cycle3Skipped = (latestProfileForHistory?.skippedStruggles3 || []) as string[];
+          const cycle3Difficult = (latestProfileForHistory?.difficultStruggles3 || []) as string[];
+          const movedOn = [...new Set([...cycle3Skipped, ...cycle3Difficult])];
+          const cycleHistory = await storage.getCycleHistory(userId);
+          const prevCycleEntry = cycleHistory.find(h => h.cycleNumber === currentCycle - 1);
+          const cycleStartWeek = prevCycleEntry?.endWeek != null ? (prevCycleEntry.endWeek as number) + 1 : undefined;
           await storage.saveCycleHistory({
             userId,
             cycleNumber: currentCycle,
-            startWeek: cNStartWeek,
+            startWeek: cycleStartWeek,
             endWeek: profile?.currentWeek ?? undefined,
             strugglesPicked: (latestProfileForHistory?.struggles3 || []) as string[],
             mastered: (latestProfileForHistory?.masteredStruggles3 || []) as string[],
-            movedOn: movedOnH,
+            movedOn: movedOn,
           });
           await storage.updateProfile(userId, {
             repickPending: true,
@@ -920,8 +920,8 @@ export async function registerRoutes(
       const repickResult = await checkRepickCondition(userId);
       if (repickResult.conditionMet) {
         const latestProfile = await storage.getProfile(userId);
-        const skipped1H = (latestProfile?.skippedStruggles as string[]) || [];
-        const difficult1H = (latestProfile?.difficultStruggles as string[]) || [];
+        const cycle1Skipped = (latestProfile?.skippedStruggles as string[]) || [];
+        const cycle1Difficult = (latestProfile?.difficultStruggles as string[]) || [];
         await storage.saveCycleHistory({
           userId,
           cycleNumber: 1,
@@ -929,7 +929,7 @@ export async function registerRoutes(
           endWeek: latestProfile?.currentWeek ?? undefined,
           strugglesPicked: (latestProfile?.struggles as string[]) || [],
           mastered: (latestProfile?.masteredStruggles as string[]) || [],
-          movedOn: [...new Set([...skipped1H, ...difficult1H])],
+          movedOn: [...new Set([...cycle1Skipped, ...cycle1Difficult])],
         });
         await storage.updateProfile(userId, { repickPending: true, currentStruggleCycle: 2, cycle2Active: false });
       }
@@ -1030,44 +1030,44 @@ export async function registerRoutes(
         if (planCycle >= 3) {
           if (!freshProfile?.cycle3Active) profileUpdate.cycle3Active = true;
           let struggles3 = (freshProfile?.struggles3 || []) as string[];
-          const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
-          const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
-          const mastered3 = (freshProfile?.masteredStruggles3 || []) as string[];
-          const skipped3 = (freshProfile?.skippedStruggles3 || []) as string[];
-          const difficult3 = (freshProfile?.difficultStruggles3 || []) as string[];
+          const cycle1Mastered = (freshProfile?.masteredStruggles || []) as string[];
+          const cycle2Mastered = (freshProfile?.masteredStruggles2 || []) as string[];
+          const cycle3Mastered = (freshProfile?.masteredStruggles3 || []) as string[];
+          const skipped = (freshProfile?.skippedStruggles3 || []) as string[];
+          const difficult = (freshProfile?.difficultStruggles3 || []) as string[];
 
-          if (hasEatOutDays && !struggles3.includes("eat_out") && !mastered3.includes("eat_out") && !skipped3.includes("eat_out") && !difficult3.includes("eat_out")) {
+          if (hasEatOutDays && !struggles3.includes("eat_out") && !cycle3Mastered.includes("eat_out") && !skipped.includes("eat_out") && !difficult.includes("eat_out")) {
             struggles3 = [...struggles3, "eat_out"];
             profileUpdate.struggles3 = struggles3;
           }
 
-          const isLateDinnerMastered3 = freshProfile?.dinnerMastered === true || mastered3.includes("late_dinner");
-          const isS3Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
+          const isLateDinnerMastered = freshProfile?.dinnerMastered === true || cycle3Mastered.includes("late_dinner");
+          const isValidStruggle = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
           // Only check mastered3 for struggles3 items — mastered1/mastered2 must not block repicked cycle-3 struggles.
-          const isS3Mastered = (s: string) => {
-            if (s === "late_dinner") return isLateDinnerMastered3;
-            return mastered3.includes(s);
+          const isMastered = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered;
+            return cycle3Mastered.includes(s);
           };
           // For the global fallback, also exclude mastered1 + mastered2.
-          const isS3MasteredFallback = (s: string) => {
-            if (s === "late_dinner") return isLateDinnerMastered3;
-            return mastered1.includes(s) || mastered2.includes(s) || mastered3.includes(s);
+          const isMasteredFallback = (s: string) => {
+            if (s === "late_dinner") return isLateDinnerMastered;
+            return cycle1Mastered.includes(s) || cycle2Mastered.includes(s) || cycle3Mastered.includes(s);
           };
-          const untried3 = struggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && !skipped3.includes(s) && !difficult3.includes(s));
-          const triedNotMastered3 = struggles3.filter(s => isS3Valid(s) && !isS3Mastered(s) && (skipped3.includes(s) || difficult3.includes(s)));
-          const fallback3 = STRUGGLE_PRIORITY.find(s => !isS3MasteredFallback(s) && !skipped3.includes(s) && !difficult3.includes(s)) || "sugary_food_drink";
-          currentStruggle = [...untried3, ...triedNotMastered3][0] || fallback3;
+          const untried = struggles3.filter(s => isValidStruggle(s) && !isMastered(s) && !skipped.includes(s) && !difficult.includes(s));
+          const triedNotMastered = struggles3.filter(s => isValidStruggle(s) && !isMastered(s) && (skipped.includes(s) || difficult.includes(s)));
+          const fallback = STRUGGLE_PRIORITY.find(s => !isMasteredFallback(s) && !skipped.includes(s) && !difficult.includes(s)) || "sugary_food_drink";
+          currentStruggle = [...untried, ...triedNotMastered][0] || fallback;
 
           isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
         } else if (planCycle === 2) {
           if (!freshProfile?.cycle2Active) profileUpdate.cycle2Active = true;
           let struggles2 = (freshProfile?.struggles2 || []) as string[];
-          const mastered1 = (freshProfile?.masteredStruggles || []) as string[];
-          const mastered2 = (freshProfile?.masteredStruggles2 || []) as string[];
-          const skipped2 = (freshProfile?.skippedStruggles2 || []) as string[];
-          const difficult2 = (freshProfile?.difficultStruggles2 || []) as string[];
+          const cycle1Mastered = (freshProfile?.masteredStruggles || []) as string[];
+          const cycle2Mastered = (freshProfile?.masteredStruggles2 || []) as string[];
+          const skipped = (freshProfile?.skippedStruggles2 || []) as string[];
+          const difficult = (freshProfile?.difficultStruggles2 || []) as string[];
 
-          if (hasEatOutDays && !struggles2.includes("eat_out") && !mastered2.includes("eat_out") && !skipped2.includes("eat_out") && !difficult2.includes("eat_out")) {
+          if (hasEatOutDays && !struggles2.includes("eat_out") && !cycle2Mastered.includes("eat_out") && !skipped.includes("eat_out") && !difficult.includes("eat_out")) {
             struggles2 = [...struggles2, "eat_out"];
             profileUpdate.struggles2 = struggles2;
           }
@@ -1075,24 +1075,24 @@ export async function registerRoutes(
           // Bug 2 fix: remove eat_out hasEatOutDays gate from cycle-2 picker.
           // eat_out's position in struggles2 is honoured regardless of this week's eat-out days.
           // Bug 3 fix: allow "late_dinner" through alongside STRUGGLE_PRIORITY items.
-          const isLateDinnerMastered = freshProfile?.dinnerMastered === true || mastered2.includes("late_dinner");
-          const isS2Valid = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
+          const isLateDinnerMastered = freshProfile?.dinnerMastered === true || cycle2Mastered.includes("late_dinner");
+          const isValidStruggle = (s: string) => STRUGGLE_PRIORITY.includes(s) || s === "late_dinner";
           // Bug 1 fix: only check mastered2 (not mastered1) for struggles2 items —
           // cycle-1 mastery must not block an explicitly repicked cycle-2 struggle.
-          const isS2Mastered = (s: string) => {
+          const isMastered = (s: string) => {
             if (s === "late_dinner") return isLateDinnerMastered;
-            return mastered2.includes(s);
+            return cycle2Mastered.includes(s);
           };
           // For the global fallback (items outside struggles2), also exclude mastered1
           // so we don't re-introduce things the user fully beat in cycle 1.
-          const isS2MasteredFallback = (s: string) => {
+          const isMasteredFallback = (s: string) => {
             if (s === "late_dinner") return isLateDinnerMastered;
-            return mastered1.includes(s) || mastered2.includes(s);
+            return cycle1Mastered.includes(s) || cycle2Mastered.includes(s);
           };
-          const untried2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && !skipped2.includes(s) && !difficult2.includes(s));
-          const triedNotMastered2 = struggles2.filter(s => isS2Valid(s) && !isS2Mastered(s) && (skipped2.includes(s) || difficult2.includes(s)));
-          const fallback2 = STRUGGLE_PRIORITY.find(s => !isS2MasteredFallback(s) && !skipped2.includes(s) && !difficult2.includes(s)) || "sugary_food_drink";
-          currentStruggle = [...untried2, ...triedNotMastered2][0] || fallback2;
+          const untried = struggles2.filter(s => isValidStruggle(s) && !isMastered(s) && !skipped.includes(s) && !difficult.includes(s));
+          const triedNotMastered = struggles2.filter(s => isValidStruggle(s) && !isMastered(s) && (skipped.includes(s) || difficult.includes(s)));
+          const fallback = STRUGGLE_PRIORITY.find(s => !isMasteredFallback(s) && !skipped.includes(s) && !difficult.includes(s)) || "sugary_food_drink";
+          currentStruggle = [...untried, ...triedNotMastered][0] || fallback;
 
           // Bug 1 fix: set isDinnerFocus based on the picked struggle, not lateDinnerDays.
           isDinnerFocusComputed = currentStruggle === "late_dinner" && !freshProfile?.dinnerMastered;
@@ -1367,16 +1367,16 @@ export async function registerRoutes(
       try {
         if (plan && finalLog) {
           const achievePlanDays = await storage.getWeeklyPlanDays(plan.id);
-          const logDate2 = new Date(date + "T00:00:00");
-          const planStart2 = new Date(plan.startDate + "T00:00:00");
-          const todayDow2 = Math.round((logDate2.getTime() - planStart2.getTime()) / (1000 * 60 * 60 * 24));
-          const achieveTodayPlanDay = achievePlanDays.find(d => d.dayOfWeek === todayDow2);
+          const logDateObj = new Date(date + "T00:00:00");
+          const planStartObj = new Date(plan.startDate + "T00:00:00");
+          const dayOffset = Math.round((logDateObj.getTime() - planStartObj.getTime()) / (1000 * 60 * 60 * 24));
+          const achieveTodayPlanDay = achievePlanDays.find(d => d.dayOfWeek === dayOffset);
           let prevWeekPlanDay: any = undefined;
           if (plan.weekNumber > 1) {
             const prevPlan = await storage.getWeeklyPlan(userId, plan.weekNumber - 1);
             if (prevPlan) {
               const prevPlanDays = await storage.getWeeklyPlanDays(prevPlan.id);
-              prevWeekPlanDay = prevPlanDays.find(d => d.dayOfWeek === todayDow2);
+              prevWeekPlanDay = prevPlanDays.find(d => d.dayOfWeek === dayOffset);
             }
           }
           coinsAwarded = await evaluateDailyAchievements(userId, date, finalLog, plan, achieveTodayPlanDay, prevWeekPlanDay);
