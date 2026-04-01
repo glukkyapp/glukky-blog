@@ -1703,7 +1703,8 @@ export async function registerRoutes(
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const user = await authStorage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (DEV_EMAILS.includes(user.email) || TEST_EMAIL_PATTERN.test(user.email)) {
+    const email = user.email?.toLowerCase()?.trim();
+    if (DEV_EMAILS.some(d => d.toLowerCase().trim() === email) || (email && TEST_EMAIL_PATTERN.test(email))) {
       return next();
     }
     return res.status(403).json({ message: "Forbidden" });
@@ -1745,10 +1746,21 @@ export async function registerRoutes(
 
   app.get("/api/dev/check", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        console.error("Dev check: no userId in session");
+        return res.json({ isDev: false });
+      }
       const user = await authStorage.getUser(userId);
-      res.json({ isDev: !!(user && DEV_EMAILS.includes(user.email)) });
-    } catch {
+      if (!user) {
+        console.error("Dev check: user not found for id", userId);
+        return res.json({ isDev: false });
+      }
+      const email = user.email?.toLowerCase()?.trim();
+      const isDev = DEV_EMAILS.some(d => d.toLowerCase().trim() === email);
+      res.json({ isDev });
+    } catch (error) {
+      console.error("Dev check error:", error);
       res.json({ isDev: false });
     }
   });
