@@ -1106,7 +1106,8 @@ export async function checkRepickCondition(userId: string): Promise<{
   const eatOutNeedsCommitment = eatOutPickedInList && hasOtherStruggles
     && allOtherResolved
     && (eatOutFocusWeeks === 1 || eatOutFocusWeeks === 2 || eatOutFocusWeeks === 4 || eatOutFocusWeeks === 5)
-    && !eatOutResolved;
+    && !eatOutResolved
+    && !(profile?.eatOutExtendedCommitment);
 
   const mustGoThrough = struggles.filter(s => {
     if (s === "eat_out" && eatOutPickedButNeverScheduled) return false;
