@@ -879,11 +879,11 @@ export default function WeeklyPlanner() {
                 </p>
               )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
-                {reflection.dietYesCount > 0 && (
-                  <p className="text-green-600">{t("planner.followed_tip", { count: reflection.dietYesCount })}</p>
+                {(reflection.dietEvaluation?.yesDays || 0) > 0 && (
+                  <p className="text-green-600">{t("planner.followed_tip", { count: reflection.dietEvaluation?.yesDays })}</p>
                 )}
-                {reflection.dietNoChanceCount > 0 && (
-                  <p className="text-muted-foreground">{t("planner.no_chance", { count: reflection.dietNoChanceCount })}</p>
+                {(reflection.dietEvaluation?.noChanceDays || 0) > 0 && (
+                  <p className="text-muted-foreground">{t("planner.no_chance", { count: reflection.dietEvaluation?.noChanceDays })}</p>
                 )}
                 {reflection.dietNoCount > 0 && (
                   <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
