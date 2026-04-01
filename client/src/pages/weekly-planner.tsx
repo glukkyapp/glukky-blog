@@ -1637,12 +1637,28 @@ export default function WeeklyPlanner() {
     const isLastStruggle = cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation);
 
     const isEatOutSoleOrLastCycle2Plus = (() => {
+      const serverEval = reflection?.dietEvaluation;
+      const isTransition = serverEval?.type === "mastered" || serverEval?.type === "not_relevant" || serverEval?.type === "moved_on";
+      const previousStruggle = isTransition ? (serverEval?.struggle || null) : null;
+
       if (cycle === 2 && cycle2Focus === "eat_out") {
         const s2 = (profile?.struggles2 as string[]) || [];
         const m2 = (profile?.masteredStruggles2 as string[]) || [];
         const sk2 = (profile?.skippedStruggles2 as string[]) || [];
         const d2 = (profile?.difficultStruggles2 as string[]) || [];
-        const resolved2 = new Set([...m2, ...sk2, ...d2]);
+
+        const isTransitionWithinCycle2 = isTransition && !!previousStruggle
+          && s2.includes(previousStruggle)
+          && profile?.cycle2Active === true;
+
+        const hypM2 = (isTransitionWithinCycle2 && serverEval?.type === "mastered" && previousStruggle)
+          ? [...m2, previousStruggle] : m2;
+        const hypSk2 = (isTransitionWithinCycle2 && serverEval?.type === "not_relevant" && previousStruggle)
+          ? [...sk2, previousStruggle] : sk2;
+        const hypD2 = (isTransitionWithinCycle2 && serverEval?.type === "moved_on" && previousStruggle)
+          ? [...d2, previousStruggle] : d2;
+
+        const resolved2 = new Set([...hypM2, ...hypSk2, ...hypD2]);
         return s2.filter(s => s !== "eat_out").every(s => resolved2.has(s));
       }
       if (cycle >= 3 && cycle3Focus === "eat_out") {
@@ -1650,7 +1666,19 @@ export default function WeeklyPlanner() {
         const m3 = (profile?.masteredStruggles3 as string[]) || [];
         const sk3 = (profile?.skippedStruggles3 as string[]) || [];
         const d3 = (profile?.difficultStruggles3 as string[]) || [];
-        const resolved3 = new Set([...m3, ...sk3, ...d3]);
+
+        const isTransitionWithinCycle3 = isTransition && !!previousStruggle
+          && s3.includes(previousStruggle)
+          && profile?.cycle3Active === true;
+
+        const hypM3 = (isTransitionWithinCycle3 && serverEval?.type === "mastered" && previousStruggle)
+          ? [...m3, previousStruggle] : m3;
+        const hypSk3 = (isTransitionWithinCycle3 && serverEval?.type === "not_relevant" && previousStruggle)
+          ? [...sk3, previousStruggle] : sk3;
+        const hypD3 = (isTransitionWithinCycle3 && serverEval?.type === "moved_on" && previousStruggle)
+          ? [...d3, previousStruggle] : d3;
+
+        const resolved3 = new Set([...hypM3, ...hypSk3, ...hypD3]);
         return s3.filter(s => s !== "eat_out").every(s => resolved3.has(s));
       }
       return false;
