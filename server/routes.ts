@@ -1665,7 +1665,7 @@ export async function registerRoutes(
     }
   });
 
-  const DEV_EMAILS = ["yusycyn@gmail.com"];
+  const DEV_EMAILS = ["yusycyn@gmail.com", "cynthiayuyu@hotmail.com"];
   const TEST_EMAIL_PATTERN = /^test-.*@glukky\.test$/;
   const devTimeOverrides = new Map<string, number | null>();
   const devDateOverrides = new Map<string, string | null>();
