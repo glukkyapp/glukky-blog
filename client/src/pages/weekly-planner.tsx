@@ -857,7 +857,7 @@ export default function WeeklyPlanner() {
             </div>
           )}
 
-          {reflection.dietStruggle && dietTotalResponses > 0 && (
+          {reflection.dietStruggle && (dietTotalResponses > 0 || (reflection.activeDays || 0) > 0) && (
             <div className="rounded-lg border p-4 space-y-2" data-testid="section-diet-struggle">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-green-500" />
