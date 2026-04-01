@@ -114,6 +114,21 @@ function App() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const updateFontClass = (lang: string) => {
+      if (lang === "zh-Hant" || lang === "yue") {
+        document.documentElement.classList.add("lang-zh");
+      } else {
+        document.documentElement.classList.remove("lang-zh");
+      }
+    };
+    updateFontClass(i18n.language);
+    i18n.on("languageChanged", updateFontClass);
+    return () => {
+      i18n.off("languageChanged", updateFontClass);
+    };
+  }, []);
+
+  useEffect(() => {
     timerRef.current = setTimeout(() => {
       setTimerDone(true);
     }, 3000);

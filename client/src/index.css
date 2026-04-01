@@ -71,7 +71,9 @@ textarea,
   --chart-4: 0 65% 55%;
   --chart-5: 200 50% 50%;
 
-  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Karla', 'Inter', sans-serif;
+  --font-sans: var(--font-body);
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: .5rem;
@@ -162,13 +164,22 @@ textarea,
   --shadow-2xl: 0px 25px 50px -12px rgba(0,0,0,0.5);
 }
 
+html.lang-zh {
+  --font-heading: 'PingFang TC', 'Inter', sans-serif;
+  --font-body: 'Microsoft JhengHei', 'Karla', 'Inter', sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground text-base leading-relaxed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 }
 

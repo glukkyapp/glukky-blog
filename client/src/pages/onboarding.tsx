@@ -153,7 +153,7 @@ export default function Onboarding() {
             <CardTitle className="text-lg">{t("onboarding.social_proof_title")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm" data-testid="text-social-proof">
+            <p className="text-muted-foreground text-base" data-testid="text-social-proof">
               {t("onboarding.social_proof_message")}
             </p>
           </CardContent>
@@ -185,7 +185,7 @@ export default function Onboarding() {
             <CardTitle className="text-lg">{t("onboarding.questions_intro_title")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm" data-testid="text-questions-intro">
+            <p className="text-muted-foreground text-base" data-testid="text-questions-intro">
               {t("onboarding.questions_intro_body")}
             </p>
           </CardContent>

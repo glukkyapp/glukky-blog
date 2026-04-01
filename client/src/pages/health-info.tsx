@@ -30,7 +30,7 @@ const FOOD_SWITCH_TABS = [
 
 function PlateMethodDetail({ t }: { t: (key: string, opts?: any) => string }) {
   return (
-    <div className="space-y-3 text-sm text-muted-foreground">
+    <div className="space-y-3 text-base text-muted-foreground">
       <p>{t("health_info.plate_method_desc")}</p>
       <div className="grid grid-cols-3 gap-2 pt-1">
         <div className="rounded-lg bg-green-100 dark:bg-green-950/40 p-3 flex flex-col items-center gap-1">
@@ -61,7 +61,7 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
   }
 
   return (
-    <div className="space-y-3 text-sm text-muted-foreground">
+    <div className="space-y-3 text-base text-muted-foreground">
       <p>{t("food_switch_popup.tab1")}</p>
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {FOOD_SWITCH_TABS.map((tab, i) => (
@@ -118,7 +118,7 @@ function DietTipRow({ tipKey, tipLabel, isOpen, onToggle, t }: DietTipRowProps) 
   } else {
     const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
     detailContent = (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-base text-muted-foreground">
         {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
       </p>
     );
@@ -192,7 +192,7 @@ export default function HealthInfo() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="text-sm text-muted-foreground"
+            className="text-base text-muted-foreground"
             data-testid="text-no-diet-advice"
           >
             {t("health_info.no_advice_yet")}

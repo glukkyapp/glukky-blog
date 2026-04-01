@@ -175,7 +175,7 @@ export default function Landing() {
             <h2 className="text-3xl font-bold text-white leading-tight whitespace-pre-line">
               {slide.headline}
             </h2>
-            <p className="text-sm text-white/80 leading-relaxed">
+            <p className="text-base text-white/80 leading-relaxed">
               {slide.body}
             </p>
           </div>
