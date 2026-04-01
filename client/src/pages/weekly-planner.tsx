@@ -2461,8 +2461,14 @@ export default function WeeklyPlanner() {
     })();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const isLastDayOfMonth = now.getDate() === lastDay;
-    const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
-    const monthName = now.toLocaleDateString(dateLocale, { month: "long" });
+    let monthLabel: string;
+    const lang = i18n.language;
+    if (lang === "zh-Hant" || lang === "yue") {
+      const chineseNumerals = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
+      monthLabel = chineseNumerals[now.getMonth()];
+    } else {
+      monthLabel = now.toLocaleDateString(lang, { month: "long" });
+    }
 
     if (isLastDayOfMonth && monthlyReportLoading) {
       return (
@@ -2490,7 +2496,7 @@ export default function WeeklyPlanner() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <MonthlyReportContent data={monthlyReport} monthName={monthName} />
+          <MonthlyReportContent data={monthlyReport} monthLabel={monthLabel} />
         </motion.div>
       );
     }
@@ -2509,7 +2515,7 @@ export default function WeeklyPlanner() {
               </p>
             ) : (
               <p className="text-sm text-muted-foreground" data-testid="text-monthly-pending">
-                {t("planner.monthly_pending", { month: monthName, day: lastDay })}
+                {t("planner.monthly_pending", { month: monthLabel, day: lastDay })}
               </p>
             )}
           </CardContent>
