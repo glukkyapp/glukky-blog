@@ -67,7 +67,7 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
         {FOOD_SWITCH_TABS.map((tab, i) => (
           <button
             key={tab.key}
-            onClick={() => handleTabChange(i)}
+            onClick={(e) => { e.stopPropagation(); handleTabChange(i); }}
             data-testid={`tab-food-switch-${tab.key}`}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               activeTab === i
