@@ -175,11 +175,18 @@ html.lang-zh {
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground text-base leading-relaxed;
+    @apply font-sans antialiased bg-background text-foreground leading-relaxed;
+    font-size: 20px;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1 {
     font-family: var(--font-heading);
+    font-size: 26px;
+  }
+
+  h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-size: 22px;
   }
 }
 
