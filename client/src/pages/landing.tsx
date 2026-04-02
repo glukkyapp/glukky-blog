@@ -104,11 +104,11 @@ export default function Landing() {
       const user = await res.json();
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
-        title: tab === "login" ? "Welcome back!" : "Account created!",
-        description: "Redirecting...",
+        title: tab === "login" ? t("landing.welcome_back") : t("landing.account_created"),
+        description: t("landing.redirecting"),
       });
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("landing.error_network"));
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +123,7 @@ export default function Landing() {
         <div className="flex flex-col items-center gap-3">
           <img src={glukkyLogo} alt="Glukky" style={{ width: "min(200px, 55vw)" }} />
           <p className="text-sm text-muted-foreground text-center">
-            Choose your language / 選擇語言
+            {t("landing.choose_language")}
           </p>
         </div>
 

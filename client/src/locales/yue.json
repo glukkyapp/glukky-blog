@@ -604,7 +604,12 @@
     "error_required": "請輸入電郵同密碼",
     "error_mismatch": "密碼唔一致",
     "error_short_password": "密碼至少要6個字",
-    "error_generic": "出咗問題"
+    "error_generic": "出咗問題",
+    "error_network": "網絡錯誤，請再試吓。",
+    "welcome_back": "歡迎返嚟！",
+    "account_created": "帳號開咗喇！",
+    "redirecting": "跳轉緊...",
+    "choose_language": "揀你嘅語言 / Choose your language"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "今週你嘅重點係出外食飯",

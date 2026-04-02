@@ -600,7 +600,12 @@
     "error_required": "Email and password are required",
     "error_mismatch": "Passwords do not match",
     "error_short_password": "Password must be at least 6 characters",
-    "error_generic": "Something went wrong"
+    "error_generic": "Something went wrong",
+    "error_network": "Network error. Please try again.",
+    "welcome_back": "Welcome back!",
+    "account_created": "Account created!",
+    "redirecting": "Redirecting...",
+    "choose_language": "Choose your language / 選擇語言"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "Eating Out is your focus this week",

@@ -604,7 +604,12 @@
     "error_required": "請輸入電郵和密碼",
     "error_mismatch": "密碼不一致",
     "error_short_password": "密碼至少需要6個字元",
-    "error_generic": "發生錯誤"
+    "error_generic": "發生錯誤",
+    "error_network": "網絡錯誤，請再試一次。",
+    "welcome_back": "歡迎回來！",
+    "account_created": "帳號已建立！",
+    "redirecting": "跳轉中...",
+    "choose_language": "選擇語言 / Choose your language"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "外出用餐是本週你的重點",
