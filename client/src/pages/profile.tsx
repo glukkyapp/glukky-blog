@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, Download, LogOut, Settings, Heart, Pencil, Globe, Smile } from "lucide-react";
+import { User, Target, Download, LogOut, Settings, Heart, Pencil, Globe, Smile, Type } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,6 +232,55 @@ function LanguageCard({ currentLang }: { currentLang: string }) {
   );
 }
 
+function FontSizeCard({ currentSize }: { currentSize: string }) {
+  const { t } = useTranslation();
+
+  const fontSizeMutation = useMutation({
+    mutationFn: async (size: string) => {
+      const res = await apiRequest("PATCH", "/api/profile/font-size", { fontSizePreference: size });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    },
+  });
+
+  return (
+    <Card data-testid="card-font-size">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <Type className="w-5 h-5 text-muted-foreground" />
+        <CardTitle className="text-base">{t("profile.font_size")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <button
+            onClick={() => fontSizeMutation.mutate("small")}
+            data-testid="button-font-small"
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
+              currentSize === "small"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >
+            {t("profile.font_small")}
+          </button>
+          <button
+            onClick={() => fontSizeMutation.mutate("large")}
+            data-testid="button-font-large"
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
+              currentSize === "large"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >
+            {t("profile.font_large")}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function NameGoalCard({ profile }: { profile: ProfileData }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -399,6 +448,8 @@ export default function ProfilePage() {
       {profile && <HealthMarkersCard profile={profile} />}
 
       <LanguageCard currentLang={currentLang} />
+
+      <FontSizeCard currentSize={(profile as any)?.fontSizePreference || "large"} />
 
       <Card data-testid="card-current-focus">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">

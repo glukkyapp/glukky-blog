@@ -76,6 +76,15 @@ textarea,
   --font-sans: var(--font-body);
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
+
+  --fs-xs: 16px;
+  --fs-sm: 18px;
+  --fs-base: 20px;
+  --fs-lg: 22px;
+  --fs-xl: 24px;
+  --fs-2xl: 26px;
+  --fs-3xl: 30px;
+  --fs-4xl: 36px;
   --radius: .5rem;
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.04);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.06);
@@ -169,6 +178,17 @@ html.lang-zh {
   --font-body: 'Microsoft JhengHei', 'Karla', 'Inter', sans-serif;
 }
 
+html.font-small {
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 20px;
+  --fs-2xl: 22px;
+  --fs-3xl: 26px;
+  --fs-4xl: 30px;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -176,17 +196,17 @@ html.lang-zh {
 
   body {
     @apply font-sans antialiased bg-background text-foreground leading-relaxed;
-    font-size: 20px;
+    font-size: var(--fs-base);
   }
 
   h1 {
     font-family: var(--font-heading);
-    font-size: 26px;
+    font-size: var(--fs-2xl);
   }
 
   h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    font-size: 22px;
+    font-size: var(--fs-lg);
   }
 }
 

@@ -407,6 +407,23 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/profile/font-size", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { fontSizePreference } = req.body;
+      const validSizes = ["small", "large"];
+      if (!fontSizePreference || !validSizes.includes(fontSizePreference)) {
+        return res.status(400).json({ message: "Invalid font size. Must be one of: small, large" });
+      }
+      const profile = await storage.updateProfile(userId, { fontSizePreference });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ fontSizePreference: profile.fontSizePreference });
+    } catch (error) {
+      console.error("Error updating font size:", error);
+      res.status(500).json({ message: "Failed to update font size" });
+    }
+  });
+
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

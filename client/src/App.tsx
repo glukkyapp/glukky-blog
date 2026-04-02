@@ -36,6 +36,15 @@ function AuthenticatedApp() {
     }
   }, [(profile as any)?.preferredLanguage]);
 
+  useEffect(() => {
+    const pref = (profile as any)?.fontSizePreference;
+    if (pref === "small") {
+      document.documentElement.classList.add("font-small");
+    } else {
+      document.documentElement.classList.remove("font-small");
+    }
+  }, [(profile as any)?.fontSizePreference]);
+
   if (profileLoading || (profile && planLoading)) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">

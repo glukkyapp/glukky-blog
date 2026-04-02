@@ -59,6 +59,7 @@ export const userProfiles = pgTable("user_profiles", {
   difficultStruggles3: text("difficult_struggles3").array().notNull().default(sql`'{}'::text[]`),
   cycle3Active: boolean("cycle3_active"),
   eatOutExtendedCommitment: boolean("eat_out_extended_commitment").notNull().default(false),
+  fontSizePreference: varchar("font_size_preference").notNull().default("large"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
