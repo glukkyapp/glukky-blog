@@ -897,7 +897,7 @@ export default function WeeklyPlanner() {
                 )
                 : (reflection.activeDays || 0) > 0 && (() => {
                 const activeDays = reflection.activeDays || 0;
-                const weeksCompleted = Math.floor(activeDays / 7);
+                const weeksCompleted = reflection.dietEvaluation?.weeksFound ?? Math.floor(activeDays / 7);
                 const displayWeeks = Math.min(weeksCompleted > 3 ? weeksCompleted - 3 : weeksCompleted, 3);
                 return (
                   <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-950/10 p-3 space-y-2 mt-1" data-testid="section-diet-graduation-report">
