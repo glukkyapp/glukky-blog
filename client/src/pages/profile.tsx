@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, Download, LogOut, Settings, Heart, Pencil, Globe, Smile, Type } from "lucide-react";
+import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ interface RoadmapData {
 
 function ProfileSkeleton() {
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="profile-skeleton">
+    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-skeleton">
       <Skeleton className="h-8 w-48" />
       <Card>
         <CardHeader>
@@ -409,7 +409,7 @@ export default function ProfilePage() {
   const currentLang = profile?.preferredLanguage || "en";
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="profile-page">
+    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-page">
       <h1 className="text-xl font-bold" data-testid="text-profile-heading">{t("profile.title")}</h1>
 
       {profile && <NameGoalCard profile={profile} />}
@@ -467,18 +467,6 @@ export default function ProfilePage() {
               {translateDietTip(roadmap.currentTip, t)}
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card data-testid="card-export-data">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-          <Download className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">{t("profile.export_data")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p data-testid="text-export-coming-soon" className="text-sm text-muted-foreground">
-            {t("profile.coming_soon")}
-          </p>
         </CardContent>
       </Card>
 
