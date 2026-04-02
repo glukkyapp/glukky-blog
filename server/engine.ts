@@ -530,6 +530,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
       return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
     }
 
+    if (weeksFound >= 8) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays, eatOutDaysScheduled, weeksFound };
   }
 
@@ -576,6 +577,7 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
     if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
+  if (weeksFound >= 8) return { type: "moved_on", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   return { type: "in_cycle", struggle, yesDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
 }
 
