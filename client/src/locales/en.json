@@ -584,7 +584,8 @@
     "error": "Error"
   },
   "landing": {
-    "description": "Manage your sugar control with daily walks and healthy diet habits. Plan your week, track your progress, and stay on top of your health.",
+    "description": "Manage your sugar with daily walks and healthy diet habits. Plan your week, track your progress, and stay on top of your health.",
+    "slogan": "Manage your sugar with daily habits.",
     "log_in": "Log In",
     "register": "Register",
     "email": "Email",
@@ -592,7 +593,14 @@
     "confirm_password": "Confirm Password",
     "create_account": "Create Account",
     "logging_in": "Logging in...",
-    "registering": "Registering..."
+    "registering": "Registering...",
+    "get_started": "Get Started",
+    "next": "Next",
+    "change_language": "Change language / 更改語言",
+    "error_required": "Email and password are required",
+    "error_mismatch": "Passwords do not match",
+    "error_short_password": "Password must be at least 6 characters",
+    "error_generic": "Something went wrong"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "Eating Out is your focus this week",

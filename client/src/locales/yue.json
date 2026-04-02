@@ -589,6 +589,7 @@
   },
   "landing": {
     "description": "以每日散步同健康飲食習慣控糖。規劃你每週嘅計劃，追蹤進度，掌控健康。",
+    "slogan": "控糖，令你更健康。",
     "log_in": "登入",
     "register": "註冊",
     "email": "電郵",
@@ -596,7 +597,14 @@
     "confirm_password": "確認密碼",
     "create_account": "建立帳號",
     "logging_in": "登入緊...",
-    "registering": "註冊緊..."
+    "registering": "註冊緊...",
+    "get_started": "開始用",
+    "next": "下一頁",
+    "change_language": "更改語言 / Change language",
+    "error_required": "請輸入電郵同密碼",
+    "error_mismatch": "密碼唔一致",
+    "error_short_password": "密碼至少要6個字",
+    "error_generic": "出咗問題"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "今週你嘅重點係出外食飯",

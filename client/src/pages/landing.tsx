@@ -73,15 +73,15 @@ export default function Landing() {
     setError("");
 
     if (!email || !password) {
-      setError("Email and password are required");
+      setError(t("landing.error_required"));
       return;
     }
     if (tab === "register" && password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("landing.error_mismatch"));
       return;
     }
     if (tab === "register" && password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("landing.error_short_password"));
       return;
     }
 
@@ -97,7 +97,7 @@ export default function Landing() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.message || "Something went wrong");
+        setError(data.message || t("landing.error_generic"));
         return;
       }
 
@@ -200,7 +200,7 @@ export default function Landing() {
               style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
             >
-              {slideIndex === slides.length - 1 ? "Get Started" : "Next"}
+              {slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
             </Button>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function Landing() {
           <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
         </div>
         <p className="text-xs text-muted-foreground" data-testid="text-description">
-          Manage your sugar control with daily habits.
+          {t("landing.slogan")}
         </p>
       </div>
 
@@ -237,7 +237,7 @@ export default function Landing() {
           style={tab === "login" ? { backgroundColor: "#14A085" } : undefined}
           data-testid="tab-login"
         >
-          Log In
+          {t("landing.log_in")}
         </button>
         <button
           type="button"
@@ -248,13 +248,13 @@ export default function Landing() {
           style={tab === "register" ? { backgroundColor: "#14A085" } : undefined}
           data-testid="tab-register"
         >
-          Register
+          {t("landing.register")}
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("landing.email")}</Label>
           <Input
             id="email"
             type="email"
@@ -266,7 +266,7 @@ export default function Landing() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("landing.password")}</Label>
           <Input
             id="password"
             type="password"
@@ -279,7 +279,7 @@ export default function Landing() {
 
         {tab === "register" && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">{t("landing.confirm_password")}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -305,9 +305,9 @@ export default function Landing() {
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : tab === "login" ? (
-            "Log In"
+            t("landing.log_in")
           ) : (
-            "Create Account"
+            t("landing.create_account")
           )}
         </Button>
       </form>
@@ -321,7 +321,7 @@ export default function Landing() {
         className="mt-auto pt-8 text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
         data-testid="button-change-language"
       >
-        Change language / 更改語言
+        {t("landing.change_language")}
       </button>
     </div>
   );
