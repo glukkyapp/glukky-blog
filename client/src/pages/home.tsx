@@ -287,6 +287,7 @@ export default function Home() {
 
       if (data?.coinsAwarded > 0) {
         setCoinPopupCoins(data.coinsAwarded);
+        queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       }
 
       if (data?.nextDayAdjustment && (variables.walkTired !== undefined || variables.walkCompleted !== undefined)) {
@@ -335,6 +336,7 @@ export default function Home() {
 
       if (data?.coinsAwarded > 0) {
         setCoinPopupCoins(data.coinsAwarded);
+        queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       }
 
       const wasTiredMiss = variables.walkCompleted === false && variables.walkTired === true;
