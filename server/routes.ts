@@ -1156,6 +1156,22 @@ export async function registerRoutes(
             currentStruggle = "eat_out";
           }
 
+          if (currentStruggle === "eat_out" && !freshProfile?.eatOutExtendedCommitment) {
+            const nonEatOutStruggles = struggles.filter(s => s !== "eat_out");
+            if (nonEatOutStruggles.length > 0) {
+              const allOthersResolved = nonEatOutStruggles.every(s =>
+                masteredS.includes(s) || skippedS.includes(s) || difficultS.includes(s)
+              );
+              if (allOthersResolved) {
+                const eatOutFocusWeekCount = await storage.countEatOutFocusWeeks(userId);
+                const historicalEatOutDays = await storage.countHistoricalEatOutDays(userId);
+                if ((eatOutFocusWeekCount === 0 || eatOutFocusWeekCount === 3) && historicalEatOutDays >= 1) {
+                  profileUpdate.eatOutExtendedCommitment = true;
+                }
+              }
+            }
+          }
+
           isDinnerFocusComputed = (lateDinnerDays || []).length > 0 && !freshProfile?.dinnerMastered;
         }
 

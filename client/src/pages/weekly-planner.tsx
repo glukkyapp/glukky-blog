@@ -329,10 +329,10 @@ export default function WeeklyPlanner() {
   }, [reflection?.repickPending]);
 
   useEffect(() => {
-    if (currentStepId === "weeklyReport" && cycle === 1 && reflection?.eatOutNeedsCommitment && !reflection?.repickPending) {
+    if (currentStepId === "weeklyReport" && cycle === 1 && reflection?.eatOutNeedsCommitment && !reflection?.repickPending && profile && !profile.eatOutExtendedCommitment) {
       eatOutCommitmentPrompt.trigger();
     }
-  }, [currentStepId, cycle, reflection?.eatOutNeedsCommitment, reflection?.repickPending]);
+  }, [currentStepId, cycle, reflection?.eatOutNeedsCommitment, reflection?.repickPending, profile?.eatOutExtendedCommitment]);
 
   // When entering the cycle-3 repick step, pre-populate selectedStruggles3 from
   // profile.struggles3 if the user had previously saved a partial selection.
@@ -428,6 +428,7 @@ export default function WeeklyPlanner() {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, eatOutExtendedCommitment: true } : old);
+      queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
       eatOutCommitmentPrompt.dismiss();
     },
     onError: (error: Error) => {
@@ -2751,7 +2752,8 @@ export default function WeeklyPlanner() {
               (currentStepId === "eatOutDays" && cycle3Focus === "eat_out" && eatOutDays.length === 0 && !cycle3GateReleased.has("eat_out")) ||
               (currentStepId === "lateDinnerDays" && cycle3Focus === "late_dinner" && lateDinnerDays.length === 0 && !cycle3GateReleased.has("late_dinner")) ||
               (currentStepId === "eatOutDays" && cycle === 1 && (() => { const s = (profile?.struggles as string[]) || []; return s.length === 1 && s[0] === "eat_out"; })() && eatOutDays.length === 0) ||
-              (currentStepId === "eatOutDays" && cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation) && eatOutDays.length === 0)
+              (currentStepId === "eatOutDays" && cycle === 1 && !!(reflection?.eatOutLastStruggleNeedsActivation) && eatOutDays.length === 0) ||
+              (currentStepId === "eatOutDays" && cycle === 1 && !!profile?.eatOutExtendedCommitment && eatOutDays.length === 0)
             }
             data-testid="button-next"
           >
