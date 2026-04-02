@@ -280,3 +280,33 @@ html.font-small {
     inset: -1px;
   }
 }
+
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in-forward {
+  animation: slide-in-from-left 0.3s ease-out both;
+}
+
+.slide-in-backward {
+  animation: slide-in-from-right 0.3s ease-out both;
+}

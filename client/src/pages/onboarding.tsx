@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { Sparkles } from "lucide-react";
 
 const TOTAL_STEPS = 10;
 
@@ -21,6 +22,7 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
 
   const [userName, setUserName] = useState("");
   const [userGoal, setUserGoal] = useState("");
@@ -38,8 +40,14 @@ export default function Onboarding() {
     return { walksPerWeek: 0, walkDuration: 0 };
   };
 
-  const handleNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
-  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
+  const handleNext = () => {
+    setDirection("forward");
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  };
+  const handleBack = () => {
+    setDirection("backward");
+    setStep((s) => Math.max(s - 1, 1));
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -128,6 +136,8 @@ export default function Onboarding() {
         {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
       </p>
 
+      <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
+
       {step === 1 && (
         <Card data-testid="card-step-name">
           <CardHeader>
@@ -148,16 +158,15 @@ export default function Onboarding() {
       )}
 
       {step === 2 && (
-        <Card data-testid="card-step-social-proof">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.social_proof_title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-base" data-testid="text-social-proof">
-              {t("onboarding.social_proof_message")}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center text-center py-8" data-testid="card-step-social-proof">
+          <h2 className="text-3xl font-bold mb-4" data-testid="text-welcome-title">
+            {t("onboarding.social_proof_title")}
+          </h2>
+          <Sparkles className="w-10 h-10 text-primary mb-4" data-testid="icon-welcome" />
+          <p className="text-muted-foreground text-base" data-testid="text-social-proof">
+            {t("onboarding.social_proof_message")}
+          </p>
+        </div>
       )}
 
       {step === 3 && (
@@ -287,6 +296,8 @@ export default function Onboarding() {
           </CardContent>
         </Card>
       )}
+
+      </div>
 
       <div className="flex justify-between gap-3 mt-6">
         {step > 1 ? (
