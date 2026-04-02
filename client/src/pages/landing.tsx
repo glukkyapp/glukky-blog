@@ -36,6 +36,7 @@ export default function Landing() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isChangingLang, setIsChangingLang] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,9 +49,14 @@ export default function Landing() {
   const handleSelectLanguage = useCallback((code: string) => {
     localStorage.setItem("glukky_preferred_lang", code);
     i18n.changeLanguage(code);
-    setSlideIndex(0);
-    setStep("slides");
-  }, []);
+    if (isChangingLang) {
+      setIsChangingLang(false);
+      setStep("auth");
+    } else {
+      setSlideIndex(0);
+      setStep("slides");
+    }
+  }, [isChangingLang]);
 
   const handleSlideNext = useCallback(() => {
     if (slideIndex < slides.length - 1) {
@@ -316,6 +322,7 @@ export default function Landing() {
         type="button"
         onClick={() => {
           localStorage.removeItem("glukky_preferred_lang");
+          setIsChangingLang(true);
           setStep("lang");
         }}
         className="mt-auto pt-8 text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
