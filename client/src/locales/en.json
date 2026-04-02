@@ -538,7 +538,7 @@
     "your_goal": "Your Goal",
     "tap_to_add_name": "Tap to add your name",
     "tap_to_add_goal": "Tap to add your goal",
-    "diabetes_profile": "Your Diabetes Profile",
+    "diabetes_profile": "Your Sugar Control Profile",
     "post_meal_walks": "Post-meal walks:",
     "dinner_time": "Usual dinner time:",
     "sleep_pattern": "Sleep pattern:",
@@ -584,7 +584,7 @@
     "error": "Error"
   },
   "landing": {
-    "description": "Manage your diabetes with daily walks and healthy diet habits. Plan your week, track your progress, and stay on top of your health.",
+    "description": "Manage your sugar control with daily walks and healthy diet habits. Plan your week, track your progress, and stay on top of your health.",
     "log_in": "Log In",
     "register": "Register",
     "email": "Email",

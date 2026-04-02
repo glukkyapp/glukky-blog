@@ -542,7 +542,7 @@
     "your_goal": "你嘅目標",
     "tap_to_add_name": "撳下新增名字",
     "tap_to_add_goal": "撳下新增目標",
-    "diabetes_profile": "你嘅糖尿病資料",
+    "diabetes_profile": "你嘅控糖資料",
     "post_meal_walks": "飯後散步：",
     "dinner_time": "慣常晚飯時間：",
     "sleep_pattern": "睡眠規律：",
@@ -588,7 +588,7 @@
     "error": "錯誤"
   },
   "landing": {
-    "description": "以每日散步同健康飲食習慣管理糖尿病。規劃你每週嘅計劃，追蹤進度，掌控健康。",
+    "description": "以每日散步同健康飲食習慣控糖。規劃你每週嘅計劃，追蹤進度，掌控健康。",
     "log_in": "登入",
     "register": "註冊",
     "email": "電郵",

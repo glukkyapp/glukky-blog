@@ -7,14 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
@@ -198,10 +190,8 @@ function AnimatedCoinCount({ target, capacity, t }: { target: number; capacity: 
   return <span>{t("roadmap.coins_count", { coins: displayVal, capacity })}</span>;
 }
 
-function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
+function PiggyBankCard({ data, isDev }: {
   data: PiggyBankData;
-  onClaim: () => void;
-  onSetReward: () => void;
   isDev?: boolean;
 }) {
   const { t } = useTranslation();
@@ -335,7 +325,7 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
               <div className="w-full mt-2">
                 <button
                   className="text-xs text-primary underline underline-offset-2"
-                  onClick={onSetReward}
+                  onClick={() => window.dispatchEvent(new Event("piggy-open-reward"))}
                   data-testid="button-set-reward"
                 >
                   {t("roadmap.tap_set_reward")}
@@ -345,7 +335,7 @@ function PiggyBankCard({ data, onClaim, onSetReward, isDev }: {
 
             {isFull && (
               <Button
-                onClick={onClaim}
+                onClick={() => window.dispatchEvent(new Event("piggy-open-congrats"))}
                 className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white"
                 data-testid="button-claim-reward"
               >
@@ -374,49 +364,11 @@ export default function RoadmapPage() {
     queryKey: ["/api/dev/check"],
   });
 
-  const [showRewardSetup, setShowRewardSetup] = useState(false);
-  const [showCongrats, setShowCongrats] = useState(false);
-  const [rewardInput, setRewardInput] = useState("");
-  const [congratsShown, setCongratsShown] = useState(false);
-
   const cardRoadmapProgress = useInfoCard("roadmap_progress");
   const cardPiggyBank = useInfoCard("piggy_bank");
 
-  useEffect(() => {
-    if (piggy?.needsRewardSetup) {
-      setShowRewardSetup(true);
-    }
-  }, [piggy?.needsRewardSetup]);
-
-  useEffect(() => {
-    if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
-      setCongratsShown(true);
-      setShowCongrats(true);
-    }
-  }, [piggy?.coins, piggy?.needsRewardSetup]);
-
   useEffect(() => { if (data) cardRoadmapProgress.trigger(); }, [!!data]);
   useEffect(() => { if (piggy) cardPiggyBank.trigger(); }, [!!piggy]);
-
-  const rewardMutation = useMutation({
-    mutationFn: (reward: string) =>
-      apiRequest("POST", "/api/piggybank/reward", { reward }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
-      setShowRewardSetup(false);
-      setRewardInput("");
-    },
-  });
-
-  const claimMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/piggybank/claim", {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
-      setShowCongrats(false);
-      setCongratsShown(false);
-      setTimeout(() => setShowRewardSetup(true), 400);
-    },
-  });
 
   if (isLoading || !data) {
     return <LoadingSkeleton />;
@@ -491,8 +443,6 @@ export default function RoadmapPage() {
       {piggy && (
         <PiggyBankCard
           data={piggy}
-          onClaim={() => setShowCongrats(true)}
-          onSetReward={() => setShowRewardSetup(true)}
           isDev={devCheck?.isDev}
         />
       )}
@@ -599,64 +549,6 @@ export default function RoadmapPage() {
         <JourneySection cycleHistory={cycleHistory || []} t={t} />
       </div>
 
-      <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
-        <DialogContent data-testid="modal-reward-setup">
-          <DialogHeader>
-            <DialogTitle>{t("roadmap.reward_setup_title")}</DialogTitle>
-            <DialogDescription>
-              {t("roadmap.reward_setup_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            <Input
-              value={rewardInput}
-              onChange={(e) => setRewardInput(e.target.value)}
-              placeholder={t("roadmap.reward_placeholder")}
-              data-testid="input-reward"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && rewardInput.trim()) {
-                  rewardMutation.mutate(rewardInput.trim());
-                }
-              }}
-            />
-            <Button
-              className="w-full"
-              onClick={() => rewardMutation.mutate(rewardInput.trim())}
-              disabled={!rewardInput.trim() || rewardMutation.isPending}
-              data-testid="button-save-reward"
-            >
-              {rewardMutation.isPending ? t("roadmap.saving") : t("roadmap.save")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCongrats} onOpenChange={setShowCongrats}>
-        <DialogContent data-testid="modal-congrats">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{t("roadmap.congrats_title")}</DialogTitle>
-            <DialogDescription>
-              {t("roadmap.congrats_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          {piggy?.reward && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 my-2">
-              <p className="text-xs text-muted-foreground mb-1">{t("roadmap.your_reward")}</p>
-              <p className="font-semibold text-foreground text-base" data-testid="text-congrats-reward">
-                {piggy.reward}
-              </p>
-            </div>
-          )}
-          <Button
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-            onClick={() => claimMutation.mutate()}
-            disabled={claimMutation.isPending}
-            data-testid="button-confirm-claim"
-          >
-            {claimMutation.isPending ? t("roadmap.claiming") : t("roadmap.claim_reward")}
-          </Button>
-        </DialogContent>
-      </Dialog>
     <InfoCardPopup visible={cardRoadmapProgress.visible} onDismiss={cardRoadmapProgress.dismiss} icon={BarChart2} titleKey="info_card.roadmap_progress.title" panelKeys={["info_card.roadmap_progress.p1","info_card.roadmap_progress.p2","info_card.roadmap_progress.p3"]} testId="dialog-card-roadmap-progress" />
     <InfoCardPopup visible={cardPiggyBank.visible} onDismiss={cardPiggyBank.dismiss} icon={PiggyBank} titleKey="info_card.piggy_bank.title" panelKeys={["info_card.piggy_bank.p1","info_card.piggy_bank.p2","info_card.piggy_bank.p3"]} testId="dialog-card-piggy-bank" />
     </div>

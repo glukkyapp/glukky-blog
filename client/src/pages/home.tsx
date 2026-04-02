@@ -425,6 +425,63 @@ export default function Home() {
     );
   }
 
+  function renderTomorrowPlan(dayData: any, dateLabel: string, overrideDietTip?: string, overrideDietStruggle?: string) {
+    if (!dayData) return null;
+
+    const dietTip = overrideDietTip ?? calendarPlan?.dietTip;
+    const dietStruggle = overrideDietStruggle ?? calendarPlan?.dietStruggle;
+
+    const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
+    if (dayData.walkScheduled) {
+      if (dayData.standingTap) {
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+      } else {
+        const isStretch = isDayStretch(dayData, profile);
+        const dur = isStretch ? 2 : dayData.walkDuration;
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-primary/10" });
+      }
+    }
+    if (dayData.lateDinnerScheduled) {
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+    }
+    if (dietTip) {
+      const showDietTask = dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
+      if (showDietTask) tasks.push({ icon: TrendingUp, text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
+    }
+
+    return (
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
+            <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {dateLabel}
+          </div>
+
+          {tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
+          ) : (
+            <div className="flex justify-center gap-4 py-2">
+              {tasks.map((task, idx) => {
+                const Icon = task.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="flex flex-col items-center gap-2 max-w-[100px]"
+                    data-testid={task.testId}
+                  >
+                    <div className={`w-14 h-14 rounded-full ${task.bgColor} flex items-center justify-center`}>
+                      <Icon className={`w-6 h-6 ${task.color}`} />
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderReadOnlyPlan(dayData: any, label: string, dateLabel: string) {
     if (!dayData) return null;
 
@@ -1528,55 +1585,7 @@ export default function Home() {
             const tmrwDow = (dayOfWeek + 1) % 7;
             const tmrwDay = plan?.days?.find((d: any) => d.dayOfWeek === tmrwDow);
             if (!tmrwDay) return null;
-            const dayData = {
-              walkScheduled: tmrwDay.walkScheduled,
-              walkDuration: tmrwDay.walkDuration,
-              isStretchDay: tmrwDay.isStretchDay,
-              lateDinnerScheduled: tmrwDay.lateDinnerScheduled,
-              eatOutScheduled: tmrwDay.eatOutScheduled,
-              standingTap: tmrwDay.standingTap,
-            };
-            const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
-            if (dayData.walkScheduled) {
-              if (dayData.standingTap) {
-                tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500" });
-              } else {
-                const isStretch = isDayStretch(dayData, profile);
-                const dur = isStretch ? 2 : dayData.walkDuration;
-                tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary" });
-              }
-            }
-            if (dayData.lateDinnerScheduled) {
-              tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
-            }
-            if (plan?.dietTip) {
-              tasks.push({ icon: TrendingUp, text: `"${translateDietTip(plan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
-            }
-            return (
-              <Card>
-                <CardContent className="pt-4 space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-                    <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {formatTomorrowDate()}
-                  </div>
-                  {tasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {tasks.map((task, idx) => {
-                        const Icon = task.icon;
-                        return (
-                          <div key={idx} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3" data-testid={task.testId}>
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">{idx + 1}</div>
-                            <Icon className={`w-4 h-4 ${task.color} shrink-0`} />
-                            <p className="text-sm">{task.text}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
+            return renderTomorrowPlan(tmrwDay, formatTomorrowDate(), plan?.dietTip, plan?.dietStruggle);
           })()}
         </>
       )}
@@ -1640,7 +1649,7 @@ export default function Home() {
                 {renderCheckInSummary()}
               </CardContent>
             </Card>
-            {tomorrowInPlanWeek && renderReadOnlyPlan(tomorrowPlan, t("home.tomorrow"), formatTomorrowDate())}
+            {tomorrowInPlanWeek && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
           renderCheckInCard()

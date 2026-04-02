@@ -223,7 +223,7 @@ export default function Landing() {
           <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
         </div>
         <p className="text-xs text-muted-foreground" data-testid="text-description">
-          Manage your diabetes with daily habits.
+          Manage your sugar control with daily habits.
         </p>
       </div>
 
