@@ -619,7 +619,7 @@
     "tab5": "No problem if you cannot remember — revisit any time under 'Health Info' in profile!"
   },
   "diet_tip": {
-    "dilute_juice": "Dilute juice 1:1 with water",
+    "dilute_juice": "Choose sugar-free drink / Dilute juice 1:1 with water",
     "swap_dessert": "Swap dessert for plain yogurt + berries",
     "steam_then_sear": "Steam your food first, then sear briefly",
     "grilled_over_fried": "Choose grilled over fried",
@@ -630,7 +630,7 @@
     "kitchen_closure": "Kitchen Closure after dinner",
     "switch_edamame_nuts": "Switch to edamame or nuts",
     "food_switch": "Food Switch",
-    "dilute_juice_desc": "Avoid fruit juice if you can - they contain sugar, not fibre. This means that juice can cause your blood sugar to spike quickly. If you have to, limit to 150ml, remove the rest of it, and add water to substitute.",
+    "dilute_juice_desc": "Choose sugar-free drinks when possible. Avoid fruit juice if you can — they contain sugar, not fibre, so juice can cause your blood sugar to spike quickly. If you have to, limit to 150ml and dilute 1:1 with water.",
     "swap_dessert_desc": "Most desserts are high in refined sugar with little fibre, leading to a sharp glucose rise. Plain yogurt without sugar and berries (the ideal food for glucose control) is the perfect combo.",
     "steam_then_sear_desc": "Deep-frying adds significant fat calories, which over time contributes to weight gain — a key driver of insulin resistance. Steaming first cooks the food through without excess oil, so only a brief sear is needed for texture.",
     "grilled_over_fried_desc": "Fried foods are often coated in batter or breadcrumbs and soaked in oil, increasing the overall calorie and carbohydrate load. Grilling removes both, keeping the meal's glycaemic impact lower.",
@@ -817,7 +817,7 @@
       "snacks": "Snacking"
     },
     "tipName": {
-      "Dilute juice 1:1 with water": "Dilute juice 1:1 with water",
+      "Choose sugar-free drink / Dilute juice 1:1 with water": "Choose sugar-free drink / Dilute juice 1:1 with water",
       "Swap dessert for plain yogurt + berries": "Swap dessert for plain yogurt + berries",
       "Steam your food first, then sear briefly": "Steam your food first, then sear briefly",
       "Choose grilled over fried": "Choose grilled over fried",

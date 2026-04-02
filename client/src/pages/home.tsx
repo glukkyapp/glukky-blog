@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
-import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info } from "lucide-react";
+import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
@@ -23,6 +23,18 @@ function isDayStretch(day: any, profile: any): boolean {
   if (day?.isStretchDay) return true;
   if (profile?.isStretchMode && day?.walkScheduled && !day?.standingTap && day?.walkDuration === 2) return true;
   return false;
+}
+
+const STRUGGLE_ICON_MAP: Record<string, LucideIcon> = {
+  sugary_food_drink: Wine,
+  oily_fried_food: UtensilsCrossed,
+  eat_out: Wine,
+  portions: Soup,
+  snacks: ShoppingBag,
+};
+
+function getStruggleIcon(struggle?: string): LucideIcon {
+  return (struggle && STRUGGLE_ICON_MAP[struggle]) || TrendingUp;
 }
 
 const MITIGATION_OPTION_KEYS = [
@@ -448,7 +460,7 @@ export default function Home() {
     }
     if (dietTip) {
       const showDietTask = dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: TrendingUp, text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(dietStruggle), text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
     }
 
     return (
@@ -502,7 +514,7 @@ export default function Home() {
     }
     if (calendarPlan?.dietTip) {
       const showDietTask = calendarPlan?.dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: TrendingUp, text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
     }
 
     return (
@@ -1085,7 +1097,7 @@ export default function Home() {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-primary" />
+          {(() => { const DietIcon = getStruggleIcon(calendarPlan?.dietStruggle); return <DietIcon className="w-4 h-4 text-primary" />; })()}
           <p className="text-sm font-medium">{t("home.diet_tactic_label")}</p>
         </div>
         <p className="text-sm text-primary font-medium" data-testid="text-diet-tip">"{translateDietTip(calendarPlan.dietTip, t)}"</p>
@@ -1688,7 +1700,7 @@ export default function Home() {
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
-              <TrendingUp className="w-4 h-4 text-primary" />
+              {(() => { const FocusIcon = getStruggleIcon(calendarPlan.dietStruggle); return <FocusIcon className="w-4 h-4 text-primary" />; })()}
               <p className="text-sm font-semibold">{t("home.focus_label", { name: t(`struggle.${calendarPlan.dietStruggle}`, { defaultValue: calendarPlan.dietStruggle.replace(/_/g, " ") }) })}</p>
             </div>
             {calendarPlan.dietTip && <p className="text-sm text-primary font-medium" data-testid="text-diet-focus-tip">"{translateDietTip(calendarPlan.dietTip, t)}"</p>}
@@ -1696,7 +1708,7 @@ export default function Home() {
         </Card>
       )}
 
-      {!nextWeekPlanned && (<Card>
+      {(<Card>
         <CardContent className="pt-4">
           <p className="text-sm font-semibold mb-3" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
           <div className="space-y-2">

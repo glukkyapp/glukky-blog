@@ -9,7 +9,7 @@ const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ c
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
 
 const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
-  "Dilute juice 1:1 with water": "diet_tip.dilute_juice_desc",
+  "Choose sugar-free drink / Dilute juice 1:1 with water": "diet_tip.dilute_juice_desc",
   "Swap dessert for plain yogurt + berries": "diet_tip.swap_dessert_desc",
   "Steam your food first, then sear briefly": "diet_tip.steam_then_sear_desc",
   "Choose grilled over fried": "diet_tip.grilled_over_fried_desc",

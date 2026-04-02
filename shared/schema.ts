@@ -184,7 +184,7 @@ export const STRUGGLE_PRIORITY = [
 ] as const;
 
 export const DIET_TIP_LADDERS: Record<string, string[]> = {
-  sugary_food_drink: ["Dilute juice 1:1 with water", "Swap dessert for plain yogurt + berries"],
+  sugary_food_drink: ["Choose sugar-free drink / Dilute juice 1:1 with water", "Swap dessert for plain yogurt + berries"],
   oily_fried_food: ["Steam your food first, then sear briefly", "Choose grilled over fried"],
   eat_out: ["Decouple (eat at home first, socialize out)", "Share main dishes", "Swap sides for vegetables"],
   portions: ["Use the plate method (½ veggies, ¼ protein, ¼ carbs)", "Food Switch"],
@@ -192,7 +192,7 @@ export const DIET_TIP_LADDERS: Record<string, string[]> = {
 };
 
 export const DIET_TIP_I18N_KEYS: Record<string, string> = {
-  "Dilute juice 1:1 with water": "diet_tip.dilute_juice",
+  "Choose sugar-free drink / Dilute juice 1:1 with water": "diet_tip.dilute_juice",
   "Swap dessert for plain yogurt + berries": "diet_tip.swap_dessert",
   "Steam your food first, then sear briefly": "diet_tip.steam_then_sear",
   "Choose grilled over fried": "diet_tip.grilled_over_fried",

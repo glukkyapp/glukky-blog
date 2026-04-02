@@ -428,7 +428,7 @@
     "go_home": "去主頁",
     "monthly_report": "每月報告",
     "monthly_not_enough": "完成至少4週先可以睇月度報告。",
-    "monthly_available": "你嘅月度報告將於{{month}}{{day}}號提供",
+    "monthly_available": "你嘅月度報告將於{{month}}月{{day}}號提供",
     "nailed_stretching_one": "你已連續{{count}}週完成伸展！",
     "nailed_stretching_other": "你已連續{{count}}週完成伸展！",
     "ready_walks": "準備好嘗試10分鐘散步未？",
@@ -494,7 +494,7 @@
     "choose_tip_desc": "揀一個你呢週覺得最容易做到嘅建議：",
     "week_at_glance": "一週概覽",
     "confirm_start_week": "確認並開始今週",
-    "monthly_pending": "你嘅月度報告將於{{month}}{{day}}號提供",
+    "monthly_pending": "你嘅月度報告將於{{month}}月{{day}}號提供",
     "first_week_pending": "你嘅第一週報告準備緊！",
     "first_week_pending_desc": "完成你嘅一週，星期日晚上10點返嚟睇報告同規劃下週。",
     "pending_sunday": "星期日晚返嚟規劃",
@@ -623,7 +623,7 @@
     "tab5": "唔記得都冇問題——隨時可以喺個人檔案嘅「健康資訊」重溫！"
   },
   "diet_tip": {
-    "dilute_juice": "果汁加1:1清水稀釋",
+    "dilute_juice": "選擇無糖飲品/果汁加1:1清水稀釋",
     "swap_dessert": "以無糖乳酪加漿果代替甜品",
     "steam_then_sear": "先蒸後略煎",
     "grilled_over_fried": "揀烤唔揀炸",
@@ -634,7 +634,7 @@
     "kitchen_closure": "晚飯後唔再食嘢",
     "switch_edamame_nuts": "改食毛豆或堅果",
     "food_switch": "食物替換",
-    "dilute_juice_desc": "盡量唔好飲果汁——果汁含糖，纖維就好少，好容易令血糖急升。如果一定要飲，限制喺150毫升以內，其餘用清水代替。",
+    "dilute_juice_desc": "盡量揀無糖飲品。唔好飲果汁——果汁含糖，纖維就好少，好容易令血糖急升。如果一定要飲，限制喺150毫升以內，加1:1清水稀釋。",
     "swap_dessert_desc": "大多數甜品含有大量精製糖，纖維就好少，好易令血糖急升。無糖乳酪配漿果係控制血糖嘅完美組合。",
     "steam_then_sear_desc": "油炸食物含大量脂肪熱量，長期會令體重增加——係胰島素失效嘅主要成因。先蒸熟，之後只需略為煎香，唔使用大量油。",
     "grilled_over_fried_desc": "炸物通常裹上麵糊或麵包糠，仲吸收大量油脂，令整體熱量同碳水化合物增加。燒烤就唔使咁，有助降低血糖反應。",
@@ -821,7 +821,7 @@
       "snacks": "零食"
     },
     "tipName": {
-      "Dilute juice 1:1 with water": "果汁加水 1:1 稀釋",
+      "Choose sugar-free drink / Dilute juice 1:1 with water": "選擇無糖飲品/果汁加1:1清水稀釋",
       "Swap dessert for plain yogurt + berries": "甜品換成無糖乳酪加莓果",
       "Steam your food first, then sear briefly": "先蒸熟再略煎",
       "Choose grilled over fried": "揀烤物唔揀炸物",

@@ -27,7 +27,7 @@ export interface MonthlyReportData {
 }
 
 const TIP_ICON_MAP: Record<string, LucideIcon> = {
-  "Dilute juice 1:1 with water": CupSoda,
+  "Choose sugar-free drink / Dilute juice 1:1 with water": CupSoda,
   "Swap dessert for plain yogurt + berries": Cherry,
   "Steam your food first, then sear briefly": ChefHat,
   "Choose grilled over fried": Beef,
