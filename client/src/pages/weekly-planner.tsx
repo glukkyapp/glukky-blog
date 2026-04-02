@@ -880,16 +880,23 @@ export default function WeeklyPlanner() {
                 </p>
               )}
               <div className="text-sm space-y-1" data-testid="text-diet-report">
-                {(reflection.dietEvaluation?.yesDays || 0) > 0 && (
-                  <p className="text-green-600">{t("planner.followed_tip", { count: reflection.dietEvaluation?.yesDays })}</p>
+                {(reflection.dietYesCount || 0) > 0 && (
+                  <p className="text-green-600">{t("planner.followed_tip", { count: reflection.dietYesCount })}</p>
                 )}
-                {(reflection.dietEvaluation?.noChanceDays || 0) > 0 && (
-                  <p className="text-muted-foreground">{t("planner.no_chance", { count: reflection.dietEvaluation?.noChanceDays })}</p>
+                {(reflection.dietNoChanceCount || 0) > 0 && (
+                  <p className="text-muted-foreground">{t("planner.no_chance", { count: reflection.dietNoChanceCount })}</p>
                 )}
-                {reflection.dietNoCount > 0 && (
+                {(reflection.dietNoCount || 0) > 0 && (
                   <p className="text-amber-600">{t("planner.didnt_follow", { count: reflection.dietNoCount })}</p>
                 )}
               </div>
+              {reflection.dietEvaluation && (reflection.dietEvaluation.weeksFound || 0) > 1 && (
+                <p className="text-xs text-muted-foreground" data-testid="text-diet-cumulative">
+                  {reflection.dietStruggle === "eat_out"
+                    ? t("planner.diet_cumulative_eatout", { weeks: reflection.dietEvaluation.weeksFound, eatOutDays: reflection.dietEvaluation.eatOutDaysScheduled || 0, yesDays: reflection.dietEvaluation.yesDays || 0, noDays: reflection.dietEvaluation.noDays || 0, noChanceDays: reflection.dietEvaluation.noChanceDays || 0 })
+                    : t("planner.diet_cumulative_general", { weeks: reflection.dietEvaluation.weeksFound, yesDays: reflection.dietEvaluation.yesDays || 0, noDays: reflection.dietEvaluation.noDays || 0, noChanceDays: reflection.dietEvaluation.noChanceDays || 0 })}
+                </p>
+              )}
               {currentPlan?.firstActiveDay > 0 && reflection.weekNumber === 1
                 ? (
                   <div className="rounded-lg border border-muted bg-muted/30 p-3 mt-1" data-testid="section-diet-graduation-partial">

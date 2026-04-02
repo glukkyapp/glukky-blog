@@ -316,6 +316,8 @@
     "no_chance_other": "冇機會練習{{count}}日",
     "didnt_follow_one": "冇跟住建議{{count}}日",
     "didnt_follow_other": "冇跟住建議{{count}}日",
+    "diet_cumulative_eatout": "過去 {{weeks}} 星期：共 {{eatOutDays}} 個出街食飯日— {{yesDays}} 日有跟建議、{{noDays}} 日冇跟、{{noChanceDays}} 日冇機會",
+    "diet_cumulative_general": "過去 {{weeks}} 星期：{{yesDays}} 日有跟建議、{{noDays}} 日冇跟、{{noChanceDays}} 日冇機會",
     "missed_checkins": "你呢週漏咗幾次簽到——冇關係！下週試下每日簽到以獲得更準確嘅追蹤。",
     "missed_diet_checkins": "你呢週漏咗幾次飲食簽到——冇關係！下週試下每日記錄飲食以獲得更準確嘅追蹤。",
     "repick_message": "你已經完成飲食清單上面嘅每個重點！跟住落嚟，建立你嘅飲食清單 {{cycle}}.0，選擇你想改善多啲嘅範疇。",

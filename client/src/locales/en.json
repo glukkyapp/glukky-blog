@@ -313,6 +313,8 @@
     "no_chance_other": "No chance to practice {{count}} days",
     "didnt_follow_one": "Didn't follow tip {{count}} day",
     "didnt_follow_other": "Didn't follow tip {{count}} days",
+    "diet_cumulative_eatout": "Past {{weeks}} weeks: {{eatOutDays}} eat-out days — {{yesDays}} followed, {{noDays}} didn't, {{noChanceDays}} no chance",
+    "diet_cumulative_general": "Past {{weeks}} weeks: {{yesDays}} followed, {{noDays}} didn't, {{noChanceDays}} no chance",
     "missed_checkins": "You missed a few check-ins this week — that's okay! Try to check in daily next week for more accurate tracking.",
     "missed_diet_checkins": "You missed a few diet check-ins this week — that's okay! Try to log your diet daily next week for more accurate tracking.",
     "repick_message": "You've worked through every area in your Diet List! Next up: build your Diet List {{cycle}}.0 and choose what to keep working on.",
