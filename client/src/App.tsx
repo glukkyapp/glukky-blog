@@ -101,10 +101,10 @@ function GlobalPiggyBankPopup() {
           <div className="space-y-3 pt-1">
             <Input
               value={rewardInput}
-              onChange={(e: any) => setRewardInput(e.target.value)}
+              onChange={(e) => setRewardInput(e.target.value)}
               placeholder={t("roadmap.reward_placeholder")}
               data-testid="input-reward-global"
-              onKeyDown={(e: any) => {
+              onKeyDown={(e) => {
                 if (e.key === "Enter" && rewardInput.trim()) {
                   rewardMutation.mutate(rewardInput.trim());
                 }
@@ -198,6 +198,7 @@ function AuthenticatedApp() {
           <Route component={WeeklyPlanner} />
         </Switch>
         <FloatingNavBar />
+        <GlobalPiggyBankPopup />
       </div>
     );
   }
