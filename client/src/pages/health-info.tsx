@@ -243,7 +243,7 @@ export default function HealthInfo() {
             transition={{ duration: 0.2 }}
           >
             <div
-              className="flex gap-[18px] overflow-x-auto py-4 pl-4 snap-x snap-mandatory"
+              className="flex gap-[18px] overflow-x-auto py-4 pl-4 snap-x snap-mandatory scrollbar-hidden"
               style={{
                 scrollPaddingInlineStart: "16px",
                 scrollbarWidth: "none",
