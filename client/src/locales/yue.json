@@ -203,7 +203,7 @@
     "snacks": "零食"
   },
   "roadmap": {
-    "title": "你嘅每週進度",
+    "title": "每週進度",
     "walk_card_title": "飯後散步",
     "how_youre_doing": "你嘅進度",
     "dinner_card_title": "早啲食晚飯",
@@ -539,7 +539,7 @@
     "no": "唔係，進入第二週期"
   },
   "profile": {
-    "title": "你嘅個人資料",
+    "title": "個人資料",
     "your_name": "你嘅名字",
     "your_goal": "你嘅目標",
     "tap_to_add_name": "撳下新增名字",
