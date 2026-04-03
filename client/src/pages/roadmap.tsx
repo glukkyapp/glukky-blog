@@ -237,7 +237,7 @@ function PiggyBankCard({ data, isDev }: {
         }
       `}</style>
 
-      <div data-testid="card-piggy-bank" className="pt-4 pb-5">
+      <div data-testid="card-piggy-bank" className="px-6 pt-4 pb-5">
           <div className="flex flex-col items-center gap-1 relative">
             {animating && (
               <div
