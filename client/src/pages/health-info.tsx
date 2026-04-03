@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
+import bookBg from "@assets/pexels-george-milton-7034062_1775200794769.jpg";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
@@ -197,6 +198,24 @@ export default function HealthInfo() {
             background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
           }}
         />
+        <div
+          className="absolute left-1/2 bottom-0 pointer-events-none"
+          style={{
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            overflow: "hidden",
+            opacity: 0.8,
+          }}
+        >
+          <img
+            src={bookBg}
+            alt=""
+            className="absolute inset-0 w-full h-full"
+            style={{ objectFit: "cover" }}
+          />
+        </div>
         <h1
           className="absolute inset-0 flex items-end justify-center pb-[100px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-health-info-title"

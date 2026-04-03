@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
+import snapBg from "@assets/pexels-blue-bird-7242744_1775200790826.jpg";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -251,6 +252,24 @@ export default function Snap() {
             background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
           }}
         />
+        <div
+          className="absolute left-1/2 bottom-0 pointer-events-none"
+          style={{
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            overflow: "hidden",
+            opacity: 0.8,
+          }}
+        >
+          <img
+            src={snapBg}
+            alt=""
+            className="absolute inset-0 w-full h-full"
+            style={{ objectFit: "cover" }}
+          />
+        </div>
         <h1
           className="absolute inset-0 flex items-end justify-center pb-[100px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-snap-title"
