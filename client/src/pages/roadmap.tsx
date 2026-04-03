@@ -460,7 +460,7 @@ export default function RoadmapPage() {
             src={sproutBg}
             alt=""
             className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover" }}
+            style={{ objectFit: "cover", objectPosition: "top" }}
           />
         </div>
         <h1
