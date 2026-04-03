@@ -237,8 +237,7 @@ function PiggyBankCard({ data, isDev }: {
         }
       `}</style>
 
-      <Card data-testid="card-piggy-bank" className={isFull ? "border-amber-400 shadow-md" : ""}>
-        <CardContent className="pt-4 pb-5">
+      <div data-testid="card-piggy-bank" className="pt-4 pb-5">
           <div className="flex flex-col items-center gap-1 relative">
             {animating && (
               <div
@@ -344,8 +343,7 @@ function PiggyBankCard({ data, isDev }: {
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+      </div>
     </>
   );
 }
