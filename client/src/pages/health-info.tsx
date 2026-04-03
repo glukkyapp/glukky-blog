@@ -184,7 +184,7 @@ export default function HealthInfo() {
   return (
     <div className="max-w-sm sm:max-w-none mx-auto pb-32" data-testid="page-health-info">
       <div
-        className="relative w-full overflow-hidden mb-6"
+        className="relative w-full overflow-hidden mb-4"
         style={{ height: "220px" }}
         data-testid="hero-health-info"
       >

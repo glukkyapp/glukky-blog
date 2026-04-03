@@ -431,7 +431,7 @@ export default function RoadmapPage() {
     <ContentFade>
     <div className="max-w-sm mx-auto px-4 pb-24 space-y-4">
       <div
-        className="relative w-full overflow-hidden mb-2 -mx-4"
+        className="relative w-full overflow-hidden mb-[-5px] -mx-4"
         style={{ height: "220px", width: "calc(100% + 2rem)" }}
         data-testid="hero-roadmap"
       >

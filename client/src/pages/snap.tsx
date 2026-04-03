@@ -238,7 +238,7 @@ export default function Snap() {
   return (
     <div className="flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full">
       <div
-        className="relative w-full overflow-hidden -mx-5 -mt-0"
+        className="relative w-full overflow-hidden mb-[-7px] -mx-5 -mt-0"
         style={{ height: "220px", width: "calc(100% + 2.5rem)" }}
         data-testid="hero-snap"
       >
