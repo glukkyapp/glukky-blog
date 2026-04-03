@@ -217,7 +217,7 @@ export default function HealthInfo() {
           />
         </div>
         <h1
-          className="absolute inset-0 flex items-end justify-center pb-[100px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          className="absolute inset-0 flex items-end justify-center pb-[140px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-health-info-title"
         >
           {t("health_info.title")}
