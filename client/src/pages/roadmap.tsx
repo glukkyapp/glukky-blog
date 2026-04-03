@@ -438,9 +438,9 @@ export default function RoadmapPage() {
         <div
           className="absolute left-1/2 bottom-0"
           style={{
-            width: "105%",
-            paddingBottom: "105%",
-            transform: "translateX(-50%)",
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%) translateY(-12.5%)",
             borderRadius: "50%",
             background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
           }}
@@ -448,9 +448,9 @@ export default function RoadmapPage() {
         <div
           className="absolute left-1/2 bottom-0 pointer-events-none"
           style={{
-            width: "105%",
-            paddingBottom: "105%",
-            transform: "translateX(-50%)",
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%) translateY(-12.5%)",
             borderRadius: "50%",
             overflow: "hidden",
             opacity: 0.8,
