@@ -243,13 +243,14 @@ export default function HealthInfo() {
             transition={{ duration: 0.2 }}
           >
             <div
-              className="flex gap-3 overflow-x-auto py-4 px-6"
+              className="flex gap-3 overflow-x-auto py-4"
               style={{
                 scrollSnapType: "x mandatory",
                 scrollbarWidth: "none",
                 WebkitOverflowScrolling: "touch",
               }}
             >
+              <div className="shrink-0 w-4" aria-hidden="true" />
               {activeTips.map(tip => {
                 const i18nKey = DIET_TIP_I18N_KEYS[tip];
                 const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
@@ -263,6 +264,7 @@ export default function HealthInfo() {
                   />
                 );
               })}
+              <div className="shrink-0 w-4" aria-hidden="true" />
             </div>
 
             <AnimatePresence mode="wait">
