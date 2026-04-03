@@ -453,7 +453,7 @@ export default function RoadmapPage() {
             transform: "translateX(-50%)",
             borderRadius: "50%",
             overflow: "hidden",
-            opacity: 0.5,
+            opacity: 0.8,
           }}
         >
           <img
