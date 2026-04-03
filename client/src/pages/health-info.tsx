@@ -181,16 +181,24 @@ export default function HealthInfo() {
   }
 
   return (
-    <div className="max-w-sm sm:max-w-none mx-auto px-4 pt-4 pb-32" data-testid="page-health-info">
+    <div className="max-w-sm sm:max-w-none mx-auto pb-32" data-testid="page-health-info">
       <div
-        className="relative w-full h-44 rounded-3xl overflow-hidden mb-6 flex items-center justify-center"
-        style={{
-          background: "linear-gradient(135deg, #a8b5a0 0%, #c2b9a7 50%, #d4cfc4 100%)",
-        }}
+        className="relative w-full overflow-hidden mb-6"
+        style={{ height: "220px" }}
         data-testid="hero-health-info"
       >
+        <div
+          className="absolute left-1/2 bottom-0"
+          style={{
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
+          }}
+        />
         <h1
-          className="text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          className="absolute inset-0 flex items-end justify-center pb-10 text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-health-info-title"
         >
           {t("health_info.title")}
@@ -198,19 +206,19 @@ export default function HealthInfo() {
       </div>
 
       <p
-        className="text-sm text-muted-foreground mb-6 px-1"
+        className="text-sm text-muted-foreground mb-6 px-5"
         data-testid="text-health-info-subtitle"
       >
         {t("health_info.subtitle")}
       </p>
 
-      <section data-testid="section-diet-advice">
+      <section className="px-5" data-testid="section-diet-advice">
         <h2 className="text-base font-semibold mb-4" data-testid="text-diet-advice-heading">
           {t("health_info.diet_advice_heading")}
         </h2>
 
         {isLoading ? (
-          <div className="flex gap-3 overflow-hidden">
+          <div className="flex gap-3 overflow-hidden pt-4 px-2">
             {[0, 1, 2].map(i => (
               <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse" style={{ width: "100px" }}>
                 <div className="w-[100px] h-[100px] rounded-full bg-muted" />
@@ -235,7 +243,7 @@ export default function HealthInfo() {
             transition={{ duration: 0.2 }}
           >
             <div
-              className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1"
+              className="flex gap-3 overflow-x-auto pt-4 pb-3 px-2"
               style={{
                 scrollSnapType: "x mandatory",
                 scrollbarWidth: "none",
