@@ -445,19 +445,24 @@ export default function RoadmapPage() {
             background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
           }}
         />
-        <img
-          src={sproutBg}
-          alt=""
+        <div
           className="absolute left-1/2 bottom-0 pointer-events-none"
           style={{
             width: "140%",
-            height: "140%",
+            paddingBottom: "140%",
             transform: "translateX(-50%)",
             borderRadius: "50%",
-            objectFit: "cover",
+            overflow: "hidden",
             opacity: 0.5,
           }}
-        />
+        >
+          <img
+            src={sproutBg}
+            alt=""
+            className="absolute inset-0 w-full h-full"
+            style={{ objectFit: "cover" }}
+          />
+        </div>
         <h1
           className="absolute inset-0 flex items-end justify-center pb-[100px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-focus-title"
