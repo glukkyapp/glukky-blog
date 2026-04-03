@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
+import sproutBg from "@assets/pexels-kh-ali-li-17289465_1775200059674.jpg";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
@@ -442,6 +443,19 @@ export default function RoadmapPage() {
             transform: "translateX(-50%)",
             borderRadius: "50%",
             background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
+          }}
+        />
+        <img
+          src={sproutBg}
+          alt=""
+          className="absolute left-1/2 bottom-0 pointer-events-none"
+          style={{
+            width: "140%",
+            height: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            objectFit: "cover",
+            opacity: 0.5,
           }}
         />
         <h1
