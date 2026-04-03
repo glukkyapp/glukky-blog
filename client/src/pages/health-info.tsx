@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,6 +19,20 @@ const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
   "Kitchen Closure after dinner": "diet_tip.kitchen_closure_desc",
   "Switch to edamame or nuts": "diet_tip.switch_edamame_nuts_desc",
   "Food Switch": null,
+};
+
+const TIP_GRADIENTS: Record<string, string> = {
+  "Choose sugar-free drink / Dilute juice 1:1 with water": "from-sky-200 to-cyan-300",
+  "Swap dessert for plain yogurt + berries": "from-pink-200 to-rose-300",
+  "Steam your food first, then sear briefly": "from-orange-200 to-amber-300",
+  "Choose grilled over fried": "from-red-200 to-orange-300",
+  "Decouple (eat at home first, socialize out)": "from-violet-200 to-purple-300",
+  "Share main dishes": "from-emerald-200 to-teal-300",
+  "Swap sides for vegetables": "from-lime-200 to-green-300",
+  "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": "from-amber-200 to-yellow-300",
+  "Kitchen Closure after dinner": "from-indigo-200 to-blue-300",
+  "Switch to edamame or nuts": "from-teal-200 to-emerald-300",
+  "Food Switch": "from-fuchsia-200 to-pink-300",
 };
 
 const FOOD_SWITCH_TABS = [
@@ -99,62 +112,48 @@ function FoodSwitchDetail({ t }: { t: (key: string, opts?: any) => string }) {
   );
 }
 
-interface DietTipRowProps {
+function TipCircle({
+  tipKey,
+  label,
+  isSelected,
+  onSelect,
+}: {
   tipKey: string;
-  tipLabel: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  t: (key: string, opts?: any) => string;
-}
-
-function DietTipRow({ tipKey, tipLabel, isOpen, onToggle, t }: DietTipRowProps) {
+  label: string;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
   const safeId = tipKey.replace(/[^a-z0-9]/gi, "-").toLowerCase();
-
-  let detailContent: React.ReactNode;
-  if (tipKey === PLATE_METHOD_TIP_KEY) {
-    detailContent = <PlateMethodDetail t={t} />;
-  } else if (tipKey === FOOD_SWITCH_TIP_KEY) {
-    detailContent = <FoodSwitchDetail t={t} />;
-  } else {
-    const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
-    detailContent = (
-      <p className="text-base text-muted-foreground">
-        {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
-      </p>
-    );
-  }
+  const gradient = TIP_GRADIENTS[tipKey] || "from-gray-200 to-gray-300";
 
   return (
-    <div
-      className="border border-border rounded-lg overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-colors"
-      data-testid={`row-diet-tip-${safeId}`}
-      onClick={onToggle}
+    <button
+      onClick={onSelect}
+      className="flex flex-col items-center gap-2 shrink-0 snap-start"
+      data-testid={`circle-diet-tip-${safeId}`}
+      style={{ width: "100px" }}
     >
-      <div className="flex items-center justify-between gap-3 p-3">
-        <span className="text-sm font-medium">{tipLabel}</span>
-        <div
-          className="ml-2 shrink-0 text-muted-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          data-testid={`chevron-diet-tip-${safeId}`}
-        >
-          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </div>
-      </div>
-      {isOpen && (
-        <div className="px-3 pb-3" data-testid={`detail-diet-tip-${safeId}`}>
-          {detailContent}
-        </div>
-      )}
-    </div>
+      <div
+        className={`w-[100px] h-[100px] rounded-full bg-gradient-to-br ${gradient} transition-all duration-200 ${
+          isSelected
+            ? "ring-2 ring-primary ring-offset-2 scale-105"
+            : "hover:scale-105"
+        }`}
+      />
+      <span
+        className={`text-xs font-medium text-center leading-tight line-clamp-2 max-w-[100px] ${
+          isSelected ? "text-foreground" : "text-muted-foreground"
+        }`}
+      >
+        {label}
+      </span>
+    </button>
   );
 }
 
 export default function HealthInfo() {
   const { t } = useTranslation();
-  const [expandedTip, setExpandedTip] = useState<string | null>(null);
+  const [selectedTip, setSelectedTip] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<{ activeTips: string[] }>({
     queryKey: ["/api/health-info/diet-tips"],
@@ -162,30 +161,62 @@ export default function HealthInfo() {
 
   const activeTips = data?.activeTips ?? [];
 
-  function handleToggle(tip: string) {
-    setExpandedTip(prev => (prev === tip ? null : tip));
+  function handleSelect(tip: string) {
+    setSelectedTip(prev => (prev === tip ? null : tip));
+  }
+
+  function renderDetail(tipKey: string) {
+    if (tipKey === PLATE_METHOD_TIP_KEY) {
+      return <PlateMethodDetail t={t} />;
+    }
+    if (tipKey === FOOD_SWITCH_TIP_KEY) {
+      return <FoodSwitchDetail t={t} />;
+    }
+    const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
+    return (
+      <p className="text-base text-muted-foreground">
+        {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
+      </p>
+    );
   }
 
   return (
-    <div className="max-w-sm sm:max-w-none mx-auto px-4 pt-6 pb-32" data-testid="page-health-info">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <Lightbulb className="w-5 h-5 text-primary" />
-        </div>
-        <h1 className="text-xl font-semibold" data-testid="text-health-info-title">
+    <div className="max-w-sm sm:max-w-none mx-auto px-4 pt-4 pb-32" data-testid="page-health-info">
+      <div
+        className="relative w-full h-44 rounded-3xl overflow-hidden mb-6 flex items-center justify-center"
+        style={{
+          background: "linear-gradient(135deg, #a8b5a0 0%, #c2b9a7 50%, #d4cfc4 100%)",
+        }}
+        data-testid="hero-health-info"
+      >
+        <h1
+          className="text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          data-testid="text-health-info-title"
+        >
           {t("health_info.title")}
         </h1>
       </div>
 
+      <p
+        className="text-sm text-muted-foreground mb-6 px-1"
+        data-testid="text-health-info-subtitle"
+      >
+        {t("health_info.subtitle")}
+      </p>
+
       <section data-testid="section-diet-advice">
-        <h2 className="text-base font-semibold mb-3" data-testid="text-diet-advice-heading">
+        <h2 className="text-base font-semibold mb-4" data-testid="text-diet-advice-heading">
           {t("health_info.diet_advice_heading")}
         </h2>
 
         {isLoading ? (
-          <div className="animate-pulse space-y-3">
-            <div className="h-14 bg-muted rounded-lg" />
-            <div className="h-14 bg-muted rounded-lg" />
+          <div className="flex gap-3 overflow-hidden">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse" style={{ width: "100px" }}>
+                <div className="w-[100px] h-[100px] rounded-full bg-muted" />
+                <div className="h-3 w-16 bg-muted rounded" />
+              </div>
+            ))}
           </div>
         ) : activeTips.length === 0 ? (
           <motion.p
@@ -202,22 +233,45 @@ export default function HealthInfo() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="space-y-3"
           >
-            {activeTips.map(tip => {
-              const i18nKey = DIET_TIP_I18N_KEYS[tip];
-              const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
-              return (
-                <DietTipRow
-                  key={tip}
-                  tipKey={tip}
-                  tipLabel={label}
-                  isOpen={expandedTip === tip}
-                  onToggle={() => handleToggle(tip)}
-                  t={t}
-                />
-              );
-            })}
+            <div
+              className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1"
+              style={{
+                scrollSnapType: "x mandatory",
+                scrollbarWidth: "none",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {activeTips.map(tip => {
+                const i18nKey = DIET_TIP_I18N_KEYS[tip];
+                const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
+                return (
+                  <TipCircle
+                    key={tip}
+                    tipKey={tip}
+                    label={label}
+                    isSelected={selectedTip === tip}
+                    onSelect={() => handleSelect(tip)}
+                  />
+                );
+              })}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {selectedTip && (
+                <motion.div
+                  key={selectedTip}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-4 px-1"
+                  data-testid={`detail-diet-tip-${selectedTip.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`}
+                >
+                  {renderDetail(selectedTip)}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </section>

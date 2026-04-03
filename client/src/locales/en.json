@@ -788,6 +788,7 @@
   },
   "health_info": {
     "title": "Health Info",
+    "subtitle": "Don't worry if you forgot the diet tips — you can always come back here.",
     "diet_advice_heading": "Diet Advice",
     "no_advice_yet": "No diet advice has been active for you yet. Come back once your first diet tip is assigned.",
     "tip_no_detail": "Keep practising this tip — every small step counts!",
