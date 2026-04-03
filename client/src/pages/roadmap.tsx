@@ -430,14 +430,28 @@ export default function RoadmapPage() {
 
   return (
     <ContentFade>
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
-      <div data-testid="focus-area-header">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold" data-testid="text-focus-title">
-            {t("roadmap.title")}
-          </h1>
-        </div>
+    <div className="max-w-sm mx-auto px-4 pb-24 space-y-4">
+      <div
+        className="relative w-full overflow-hidden mb-2 -mx-4"
+        style={{ height: "220px", width: "calc(100% + 2rem)" }}
+        data-testid="hero-roadmap"
+      >
+        <div
+          className="absolute left-1/2 bottom-0"
+          style={{
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
+          }}
+        />
+        <h1
+          className="absolute inset-0 flex items-end justify-center pb-10 text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          data-testid="text-focus-title"
+        >
+          {t("roadmap.title")}
+        </h1>
       </div>
 
       {piggy && (

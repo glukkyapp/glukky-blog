@@ -235,15 +235,32 @@ export default function Snap() {
   const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
 
   return (
-    <div className="flex flex-col min-h-[70vh] px-5 py-6 gap-5 max-w-sm mx-auto w-full">
-      <div>
-        <h1 className="text-lg font-semibold" data-testid="text-snap-title">
+    <div className="flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full">
+      <div
+        className="relative w-full overflow-hidden -mx-5 -mt-0"
+        style={{ height: "220px", width: "calc(100% + 2.5rem)" }}
+        data-testid="hero-snap"
+      >
+        <div
+          className="absolute left-1/2 bottom-0"
+          style={{
+            width: "140%",
+            paddingBottom: "140%",
+            transform: "translateX(-50%)",
+            borderRadius: "50%",
+            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
+          }}
+        />
+        <h1
+          className="absolute inset-0 flex items-end justify-center pb-10 text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          data-testid="text-snap-title"
+        >
           {t("snap.title")}
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("snap.subtitle")}
-        </p>
       </div>
+      <p className="text-sm text-muted-foreground">
+        {t("snap.subtitle")}
+      </p>
 
       {step === "upload" && (
         <div className="flex flex-col items-center gap-5 pt-6">
