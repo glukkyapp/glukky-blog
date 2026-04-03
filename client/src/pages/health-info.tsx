@@ -213,7 +213,7 @@ export default function HealthInfo() {
             src={bookBg}
             alt=""
             className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover" }}
+            style={{ objectFit: "cover", objectPosition: "33% center" }}
           />
         </div>
         <h1
