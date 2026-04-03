@@ -218,7 +218,7 @@ export default function HealthInfo() {
         </h2>
 
         {isLoading ? (
-          <div className="flex gap-3 overflow-hidden py-4 px-6">
+          <div className="flex gap-[18px] overflow-hidden py-4 px-6">
             {[0, 1, 2].map(i => (
               <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse" style={{ width: "100px" }}>
                 <div className="w-[100px] h-[100px] rounded-full bg-muted" />
@@ -243,7 +243,7 @@ export default function HealthInfo() {
             transition={{ duration: 0.2 }}
           >
             <div
-              className="flex gap-3 overflow-x-auto py-4 pl-4 snap-x snap-mandatory"
+              className="flex gap-[18px] overflow-x-auto py-4 pl-4 snap-x snap-mandatory"
               style={{
                 scrollPaddingInlineStart: "16px",
                 scrollbarWidth: "none",
