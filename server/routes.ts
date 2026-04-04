@@ -2261,6 +2261,15 @@ Always reply in EXACTLY this format — 3 lines, nothing else:
         if (plan) allPlans.push(plan);
       }
 
+      const user = await authStorage.getUser(userId);
+      const email = user?.email?.toLowerCase()?.trim();
+      const isDev = DEV_EMAILS.some(d => d.toLowerCase().trim() === email);
+
+      if (isDev) {
+        const allTips = Object.values(DIET_TIP_LADDERS).flat();
+        return res.json({ activeTips: allTips });
+      }
+
       const seenTips = new Set<string>();
       for (const plan of allPlans) {
         if (plan.dietTip) seenTips.add(plan.dietTip);
