@@ -442,7 +442,7 @@ export default function RoadmapPage() {
           style={{ opacity: 0.3 }}
         />
         <h1
-          className="absolute inset-0 flex items-end justify-center pb-6 text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          className="absolute inset-0 flex items-end justify-center pb-6 text-2xl font-bold text-black drop-shadow-md text-center px-6"
           data-testid="text-focus-title"
         >
           {t("roadmap.title")}
