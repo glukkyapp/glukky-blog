@@ -12,6 +12,7 @@ import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-po
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
+import giftImg from "@assets/cyucyu_a_presentgift._background_color_f5f1e7_--sref_httpss.m__1775313676920.png";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
@@ -1414,10 +1415,13 @@ export default function Home() {
       </p>
 
       {profile?.goal && (
-        <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
-          <p className="text-sm text-primary/80">
-            {t("home.goal_reminder", { goal: profile.goal })}
-          </p>
+        <div className="flex items-center gap-3">
+          <img src={giftImg} alt="" className="w-14 h-14 rounded-lg shrink-0" />
+          <div className="flex-1 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
+            <p className="text-sm text-primary/80">
+              {t("home.goal_reminder", { goal: profile.goal })}
+            </p>
+          </div>
         </div>
       )}
 
