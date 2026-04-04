@@ -2570,7 +2570,7 @@ export default function WeeklyPlanner() {
       >
         <img src={calendarBg} alt="" className="w-full h-auto block" />
       </div>
-      <p className="text-sm text-muted-foreground px-1" data-testid="text-planner-subtitle">
+      <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-planner-subtitle">
         {t("planner.subtitle")}
       </p>
     </>

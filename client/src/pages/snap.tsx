@@ -244,7 +244,7 @@ export default function Snap() {
       >
         <img src={phoneBg} alt="" className="w-full h-auto block" />
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground text-center">
         {t("snap.subtitle")}
       </p>
 

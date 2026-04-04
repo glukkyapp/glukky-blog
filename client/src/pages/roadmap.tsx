@@ -442,7 +442,7 @@ export default function RoadmapPage() {
         />
       </div>
 
-      <p className="text-sm text-muted-foreground px-1" data-testid="text-roadmap-subtitle">
+      <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-roadmap-subtitle">
         {t("roadmap.subtitle")}
       </p>
 
