@@ -1416,7 +1416,7 @@ export default function Home() {
 
       {profile?.goal && (
         <div className="flex items-center gap-3">
-          <img src={giftImg} alt="" className="w-14 h-14 rounded-lg shrink-0" />
+          <img src={giftImg} alt="" className="w-24 h-24 rounded-lg shrink-0" />
           <div className="flex-1 min-w-0 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
             <p className="text-sm text-primary/80">
               {t("home.goal_reminder", { goal: profile.goal })}
