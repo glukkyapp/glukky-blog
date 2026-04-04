@@ -204,6 +204,7 @@
   },
   "roadmap": {
     "title": "每週進度",
+    "subtitle": "睇下你每個禮拜進步咗幾多。",
     "walk_card_title": "飯後散步",
     "how_youre_doing": "你嘅進度",
     "dinner_card_title": "早啲食晚飯",
@@ -284,6 +285,7 @@
     }
   },
   "planner": {
+    "subtitle": "計劃你嘅一週，一步一步嚟。",
     "week_report": "第{{week}}週報告",
     "physical": "體能",
     "walk_days_report": "{{completed}}/{{scheduled}}日散步",

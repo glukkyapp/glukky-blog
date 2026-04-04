@@ -2562,13 +2562,18 @@ export default function WeeklyPlanner() {
   }
 
   const plannerHero = (
-    <div
-      className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
-      style={{ width: "calc(100% + 2rem)" }}
-      data-testid="hero-planner"
-    >
-      <img src={calendarBg} alt="" className="w-full h-auto block" />
-    </div>
+    <>
+      <div
+        className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
+        style={{ width: "calc(100% + 2rem)" }}
+        data-testid="hero-planner"
+      >
+        <img src={calendarBg} alt="" className="w-full h-auto block" />
+      </div>
+      <p className="text-sm text-muted-foreground px-1" data-testid="text-planner-subtitle">
+        {t("planner.subtitle")}
+      </p>
+    </>
   );
 
   function renderPendingView(variant: "first_week" | "mid_week" = "first_week") {

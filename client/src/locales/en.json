@@ -204,6 +204,7 @@
   },
   "roadmap": {
     "title": "Your Weekly Progress",
+    "subtitle": "See how far you've come each week.",
     "walk_card_title": "Post-meal Walk",
     "how_youre_doing": "How you're doing",
     "dinner_card_title": "Early Dinner",
@@ -280,6 +281,7 @@
     }
   },
   "planner": {
+    "subtitle": "Plan your week, one small step at a time.",
     "week_report": "Week {{week}} Report",
     "physical": "Physical",
     "walk_days_report": "{{completed}}/{{scheduled}} walk days",
