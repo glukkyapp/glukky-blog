@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
-import snapBg from "@assets/pexels-blue-bird-7242744_1775200790826.jpg";
+import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -238,44 +238,11 @@ export default function Snap() {
   return (
     <div className="flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full">
       <div
-        className="relative w-full overflow-hidden mb-[-7px] -mx-5 -mt-0"
-        style={{ height: "220px", width: "calc(100% + 2.5rem)" }}
+        className="relative w-full overflow-hidden mb-[-5px] -mx-5 rounded-b-3xl"
+        style={{ width: "calc(100% + 2.5rem)" }}
         data-testid="hero-snap"
       >
-        <div
-          className="absolute left-1/2 bottom-0"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
-          }}
-        />
-        <div
-          className="absolute left-1/2 bottom-0 pointer-events-none"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            overflow: "hidden",
-            opacity: 0.8,
-          }}
-        >
-          <img
-            src={snapBg}
-            alt=""
-            className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover", objectPosition: "top" }}
-          />
-        </div>
-        <h1
-          className="absolute inset-0 flex items-end justify-center pb-[140px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
-          data-testid="text-snap-title"
-        >
-          {t("snap.title")}
-        </h1>
+        <img src={phoneBg} alt="" className="w-full h-auto block" />
       </div>
       <p className="text-sm text-muted-foreground">
         {t("snap.subtitle")}

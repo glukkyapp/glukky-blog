@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
-import bookBg from "@assets/pexels-george-milton-7034062_1775200794769.jpg";
+import booksBg from "@assets/cyucyu_light_bulb_next_to_a_pile_of_books_indicating_knowledg__1775312483622.png";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
@@ -184,44 +184,10 @@ export default function HealthInfo() {
   return (
     <div className="max-w-sm sm:max-w-none mx-auto pb-32" data-testid="page-health-info">
       <div
-        className="relative w-full overflow-hidden mb-4"
-        style={{ height: "220px" }}
+        className="relative w-full overflow-hidden mb-[-5px] rounded-b-3xl"
         data-testid="hero-health-info"
       >
-        <div
-          className="absolute left-1/2 bottom-0"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
-          }}
-        />
-        <div
-          className="absolute left-1/2 bottom-0 pointer-events-none"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            overflow: "hidden",
-            opacity: 0.8,
-          }}
-        >
-          <img
-            src={bookBg}
-            alt=""
-            className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover", objectPosition: "33% center" }}
-          />
-        </div>
-        <h1
-          className="absolute inset-0 flex items-end justify-center pb-[140px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
-          data-testid="text-health-info-title"
-        >
-          {t("health_info.title")}
-        </h1>
+        <img src={booksBg} alt="" className="w-full h-auto block" />
       </div>
 
       <p

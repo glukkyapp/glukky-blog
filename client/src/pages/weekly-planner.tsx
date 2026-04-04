@@ -28,6 +28,7 @@ function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => strin
 }
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { motion, AnimatePresence } from "framer-motion";
+import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_progress_arrow_in__1775311745838.png";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
@@ -2560,11 +2561,22 @@ export default function WeeklyPlanner() {
     );
   }
 
+  const plannerHero = (
+    <div
+      className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
+      style={{ width: "calc(100% + 2rem)" }}
+      data-testid="hero-planner"
+    >
+      <img src={calendarBg} alt="" className="w-full h-auto block" />
+    </div>
+  );
+
   function renderPendingView(variant: "first_week" | "mid_week" = "first_week") {
     const titleKey = variant === "mid_week" ? "planner.pending_sunday" : "planner.first_week_pending";
     const descKey  = variant === "mid_week" ? "planner.pending_sunday_desc" : "planner.first_week_pending_desc";
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        {plannerHero}
         <Card data-testid="card-report-pending">
           <CardContent className="pt-6 pb-6">
             <div className="flex flex-col items-center text-center gap-3">
@@ -2586,6 +2598,7 @@ export default function WeeklyPlanner() {
   function renderLastWeekReport() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        {plannerHero}
         <h1 className="text-lg font-bold" data-testid="text-last-week-title">
           {t("planner.stats_last_week")}
         </h1>
@@ -2601,6 +2614,7 @@ export default function WeeklyPlanner() {
     const planWeekNum = currentPlan?.weekNumber || (profile?.currentWeek ? profile.currentWeek - 1 : 1);
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        {plannerHero}
         <Card data-testid="card-plan-ready">
           <CardContent className="pt-6 pb-6">
             <div className="flex flex-col items-center text-center gap-3">
@@ -2624,6 +2638,7 @@ export default function WeeklyPlanner() {
   function renderCatchupGate() {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+        {plannerHero}
         <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-sunday-checkin-gate">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -2672,6 +2687,7 @@ export default function WeeklyPlanner() {
   return (
     <>
     <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+      {plannerHero}
 
       <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
         {profile?.name

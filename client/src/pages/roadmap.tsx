@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
-import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_progress_arrow_in__1775311745838.png";
+import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
@@ -436,7 +436,7 @@ export default function RoadmapPage() {
         data-testid="hero-roadmap"
       >
         <img
-          src={calendarBg}
+          src={mountainBg}
           alt=""
           className="w-full h-auto block"
         />
