@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
-import sproutBg from "@assets/pexels-kh-ali-li-17289465_1775200059674.jpg";
+import stairsBg from "@assets/cyucyu_Minimalist_illustration_Outline-only_line_art_no_fills__1775267589786.png";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
@@ -457,10 +457,10 @@ export default function RoadmapPage() {
           }}
         >
           <img
-            src={sproutBg}
+            src={stairsBg}
             alt=""
             className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover", objectPosition: "top" }}
+            style={{ objectFit: "cover", objectPosition: "center 40%" }}
           />
         </div>
         <h1
