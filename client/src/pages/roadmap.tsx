@@ -431,40 +431,18 @@ export default function RoadmapPage() {
     <ContentFade>
     <div className="max-w-sm mx-auto px-4 pb-24 space-y-4">
       <div
-        className="relative w-full overflow-hidden mb-[-5px] -mx-4"
-        style={{ height: "220px", width: "calc(100% + 2rem)" }}
+        className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
+        style={{ width: "calc(100% + 2rem)" }}
         data-testid="hero-roadmap"
       >
-        <div
-          className="absolute left-1/2 bottom-0"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            background: "linear-gradient(180deg, #a8b5a0 0%, #c2b9a7 60%, #d4cfc4 100%)",
-          }}
+        <img
+          src={stairsBg}
+          alt=""
+          className="w-full h-auto block"
+          style={{ opacity: 0.8 }}
         />
-        <div
-          className="absolute left-1/2 bottom-0 pointer-events-none"
-          style={{
-            width: "140%",
-            paddingBottom: "140%",
-            transform: "translateX(-50%) translateY(-12.5%)",
-            borderRadius: "50%",
-            overflow: "hidden",
-            opacity: 0.8,
-          }}
-        >
-          <img
-            src={stairsBg}
-            alt=""
-            className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover", objectPosition: "center" }}
-          />
-        </div>
         <h1
-          className="absolute inset-0 flex items-end justify-center pb-[140px] text-2xl font-bold text-white drop-shadow-md text-center px-6"
+          className="absolute inset-0 flex items-end justify-center pb-6 text-2xl font-bold text-white drop-shadow-md text-center px-6"
           data-testid="text-focus-title"
         >
           {t("roadmap.title")}
