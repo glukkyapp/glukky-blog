@@ -191,7 +191,7 @@ export default function HealthInfo() {
       </div>
 
       <p
-        className="text-sm text-muted-foreground text-center mb-6 px-5"
+        className="text-sm text-muted-foreground text-center mt-3 mb-6 px-5"
         data-testid="text-health-info-subtitle"
       >
         {t("health_info.subtitle")}
