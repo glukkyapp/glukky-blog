@@ -439,7 +439,7 @@ export default function RoadmapPage() {
           src={stairsBg}
           alt=""
           className="w-full h-auto block"
-          style={{ opacity: 0.8 }}
+          style={{ opacity: 0.3 }}
         />
         <h1
           className="absolute inset-0 flex items-end justify-center pb-6 text-2xl font-bold text-white drop-shadow-md text-center px-6"
