@@ -45,28 +45,43 @@ export function AdviceState() {
               padding: 20,
             }}
           >
-            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-              🩸 Wonton noodle soup has a high glycaemic load — the alkaline
-              noodles convert to glucose quickly.
-            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                🩸 Sugar Impact
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+                Wonton noodle soup has a high glycaemic load — the alkaline
+                noodles convert to glucose quickly.
+              </p>
+            </div>
 
             <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
 
-            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-              💡 Order a side of blanched choi sum or vegetables to add fibre,
-              which slows glucose absorption. Use only half the soy sauce packet
-              to reduce sodium intake — high sodium can raise blood pressure, a
-              concern that compounds with blood sugar spikes.
-            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                💡 Instant Advice
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+                Order a side of blanched choi sum or vegetables to add fibre,
+                which slows glucose absorption. Use only half the soy sauce packet
+                to reduce sodium intake — high sodium can raise blood pressure, a
+                concern that compounds with blood sugar spikes.
+              </p>
+            </div>
 
             <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
 
-            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-              🔄 Try reducing the portion of noodles next time. If that's
-              tricky, swap the alkaline noodles for thin rice vermicelli — they
-              have a lower glycaemic index and won't spike your blood sugar as
-              sharply.
-            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#0369a1", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                🔄 Next Time
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+                Try reducing the portion of noodles next time. If that's
+                tricky, swap the alkaline noodles for thin rice vermicelli — they
+                have a lower glycaemic index and won't spike your blood sugar as
+                sharply.
+              </p>
+            </div>
 
             <Button
               className="w-full mt-1"
@@ -91,7 +106,7 @@ export function AdviceState() {
                 fontWeight: 500,
               }}
             >
-              4 of 6 advice uses left today
+              2 of 6 advice uses left today
             </span>
           </div>
 
