@@ -1,5 +1,5 @@
 import "../food-snap/_group.css";
-import { Check, X, Footprints, Soup, Lightbulb, Minus } from "lucide-react";
+import { Check, X, Footprints, Soup } from "lucide-react";
 
 export function HomeTired() {
   const primary = "#127843";
@@ -12,18 +12,18 @@ export function HomeTired() {
     { scheduled: true, done: true, tired: false, dur: 10 },
     { scheduled: true, done: true, tired: false, dur: 10 },
     { scheduled: true, done: true, tired: true, dur: 10 },
+    { scheduled: true, done: false, tired: false, dur: 5 },
     { scheduled: false, done: false, tired: false, dur: 0 },
-    { scheduled: true, done: false, tired: false, dur: 10 },
     { scheduled: false, done: false, tired: false, dur: 0 },
     { scheduled: false, done: false, tired: false, dur: 0 },
   ];
 
-  const dinnerData: { scheduled: boolean; success?: boolean | null; tactic?: boolean }[] = [
+  const dinnerData: { scheduled: boolean; success?: boolean | null }[] = [
     { scheduled: false },
     { scheduled: true, success: true },
+    { scheduled: true, success: null },
     { scheduled: false },
-    { scheduled: true, success: false },
-    { scheduled: true, success: null, tactic: true },
+    { scheduled: false },
     { scheduled: false },
     { scheduled: false },
   ];
@@ -193,14 +193,12 @@ export function HomeTired() {
                       !d.scheduled ? "bg-muted" :
                       answered && d.success ? "bg-green-100 text-green-600" :
                       answered && !d.success ? "bg-red-50 text-red-400" :
-                      d.tactic ? "bg-amber-50 text-amber-600" :
                       "bg-muted"
                     }`}
                   >
                     {!d.scheduled ? null :
                      answered && d.success ? <Check className="w-3 h-3" /> :
                      answered && !d.success ? <X className="w-3 h-3" /> :
-                     d.tactic ? <Lightbulb className="w-3 h-3" /> :
                      <Soup className="w-3 h-3 text-muted-foreground" />}
                   </div>
                 );
@@ -212,7 +210,6 @@ export function HomeTired() {
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
               <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
               <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
-              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
             </div>
           </div>
         </Card>
