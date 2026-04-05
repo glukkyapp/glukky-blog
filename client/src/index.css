@@ -78,13 +78,13 @@ textarea,
   --font-mono: Menlo, monospace;
 
   --fs-xs: 16px;
-  --fs-sm: 18px;
-  --fs-base: 20px;
-  --fs-lg: 22px;
-  --fs-xl: 24px;
-  --fs-2xl: 26px;
-  --fs-3xl: 30px;
-  --fs-4xl: 36px;
+  --fs-sm: 20px;
+  --fs-base: 24px;
+  --fs-lg: 28px;
+  --fs-xl: 32px;
+  --fs-2xl: 36px;
+  --fs-3xl: 42px;
+  --fs-4xl: 48px;
   --radius: .5rem;
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.04);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.06);
@@ -180,13 +180,13 @@ html.lang-zh {
 
 html.font-small {
   --fs-xs: 12px;
-  --fs-sm: 14px;
-  --fs-base: 16px;
-  --fs-lg: 18px;
-  --fs-xl: 20px;
-  --fs-2xl: 22px;
-  --fs-3xl: 26px;
-  --fs-4xl: 30px;
+  --fs-sm: 16px;
+  --fs-base: 20px;
+  --fs-lg: 24px;
+  --fs-xl: 28px;
+  --fs-2xl: 32px;
+  --fs-3xl: 36px;
+  --fs-4xl: 42px;
 }
 
 @layer base {
