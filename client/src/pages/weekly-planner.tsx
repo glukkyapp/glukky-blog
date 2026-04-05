@@ -2703,7 +2703,11 @@ export default function WeeklyPlanner() {
       {profile?.goal && (
         <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
           <p className="text-sm text-primary/80">
-            {t("home.goal_reminder", { goal: profile.goal })}
+            {(() => {
+              const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
+              const parts = full.split("{{GOAL}}");
+              return <>{parts[0]}<strong>{profile.goal}</strong>{parts[1]}</>;
+            })()}
           </p>
         </div>
       )}

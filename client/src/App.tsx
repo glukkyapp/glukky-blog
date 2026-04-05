@@ -31,8 +31,36 @@ import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_i
 import booksBg from "@assets/cyucyu_light_bulb_next_to_a_pile_of_books_indicating_knowledg__1775312483622.png";
 import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_progress_arrow_in__1775311745838.png";
 import giftImg from "@assets/cyucyu_a_presentgift._background_color_f5f1e7_--sref_httpss.m__1775313676920.png";
+import imgYogurt from "@assets/cropped_circle_image_(1)_1775372471299.png";
+import imgJuice from "@assets/cropped_circle_image_(5)_1775372471299.png";
+import imgSteam from "@assets/cropped_circle_image_(4)_1775372471300.png";
+import imgEdamame from "@assets/cropped_circle_image_(3)_1775372471300.png";
+import imgBroccoli from "@assets/cropped_circle_image_(2)_1775372471300.png";
+import imgSharePlate from "@assets/cropped_circle_image_(6)_1775372471300.png";
+import imgNoodle from "@assets/cropped_circle_image_(7)_1775372471300.png";
+import imgPlateMethod from "@assets/cropped_circle_image_(8)_1775372471301.png";
+import imgBowlLid from "@assets/cropped_circle_image_1775372471301.png";
+import imgGrill from "@assets/cropped_circle_image_(9)_1775374577700.png";
+import imgFoodSwap from "@assets/cropped_circle_image_(10)_1775374584626.png";
+import pigImg0 from "@assets/IMG_2062_1773846070998.PNG";
+import pigImg1 from "@assets/IMG_0610_1773846070999.PNG";
+import pigImg2 from "@assets/IMG_0611_1773846070999.PNG";
+import pigImg3 from "@assets/IMG_0612_1773846070999.PNG";
+import pigImg4 from "@assets/IMG_0613_1773846070999.PNG";
+import pigImg5 from "@assets/IMG_0614_1773846070999.PNG";
+import splashLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
+import landingLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
+import slide1Img from "@assets/generated_images/slide1_walk.png";
+import slide2Img from "@assets/generated_images/slide2_meal.png";
+import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
 
-const PRELOAD_IMAGES = [mountainBg, phoneBg, booksBg, calendarBg, giftImg];
+const PRELOAD_IMAGES = [
+  mountainBg, phoneBg, booksBg, calendarBg, giftImg,
+  imgYogurt, imgJuice, imgSteam, imgEdamame, imgBroccoli,
+  imgSharePlate, imgNoodle, imgPlateMethod, imgBowlLid, imgGrill, imgFoodSwap,
+  pigImg0, pigImg1, pigImg2, pigImg3, pigImg4, pigImg5,
+  splashLogo, landingLogo, slide1Img, slide2Img, slide3Img,
+];
 
 interface PiggyBankData {
   coins: number;

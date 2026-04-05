@@ -1419,7 +1419,11 @@ export default function Home() {
           <img src={giftImg} alt="" className="w-24 h-24 rounded-lg shrink-0" />
           <div className="flex-1 min-w-0 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
             <p className="text-sm text-primary/80">
-              {t("home.goal_reminder", { goal: profile.goal })}
+              {(() => {
+                const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
+                const parts = full.split("{{GOAL}}");
+                return <>{parts[0]}<strong>{profile.goal}</strong>{parts[1]}</>;
+              })()}
             </p>
           </div>
         </div>
