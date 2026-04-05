@@ -4,6 +4,15 @@ import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import booksBg from "@assets/cyucyu_light_bulb_next_to_a_pile_of_books_indicating_knowledg__1775312483622.png";
+import imgYogurt from "@assets/cropped_circle_image_(1)_1775372471299.png";
+import imgJuice from "@assets/cropped_circle_image_(5)_1775372471299.png";
+import imgSteam from "@assets/cropped_circle_image_(4)_1775372471300.png";
+import imgEdamame from "@assets/cropped_circle_image_(3)_1775372471300.png";
+import imgBroccoli from "@assets/cropped_circle_image_(2)_1775372471300.png";
+import imgSharePlate from "@assets/cropped_circle_image_(6)_1775372471300.png";
+import imgNoodle from "@assets/cropped_circle_image_(7)_1775372471300.png";
+import imgPlateMethod from "@assets/cropped_circle_image_(8)_1775372471301.png";
+import imgBowlLid from "@assets/cropped_circle_image_1775372471301.png";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
@@ -34,6 +43,18 @@ const TIP_GRADIENTS: Record<string, string> = {
   "Kitchen Closure after dinner": "from-indigo-200 to-blue-300",
   "Switch to edamame or nuts": "from-teal-200 to-emerald-300",
   "Food Switch": "from-fuchsia-200 to-pink-300",
+};
+
+const TIP_IMAGES: Record<string, string> = {
+  "Swap dessert for plain yogurt + berries": imgYogurt,
+  "Choose sugar-free drink / Dilute juice 1:1 with water": imgJuice,
+  "Steam your food first, then sear briefly": imgSteam,
+  "Switch to edamame or nuts": imgEdamame,
+  "Swap sides for vegetables": imgBroccoli,
+  "Share main dishes": imgSharePlate,
+  "Decouple (eat at home first, socialize out)": imgNoodle,
+  "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": imgPlateMethod,
+  "Kitchen Closure after dinner": imgBowlLid,
 };
 
 const FOOD_SWITCH_TABS = [
@@ -126,6 +147,7 @@ function TipCircle({
 }) {
   const safeId = tipKey.replace(/[^a-z0-9]/gi, "-").toLowerCase();
   const gradient = TIP_GRADIENTS[tipKey] || "from-gray-200 to-gray-300";
+  const tipImage = TIP_IMAGES[tipKey];
 
   return (
     <button
@@ -135,12 +157,23 @@ function TipCircle({
       style={{ width: "100px" }}
     >
       <div
-        className={`w-[100px] h-[100px] rounded-full bg-gradient-to-br ${gradient} transition-all duration-200 ${
+        className={`w-[100px] h-[100px] rounded-full overflow-hidden transition-all duration-200 ${
+          !tipImage ? `bg-gradient-to-br ${gradient}` : ""
+        } ${
           isSelected
             ? "ring-2 ring-primary ring-offset-2 scale-105"
             : "hover:scale-105"
         }`}
-      />
+      >
+        {tipImage && (
+          <img
+            src={tipImage}
+            alt={label}
+            className="w-full h-full object-cover"
+            style={{ filter: "hue-rotate(-15deg) saturate(1.1)" }}
+          />
+        )}
+      </div>
       <span
         className={`text-xs font-medium text-center leading-tight line-clamp-2 max-w-[100px] ${
           isSelected ? "text-foreground" : "text-muted-foreground"
@@ -167,17 +200,24 @@ export default function HealthInfo() {
   }
 
   function renderDetail(tipKey: string) {
+    const i18nKey = DIET_TIP_I18N_KEYS[tipKey];
+    const tipLabel = i18nKey ? t(i18nKey, { defaultValue: tipKey }) : tipKey;
+    const titleEl = <p className="font-bold text-base mb-2" data-testid="text-tip-detail-title">{tipLabel}</p>;
+
     if (tipKey === PLATE_METHOD_TIP_KEY) {
-      return <PlateMethodDetail t={t} />;
+      return <>{titleEl}<PlateMethodDetail t={t} /></>;
     }
     if (tipKey === FOOD_SWITCH_TIP_KEY) {
-      return <FoodSwitchDetail t={t} />;
+      return <>{titleEl}<FoodSwitchDetail t={t} /></>;
     }
     const detailKey = TIP_DETAIL_KEY_MAP[tipKey];
     return (
-      <p className="text-base text-muted-foreground">
-        {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
-      </p>
+      <>
+        {titleEl}
+        <p className="text-base text-muted-foreground">
+          {detailKey ? t(detailKey) : t("health_info.tip_no_detail")}
+        </p>
+      </>
     );
   }
 
