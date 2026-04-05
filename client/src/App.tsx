@@ -21,7 +21,6 @@ import NotFound from "@/pages/not-found";
 import { useEffect, useState, useRef } from "react";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
-import { SplashScreen } from "@/components/splash-screen";
 import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,6 @@ import pigImg2 from "@assets/IMG_0611_1773846070999.PNG";
 import pigImg3 from "@assets/IMG_0612_1773846070999.PNG";
 import pigImg4 from "@assets/IMG_0613_1773846070999.PNG";
 import pigImg5 from "@assets/IMG_0614_1773846070999.PNG";
-import splashLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
 import landingLogo from "@assets/high-resolution-color-logo_1775378624892.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
@@ -60,7 +58,7 @@ const PRELOAD_IMAGES = [
   imgYogurt, imgJuice, imgSteam, imgEdamame, imgBroccoli,
   imgSharePlate, imgNoodle, imgPlateMethod, imgBowlLid, imgGrill, imgFoodSwap,
   pigImg0, pigImg1, pigImg2, pigImg3, pigImg4, pigImg5,
-  splashLogo, landingLogo, slide1Img, slide2Img, slide3Img,
+  landingLogo, slide1Img, slide2Img, slide3Img,
 ];
 
 interface PiggyBankData {
@@ -290,11 +288,6 @@ function Router() {
 }
 
 function App() {
-  const { isLoading } = useAuth();
-  const [timerDone, setTimerDone] = useState(false);
-  const [splashVisible, setSplashVisible] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     PRELOAD_IMAGES.forEach((src) => {
       const img = new Image();
@@ -317,26 +310,10 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    timerRef.current = setTimeout(() => {
-      setTimerDone(true);
-    }, 3000);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (timerDone && !isLoading) {
-      setSplashVisible(false);
-    }
-  }, [timerDone, isLoading]);
-
   return (
     <TooltipProvider>
       <Toaster />
       <Router />
-      <SplashScreen visible={splashVisible} />
       <PiggyBankPreloader />
     </TooltipProvider>
   );

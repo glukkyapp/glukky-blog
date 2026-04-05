@@ -140,7 +140,7 @@ export default function Landing() {
               type="button"
               data-testid={`button-lang-${lang.code}`}
               onClick={() => handleSelectLanguage(lang.code)}
-              className="w-full text-left px-5 py-4 rounded-2xl border border-border hover:border-[#14A085] hover:bg-[#14A085]/5 transition-colors flex flex-col gap-0.5"
+              className="w-full text-left px-5 py-4 rounded-2xl border border-border hover:border-[#127843] hover:bg-[#127843]/5 transition-colors flex flex-col gap-0.5"
             >
               <span className="font-semibold text-base text-foreground">{lang.label}</span>
               <span className="text-xs text-muted-foreground">{lang.sub}</span>
@@ -203,7 +203,7 @@ export default function Landing() {
             <Button
               onClick={handleSlideNext}
               className="rounded-full px-10 py-3 text-white text-base font-semibold"
-              style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
+              style={{ backgroundColor: "#127843", borderColor: "#127843" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
             >
               {slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
@@ -240,7 +240,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "login" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "login" ? { backgroundColor: "#14A085" } : undefined}
+          style={tab === "login" ? { backgroundColor: "#127843" } : undefined}
           data-testid="tab-login"
         >
           {t("landing.log_in")}
@@ -251,7 +251,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "register" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "register" ? { backgroundColor: "#14A085" } : undefined}
+          style={tab === "register" ? { backgroundColor: "#127843" } : undefined}
           data-testid="tab-register"
         >
           {t("landing.register")}
@@ -305,7 +305,7 @@ export default function Landing() {
           type="submit"
           disabled={isLoading}
           className="w-full text-white mt-1"
-          style={{ backgroundColor: "#14A085", borderColor: "#14A085" }}
+          style={{ backgroundColor: "#127843", borderColor: "#127843" }}
           data-testid="button-submit"
         >
           {isLoading ? (
