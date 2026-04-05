@@ -236,7 +236,7 @@ export default function Snap() {
   const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
 
   return (
-    <div className="flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full">
+    <div className="flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full pb-28">
       <div
         className="relative w-full overflow-hidden mb-[-5px] -mx-5 rounded-b-3xl"
         style={{ width: "calc(100% + 2.5rem)" }}
