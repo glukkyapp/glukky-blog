@@ -1,4 +1,5 @@
 import "../food-snap/_group.css";
+import { Check, X, Footprints, Soup, Lightbulb, Minus } from "lucide-react";
 
 export function HomeTired() {
   const primary = "#127843";
@@ -17,12 +18,12 @@ export function HomeTired() {
     { scheduled: false, done: false, tired: false, dur: 0 },
   ];
 
-  const dinnerData = [
+  const dinnerData: { scheduled: boolean; success?: boolean | null; tactic?: boolean }[] = [
     { scheduled: false },
     { scheduled: true, success: true },
     { scheduled: false },
     { scheduled: true, success: false },
-    { scheduled: true, success: null },
+    { scheduled: true, success: null, tactic: true },
     { scheduled: false },
     { scheduled: false },
   ];
@@ -56,7 +57,7 @@ export function HomeTired() {
           <span style={{ fontSize: 18, fontWeight: 700 }}>Week 3 · Wednesday</span>
         </div>
 
-        <p style={{ fontSize: 16, fontWeight: 600 }}>Hi, Cynthia 👋</p>
+        <p style={{ fontSize: 16, fontWeight: 600 }}>Hi, Olivia 👋</p>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
@@ -75,7 +76,7 @@ export function HomeTired() {
             }}
           >
             <p style={{ fontSize: 14, color: `${primary}CC` }}>
-              Remember your goal — <strong>have energy to play with my grandkids</strong>! Keep it up!
+              Remember your goal — <strong>to have better skin</strong>! Keep it up!
             </p>
           </div>
         </div>
@@ -131,103 +132,87 @@ export function HomeTired() {
             <SummaryRow label="Duration" value="10 min" positive />
             <SummaryRow label="Feeling tired" value="Yes" positive={false} />
             <SummaryRow label="Late dinner tactic (Fiber)" value="Followed" positive />
-            <SummaryRow label="Diet tactic for Oily/Fried Food" value="Yes" positive />
           </div>
         </Card>
 
         <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12h4M8 12h4M14 12h4M20 12h4" /><path d="M6 8l-2 4 2 4" /><path d="M18 8l2 4-2 4" />
-            </svg>
-            <p style={{ fontSize: 14, fontWeight: 600 }}>Focus: Oily/Fried Food</p>
-          </div>
-          <p style={{ fontSize: 14, color: primary, fontWeight: 500 }}>
-            "Try air-frying or baking instead of deep-frying when cooking at home"
-          </p>
-        </Card>
-
-        <Card>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Weekly Calendar</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "40px repeat(7, 1fr)", gap: 4, textAlign: "center", fontSize: 12 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Weekly Calendar</p>
+          <div className="space-y-2">
+            <div className="grid grid-cols-8 gap-1 text-center text-xs">
               <div />
               {days.map(d => (
-                <div key={d} style={{ fontWeight: 500, color: muted }}>{d}</div>
+                <div key={d} className="font-medium text-muted-foreground">{d}</div>
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "40px repeat(7, 1fr)", gap: 4, textAlign: "center", fontSize: 12, alignItems: "center" }}>
-              <div style={{ fontSize: 10, color: muted, fontWeight: 500, textAlign: "right", paddingRight: 4 }}>Walk</div>
-              {walkData.map((d, i) => (
-                <div
-                  key={i}
-                  style={{
-                    height: d.scheduled ? 40 : 28,
-                    borderRadius: 4,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: !d.scheduled ? "hsl(150 15% 92%)" :
-                      (i <= 2) ? (d.done ? "#dcfce7" : "#fef2f2") :
-                      "hsl(150 15% 92%)",
-                    color: !d.scheduled ? muted :
-                      (i <= 2) ? (d.done ? "#16a34a" : "#ef4444") :
-                      muted,
-                  }}
-                >
-                  {d.scheduled && i <= 2 ? (
-                    <>
-                      {d.done ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                      ) : (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      )}
-                      <span style={{ fontSize: 9, lineHeight: 1, marginTop: 2 }}>{d.dur}m</span>
-                    </>
-                  ) : d.scheduled ? (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 5-6 3.51 0 4.97 3.28 5 6 .03 2.5-1 3.5-1 5.62V16" /><path d="M12 16v-2.38c0-2.12-1.03-3.12-1-5.62.03-2.72 1.49-6 5-6 3.51 0 4.97 3.28 5 6 .03 2.5-1 3.5-1 5.62V16" /><line x1="4" y1="18" x2="12" y2="18" /><line x1="12" y1="18" x2="20" y2="18" /></svg>
-                      <span style={{ fontSize: 9, lineHeight: 1, marginTop: 2 }}>{d.dur}m</span>
-                    </>
-                  ) : null}
-                </div>
-              ))}
+            <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">Walk</div>
+              {walkData.map((d, i) => {
+                const isPast = i <= 2;
+                const answered = isPast && d.scheduled;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded flex flex-col items-center justify-center ${
+                      !d.scheduled ? "bg-muted h-7" :
+                      answered && d.done ? "bg-green-100 text-green-600 h-10" :
+                      answered && !d.done ? "bg-red-50 text-red-400 h-10" :
+                      d.scheduled ? "bg-muted h-10" : "bg-muted h-7"
+                    }`}
+                  >
+                    {answered && d.done ? (
+                      <>
+                        <Check className="w-3 h-3" />
+                        <span className="text-[9px] leading-none mt-0.5">{d.dur}m</span>
+                      </>
+                    ) : answered && !d.done ? (
+                      <>
+                        <X className="w-3 h-3" />
+                        <span className="text-[9px] leading-none mt-0.5">{d.dur}m</span>
+                      </>
+                    ) : d.scheduled ? (
+                      <>
+                        <Footprints className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{d.dur}m</span>
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "40px repeat(7, 1fr)", gap: 4, textAlign: "center", fontSize: 12, alignItems: "center" }}>
-              <div style={{ fontSize: 10, color: muted, fontWeight: 500, textAlign: "right", paddingRight: 4, lineHeight: 1.2 }}>Late Dinner</div>
-              {dinnerData.map((d, i) => (
-                <div
-                  key={i}
-                  style={{
-                    height: 28,
-                    borderRadius: 4,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: !d.scheduled ? "hsl(150 15% 92%)" :
-                      d.success === true ? "#dcfce7" :
-                      d.success === false ? "#fef2f2" :
-                      "#fefce8",
-                    color: !d.scheduled ? muted :
-                      d.success === true ? "#16a34a" :
-                      d.success === false ? "#ef4444" :
-                      "#d97706",
-                  }}
-                >
-                  {d.scheduled && d.success === true && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  )}
-                  {d.scheduled && d.success === false && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  )}
-                  {d.scheduled && d.success === null && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="9" y1="18" x2="15" y2="18" /><line x1="12" y1="2" x2="12" y2="6" /><path d="M18.36 5.64l-1.41 1.41" /><path d="M5.64 5.64l1.41 1.41" /></svg>
-                  )}
-                </div>
-              ))}
+            <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
+              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">Late Dinner</div>
+              {dinnerData.map((d, i) => {
+                const isPast = i <= 2;
+                const answered = isPast && d.scheduled && d.success !== null && d.success !== undefined;
+                return (
+                  <div
+                    key={i}
+                    className={`h-7 rounded flex flex-col items-center justify-center ${
+                      !d.scheduled ? "bg-muted" :
+                      answered && d.success ? "bg-green-100 text-green-600" :
+                      answered && !d.success ? "bg-red-50 text-red-400" :
+                      d.tactic ? "bg-amber-50 text-amber-600" :
+                      "bg-muted"
+                    }`}
+                  >
+                    {!d.scheduled ? null :
+                     answered && d.success ? <Check className="w-3 h-3" /> :
+                     answered && !d.success ? <X className="w-3 h-3" /> :
+                     d.tactic ? <Lightbulb className="w-3 h-3" /> :
+                     <Soup className="w-3 h-3 text-muted-foreground" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> Done</div>
+              <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> Missed</div>
+              <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
+              <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
+              <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Tactic set</div>
             </div>
           </div>
         </Card>
