@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "_kAmXRle6n0b2pKVR4BK3"
+uri = "file://artifacts/mockup-sandbox/public/images/wonton-noodle-soup.png"
+type = "image"
+title = "generated_image"

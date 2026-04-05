@@ -1,0 +1,24 @@
+:root {
+  --background: 23 36% 93%;
+  --foreground: 168 30% 12%;
+  --border: 160 15% 85%;
+  --card: 0 0% 100%;
+  --card-foreground: 168 30% 12%;
+  --primary: 166 48% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 150 18% 90%;
+  --secondary-foreground: 168 30% 15%;
+  --muted: 150 15% 92%;
+  --muted-foreground: 168 10% 45%;
+  --accent: 38 78% 56%;
+  --accent-foreground: 30 60% 15%;
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 160 15% 82%;
+  --ring: 166 48% 35%;
+  --radius: 0.5rem;
+
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Karla', 'Inter', sans-serif;
+  --font-sans: var(--font-body);
+}
