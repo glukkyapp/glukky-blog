@@ -1,12 +1,6 @@
 import "./_group.css";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, RotateCcw } from "lucide-react";
-
-const PANELS = [
-  "🩸 Wonton noodle soup has a high glycaemic load — the alkaline noodles convert to glucose quickly.",
-  "💡 Order a side of blanched choi sum or vegetables to add fibre, which slows glucose absorption. Use only half the soy sauce packet to reduce sodium intake — high sodium can raise blood pressure, a concern that compounds with blood sugar spikes.",
-  "🔄 Try reducing the portion of noodles next time. If that's tricky, swap the alkaline noodles for thin rice vermicelli — they have a lower glycaemic index and won't spike your blood sugar as sharply.",
-];
+import { RotateCcw } from "lucide-react";
 
 export function AdviceState() {
   return (
@@ -43,7 +37,7 @@ export function AdviceState() {
           <p style={{ fontSize: 14, fontWeight: 600 }}>Your diet advice</p>
 
           <div
-            className="flex flex-col gap-5"
+            className="flex flex-col gap-4"
             style={{
               borderRadius: 16,
               border: "1px solid hsl(160 15% 85%)",
@@ -51,62 +45,39 @@ export function AdviceState() {
               padding: 20,
             }}
           >
-            <p
-              className="text-center"
-              style={{
-                fontSize: 14,
-                lineHeight: 1.6,
-                minHeight: 64,
-              }}
-            >
-              {PANELS[0]}
+            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+              🩸 Wonton noodle soup has a high glycaemic load — the alkaline
+              noodles convert to glucose quickly.
             </p>
 
-            <div className="flex items-center justify-center gap-2">
-              {PANELS.map((_, i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    backgroundColor:
-                      i === 0 ? "#127843" : "hsl(168 10% 45% / 0.3)",
-                    display: "inline-block",
-                  }}
-                />
-              ))}
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  backgroundColor: "hsl(168 10% 45% / 0.3)",
-                  display: "inline-block",
-                }}
-              />
-            </div>
+            <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 gap-1"
-                style={{ fontSize: 14 }}
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                className="flex-1"
-                style={{
-                  backgroundColor: "#127843",
-                  color: "white",
-                  fontSize: 14,
-                }}
-              >
-                Done
-              </Button>
-            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+              💡 Order a side of blanched choi sum or vegetables to add fibre,
+              which slows glucose absorption. Use only half the soy sauce packet
+              to reduce sodium intake — high sodium can raise blood pressure, a
+              concern that compounds with blood sugar spikes.
+            </p>
+
+            <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
+
+            <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+              🔄 Try reducing the portion of noodles next time. If that's
+              tricky, swap the alkaline noodles for thin rice vermicelli — they
+              have a lower glycaemic index and won't spike your blood sugar as
+              sharply.
+            </p>
+
+            <Button
+              className="w-full mt-1"
+              style={{
+                backgroundColor: "#127843",
+                color: "white",
+                fontSize: 14,
+              }}
+            >
+              Done
+            </Button>
           </div>
 
           <div className="flex justify-center">
