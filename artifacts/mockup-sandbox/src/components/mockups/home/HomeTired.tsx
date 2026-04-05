@@ -4,8 +4,6 @@ export function HomeTired() {
   const primary = "#127843";
   const muted = "hsl(168 10% 45%)";
   const bg = "hsl(23 36% 93%)";
-  const cardBg = "white";
-  const cardBorder = "hsl(160 15% 85%)";
 
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
