@@ -857,5 +857,18 @@
     },
     "loadError": "載入唔到每月報告。",
     "notEnoughWeeks": "完成至少 4 個禮拜先可以睇每月報告。"
+  },
+  "intro": {
+    "section1_title": "Glukky 專注於你嘅兩個每日習慣：",
+    "walk": "飯後散步 — 隨你步伐",
+    "diet": "每週飲食改善重點 — 唔使數卡路里",
+    "section2_title": "我哋點到幫你：",
+    "plan": "每週個人化計劃 — 配合你生活",
+    "checkin": "每日對話 — AI即時調節明天計劃",
+    "snap": "影低你食緊咩 — 獲取即時飲食建議",
+    "review": "每月回顧",
+    "master": "逐步掌握飲食技巧",
+    "wellbeing": "控糖令生活更理想",
+    "button": "出發"
   }
 }

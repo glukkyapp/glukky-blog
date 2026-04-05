@@ -15,6 +15,7 @@ import Profile from "@/pages/profile";
 import MonthlyReport from "@/pages/monthly-report";
 import Snap from "@/pages/snap";
 import HealthInfo from "@/pages/health-info";
+import AppIntro from "@/pages/app-intro";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
 import { useEffect, useState, useRef } from "react";
@@ -224,6 +225,10 @@ function AuthenticatedApp() {
 
   if (!profile || !(profile as any).onboardingComplete) {
     return <Onboarding />;
+  }
+
+  if (!(profile as any).introSeen && (profile as any).currentWeek <= 1) {
+    return <AppIntro />;
   }
 
   if (!currentPlan) {

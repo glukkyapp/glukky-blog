@@ -424,6 +424,18 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/profile/intro-seen", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.updateProfile(userId, { introSeen: true });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ introSeen: profile.introSeen });
+    } catch (error) {
+      console.error("Error updating intro seen:", error);
+      res.status(500).json({ message: "Failed to update intro seen" });
+    }
+  });
+
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

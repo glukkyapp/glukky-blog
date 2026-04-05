@@ -60,6 +60,7 @@ export const userProfiles = pgTable("user_profiles", {
   cycle3Active: boolean("cycle3_active"),
   eatOutExtendedCommitment: boolean("eat_out_extended_commitment").notNull().default(false),
   fontSizePreference: varchar("font_size_preference").notNull().default("large"),
+  introSeen: boolean("intro_seen").notNull().default(false),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

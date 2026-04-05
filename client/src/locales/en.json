@@ -853,5 +853,18 @@
     },
     "loadError": "Failed to load monthly report.",
     "notEnoughWeeks": "Complete at least 4 weeks to see your monthly report."
+  },
+  "intro": {
+    "section1_title": "Glukky focuses on Your Two Daily Habits:",
+    "walk": "Daily post-meal walks — gentle movement at your pace, no rush",
+    "diet": "One simple diet change weekly — skip complex calorie counting",
+    "section2_title": "How We Help You Get There:",
+    "plan": "Personal weekly plan — fits your real schedule perfectly",
+    "checkin": "Smart daily check-ins — AI adjusts everything instantly based on your condition and need",
+    "snap": "Photosnap — snap meals for immediate diet tips",
+    "review": "Monthly progress review — see your clear improvement",
+    "master": "Master diet skills step by step",
+    "wellbeing": "Achieve better sugar control, health and wellbeing",
+    "button": "Let's go"
   }
 }
