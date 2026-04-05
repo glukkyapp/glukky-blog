@@ -486,7 +486,7 @@ export default function Home() {
                     <div className={`w-14 h-14 rounded-full ${task.bgColor} flex items-center justify-center`}>
                       <Icon className={`w-6 h-6 ${task.color}`} />
                     </div>
-                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                    <p className="text-base text-center text-muted-foreground leading-tight">{task.text}</p>
                   </div>
                 );
               })}
