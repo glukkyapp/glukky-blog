@@ -50,7 +50,7 @@ import pigImg3 from "@assets/IMG_0612_1773846070999.PNG";
 import pigImg4 from "@assets/IMG_0613_1773846070999.PNG";
 import pigImg5 from "@assets/IMG_0614_1773846070999.PNG";
 import splashLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
-import landingLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
+import landingLogo from "@assets/high-resolution-color-logo_1775378624892.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";

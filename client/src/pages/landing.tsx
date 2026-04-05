@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import glukkyLogo from "@assets/Untitled_Artwork_15_1773938067836.png";
+import glukkyLogo from "@assets/high-resolution-color-logo_1775378624892.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -123,7 +123,7 @@ export default function Landing() {
   if (step === "lang") {
     return (
       <div
-        className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6 bg-white"
+        className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6 bg-background"
         data-testid="landing-lang-screen"
       >
         <div className="flex flex-col items-center gap-3">
@@ -216,7 +216,7 @@ export default function Landing() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-white px-6 pt-8 pb-8"
+      className="flex flex-col min-h-screen bg-background px-6 pt-8 pb-8"
       data-testid="landing-auth-screen"
     >
       <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
