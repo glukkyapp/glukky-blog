@@ -13,6 +13,8 @@ import imgSharePlate from "@assets/cropped_circle_image_(6)_1775372471300.png";
 import imgNoodle from "@assets/cropped_circle_image_(7)_1775372471300.png";
 import imgPlateMethod from "@assets/cropped_circle_image_(8)_1775372471301.png";
 import imgBowlLid from "@assets/cropped_circle_image_1775372471301.png";
+import imgGrill from "@assets/cropped_circle_image_(9)_1775374577700.png";
+import imgFoodSwap from "@assets/cropped_circle_image_(10)_1775374584626.png";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
@@ -55,6 +57,8 @@ const TIP_IMAGES: Record<string, string> = {
   "Decouple (eat at home first, socialize out)": imgNoodle,
   "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": imgPlateMethod,
   "Kitchen Closure after dinner": imgBowlLid,
+  "Choose grilled over fried": imgGrill,
+  "Food Switch": imgFoodSwap,
 };
 
 const FOOD_SWITCH_TABS = [

@@ -72,7 +72,7 @@ export default function FloatingNavBar() {
               <motion.span
                 animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
                 transition={{ duration: 0.2 }}
-                className="text-xs font-medium overflow-hidden"
+                className="text-sm font-medium overflow-hidden"
                 style={{ color: "#0D5E4F" }}
               >
                 {label}
