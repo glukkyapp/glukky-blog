@@ -57,18 +57,26 @@ export function ReviewState() {
             <FieldRow label="EXTRAS / TOPPINGS" value="Extra wontons" />
           </div>
 
-          <p
-            className="text-center"
-            style={{ fontSize: 12, color: "hsl(168 10% 45%)" }}
-          >
-            2 of 3 photo analyses left today
-          </p>
+          <div className="flex justify-center">
+            <span
+              style={{
+                fontSize: 11,
+                color: "hsl(168 10% 45%)",
+                backgroundColor: "hsl(150 15% 92%)",
+                borderRadius: 999,
+                padding: "4px 12px",
+                fontWeight: 500,
+              }}
+            >
+              2 of 3 photo analyses left today
+            </span>
+          </div>
 
           <div className="flex flex-col gap-2 pt-1">
             <Button
               className="w-full"
               style={{
-                backgroundColor: "hsl(166 48% 35%)",
+                backgroundColor: "#127843",
                 color: "white",
                 fontSize: 14,
               }}
