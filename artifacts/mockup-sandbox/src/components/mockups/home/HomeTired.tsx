@@ -100,7 +100,7 @@ export function HomeTired() {
               <path d="M12 2v6M12 22v-6M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M22 12h-6M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
             </svg>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#1d4ed8" }}>
+              <p style={{ fontSize: 21, fontWeight: 500, color: "#1d4ed8" }}>
                 We've reduced tomorrow's walk to 5 min. Stay hydrated and rest well!
               </p>
               <button
