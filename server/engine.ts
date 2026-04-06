@@ -844,6 +844,7 @@ export async function generateMonthlyReportData(userId: string) {
     struggle: string;
     successCount: number;
     tipCompletions: Record<string, number>;
+    latestCycle: number;
   }> = {};
 
   let earliestStart = "";
@@ -901,10 +902,14 @@ export async function generateMonthlyReportData(userId: string) {
 
     const struggleKey = plan.isDinnerFocus ? "late_dinner" : plan.dietStruggle;
     if (struggleKey) {
+      const planCycle = plan.isDinnerFocus ? 1 : (plan.planStruggleCycle || 1);
       if (!dietDetailMap[struggleKey]) {
-        dietDetailMap[struggleKey] = { struggle: struggleKey, successCount: 0, tipCompletions: {} };
+        dietDetailMap[struggleKey] = { struggle: struggleKey, successCount: 0, tipCompletions: {}, latestCycle: planCycle };
       }
       const detail = dietDetailMap[struggleKey];
+      if (planCycle >= detail.latestCycle) {
+        detail.latestCycle = planCycle;
+      }
 
       if (plan.isDinnerFocus) {
         const lateDinnerDays = planDays.filter(d => d.lateDinnerScheduled);
@@ -954,38 +959,41 @@ export async function generateMonthlyReportData(userId: string) {
     }
   }
 
-  const allMastered = [
-    ...((profile.masteredStruggles || []) as string[]),
-    ...((profile.masteredStruggles2 || []) as string[]),
-    ...((profile.masteredStruggles3 || []) as string[]),
-  ];
-  const allSkipped = [
-    ...((profile.skippedStruggles || []) as string[]),
-    ...((profile.skippedStruggles2 || []) as string[]),
-    ...((profile.skippedStruggles3 || []) as string[]),
-  ];
-  const allDifficult = [
-    ...((profile.difficultStruggles || []) as string[]),
-    ...((profile.difficultStruggles2 || []) as string[]),
-    ...((profile.difficultStruggles3 || []) as string[]),
-  ];
+  const cycleArrays: Record<number, { mastered: string[]; skipped: string[]; difficult: string[] }> = {
+    1: {
+      mastered: (profile.masteredStruggles || []) as string[],
+      skipped: (profile.skippedStruggles || []) as string[],
+      difficult: (profile.difficultStruggles || []) as string[],
+    },
+    2: {
+      mastered: (profile.masteredStruggles2 || []) as string[],
+      skipped: (profile.skippedStruggles2 || []) as string[],
+      difficult: (profile.difficultStruggles2 || []) as string[],
+    },
+    3: {
+      mastered: (profile.masteredStruggles3 || []) as string[],
+      skipped: (profile.skippedStruggles3 || []) as string[],
+      difficult: (profile.difficultStruggles3 || []) as string[],
+    },
+  };
 
-  function getStruggleStatus(key: string): "mastered" | "in_progress" | "moved_on" | "skipped" {
+  function getStruggleStatus(key: string, latestCycle: number): "mastered" | "in_progress" | "moved_on" | "skipped" {
     if (key === "late_dinner") {
       if (profile!.dinnerMastered) return "mastered";
       if (profile!.dinnerExitType === "moved_on") return "moved_on";
       if (profile!.dinnerExitType === "not_relevant") return "skipped";
       return "in_progress";
     }
-    if (allMastered.includes(key)) return "mastered";
-    if (allSkipped.includes(key)) return "skipped";
-    if (allDifficult.includes(key)) return "moved_on";
+    const arrays = cycleArrays[latestCycle] || cycleArrays[1];
+    if (arrays.mastered.includes(key)) return "mastered";
+    if (arrays.skipped.includes(key)) return "skipped";
+    if (arrays.difficult.includes(key)) return "moved_on";
     return "in_progress";
   }
 
   const dietDetails = Object.values(dietDetailMap).map(d => ({
     struggle: d.struggle,
-    status: getStruggleStatus(d.struggle),
+    status: getStruggleStatus(d.struggle, d.latestCycle),
     successCount: d.successCount,
     tipCompletions: Object.entries(d.tipCompletions)
       .map(([tip, yesCount]) => ({ tip, yesCount })),
