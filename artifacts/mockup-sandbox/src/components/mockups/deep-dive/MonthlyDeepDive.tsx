@@ -46,16 +46,6 @@ export function MonthlyDeepDive() {
               <StatRow label="Reduced walks given" value="2" last />
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-semibold">Completion rate</span>
-                <span className="text-xs font-bold text-primary">82%</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-primary" style={{ width: "82%" }} />
-              </div>
-            </div>
-
             <p className="text-sm text-primary italic">
               "You showed up even on hard days. That matters more than speed."
             </p>
