@@ -35,21 +35,31 @@ interface LabelForm {
   extras: string;
 }
 
-const ADVICE_PREFIXES = ["🩸", "⚠️", "💡"] as const;
-
 function parseAdvicePanels(advice: string): string[] {
   const lines = advice
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  const ordered: string[] = [];
-  for (const prefix of ADVICE_PREFIXES) {
-    const match = lines.find((l) => l.startsWith(prefix));
-    if (match) ordered.push(match);
+  const bloodSugar = lines.find((l) => l.startsWith("🩸"));
+  const watchOut = lines.find((l) => l.startsWith("⚠️"));
+  const rightNow = lines.find((l) => l.startsWith("⚡"));
+  const nextTime = lines.find((l) => l.startsWith("📝"));
+
+  const panels: string[] = [];
+
+  if (bloodSugar) panels.push(bloodSugar);
+
+  if (watchOut) panels.push(watchOut);
+
+  const adviceParts: string[] = [];
+  if (rightNow) adviceParts.push(rightNow);
+  if (nextTime) adviceParts.push(nextTime);
+  if (adviceParts.length > 0) {
+    panels.push(adviceParts.join("\n"));
   }
 
-  if (ordered.length === 3) return ordered;
+  if (panels.length >= 2) return panels;
 
   return lines.slice(0, 3);
 }
@@ -450,9 +460,11 @@ export default function Snap() {
               {isFocusPanel && focusPanelData ? (
                 <FocusPanelContent data={focusPanelData} />
               ) : (
-                <p className="text-sm leading-relaxed min-h-[64px] text-center">
-                  {panels[advicePanel] ?? ""}
-                </p>
+                <div className="text-sm leading-relaxed min-h-[64px] text-center flex flex-col gap-3">
+                  {(panels[advicePanel] ?? "").split("\n").map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
               )}
             </div>
 
