@@ -91,9 +91,9 @@ export function HomeTired() {
               display: "flex",
               alignItems: "flex-start",
               gap: 8,
-              padding: 12,
+              padding: 18,
               backgroundColor: "#eff6ff",
-              borderRadius: 8,
+              borderRadius: 12,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}>
