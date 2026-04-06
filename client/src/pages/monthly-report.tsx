@@ -37,8 +37,8 @@ export interface MonthlyReportData {
 
 const TABS = ["overview", "walking", "diet", "encouragement"] as const;
 
-function StatusBadge({ status, t }: { status: DietDetail["status"]; t: any }) {
-  const config: Record<string, { color: string; icon: any }> = {
+function StatusBadge({ status, t }: { status: DietDetail["status"]; t: (key: string) => string }) {
+  const config: Record<string, { color: string; icon: typeof Check }> = {
     mastered: { color: "text-green-600", icon: Check },
     in_progress: { color: "text-amber-600", icon: Zap },
     moved_on: { color: "text-muted-foreground", icon: CircleMinus },

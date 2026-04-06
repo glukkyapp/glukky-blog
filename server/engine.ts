@@ -855,7 +855,7 @@ export async function generateMonthlyReportData(userId: string) {
 
     const planDays = await storage.getWeeklyPlanDays(plan.id);
     const logs = await storage.getDailyLogsByWeek(userId, w, plan.startDate);
-    const startDate = typeof plan.startDate === "string" ? plan.startDate : (plan.startDate as any).toISOString().split("T")[0];
+    const startDate = typeof plan.startDate === "string" ? plan.startDate : new Date(plan.startDate).toISOString().split("T")[0];
 
     if (!earliestStart || startDate < earliestStart) earliestStart = startDate;
     const endD = new Date(startDate);
@@ -891,7 +891,10 @@ export async function generateMonthlyReportData(userId: string) {
         }
       }
 
-      if (log?.walkTired) {
+    }
+
+    for (const log of logs) {
+      if (log.walkTired) {
         tiredDays++;
       }
     }
@@ -971,6 +974,7 @@ export async function generateMonthlyReportData(userId: string) {
     if (key === "late_dinner") {
       if (profile!.dinnerMastered) return "mastered";
       if (profile!.dinnerExitType === "moved_on") return "moved_on";
+      if (profile!.dinnerExitType === "not_relevant") return "skipped";
       return "in_progress";
     }
     if (allMastered.includes(key)) return "mastered";
@@ -984,7 +988,6 @@ export async function generateMonthlyReportData(userId: string) {
     status: getStruggleStatus(d.struggle),
     successCount: d.successCount,
     tipCompletions: Object.entries(d.tipCompletions)
-      .filter(([, count]) => count > 0)
       .map(([tip, yesCount]) => ({ tip, yesCount })),
   }));
 
