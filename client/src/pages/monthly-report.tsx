@@ -37,6 +37,16 @@ export interface MonthlyReportData {
 
 const TABS = ["overview", "walking", "diet", "encouragement"] as const;
 
+function formatDateRange(raw: string, lang: string): string {
+  if (!raw || !raw.includes("|")) return raw;
+  const [startStr, endStr] = raw.split("|");
+  const locale = lang === "zh-Hant" || lang === "yue" ? "zh-TW" : lang;
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const start = new Date(startStr + "T00:00:00");
+  const end = new Date(endStr + "T00:00:00");
+  return `${start.toLocaleDateString(locale, opts)} – ${end.toLocaleDateString(locale, opts)}`;
+}
+
 function StatusBadge({ status, t }: { status: DietDetail["status"]; t: (key: string) => string }) {
   const config: Record<string, { color: string; icon: typeof Check }> = {
     mastered: { color: "text-green-600", icon: Check },
@@ -64,7 +74,7 @@ function StatRow({ label, value, testId }: { label: string; value: string | numb
 }
 
 export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReportData; monthLabel: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tabIndex, setTabIndex] = useState(0);
   const [direction, setDirection] = useState(1);
 
@@ -108,7 +118,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
             </h1>
           </div>
           <p className="text-sm text-muted-foreground -mt-2" data-testid="text-date-range">
-            {t("monthlyReport.dateRange", { range: data.dateRange })}
+            {t("monthlyReport.dateRange", { range: formatDateRange(data.dateRange, i18n.language) })}
           </p>
 
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2" data-testid="card-highlights">

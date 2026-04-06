@@ -1028,11 +1028,7 @@ export async function generateMonthlyReportData(userId: string) {
     }
   }
 
-  const fmtDate = (d: string) => {
-    const dt = new Date(d);
-    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-  const dateRange = earliestStart && latestEnd ? `${fmtDate(earliestStart)} – ${fmtDate(latestEnd)}` : "";
+  const dateRange = earliestStart && latestEnd ? `${earliestStart}|${latestEnd}` : "";
 
   return {
     walksCompleted,
