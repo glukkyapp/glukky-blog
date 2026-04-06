@@ -831,9 +831,23 @@ export async function generateMonthlyReportData(userId: string) {
   const weeksToAnalyze = Math.min(currentWeek - 1, 4);
   if (weeksToAnalyze < 1) return null;
 
-  let totalMinutes = 0;
-  const tipPerformance: Record<string, { yes: number; no: number; noChance: number }> = {};
-  const struggleStatus: Record<string, { tips: string[]; completed: boolean }> = {};
+  let totalActiveMinutes = 0;
+  let walksCompleted = 0;
+  let walksScheduled = 0;
+  let stretchesCompleted = 0;
+  let stretchesScheduled = 0;
+  let hasStretchWeeks = false;
+  let tiredDays = 0;
+  let reducedWalksGiven = 0;
+
+  const dietDetailMap: Record<string, {
+    struggle: string;
+    successCount: number;
+    tipCompletions: Record<string, number>;
+  }> = {};
+
+  let earliestStart = "";
+  let latestEnd = "";
 
   for (let w = currentWeek - weeksToAnalyze; w < currentWeek; w++) {
     const plan = await storage.getWeeklyPlan(userId, w);
@@ -841,46 +855,196 @@ export async function generateMonthlyReportData(userId: string) {
 
     const planDays = await storage.getWeeklyPlanDays(plan.id);
     const logs = await storage.getDailyLogsByWeek(userId, w, plan.startDate);
+    const startDate = typeof plan.startDate === "string" ? plan.startDate : (plan.startDate as any).toISOString().split("T")[0];
 
-    for (const log of logs) {
-      if (log.walkCompleted) {
-        const day = planDays.find(d => {
-          const logDate = new Date(log.date);
-          const dow = logDate.getDay() === 0 ? 6 : logDate.getDay() - 1;
-          return d.dayOfWeek === dow;
-        });
-        if (day) totalMinutes += day.walkDuration;
+    if (!earliestStart || startDate < earliestStart) earliestStart = startDate;
+    const endD = new Date(startDate);
+    endD.setDate(endD.getDate() + 6);
+    const endStr = endD.toISOString().split("T")[0];
+    if (!latestEnd || endStr > latestEnd) latestEnd = endStr;
+
+    const walkDays = planDays.filter(d => d.walkScheduled && !d.standingTap);
+    walksScheduled += walkDays.length;
+
+    if (plan.isStretchWeek) {
+      hasStretchWeeks = true;
+      const stretchDaysInWeek = planDays.filter(d => d.walkScheduled && d.isStretchDay && !d.standingTap);
+      stretchesScheduled += stretchDaysInWeek.length;
+    }
+
+    for (const day of walkDays) {
+      const dayDate = new Date(startDate);
+      dayDate.setDate(dayDate.getDate() + day.dayOfWeek);
+      const dateStr = dayDate.toISOString().split("T")[0];
+      const log = logs.find(l => l.date === dateStr);
+
+      if (log?.walkCompleted) {
+        walksCompleted++;
+        totalActiveMinutes += day.walkDuration;
+
+        if (day.walkDuration < plan.walkDurationGoal) {
+          reducedWalksGiven++;
+        }
+
+        if (plan.isStretchWeek && day.isStretchDay) {
+          stretchesCompleted++;
+        }
+      }
+
+      if (log?.walkTired) {
+        tiredDays++;
       }
     }
 
-    if (plan.dietTip) {
-      if (!tipPerformance[plan.dietTip]) {
-        tipPerformance[plan.dietTip] = { yes: 0, no: 0, noChance: 0 };
+    const struggleKey = plan.isDinnerFocus ? "late_dinner" : plan.dietStruggle;
+    if (struggleKey) {
+      if (!dietDetailMap[struggleKey]) {
+        dietDetailMap[struggleKey] = { struggle: struggleKey, successCount: 0, tipCompletions: {} };
       }
-      for (const log of logs) {
-        if (log.dietResponse === "yes") tipPerformance[plan.dietTip].yes++;
-        else if (log.dietResponse === "no") tipPerformance[plan.dietTip].no++;
-        else if (log.dietResponse === "no_chance") tipPerformance[plan.dietTip].noChance++;
-      }
-    }
+      const detail = dietDetailMap[struggleKey];
 
-    if (plan.dietStruggle) {
-      if (!struggleStatus[plan.dietStruggle]) {
-        const ladder = DIET_TIP_LADDERS[plan.dietStruggle] || [];
-        struggleStatus[plan.dietStruggle] = { tips: ladder, completed: false };
+      if (plan.isDinnerFocus) {
+        const lateDinnerDays = planDays.filter(d => d.lateDinnerScheduled);
+        for (const dd of lateDinnerDays) {
+          const dayDate = new Date(startDate);
+          dayDate.setDate(dayDate.getDate() + dd.dayOfWeek);
+          const dateStr = dayDate.toISOString().split("T")[0];
+          const log = logs.find(l => l.date === dateStr);
+          if (log?.dinnerSuccess === true) detail.successCount++;
+        }
+      } else if (struggleKey === "eat_out") {
+        const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
+        const startMs = new Date(startDate).getTime();
+        for (const log of logs) {
+          const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
+          if (eatOutDayIndices.has(dayIndex) && log.dietResponse === "yes") {
+            detail.successCount++;
+          }
+        }
+      } else {
+        for (const log of logs) {
+          if (log.dietResponse === "yes") detail.successCount++;
+        }
+      }
+
+      if (plan.dietTip) {
+        const tipKey = plan.dietTip;
+        if (!detail.tipCompletions[tipKey]) detail.tipCompletions[tipKey] = 0;
+
+        if (plan.isDinnerFocus) {
+          // no per-tip counting for late dinner
+        } else if (struggleKey === "eat_out") {
+          const eatOutDayIndices = new Set(planDays.filter(d => d.eatOutScheduled).map(d => d.dayOfWeek));
+          const startMs = new Date(startDate).getTime();
+          for (const log of logs) {
+            const dayIndex = Math.round((new Date(log.date).getTime() - startMs) / 86400000);
+            if (eatOutDayIndices.has(dayIndex) && log.dietResponse === "yes") {
+              detail.tipCompletions[tipKey]++;
+            }
+          }
+        } else {
+          for (const log of logs) {
+            if (log.dietResponse === "yes") detail.tipCompletions[tipKey]++;
+          }
+        }
       }
     }
   }
 
-  const mastered = (profile.masteredStruggles || []) as string[];
-  for (const s of mastered) {
-    if (struggleStatus[s]) struggleStatus[s].completed = true;
+  const allMastered = [
+    ...((profile.masteredStruggles || []) as string[]),
+    ...((profile.masteredStruggles2 || []) as string[]),
+    ...((profile.masteredStruggles3 || []) as string[]),
+  ];
+  const allSkipped = [
+    ...((profile.skippedStruggles || []) as string[]),
+    ...((profile.skippedStruggles2 || []) as string[]),
+    ...((profile.skippedStruggles3 || []) as string[]),
+  ];
+  const allDifficult = [
+    ...((profile.difficultStruggles || []) as string[]),
+    ...((profile.difficultStruggles2 || []) as string[]),
+    ...((profile.difficultStruggles3 || []) as string[]),
+  ];
+
+  function getStruggleStatus(key: string): "mastered" | "in_progress" | "moved_on" | "skipped" {
+    if (key === "late_dinner") {
+      if (profile!.dinnerMastered) return "mastered";
+      if (profile!.dinnerExitType === "moved_on") return "moved_on";
+      return "in_progress";
+    }
+    if (allMastered.includes(key)) return "mastered";
+    if (allSkipped.includes(key)) return "skipped";
+    if (allDifficult.includes(key)) return "moved_on";
+    return "in_progress";
   }
+
+  const dietDetails = Object.values(dietDetailMap).map(d => ({
+    struggle: d.struggle,
+    status: getStruggleStatus(d.struggle),
+    successCount: d.successCount,
+    tipCompletions: Object.entries(d.tipCompletions)
+      .filter(([, count]) => count > 0)
+      .map(([tip, yesCount]) => ({ tip, yesCount })),
+  }));
+
+  const walkCompletionRate = walksScheduled > 0 ? walksCompleted / walksScheduled : 0;
+  const totalDietSuccess = dietDetails.reduce((sum, d) => sum + d.successCount, 0);
+  const hasMasteredStruggle = dietDetails.some(d => d.status === "mastered");
+
+  let encourageArea: "walk" | "diet" = "walk";
+  let encouragingMessage = "";
+
+  if (hasMasteredStruggle) {
+    encourageArea = "diet";
+  } else if (walkCompletionRate >= 0.8 && totalDietSuccess < 5) {
+    encourageArea = "walk";
+  } else if (totalDietSuccess > walksCompleted) {
+    encourageArea = "diet";
+  }
+
+  if (encourageArea === "walk") {
+    if (tiredDays > 0 && walksCompleted > 0) {
+      encouragingMessage = "encourage_showed_up_tired";
+    } else if (walkCompletionRate >= 0.8) {
+      encouragingMessage = "encourage_walk_strong";
+    } else if (walksCompleted > 0) {
+      encouragingMessage = "encourage_walk_started";
+    } else {
+      encouragingMessage = "encourage_walk_next_month";
+    }
+  } else {
+    if (hasMasteredStruggle) {
+      encouragingMessage = "encourage_diet_mastered";
+    } else if (totalDietSuccess >= 10) {
+      encouragingMessage = "encourage_diet_consistent";
+    } else if (totalDietSuccess > 0) {
+      encouragingMessage = "encourage_diet_started";
+    } else {
+      encouragingMessage = "encourage_diet_next_month";
+    }
+  }
+
+  const fmtDate = (d: string) => {
+    const dt = new Date(d);
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+  const dateRange = earliestStart && latestEnd ? `${fmtDate(earliestStart)} – ${fmtDate(latestEnd)}` : "";
 
   return {
-    totalMinutes,
-    tipPerformance,
-    struggleStatus,
+    walksCompleted,
+    walksScheduled,
+    totalActiveMinutes,
+    stretchesCompleted,
+    stretchesScheduled,
+    hasStretchWeeks,
+    tiredDays,
+    reducedWalksGiven,
+    dietDetails,
+    encouragingMessage,
+    encourageArea,
+    piggyBankReward: profile.piggyBankReward || null,
+    dateRange,
     weeksAnalyzed: weeksToAnalyze,
   };
 }

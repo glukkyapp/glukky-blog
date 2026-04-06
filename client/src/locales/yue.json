@@ -817,26 +817,39 @@
   },
   "monthlyReport": {
     "title": "{{month}}月深度回顧",
-    "dietTips": {
-      "cardHeader": "本月飲食貼士",
-      "noData": "本月未有記錄飲食貼士。",
-      "followed_one": "跟咗 {{count}} 日",
-      "followed_other": "跟咗 {{count}} 日",
-      "skipped": "跳過 {{count}} 次",
-      "notPossible": "不適用 {{count}} 次",
-      "notTracked": "未有記錄"
+    "dateRange": "{{range}}",
+    "piggyBankGoal": "儲錢罐獎勵目標：「{{reward}}」",
+    "noPiggyBank": "設一個獎勵目標嚟保持動力！",
+    "walking": {
+      "cardHeader": "步行",
+      "walksCompleted": "完成步行總數",
+      "walksValue": "{{done}} / {{total}}",
+      "activeMinutes": "總活動分鐘",
+      "activeMinutesValue": "{{count}} 分鐘",
+      "stretchesCompleted": "完成伸展次數",
+      "stretchesValue": "{{done}} / {{total}}",
+      "tiredDays": "攰嘅日數",
+      "reducedWalks": "減量步行次數"
     },
-    "dietStruggles": {
-      "cardHeader": "飲食難關",
-      "mastered": "— 已掌握 ✓",
-      "followedCount": "跟從 {{count}} 次"
+    "diet": {
+      "cardHeader": "飲食進度",
+      "successCount": "跟咗 {{count}} 次",
+      "tipFollowed": "跟從 {{count}} 次",
+      "noData": "本月未有飲食資料。"
+    },
+    "status": {
+      "mastered": "已掌握",
+      "in_progress": "進行中",
+      "moved_on": "已跳過",
+      "skipped": "略過"
     },
     "struggleName": {
       "sugary_food_drink": "甜食及飲料",
       "oily_fried_food": "炸嘢",
       "eat_out": "外出用餐",
       "portions": "控制份量",
-      "snacks": "零食"
+      "snacks": "零食",
+      "late_dinner": "晚餐太晚"
     },
     "tipName": {
       "Choose sugar-free drink / Dilute juice 1:1 with water": "選擇無糖飲品/果汁加1:1清水稀釋",
@@ -850,13 +863,26 @@
       "Kitchen Closure after dinner": "晚飯後唔再食嘢",
       "Switch to edamame or nuts": "改食毛豆或堅果"
     },
-    "physicalTank": {
-      "cardHeader": "總運動量",
-      "minutes": "{{count}} 分鐘",
-      "avgPerWeek": "平均每週 {{count}} 分鐘，共 {{n}} 週"
+    "encourage": {
+      "encourage_showed_up_tired": "攰都堅持咗，呢個比速度更加重要。",
+      "encourage_walk_strong": "呢個月步行好穩定，繼續保持。",
+      "encourage_walk_started": "每一步都算數，習慣緊慢慢養成。",
+      "encourage_walk_next_month": "下個月重新開始你嘅步行習慣。",
+      "encourage_diet_mastered": "呢個月你突破咗一個飲食難關，呢個係真正嘅進步。",
+      "encourage_diet_consistent": "飲食選擇越嚟越穩定，繼續堅持。",
+      "encourage_diet_started": "你已經開始做出更好嘅飲食選擇，小步累積。",
+      "encourage_diet_next_month": "下個月，專注每日跟從你嘅飲食貼士。"
+    },
+    "tabs": {
+      "overview": "總覽",
+      "walking": "步行",
+      "diet": "飲食",
+      "encouragement": "總結"
     },
     "loadError": "載入唔到每月報告。",
-    "notEnoughWeeks": "完成至少 4 個禮拜先可以睇每月報告。"
+    "notEnoughWeeks": "完成至少 4 個禮拜先可以睇每月報告。",
+    "back": "返回",
+    "next": "下一步"
   },
   "intro": {
     "section1_title": "Glukky 專注於你嘅兩個每日習慣：",

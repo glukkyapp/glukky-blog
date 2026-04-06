@@ -1,66 +1,84 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Dumbbell, Apple, Leaf, Check, LucideIcon,
-  CupSoda, Cherry, ChefHat, Beef, House, Handshake,
-  LeafyGreen, HandPlatter, CookingPot, Nut,
+  Footprints, TrendingUp, Check, Lock, ChevronLeft, ChevronRight,
+  Sparkles, Activity, CircleMinus, Zap,
 } from "lucide-react";
 
-interface TipPerformance {
-  yes: number;
-  no: number;
-  noChance: number;
-}
-
-interface StruggleStatus {
-  tips: string[];
-  completed: boolean;
+interface DietDetail {
+  struggle: string;
+  status: "mastered" | "in_progress" | "moved_on" | "skipped";
+  successCount: number;
+  tipCompletions: { tip: string; yesCount: number }[];
 }
 
 export interface MonthlyReportData {
-  totalMinutes: number;
-  tipPerformance: Record<string, TipPerformance>;
-  struggleStatus: Record<string, StruggleStatus>;
+  walksCompleted: number;
+  walksScheduled: number;
+  totalActiveMinutes: number;
+  stretchesCompleted: number;
+  stretchesScheduled: number;
+  hasStretchWeeks: boolean;
+  tiredDays: number;
+  reducedWalksGiven: number;
+  dietDetails: DietDetail[];
+  encouragingMessage: string;
+  encourageArea: "walk" | "diet";
+  piggyBankReward: string | null;
+  dateRange: string;
   weeksAnalyzed: number;
 }
 
-const TIP_ICON_MAP: Record<string, LucideIcon> = {
-  "Choose sugar-free drink / Dilute juice 1:1 with water": CupSoda,
-  "Swap dessert for plain yogurt + berries": Cherry,
-  "Steam your food first, then sear briefly": ChefHat,
-  "Choose grilled over fried": Beef,
-  "Decouple (eat at home first, socialize out)": House,
-  "Share main dishes": Handshake,
-  "Swap sides for vegetables": LeafyGreen,
-  "Use the plate method (½ veggies, ¼ protein, ¼ carbs)": HandPlatter,
-  "Kitchen Closure after dinner": CookingPot,
-  "Switch to edamame or nuts": Nut,
-};
+const TABS = ["overview", "walking", "diet", "encouragement"] as const;
 
-function getTipIcon(tip: string): LucideIcon {
-  return TIP_ICON_MAP[tip] ?? Leaf;
+function StatusBadge({ status, t }: { status: DietDetail["status"]; t: any }) {
+  const config: Record<string, { color: string; icon: any }> = {
+    mastered: { color: "text-green-600", icon: Check },
+    in_progress: { color: "text-amber-600", icon: Zap },
+    moved_on: { color: "text-muted-foreground", icon: CircleMinus },
+    skipped: { color: "text-muted-foreground", icon: Lock },
+  };
+  const c = config[status] || config.in_progress;
+  const Icon = c.icon;
+  return (
+    <span className={`text-sm font-semibold ${c.color} flex items-center gap-1`} data-testid={`badge-status-${status}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {t(`monthlyReport.status.${status}`)}
+    </span>
+  );
 }
 
-const BUBBLE_COLORS = ["#14A085", "#22c55e", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#ec4899"];
-
-const MIN_BUBBLE = 36;
-const MAX_BUBBLE = 72;
+function StatRow({ label, value, testId }: { label: string; value: string | number; testId: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0" data-testid={testId}>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold">{value}</span>
+    </div>
+  );
+}
 
 export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReportData; monthLabel: string }) {
   const { t } = useTranslation();
-  const sortedTips = Object.entries(data.tipPerformance).sort(([, a], [, b]) => b.yes - a.yes);
-  const maxYes = sortedTips.length > 0 ? Math.max(...sortedTips.map(([, p]) => p.yes)) : 0;
+  const [tabIndex, setTabIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
 
-  function getBubbleSize(yes: number): number {
-    if (maxYes === 0) return MIN_BUBBLE;
-    return MIN_BUBBLE + (yes / maxYes) * (MAX_BUBBLE - MIN_BUBBLE);
+  function goNext() {
+    if (tabIndex < TABS.length - 1) {
+      setDirection(1);
+      setTabIndex(tabIndex + 1);
+    }
   }
-
-  function getTipDisplayName(tip: string): string {
-    const translated = t(`monthlyReport.tipName.${tip}`, { defaultValue: "" });
-    return translated || tip;
+  function goBack() {
+    if (tabIndex > 0) {
+      setDirection(-1);
+      setTabIndex(tabIndex - 1);
+    }
   }
 
   function getStruggleName(key: string): string {
@@ -68,165 +86,225 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
     return translated || key;
   }
 
-  return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-bold" data-testid="text-monthly-title">
-        {t("monthlyReport.title", { month: monthLabel })}
-      </h1>
+  function getTipDisplayName(tip: string): string {
+    const translated = t(`monthlyReport.tipName.${tip}`, { defaultValue: "" });
+    return translated || tip;
+  }
 
-      <Card data-testid="card-diet-tips">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("monthlyReport.dietTips.cardHeader")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {sortedTips.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("monthlyReport.dietTips.noData")}</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-end justify-center gap-3 mb-5" data-testid="bubble-row-tips">
-                {sortedTips.map(([tip, perf], i) => {
-                  const Icon = getTipIcon(tip);
-                  const color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
-                  const size = getBubbleSize(perf.yes);
-                  const iconSize = Math.round(size * 0.45);
+  const encourageText = t(`monthlyReport.encourage.${data.encouragingMessage}`, { defaultValue: "" }) || data.encouragingMessage;
 
-                  return (
-                    <div key={tip} className="flex flex-col items-center" data-testid={`bubble-${tip}`}>
-                      <div
-                        className="rounded-full flex items-center justify-center"
-                        style={{
-                          width: size,
-                          height: size,
-                          backgroundColor: color + "20",
-                          border: `2px solid ${color}`,
-                        }}
-                      >
-                        <Icon style={{ width: iconSize, height: iconSize, color }} />
-                      </div>
-                    </div>
-                  );
-                })}
+  function renderTab() {
+    const currentTab = TABS[tabIndex];
+
+    if (currentTab === "overview") {
+      return (
+        <div className="space-y-4" data-testid="tab-overview">
+          <div className="flex items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(152 73% 17%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+            </svg>
+            <h1 className="text-lg font-bold" data-testid="text-monthly-title">
+              {t("monthlyReport.title", { month: monthLabel })}
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-2" data-testid="text-date-range">
+            {t("monthlyReport.dateRange", { range: data.dateRange })}
+          </p>
+
+          <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2" data-testid="card-highlights">
+            {data.piggyBankReward ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-piggy-reward">
+                {t("monthlyReport.piggyBankGoal", { reward: data.piggyBankReward })}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-piggy">
+                {t("monthlyReport.noPiggyBank")}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (currentTab === "walking") {
+      return (
+        <Card data-testid="card-walking">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                <Footprints className="w-4 h-4 text-primary" />
               </div>
+              <p className="text-sm font-semibold" data-testid="text-walking-header">
+                {t("monthlyReport.walking.cardHeader")}
+              </p>
+            </div>
 
-              <div className="space-y-3">
-                {sortedTips.map(([tip, perf], i) => {
-                  const Icon = getTipIcon(tip);
-                  const color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
-                  const displayName = getTipDisplayName(tip);
+            <div className="flex flex-col">
+              <StatRow
+                label={t("monthlyReport.walking.walksCompleted")}
+                value={t("monthlyReport.walking.walksValue", { done: data.walksCompleted, total: data.walksScheduled })}
+                testId="stat-walks-completed"
+              />
+              <StatRow
+                label={t("monthlyReport.walking.activeMinutes")}
+                value={t("monthlyReport.walking.activeMinutesValue", { count: data.totalActiveMinutes })}
+                testId="stat-active-minutes"
+              />
+              {data.hasStretchWeeks && (
+                <StatRow
+                  label={t("monthlyReport.walking.stretchesCompleted")}
+                  value={t("monthlyReport.walking.stretchesValue", { done: data.stretchesCompleted, total: data.stretchesScheduled })}
+                  testId="stat-stretches"
+                />
+              )}
+              <StatRow
+                label={t("monthlyReport.walking.tiredDays")}
+                value={data.tiredDays}
+                testId="stat-tired-days"
+              />
+              <StatRow
+                label={t("monthlyReport.walking.reducedWalks")}
+                value={data.reducedWalksGiven}
+                testId="stat-reduced-walks"
+              />
+            </div>
 
-                  const followedStr = perf.yes > 0
-                    ? t("monthlyReport.dietTips.followed", { count: perf.yes })
-                    : "";
-                  const skippedStr = perf.no > 0
-                    ? t("monthlyReport.dietTips.skipped", { count: perf.no })
-                    : "";
-                  const notPossibleStr = perf.noChance > 0
-                    ? t("monthlyReport.dietTips.notPossible", { count: perf.noChance })
-                    : "";
-                  const notTrackedStr =
-                    perf.yes === 0 && perf.no === 0 && perf.noChance === 0
-                      ? t("monthlyReport.dietTips.notTracked")
-                      : "";
+            {data.encourageArea === "walk" && (
+              <p className="text-sm text-primary italic" data-testid="text-walk-encourage">
+                "{encourageText}"
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
 
-                  const parts = [followedStr, skippedStr, notPossibleStr].filter(Boolean);
-                  const statsStr = notTrackedStr || parts.join(" · ");
-
-                  return (
-                    <div key={tip} className="flex items-start gap-2.5" data-testid={`tip-item-${tip}`}>
-                      <div
-                        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
-                        style={{ backgroundColor: color + "25" }}
-                      >
-                        <Icon
-                          className="w-4 h-4"
-                          style={{ color }}
-                          data-testid={`tip-icon-${tip}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-snug">{displayName}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5" data-testid={`tip-stats-${tip}`}>
-                          {statsStr}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+    if (currentTab === "diet") {
+      return (
+        <Card data-testid="card-diet">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              <p className="text-sm font-semibold" data-testid="text-diet-header">
+                {t("monthlyReport.diet.cardHeader")}
+              </p>
+            </div>
 
-      <Card data-testid="card-diet-struggles">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("monthlyReport.dietStruggles.cardHeader")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries(data.struggleStatus).map(([struggle, info]) => {
-            const name = getStruggleName(struggle);
-            const sortedStruggleTips = [...info.tips].sort((a, b) => {
-              const aPerf = data.tipPerformance[a];
-              const bPerf = data.tipPerformance[b];
-              return (bPerf?.yes ?? 0) - (aPerf?.yes ?? 0);
-            });
-
-            return (
-              <div key={struggle} data-testid={`struggle-${struggle}`}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  {info.completed ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-600" data-testid={`struggle-mastered-${struggle}`}>
-                      <Check className="w-4 h-4" />
-                      {name} {t("monthlyReport.dietStruggles.mastered")}
-                    </span>
-                  ) : (
-                    <span className="text-sm font-semibold text-foreground">{name}</span>
-                  )}
-                </div>
-                {sortedStruggleTips.length > 0 && (
-                  <ul className="space-y-1.5 ml-1">
-                    {sortedStruggleTips.map((tip) => {
-                      const perf = data.tipPerformance[tip];
-                      const Icon = getTipIcon(tip);
-                      return (
-                        <li key={tip} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`struggle-tip-${tip}`}>
-                          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="flex-1">{getTipDisplayName(tip)}</span>
-                          {perf && perf.yes > 0 && (
-                            <span className="text-xs text-primary font-medium" data-testid={`struggle-tip-yes-${tip}`}>
-                              {t("monthlyReport.dietStruggles.followedCount", { count: perf.yes })}
+            {data.dietDetails.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-diet">{t("monthlyReport.diet.noData")}</p>
+            ) : (
+              <div className="flex flex-col">
+                {data.dietDetails.map((detail, idx) => (
+                  <div
+                    key={detail.struggle}
+                    className={`py-3 ${idx < data.dietDetails.length - 1 ? "border-b border-border" : ""}`}
+                    data-testid={`diet-detail-${detail.struggle}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{getStruggleName(detail.struggle)}</span>
+                      <StatusBadge status={detail.status} t={t} />
+                    </div>
+                    <p className="text-xs text-primary font-medium mt-1" data-testid={`diet-success-${detail.struggle}`}>
+                      {t("monthlyReport.diet.successCount", { count: detail.successCount })}
+                    </p>
+                    {detail.tipCompletions.length > 0 && (
+                      <div className="mt-2 space-y-1 ml-1">
+                        {detail.tipCompletions.map(tc => (
+                          <div key={tc.tip} className="flex items-center justify-between text-xs text-muted-foreground" data-testid={`tip-${tc.tip}`}>
+                            <span className="flex-1 truncate">{getTipDisplayName(tc.tip)}</span>
+                            <span className="text-primary font-medium ml-2 shrink-0">
+                              {t("monthlyReport.diet.tipFollowed", { count: tc.yesCount })}
                             </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+            )}
 
-      <Card data-testid="card-physical-tank">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Dumbbell className="w-4 h-4" />
-            {t("monthlyReport.physicalTank.cardHeader")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold" data-testid="text-total-minutes">
-            {t("monthlyReport.physicalTank.minutes", { count: data.totalMinutes })}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-avg-per-week">
-            {t("monthlyReport.physicalTank.avgPerWeek", {
-              count: Math.round(data.totalMinutes / data.weeksAnalyzed),
-              n: data.weeksAnalyzed,
-            })}
-          </p>
-        </CardContent>
-      </Card>
+            {data.encourageArea === "diet" && (
+              <p className="text-sm text-primary italic" data-testid="text-diet-encourage">
+                "{encourageText}"
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (currentTab === "encouragement") {
+      return (
+        <div className="space-y-4" data-testid="tab-encouragement">
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-sm font-semibold" data-testid="text-encourage-header">
+                  {data.encourageArea === "walk"
+                    ? t("monthlyReport.walking.cardHeader")
+                    : t("monthlyReport.diet.cardHeader")}
+                </p>
+              </div>
+              <p className="text-sm text-primary italic leading-relaxed" data-testid="text-encourage-message">
+                "{encourageText}"
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  const isLastTab = tabIndex === TABS.length - 1;
+
+  return (
+    <div className="space-y-4">
+      <div data-testid="progress-tabs">
+        <Progress value={((tabIndex + 1) / TABS.length) * 100} className="h-2" />
+      </div>
+
+      <AnimatePresence mode="wait" initial={false} custom={direction}>
+        <motion.div
+          key={TABS[tabIndex]}
+          custom={direction}
+          initial={{ opacity: 0, x: direction * 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: direction * -30 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+        >
+          {renderTab()}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex justify-between pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={goBack}
+          disabled={tabIndex === 0}
+          data-testid="button-back"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" /> {t("monthlyReport.back")}
+        </Button>
+
+        {!isLastTab && (
+          <Button
+            size="sm"
+            onClick={goNext}
+            data-testid="button-next"
+          >
+            {t("monthlyReport.next")} <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

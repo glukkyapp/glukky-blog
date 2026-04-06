@@ -813,26 +813,39 @@
   },
   "monthlyReport": {
     "title": "{{month}} Deep Dive",
-    "dietTips": {
-      "cardHeader": "Diet Tips This Month",
-      "noData": "No diet tips tracked this month.",
-      "followed_one": "Followed {{count}} day",
-      "followed_other": "Followed {{count}} days",
-      "skipped": "Skipped {{count}}",
-      "notPossible": "Not possible {{count}}",
-      "notTracked": "Not tracked"
+    "dateRange": "{{range}}",
+    "piggyBankGoal": "Piggy bank reward goal: \"{{reward}}\"",
+    "noPiggyBank": "Set a reward goal to stay motivated!",
+    "walking": {
+      "cardHeader": "Walking",
+      "walksCompleted": "Total walks completed",
+      "walksValue": "{{done}} of {{total}}",
+      "activeMinutes": "Total active minutes",
+      "activeMinutesValue": "{{count}} min",
+      "stretchesCompleted": "Stretches completed",
+      "stretchesValue": "{{done}} of {{total}}",
+      "tiredDays": "Tired days",
+      "reducedWalks": "Reduced walks given"
     },
-    "dietStruggles": {
-      "cardHeader": "Diet Struggles",
-      "mastered": "— Mastered ✓",
-      "followedCount": "{{count}}× followed"
+    "diet": {
+      "cardHeader": "Diet Progress",
+      "successCount": "{{count}} times followed",
+      "tipFollowed": "{{count}}× followed",
+      "noData": "No diet data this month."
+    },
+    "status": {
+      "mastered": "Mastered",
+      "in_progress": "In progress",
+      "moved_on": "Moved on",
+      "skipped": "Skipped"
     },
     "struggleName": {
       "sugary_food_drink": "Sugary Food & Drinks",
       "oily_fried_food": "Oily/Fried Food",
       "eat_out": "Eating Out",
       "portions": "Portion Control",
-      "snacks": "Snacking"
+      "snacks": "Snacking",
+      "late_dinner": "Late Dinner"
     },
     "tipName": {
       "Choose sugar-free drink / Dilute juice 1:1 with water": "Choose sugar-free drink / Dilute juice 1:1 with water",
@@ -846,13 +859,26 @@
       "Kitchen Closure after dinner": "Kitchen Closure after dinner",
       "Switch to edamame or nuts": "Switch to edamame or nuts"
     },
-    "physicalTank": {
-      "cardHeader": "Physical Tank",
-      "minutes": "{{count}} min",
-      "avgPerWeek": "{{count}} min/week average over {{n}} weeks"
+    "encourage": {
+      "encourage_showed_up_tired": "You showed up even on hard days. That matters more than speed.",
+      "encourage_walk_strong": "Your walking consistency this month was solid. Keep building on it.",
+      "encourage_walk_started": "Every walk counts. You've started building a real habit.",
+      "encourage_walk_next_month": "Next month is a fresh start for your walking routine.",
+      "encourage_diet_mastered": "You graduated a diet struggle this month. That's real progress.",
+      "encourage_diet_consistent": "Your diet choices are becoming more consistent. Stay with it.",
+      "encourage_diet_started": "You've begun making better food choices. Small steps add up.",
+      "encourage_diet_next_month": "Next month, focus on following your diet tip each day."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "walking": "Walking",
+      "diet": "Diet",
+      "encouragement": "Summary"
     },
     "loadError": "Failed to load monthly report.",
-    "notEnoughWeeks": "Complete at least 4 weeks to see your monthly report."
+    "notEnoughWeeks": "Complete at least 4 weeks to see your monthly report.",
+    "back": "Back",
+    "next": "Next"
   },
   "intro": {
     "section1_title": "Glukky focuses on Your Two Daily Habits:",
