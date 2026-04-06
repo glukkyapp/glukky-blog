@@ -73,13 +73,13 @@ export function MonthlyDeepDive() {
 
             <div className="flex flex-col">
               <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm">Oily / Fried Food</span>
+                <span className="text-sm text-muted-foreground">Oily / Fried Food</span>
                 <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> Mastered (Week 3)
                 </span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm">Sugary Food & Drink</span>
+                <span className="text-sm text-muted-foreground">Sugary Food & Drink</span>
                 <span className="text-sm font-semibold text-amber-600 flex items-center gap-1">
                   🔄 In progress
                 </span>
