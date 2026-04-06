@@ -76,12 +76,12 @@ export function ReviewState() {
             <Button
               className="w-full"
               style={{
-                backgroundColor: "#127843",
+                backgroundColor: "#f97316",
                 color: "white",
                 fontSize: 14,
               }}
             >
-              Get diet advice
+              Get diet advice now
             </Button>
             <Button
               variant="ghost"
