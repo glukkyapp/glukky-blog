@@ -277,6 +277,17 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-between text-xs text-muted-foreground" data-testid="tab-labels">
+        {TABS.map((tab, idx) => (
+          <span
+            key={tab}
+            className={idx === tabIndex ? "text-primary font-semibold" : ""}
+            data-testid={`tab-label-${tab}`}
+          >
+            {t(`monthlyReport.tabs.${tab}`)}
+          </span>
+        ))}
+      </div>
       <div data-testid="progress-tabs">
         <Progress value={((tabIndex + 1) / TABS.length) * 100} className="h-2" />
       </div>
