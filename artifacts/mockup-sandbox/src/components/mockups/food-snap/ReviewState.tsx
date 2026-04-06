@@ -74,11 +74,10 @@ export function ReviewState() {
 
           <div className="flex flex-col gap-2 pt-1">
             <Button
-              className="w-full"
+              className="w-full h-14 text-base"
               style={{
                 backgroundColor: "#f97316",
                 color: "white",
-                fontSize: 14,
               }}
             >
               Get diet advice now
