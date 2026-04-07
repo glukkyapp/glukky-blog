@@ -1721,8 +1721,8 @@ export async function registerRoutes(
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
 
-  const SNAP_LABEL_DAILY_LIMIT = 3;
-  const SNAP_ADVICE_DAILY_LIMIT = 6;
+  const SNAP_LABEL_DAILY_LIMIT = 2;
+  const SNAP_ADVICE_DAILY_LIMIT = 2;
   const snapLabelCount = new Map<string, { date: string; count: number }>();
   const snapAdviceCount = new Map<string, { date: string; count: number }>();
 
