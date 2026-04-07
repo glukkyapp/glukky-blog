@@ -50,8 +50,7 @@ export function AdviceState() {
                 🩸 Sugar Impact
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                Wonton noodle soup has a high glycaemic load — the alkaline
-                noodles convert to glucose quickly.
+                Wonton noodle soup has a high glycaemic load.
               </p>
             </div>
 
@@ -63,7 +62,7 @@ export function AdviceState() {
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
                 Order a side of blanched choi sum or vegetables to add fibre,
-                which slows glucose absorption. Use only half the soy sauce packet
+                which slows glucose absorption. Finish the veggies first. Use only half the soy sauce packet
                 to reduce sodium intake — high sodium can raise blood pressure, a
                 concern that compounds with blood sugar spikes.
               </p>
@@ -77,7 +76,7 @@ export function AdviceState() {
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
                 Try reducing the portion of noodles next time. If that's
-                tricky, swap the alkaline noodles for thin rice vermicelli — they
+                tricky, swap the alkaline noodles for bean thread vermicelli — they
                 have a lower glycaemic index and won't spike your blood sugar as
                 sharply.
               </p>

@@ -50,7 +50,7 @@ export function AdviceStateZhHant() {
                 🩸 血糖影響
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                雲吞麵的升糖指數頗高——鹼水麵會迅速轉化為葡萄糖。
+                雲吞麵的升糖指數頗高。
               </p>
             </div>
 
@@ -61,7 +61,7 @@ export function AdviceStateZhHant() {
                 💡 即時建議
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                加點灼菜心或蔬菜以增加纖維，有助減慢葡萄糖吸收。只下一半醬油，減少鈉攝入——高鈉會升高血壓，加上血糖飆升更令人擔憂。
+                加點灼菜心或蔬菜以增加纖維，有助減慢葡萄糖吸收。先吃蔬菜。只下一半醬油，減少鈉攝入——高鈉會升高血壓，加上血糖飆升更令人擔憂。
               </p>
             </div>
 
@@ -72,7 +72,7 @@ export function AdviceStateZhHant() {
                 🔄 下次建議
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                下次試試減少麵條份量。如果不容易，把鹼水麵換成幼米粉——升糖指數相對較低，血糖不會升得那麼急。
+                下次試試減少麵條份量。如果不容易，把鹼水麵換成冬粉——升糖指數相對較低，血糖不會升得那麼急。
               </p>
             </div>
 
