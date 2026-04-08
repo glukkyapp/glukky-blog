@@ -210,6 +210,35 @@ function AuthenticatedApp() {
     }
   }, [(profile as any)?.fontSizePreference]);
 
+  useEffect(() => {
+    if (!profile || !(profile as any).onboardingComplete) return;
+    if (!(window as any).natively) return;
+
+    const registerPlayerId = async () => {
+      try {
+        const push = new (window as any).NativelyPush();
+        const result = await push.getOneSignalId();
+        const playerId = result?.oneSignalId;
+        if (!playerId) return;
+
+        const cached = localStorage.getItem("glukky_onesignal_pid");
+        if (cached === playerId) return;
+
+        const resp = await fetch("/api/onesignal/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ playerId }),
+        });
+        if (resp.ok) {
+          localStorage.setItem("glukky_onesignal_pid", playerId);
+        }
+      } catch (e) {
+      }
+    };
+    registerPlayerId();
+  }, [profile && (profile as any).onboardingComplete]);
+
   if (profileLoading || (profile && planLoading)) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
