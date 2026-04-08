@@ -235,10 +235,10 @@ function AuthenticatedApp() {
       });
       if (resp.ok) {
         localStorage.setItem(cacheKey, playerId);
-      } else {
-        console.warn("[onesignal] registration failed:", resp.status);
+        return true;
       }
-      return true;
+      console.warn("[onesignal] registration failed:", resp.status);
+      return false;
     };
 
     const run = async () => {
@@ -256,7 +256,7 @@ function AuthenticatedApp() {
 
     run();
     return () => { cancelled = true; };
-  }, [profile && (profile as any).onboardingComplete]);
+  }, [profile && (profile as any).onboardingComplete, (profile as any)?.userId]);
 
   if (profileLoading || (profile && planLoading)) {
     return (
