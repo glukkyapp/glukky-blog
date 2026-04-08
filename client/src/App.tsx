@@ -213,6 +213,8 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!profile || !(profile as any).onboardingComplete) return;
 
+    if (!(window as any).natively) return;
+
     const userId = (profile as any).userId;
     const cacheKey = `glukky_onesignal_pid_${userId}`;
     let cancelled = false;
