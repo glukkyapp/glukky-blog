@@ -212,31 +212,50 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     if (!profile || !(profile as any).onboardingComplete) return;
-    if (!(window as any).natively) return;
 
-    const registerPlayerId = async () => {
-      try {
-        const push = new (window as any).NativelyPush();
-        const result = await push.getOneSignalId();
-        const playerId = result?.oneSignalId;
-        if (!playerId) return;
+    const userId = (profile as any).userId;
+    const cacheKey = `glukky_onesignal_pid_${userId}`;
+    let cancelled = false;
 
-        const cached = localStorage.getItem("glukky_onesignal_pid");
-        if (cached === playerId) return;
+    const attemptRegister = async (): Promise<boolean> => {
+      if (!(window as any).NativelyPush) return false;
+      const push = new (window as any).NativelyPush();
+      const result = await push.getOneSignalId();
+      const playerId = result?.oneSignalId;
+      if (!playerId) return false;
 
-        const resp = await fetch("/api/onesignal/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ playerId }),
-        });
-        if (resp.ok) {
-          localStorage.setItem("glukky_onesignal_pid", playerId);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached === playerId) return true;
+
+      const resp = await fetch("/api/onesignal/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ playerId }),
+      });
+      if (resp.ok) {
+        localStorage.setItem(cacheKey, playerId);
+      } else {
+        console.warn("[onesignal] registration failed:", resp.status);
+      }
+      return true;
+    };
+
+    const run = async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (cancelled) return;
+        try {
+          const done = await attemptRegister();
+          if (done) return;
+        } catch (e) {
+          console.warn("[onesignal] registration attempt error:", e);
         }
-      } catch (e) {
+        await new Promise(r => setTimeout(r, 2000));
       }
     };
-    registerPlayerId();
+
+    run();
+    return () => { cancelled = true; };
   }, [profile && (profile as any).onboardingComplete]);
 
   if (profileLoading || (profile && planLoading)) {
