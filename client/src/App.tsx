@@ -213,14 +213,12 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!profile || !(profile as any).onboardingComplete) return;
 
-    if (!(window as any).natively) return;
-
     const userId = (profile as any).userId;
     const cacheKey = `glukky_onesignal_pid_${userId}`;
     let cancelled = false;
 
     const attemptRegister = async (): Promise<boolean> => {
-      if (!(window as any).NativelyPush) return false;
+      if (!(window as any).natively || !(window as any).NativelyPush) return false;
       const push = new (window as any).NativelyPush();
       const result = await push.getOneSignalId();
       const playerId = result?.oneSignalId;
