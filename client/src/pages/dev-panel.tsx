@@ -106,11 +106,11 @@ export default function DevPanel() {
   const testNotificationMutation = useMutation({
     mutationFn: async (type: string) => {
       const res = await apiRequest("POST", "/api/dev/test-notification", { type });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to send");
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error("OneSignal delivery failed — check server logs");
       }
-      return res.json();
+      return data;
     },
     onSuccess: (_data: any, type: string) => {
       toast({ title: "Notification sent", description: `Sent "${type}" test notification` });
