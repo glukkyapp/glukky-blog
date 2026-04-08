@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
+import { sendPushNotification } from "./onesignal";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData,
@@ -1784,6 +1785,46 @@ export async function registerRoutes(
       devCoinOverrides.set(userId, n);
     }
     res.json({ coinsOverride: devCoinOverrides.get(userId) ?? null });
+  });
+
+  app.post("/api/dev/test-notification", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type } = req.body;
+      if (!["late_dinner", "sunday_planning", "reengagement"].includes(type)) {
+        return res.status(400).json({ message: "type must be late_dinner, sunday_planning, or reengagement" });
+      }
+      const profile = await storage.getProfile(userId);
+      if (!profile?.onesignalPlayerId) {
+        return res.status(400).json({ message: "No OneSignal player ID registered. Open the app in the mobile wrapper first." });
+      }
+      const payloads: Record<string, { title: string; subtitle: string; message: string; deepLink: string }> = {
+        late_dinner: {
+          title: "Glukky",
+          subtitle: "Dinner reminder",
+          message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
+          deepLink: "/",
+        },
+        sunday_planning: {
+          title: "Glukky",
+          subtitle: "Weekly review",
+          message: "Your weekly review is ready! Check your progress and plan next week.",
+          deepLink: "/plan",
+        },
+        reengagement: {
+          title: "Glukky",
+          subtitle: "We miss you!",
+          message: "Your plan is waiting — even a small step counts.",
+          deepLink: "/",
+        },
+      };
+      const payload = payloads[type];
+      const success = await sendPushNotification({ ...payload, playerIds: [profile.onesignalPlayerId] });
+      res.json({ success, type });
+    } catch (error: any) {
+      console.error("Error sending test notification:", error);
+      res.status(500).json({ message: "Failed to send test notification" });
+    }
   });
 
   app.get("/api/dev/state", isAuthenticated, isDevUser, async (req: any, res) => {

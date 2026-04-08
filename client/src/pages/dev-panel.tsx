@@ -103,6 +103,23 @@ export default function DevPanel() {
     },
   });
 
+  const testNotificationMutation = useMutation({
+    mutationFn: async (type: string) => {
+      const res = await apiRequest("POST", "/api/dev/test-notification", { type });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to send");
+      }
+      return res.json();
+    },
+    onSuccess: (_data: any, type: string) => {
+      toast({ title: "Notification sent", description: `Sent "${type}" test notification` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const [historyWeeks, setHistoryWeeks] = useState(2);
   const [walkRate, setWalkRate] = useState(70);
   const [dietRate, setDietRate] = useState(60);
@@ -323,6 +340,41 @@ export default function DevPanel() {
           >
             {setupRepickMutation.isPending ? "Setting up..." : "Setup Repick Scenario"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-blue-200 dark:border-blue-900">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">Test Push Notifications</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Send a test push notification to your device. You must have the app open in the mobile wrapper first to register your device.</p>
+          <div className="flex flex-col gap-2">
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => testNotificationMutation.mutate("late_dinner")}
+              disabled={testNotificationMutation.isPending}
+              data-testid="button-test-notif-late-dinner"
+            >
+              {testNotificationMutation.isPending ? "Sending..." : "Test Late Dinner"}
+            </Button>
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => testNotificationMutation.mutate("sunday_planning")}
+              disabled={testNotificationMutation.isPending}
+              data-testid="button-test-notif-sunday-planning"
+            >
+              {testNotificationMutation.isPending ? "Sending..." : "Test Sunday Planning"}
+            </Button>
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => testNotificationMutation.mutate("reengagement")}
+              disabled={testNotificationMutation.isPending}
+              data-testid="button-test-notif-reengagement"
+            >
+              {testNotificationMutation.isPending ? "Sending..." : "Test Re-engagement"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
