@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
+import { startNotificationScheduler } from "./notifications";
 
 const app = express();
 const httpServer = createServer(app);
@@ -96,6 +97,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      startNotificationScheduler();
     },
   );
 })();

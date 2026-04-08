@@ -436,6 +436,22 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/onesignal/register", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { playerId } = req.body;
+      if (!playerId || typeof playerId !== "string") {
+        return res.status(400).json({ message: "playerId is required" });
+      }
+      const profile = await storage.updateProfile(userId, { onesignalPlayerId: playerId });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error registering OneSignal player ID:", error);
+      res.status(500).json({ message: "Failed to register player ID" });
+    }
+  });
+
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

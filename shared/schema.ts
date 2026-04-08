@@ -61,6 +61,8 @@ export const userProfiles = pgTable("user_profiles", {
   eatOutExtendedCommitment: boolean("eat_out_extended_commitment").notNull().default(false),
   fontSizePreference: varchar("font_size_preference").notNull().default("large"),
   introSeen: boolean("intro_seen").notNull().default(false),
+  onesignalPlayerId: text("onesignal_player_id"),
+  lastReengagementNotification: timestamp("last_reengagement_notification"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
