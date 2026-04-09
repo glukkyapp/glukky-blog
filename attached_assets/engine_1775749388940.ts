@@ -1219,7 +1219,7 @@ export async function checkCycle3RepickCondition(userId: string): Promise<{
 
   const appearedSet = new Set<string>();
   for (const plan of allPlans) {
-    if (plan.dietStruggle && plan.planStruggleCycle === 2) appearedSet.add(plan.dietStruggle);
+    if (plan.dietStruggle) appearedSet.add(plan.dietStruggle);
   }
 
   const lateDinnerPickedInList = struggles2.includes("late_dinner");
