@@ -246,8 +246,8 @@ function AuthenticatedApp() {
         const id = data?.oneSignalId || data?.playerId || data?.onesignal_player_id || data?.id;
         if (id && typeof id === "string" && id.length > 10) {
           console.log("[onesignal] received player ID via message event:", id);
-          registeredViaMessage = true;
-          await registerPlayerId(id);
+          const success = await registerPlayerId(id);
+          if (success) registeredViaMessage = true;
         }
       } catch {}
     };
