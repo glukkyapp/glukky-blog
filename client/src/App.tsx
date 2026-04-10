@@ -217,18 +217,64 @@ function AuthenticatedApp() {
     const cacheKey = `glukky_onesignal_pid_${userId}`;
     let cancelled = false;
 
+    const tryGetPlayerId = async (): Promise<string | null> => {
+      const w = window as any;
+      const nativelyGlobals = Object.keys(w).filter(k =>
+        /natively|onesignal|OneSignal/i.test(k)
+      );
+      console.log("[onesignal] globals found:", nativelyGlobals.join(", ") || "none");
+
+      if (w.NativelyPush) {
+        try {
+          const push = new w.NativelyPush();
+          const result = await push.getOneSignalId();
+          console.log("[onesignal] NativelyPush.getOneSignalId:", JSON.stringify(result));
+          const id = result?.oneSignalId || result?.playerId || result?.id;
+          if (id) return id;
+        } catch (e: any) {
+          console.warn("[onesignal] NativelyPush error:", e.message);
+        }
+      }
+
+      if (w.natively) {
+        if (typeof w.natively.getOneSignalId === "function") {
+          try {
+            const result = await w.natively.getOneSignalId();
+            console.log("[onesignal] natively.getOneSignalId:", JSON.stringify(result));
+            const id = result?.oneSignalId || result?.playerId || result?.id;
+            if (id) return id;
+          } catch (e: any) {
+            console.warn("[onesignal] natively.getOneSignalId error:", e.message);
+          }
+        }
+        if (w.natively.oneSignalId) return w.natively.oneSignalId;
+        if (w.natively.playerId) return w.natively.playerId;
+        console.log("[onesignal] natively object keys:", Object.keys(w.natively).join(", "));
+      }
+
+      if (w.OneSignal) {
+        try {
+          if (typeof w.OneSignal.getUserId === "function") {
+            const id = await w.OneSignal.getUserId();
+            console.log("[onesignal] OneSignal.getUserId:", id);
+            if (id) return id;
+          }
+          if (typeof w.OneSignal.getDeviceState === "function") {
+            const state = await w.OneSignal.getDeviceState();
+            console.log("[onesignal] OneSignal.getDeviceState:", JSON.stringify(state));
+            if (state?.userId) return state.userId;
+          }
+        } catch (e: any) {
+          console.warn("[onesignal] OneSignal global error:", e.message);
+        }
+      }
+
+      return null;
+    };
+
     const attemptRegister = async (attempt: number): Promise<boolean> => {
-      const hasNatively = !!(window as any).natively;
-      const hasNativelyPush = !!(window as any).NativelyPush;
-      console.log(`[onesignal] attempt ${attempt}: natively=${hasNatively}, NativelyPush=${hasNativelyPush}`);
-
-      if (!hasNatively || !hasNativelyPush) return false;
-
-      const push = new (window as any).NativelyPush();
-      const result = await push.getOneSignalId();
-      console.log("[onesignal] getOneSignalId raw result:", JSON.stringify(result));
-
-      const playerId = result?.oneSignalId || result?.playerId || result?.id;
+      console.log(`[onesignal] attempt ${attempt}`);
+      const playerId = await tryGetPlayerId();
       console.log("[onesignal] extracted playerId:", playerId);
       if (!playerId) return false;
 
@@ -254,7 +300,7 @@ function AuthenticatedApp() {
     };
 
     const run = async () => {
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 15; attempt++) {
         if (cancelled) return;
         try {
           const done = await attemptRegister(attempt);
@@ -262,9 +308,10 @@ function AuthenticatedApp() {
         } catch (e) {
           console.warn("[onesignal] registration attempt error:", e);
         }
-        await new Promise(r => setTimeout(r, 3000));
+        const delay = Math.min(1000 + attempt * 1000, 5000);
+        await new Promise(r => setTimeout(r, delay));
       }
-      console.warn("[onesignal] all 10 attempts exhausted, player ID not registered");
+      console.warn("[onesignal] all 15 attempts exhausted, player ID not registered");
     };
 
     run();

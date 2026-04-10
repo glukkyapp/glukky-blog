@@ -425,43 +425,78 @@ function OneSignalDebugCard() {
   const probe = async () => {
     setProbing(true);
     const lines: string[] = [];
+    const w = window as any;
 
-    const hasNatively = !!(window as any).natively;
-    const hasNativelyPush = !!(window as any).NativelyPush;
+    const nativelyGlobals = Object.keys(w).filter(k =>
+      /natively|onesignal|OneSignal/i.test(k)
+    );
+    lines.push(`Related globals: ${nativelyGlobals.join(", ") || "none"}`);
+
+    const hasNatively = !!w.natively;
+    const hasNativelyPush = !!w.NativelyPush;
+    const hasOneSignal = !!w.OneSignal;
     lines.push(`window.natively: ${hasNatively ? "YES" : "NO"}`);
     lines.push(`window.NativelyPush: ${hasNativelyPush ? "YES" : "NO"}`);
+    lines.push(`window.OneSignal: ${hasOneSignal ? "YES" : "NO"}`);
 
-    if (!hasNatively && !hasNativelyPush) {
-      lines.push("⛔ Native SDK not available (not in mobile wrapper)");
+    if (!hasNatively && !hasNativelyPush && !hasOneSignal) {
+      lines.push("⛔ No native SDK globals found (not in mobile wrapper)");
       setStatus(lines);
       setProbing(false);
       return;
     }
 
-    if (!hasNativelyPush) {
-      lines.push("⛔ NativelyPush class not found");
-      setStatus(lines);
-      setProbing(false);
-      return;
-    }
+    let foundId: string | null = null;
 
-    try {
-      const push = new (window as any).NativelyPush();
-      lines.push("✅ NativelyPush instantiated");
-
-      const result = await push.getOneSignalId();
-      lines.push(`Raw result: ${JSON.stringify(result)}`);
-
-      const playerId = result?.oneSignalId || result?.playerId || result?.id;
-      if (playerId) {
-        lines.push(`✅ Player ID: ${playerId}`);
-      } else {
-        lines.push("⛔ No player ID found in result");
-        lines.push(`Keys available: ${result ? Object.keys(result).join(", ") : "null"}`);
+    if (hasNativelyPush) {
+      try {
+        const push = new w.NativelyPush();
+        lines.push("✅ NativelyPush instantiated");
+        const result = await push.getOneSignalId();
+        lines.push(`NativelyPush result: ${JSON.stringify(result)}`);
+        const id = result?.oneSignalId || result?.playerId || result?.id;
+        if (id) { foundId = id; lines.push(`✅ Player ID via NativelyPush: ${id}`); }
+        else { lines.push(`Keys: ${result ? Object.keys(result).join(", ") : "null"}`); }
+      } catch (e: any) {
+        lines.push(`⛔ NativelyPush error: ${e.message}`);
       }
-    } catch (e: any) {
-      lines.push(`⛔ Error: ${e.message}`);
     }
+
+    if (!foundId && hasNatively) {
+      lines.push(`natively keys: ${Object.keys(w.natively).join(", ")}`);
+      if (typeof w.natively.getOneSignalId === "function") {
+        try {
+          const result = await w.natively.getOneSignalId();
+          lines.push(`natively.getOneSignalId: ${JSON.stringify(result)}`);
+          const id = result?.oneSignalId || result?.playerId || result?.id;
+          if (id) { foundId = id; lines.push(`✅ Player ID via natively: ${id}`); }
+        } catch (e: any) {
+          lines.push(`⛔ natively.getOneSignalId error: ${e.message}`);
+        }
+      }
+      if (!foundId && w.natively.oneSignalId) { foundId = w.natively.oneSignalId; lines.push(`✅ natively.oneSignalId: ${foundId}`); }
+      if (!foundId && w.natively.playerId) { foundId = w.natively.playerId; lines.push(`✅ natively.playerId: ${foundId}`); }
+    }
+
+    if (!foundId && hasOneSignal) {
+      lines.push(`OneSignal keys: ${Object.keys(w.OneSignal).join(", ")}`);
+      try {
+        if (typeof w.OneSignal.getUserId === "function") {
+          const id = await w.OneSignal.getUserId();
+          lines.push(`OneSignal.getUserId: ${id}`);
+          if (id) { foundId = id; }
+        }
+        if (!foundId && typeof w.OneSignal.getDeviceState === "function") {
+          const state = await w.OneSignal.getDeviceState();
+          lines.push(`OneSignal.getDeviceState: ${JSON.stringify(state)}`);
+          if (state?.userId) { foundId = state.userId; }
+        }
+      } catch (e: any) {
+        lines.push(`⛔ OneSignal error: ${e.message}`);
+      }
+    }
+
+    if (!foundId) lines.push("⛔ Could not extract player ID from any source");
 
     try {
       const resp = await fetch("/api/dev/state", { credentials: "include" });
