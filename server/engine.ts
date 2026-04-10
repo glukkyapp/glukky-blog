@@ -358,7 +358,6 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
   }
 
   if (input.negotiationChoice === "set_rest_day") {
-    const restDayIdx = input.walkDays.length > 0 ? undefined : undefined;
     await storage.updateProfile(input.userId, { restDay: input.walkDays[0] });
   }
 

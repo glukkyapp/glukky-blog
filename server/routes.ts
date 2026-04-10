@@ -588,7 +588,7 @@ export async function registerRoutes(
                 skippedStruggles: skipped.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles: difficult.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch {}
+              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 1):", e); }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -619,7 +619,7 @@ export async function registerRoutes(
                 skippedStruggles2: skipped2.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles2: difficult2.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch {}
+              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 2):", e); }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -650,7 +650,7 @@ export async function registerRoutes(
                 skippedStruggles3: skipped3.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles3: difficult3.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch {}
+              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 3+):", e); }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
