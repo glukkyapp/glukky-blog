@@ -216,6 +216,42 @@ function AuthenticatedApp() {
     const userId = (profile as any).userId;
     const cacheKey = `glukky_onesignal_pid_${userId}`;
     let cancelled = false;
+    let registeredViaMessage = false;
+
+    const registerPlayerId = async (playerId: string): Promise<boolean> => {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached === playerId) {
+        console.log("[onesignal] already cached, skipping registration");
+        return true;
+      }
+      const resp = await fetch("/api/onesignal/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ playerId }),
+      });
+      if (resp.ok) {
+        localStorage.setItem(cacheKey, playerId);
+        console.log("[onesignal] registered successfully:", playerId);
+        return true;
+      }
+      console.warn("[onesignal] registration failed:", resp.status);
+      return false;
+    };
+
+    const onMessage = async (event: MessageEvent) => {
+      if (registeredViaMessage || cancelled) return;
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        const id = data?.oneSignalId || data?.playerId || data?.onesignal_player_id || data?.id;
+        if (id && typeof id === "string" && id.length > 10) {
+          console.log("[onesignal] received player ID via message event:", id);
+          registeredViaMessage = true;
+          await registerPlayerId(id);
+        }
+      } catch {}
+    };
+    window.addEventListener("message", onMessage);
 
     const tryGetPlayerId = async (): Promise<string | null> => {
       const w = window as any;
@@ -273,30 +309,12 @@ function AuthenticatedApp() {
     };
 
     const attemptRegister = async (attempt: number): Promise<boolean> => {
+      if (registeredViaMessage) return true;
       console.log(`[onesignal] attempt ${attempt}`);
       const playerId = await tryGetPlayerId();
       console.log("[onesignal] extracted playerId:", playerId);
       if (!playerId) return false;
-
-      const cached = localStorage.getItem(cacheKey);
-      if (cached === playerId) {
-        console.log("[onesignal] already cached, skipping registration");
-        return true;
-      }
-
-      const resp = await fetch("/api/onesignal/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ playerId }),
-      });
-      if (resp.ok) {
-        localStorage.setItem(cacheKey, playerId);
-        console.log("[onesignal] registered successfully:", playerId);
-        return true;
-      }
-      console.warn("[onesignal] registration failed:", resp.status);
-      return false;
+      return registerPlayerId(playerId);
     };
 
     const run = async () => {
@@ -315,7 +333,7 @@ function AuthenticatedApp() {
     };
 
     run();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.removeEventListener("message", onMessage); };
   }, [profile && (profile as any).onboardingComplete, (profile as any)?.userId]);
 
   if (profileLoading || (profile && planLoading)) {

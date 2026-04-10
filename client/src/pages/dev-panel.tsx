@@ -421,6 +421,24 @@ export default function DevPanel() {
 function OneSignalDebugCard() {
   const [status, setStatus] = useState<string[]>(["Checking..."]);
   const [probing, setProbing] = useState(false);
+  const [messageLog, setMessageLog] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data && typeof data === "object") {
+          const keys = Object.keys(data);
+          const relevant = keys.some(k => /onesignal|player|push|natively/i.test(k));
+          if (relevant || data.oneSignalId || data.playerId || data.onesignal_player_id) {
+            setMessageLog(prev => [...prev, `MSG: ${JSON.stringify(data)}`]);
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   const probe = async () => {
     setProbing(true);
@@ -496,7 +514,10 @@ function OneSignalDebugCard() {
       }
     }
 
-    if (!foundId) lines.push("⛔ Could not extract player ID from any source");
+    if (!foundId) {
+      lines.push("⛔ Could not extract player ID from any source");
+      lines.push("ℹ️ Also listening for message events (bridge postMessage)...");
+    }
 
     try {
       const resp = await fetch("/api/dev/state", { credentials: "include" });
@@ -522,6 +543,14 @@ function OneSignalDebugCard() {
             <p key={i} className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid={`text-onesignal-debug-${i}`}>{line}</p>
           ))}
         </div>
+        {messageLog.length > 0 && (
+          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-semibold text-green-700 dark:text-green-400">Bridge Messages Received:</p>
+            {messageLog.map((line, i) => (
+              <p key={i} className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }}>{line}</p>
+            ))}
+          </div>
+        )}
         <Button
           className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           onClick={probe}
