@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -193,11 +193,34 @@ export default function HealthInfo() {
   const { t } = useTranslation();
   const [selectedTip, setSelectedTip] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<{ activeTips: string[] }>({
-    queryKey: ["/api/health-info/diet-tips"],
+  const DIET_TIPS_CACHE_KEY = "cached_diet_tips";
+
+  const [cachedTips] = useState<{ activeTips: string[] } | undefined>(() => {
+    try {
+      const cached = localStorage.getItem(DIET_TIPS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.activeTips)) return parsed;
+      }
+    } catch {}
+    return undefined;
   });
 
-  const activeTips = data?.activeTips ?? [];
+  const { data, isLoading, isPlaceholderData } = useQuery<{ activeTips: string[] }>({
+    queryKey: ["/api/health-info/diet-tips"],
+    placeholderData: cachedTips,
+  });
+
+  useEffect(() => {
+    if (data?.activeTips && !isPlaceholderData) {
+      try {
+        localStorage.setItem(DIET_TIPS_CACHE_KEY, JSON.stringify(data));
+      } catch {}
+    }
+  }, [data, isPlaceholderData]);
+
+  const activeTips = data?.activeTips ?? cachedTips?.activeTips ?? [];
+  const hasCachedData = !!cachedTips;
 
   function handleSelect(tip: string) {
     setSelectedTip(prev => (prev === tip ? null : tip));
@@ -246,7 +269,7 @@ export default function HealthInfo() {
           {t("health_info.diet_advice_heading")}
         </h2>
 
-        {isLoading ? (
+        {isLoading && !hasCachedData ? (
           <div className="flex gap-[18px] overflow-hidden py-4 px-6">
             {[0, 1, 2].map(i => (
               <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse" style={{ width: "100px" }}>
