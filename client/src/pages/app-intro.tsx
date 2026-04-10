@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Footprints,
   UtensilsCrossed,
@@ -14,10 +16,21 @@ import {
   Heart,
   Sparkles,
   Loader2,
+  ChevronRight,
 } from "lucide-react";
+
+type IntroItem = {
+  type: "header" | "item";
+  textKey: string;
+  icon: typeof Sparkles;
+  color: string;
+  bg: string;
+};
 
 export default function AppIntro() {
   const { t } = useTranslation();
+  const [page, setPage] = useState(0);
+  const [direction, setDirection] = useState(1);
 
   const markSeen = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/profile/intro-seen"),
@@ -26,84 +39,120 @@ export default function AppIntro() {
     },
   });
 
-  const items = [
-    { type: "header" as const, textKey: "intro.section1_title", icon: Sparkles, color: "text-primary", bg: "bg-primary/10" },
-    { type: "item" as const, textKey: "intro.walk", icon: Footprints, color: "text-primary", bg: "bg-primary/10" },
-    { type: "item" as const, textKey: "intro.diet", icon: UtensilsCrossed, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { type: "header" as const, textKey: "intro.section2_title", icon: Sparkles, color: "text-emerald-600", bg: "bg-emerald-600/10" },
-    { type: "item" as const, textKey: "intro.plan", icon: CalendarDays, color: "text-primary", bg: "bg-primary/10" },
-    { type: "item" as const, textKey: "intro.checkin", icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { type: "item" as const, textKey: "intro.snap", icon: Camera, color: "text-violet-500", bg: "bg-violet-500/10" },
-    { type: "item" as const, textKey: "intro.review", icon: BarChart3, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { type: "item" as const, textKey: "intro.master", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { type: "item" as const, textKey: "intro.wellbeing", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10" },
+  const pages: IntroItem[][] = [
+    [
+      { type: "header", textKey: "intro.section1_title", icon: Sparkles, color: "text-primary", bg: "bg-primary/10" },
+      { type: "item", textKey: "intro.walk", icon: Footprints, color: "text-primary", bg: "bg-primary/10" },
+      { type: "item", textKey: "intro.diet", icon: UtensilsCrossed, color: "text-amber-500", bg: "bg-amber-500/10" },
+    ],
+    [
+      { type: "header", textKey: "intro.section2_title", icon: Sparkles, color: "text-emerald-600", bg: "bg-emerald-600/10" },
+      { type: "item", textKey: "intro.plan", icon: CalendarDays, color: "text-primary", bg: "bg-primary/10" },
+      { type: "item", textKey: "intro.checkin", icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    ],
+    [
+      { type: "item", textKey: "intro.snap", icon: Camera, color: "text-violet-500", bg: "bg-violet-500/10" },
+      { type: "item", textKey: "intro.review", icon: BarChart3, color: "text-blue-500", bg: "bg-blue-500/10" },
+    ],
+    [
+      { type: "item", textKey: "intro.master", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
+      { type: "item", textKey: "intro.wellbeing", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10" },
+    ],
   ];
 
-  const section1Items = items.slice(0, 3);
-  const section2Items = items.slice(3);
+  const isLastPage = page === pages.length - 1;
+
+  const goNext = () => {
+    if (isLastPage) return;
+    setDirection(1);
+    setPage(page + 1);
+  };
+
+  const variants = {
+    enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  };
+
+  const currentItems = pages[page];
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-8 pb-28 space-y-6" data-testid="page-app-intro">
-      <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-3">
-        {section1Items.map((item, idx) => {
-          const Icon = item.icon;
-          if (item.type === "header") {
-            return (
-              <div key={idx} className="flex items-center gap-3" data-testid="text-intro-section1-title">
-                <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-5 h-5 ${item.color}`} />
+    <div className="max-w-sm mx-auto px-4 pt-8 pb-28 flex flex-col items-center" data-testid="page-app-intro">
+      <div className="w-full min-h-[260px] flex items-start">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+          <motion.div
+            key={page}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="w-full rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-3"
+          >
+            {currentItems.map((item, idx) => {
+              const Icon = item.icon;
+              if (item.type === "header") {
+                return (
+                  <div key={idx} className="flex items-center gap-3" data-testid={`text-intro-header-${page}`}>
+                    <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-5 h-5 ${item.color}`} />
+                    </div>
+                    <p className="text-base font-bold text-foreground">{t(item.textKey)}</p>
+                  </div>
+                );
+              }
+              return (
+                <div key={idx} className="flex items-center gap-3" data-testid={`text-intro-item-${page}-${idx}`}>
+                  <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
+                    <Icon className={`w-5 h-5 ${item.color}`} />
+                  </div>
+                  <p className="text-sm text-foreground">{t(item.textKey)}</p>
                 </div>
-                <p className="text-base font-bold text-foreground">{t(item.textKey)}</p>
-              </div>
-            );
-          }
-          return (
-            <div key={idx} className="flex items-center gap-3" data-testid={`text-intro-item-${idx}`}>
-              <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                <Icon className={`w-5 h-5 ${item.color}`} />
-              </div>
-              <p className="text-sm text-foreground">{t(item.textKey)}</p>
-            </div>
-          );
-        })}
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <div className="space-y-3">
-        {section2Items.map((item, idx) => {
-          const Icon = item.icon;
-          if (item.type === "header") {
-            return (
-              <div key={idx} className="flex items-center gap-3 pt-2" data-testid="text-intro-section2-title">
-                <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-5 h-5 ${item.color}`} />
-                </div>
-                <p className="text-base font-bold text-foreground">{t(item.textKey)}</p>
-              </div>
-            );
-          }
-          return (
-            <div key={idx} className="flex items-center gap-3" data-testid={`text-intro-item-${idx + 3}`}>
-              <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                <Icon className={`w-5 h-5 ${item.color}`} />
-              </div>
-              <p className="text-sm text-foreground">{t(item.textKey)}</p>
-            </div>
-          );
-        })}
+      <div className="flex items-center gap-2 mt-6 mb-4">
+        {pages.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => { setDirection(idx > page ? 1 : -1); setPage(idx); }}
+            className={`rounded-full transition-all duration-300 ${
+              idx === page
+                ? "w-6 h-2.5 bg-primary"
+                : "w-2.5 h-2.5 bg-primary/30"
+            }`}
+            data-testid={`dot-intro-page-${idx}`}
+          />
+        ))}
       </div>
 
-      <Button
-        onClick={() => markSeen.mutate()}
-        disabled={markSeen.isPending}
-        className="w-full"
-        data-testid="button-intro-continue"
-      >
-        {markSeen.isPending ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          t("intro.button")
-        )}
-      </Button>
+      {isLastPage ? (
+        <Button
+          onClick={() => markSeen.mutate()}
+          disabled={markSeen.isPending}
+          className="w-full"
+          data-testid="button-intro-continue"
+        >
+          {markSeen.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            t("intro.button")
+          )}
+        </Button>
+      ) : (
+        <Button
+          onClick={goNext}
+          className="w-full"
+          data-testid="button-intro-next"
+        >
+          {t("intro.next")}
+          <ChevronRight className="w-4 h-4 ml-1" />
+        </Button>
+      )}
     </div>
   );
 }
