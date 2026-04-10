@@ -217,15 +217,26 @@ function AuthenticatedApp() {
     const cacheKey = `glukky_onesignal_pid_${userId}`;
     let cancelled = false;
 
-    const attemptRegister = async (): Promise<boolean> => {
-      if (!(window as any).natively || !(window as any).NativelyPush) return false;
+    const attemptRegister = async (attempt: number): Promise<boolean> => {
+      const hasNatively = !!(window as any).natively;
+      const hasNativelyPush = !!(window as any).NativelyPush;
+      console.log(`[onesignal] attempt ${attempt}: natively=${hasNatively}, NativelyPush=${hasNativelyPush}`);
+
+      if (!hasNatively || !hasNativelyPush) return false;
+
       const push = new (window as any).NativelyPush();
       const result = await push.getOneSignalId();
-      const playerId = result?.oneSignalId;
+      console.log("[onesignal] getOneSignalId raw result:", JSON.stringify(result));
+
+      const playerId = result?.oneSignalId || result?.playerId || result?.id;
+      console.log("[onesignal] extracted playerId:", playerId);
       if (!playerId) return false;
 
       const cached = localStorage.getItem(cacheKey);
-      if (cached === playerId) return true;
+      if (cached === playerId) {
+        console.log("[onesignal] already cached, skipping registration");
+        return true;
+      }
 
       const resp = await fetch("/api/onesignal/register", {
         method: "POST",
@@ -235,6 +246,7 @@ function AuthenticatedApp() {
       });
       if (resp.ok) {
         localStorage.setItem(cacheKey, playerId);
+        console.log("[onesignal] registered successfully:", playerId);
         return true;
       }
       console.warn("[onesignal] registration failed:", resp.status);
@@ -242,16 +254,17 @@ function AuthenticatedApp() {
     };
 
     const run = async () => {
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 10; attempt++) {
         if (cancelled) return;
         try {
-          const done = await attemptRegister();
+          const done = await attemptRegister(attempt);
           if (done) return;
         } catch (e) {
           console.warn("[onesignal] registration attempt error:", e);
         }
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 3000));
       }
+      console.warn("[onesignal] all 10 attempts exhausted, player ID not registered");
     };
 
     run();
