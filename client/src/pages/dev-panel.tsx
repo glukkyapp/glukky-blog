@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -351,6 +351,8 @@ export default function DevPanel() {
         </CardContent>
       </Card>
 
+      <OneSignalDebugCard />
+
       <Card className="border-blue-200 dark:border-blue-900">
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -413,5 +415,87 @@ export default function DevPanel() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function OneSignalDebugCard() {
+  const [status, setStatus] = useState<string[]>(["Checking..."]);
+  const [probing, setProbing] = useState(false);
+
+  const probe = async () => {
+    setProbing(true);
+    const lines: string[] = [];
+
+    const hasNatively = !!(window as any).natively;
+    const hasNativelyPush = !!(window as any).NativelyPush;
+    lines.push(`window.natively: ${hasNatively ? "YES" : "NO"}`);
+    lines.push(`window.NativelyPush: ${hasNativelyPush ? "YES" : "NO"}`);
+
+    if (!hasNatively && !hasNativelyPush) {
+      lines.push("⛔ Native SDK not available (not in mobile wrapper)");
+      setStatus(lines);
+      setProbing(false);
+      return;
+    }
+
+    if (!hasNativelyPush) {
+      lines.push("⛔ NativelyPush class not found");
+      setStatus(lines);
+      setProbing(false);
+      return;
+    }
+
+    try {
+      const push = new (window as any).NativelyPush();
+      lines.push("✅ NativelyPush instantiated");
+
+      const result = await push.getOneSignalId();
+      lines.push(`Raw result: ${JSON.stringify(result)}`);
+
+      const playerId = result?.oneSignalId || result?.playerId || result?.id;
+      if (playerId) {
+        lines.push(`✅ Player ID: ${playerId}`);
+      } else {
+        lines.push("⛔ No player ID found in result");
+        lines.push(`Keys available: ${result ? Object.keys(result).join(", ") : "null"}`);
+      }
+    } catch (e: any) {
+      lines.push(`⛔ Error: ${e.message}`);
+    }
+
+    try {
+      const resp = await fetch("/api/dev/state", { credentials: "include" });
+      if (resp.ok) {
+        const data = await resp.json();
+        const dbPlayerId = data?.profile?.onesignalPlayerId;
+        lines.push(`DB stored player ID: ${dbPlayerId || "NULL"}`);
+      }
+    } catch {}
+
+    setStatus(lines);
+    setProbing(false);
+  };
+
+  useEffect(() => { probe(); }, []);
+
+  return (
+    <Card className="border-purple-200 dark:border-purple-900">
+      <CardContent className="pt-4 space-y-3">
+        <p className="text-sm font-semibold text-purple-700 dark:text-purple-400">OneSignal Debug</p>
+        <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 space-y-1">
+          {status.map((line, i) => (
+            <p key={i} className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid={`text-onesignal-debug-${i}`}>{line}</p>
+          ))}
+        </div>
+        <Button
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          onClick={probe}
+          disabled={probing}
+          data-testid="button-onesignal-probe"
+        >
+          {probing ? "Probing..." : "Re-probe OneSignal"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
