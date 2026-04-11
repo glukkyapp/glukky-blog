@@ -266,10 +266,24 @@ function AuthenticatedApp() {
 
     const tryGetPlayerId = async (): Promise<string | null> => {
       const w = window as any;
-      const nativelyGlobals = Object.keys(w).filter(k =>
-        /natively|onesignal|OneSignal/i.test(k)
-      );
-      console.log("[onesignal] globals found:", nativelyGlobals.join(", ") || "none");
+
+      if (w.NativelyNotifications) {
+        try {
+          const notif = new w.NativelyNotifications();
+          const result: any = await new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve(null), 10000);
+            notif.getOneSignalId((res: any) => {
+              clearTimeout(timeout);
+              resolve(res);
+            });
+          });
+          console.log("[onesignal] NativelyNotifications.getOneSignalId callback:", JSON.stringify(result));
+          const id = result?.playerId || result?.oneSignalId || result?.id;
+          if (id) return id;
+        } catch (e: any) {
+          console.warn("[onesignal] NativelyNotifications error:", e.message);
+        }
+      }
 
       if (w.NativelyPush) {
         try {
@@ -283,33 +297,12 @@ function AuthenticatedApp() {
         }
       }
 
-      if (w.natively) {
-        if (typeof w.natively.getOneSignalId === "function") {
-          try {
-            const result = await w.natively.getOneSignalId();
-            console.log("[onesignal] natively.getOneSignalId:", JSON.stringify(result));
-            const id = result?.oneSignalId || result?.playerId || result?.id;
-            if (id) return id;
-          } catch (e: any) {
-            console.warn("[onesignal] natively.getOneSignalId error:", e.message);
-          }
-        }
-        if (w.natively.oneSignalId) return w.natively.oneSignalId;
-        if (w.natively.playerId) return w.natively.playerId;
-        console.log("[onesignal] natively object keys:", Object.keys(w.natively).join(", "));
-      }
-
       if (w.OneSignal) {
         try {
           if (typeof w.OneSignal.getUserId === "function") {
             const id = await w.OneSignal.getUserId();
             console.log("[onesignal] OneSignal.getUserId:", id);
             if (id) return id;
-          }
-          if (typeof w.OneSignal.getDeviceState === "function") {
-            const state = await w.OneSignal.getDeviceState();
-            console.log("[onesignal] OneSignal.getDeviceState:", JSON.stringify(state));
-            if (state?.userId) return state.userId;
           }
         } catch (e: any) {
           console.warn("[onesignal] OneSignal global error:", e.message);

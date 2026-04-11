@@ -1,0 +1,28 @@
+Related globals: nativelyOnLoad, natively, NativelyAdmobBanner, NativelyAdmobInterstitial, NativelyAppleSignInService, NativelyAudioRecorder, NativelyBiometrics, NativelyCamera, NativelyClipboard, NativelyContacts, NativelyDatePicker, NativelyGeolocation, NativelyHealth, NativelyInfo, NativelyLocation, NativelyMediaPicker, NativelyMessage, NativelyNFCService, NativelyNotifications, NativelyPurchases, NativelyScanner, NativelyStorage, NativelyCalendar, NativelyFirebaseNotifications, NativelyKlaviyoNotifications, onesignal_playerid_response_mnu1x0bk1hewi497gom
+window.natively: YES
+window.NativelyPush: NO
+window.OneSignal: NO
+natively keys: isDebug, min_app_version, app_version, injected, observers, onNativeError, onTabChanged, isIOSApp, isAndroidApp
+NativelyFirebaseNotifications methods: firebase_get_token, firebase_get_apns_token, firebase_request_permission, firebase_has_permission, firebase_subscribe_to_topic, firebase_unsubscribe_from_topic
+NativelyFirebaseNotifications props: id
+fb.firebase_get_token() => undefined
+fb.firebase_get_apns_token() => undefined
+fb.firebase_subscribe_to_topic() => undefined
+fb.firebase_unsubscribe_from_topic() => undefined
+natively.observers type: object
+natively.observers keys: empty
+nativelyOnLoad type: function
+nativelyOnLoad is already a function — wrapping to also probe
+nativelyOnLoad: not triggered within 5s (SDK already loaded?)
+NativelyNotifications methods: getOneSignalId, requestPermission, getPermissionStatus, getExternalId, setExternalId, removeExternalId
+NativelyNotifications props: id
+notif.id BEFORE call: "mnu1x8p1l923h8l6a38"
+getOneSignalId() direct return: undefined
+getOneSignalId() return type: undefined
+getOneSignalId(fn callback) result: {"playerId":"1e862f9e-f9bd-4ff1-afd0-b8cee756eba1"}
+✅ Player ID via fn callback: 1e862f9e-f9bd-4ff1-afd0-b8cee756eba1
+getOneSignalId({callback}): not called within 5s
+notif.id AFTER 3s delay: "mnu1x8p1l923h8l6a38"
+notif props after delay: {"id":"mnu1x8p1l923h8l6a38"}
+observers keys after calls: empty
+DB stored player ID: NULL
