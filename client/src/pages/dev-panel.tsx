@@ -540,6 +540,31 @@ function OneSignalDebugCard() {
       lines.push("NativelyFirebaseNotifications: NOT FOUND");
     }
 
+    if (w.natively?.observers) {
+      const obs = w.natively.observers;
+      const obsType = typeof obs;
+      lines.push(`natively.observers type: ${obsType}`);
+      if (obsType === "object" && obs !== null) {
+        const obsKeys = Object.keys(obs);
+        lines.push(`natively.observers keys: ${obsKeys.join(", ") || "empty"}`);
+        for (const k of obsKeys) {
+          const v = obs[k];
+          lines.push(`  observers.${k}: ${typeof v} = ${typeof v === "function" ? "[fn]" : JSON.stringify(v)?.slice(0, 120)}`);
+        }
+      }
+    } else {
+      lines.push("natively.observers: NOT FOUND");
+    }
+
+    if (w.nativelyOnLoad) {
+      lines.push(`nativelyOnLoad type: ${typeof w.nativelyOnLoad}`);
+      if (typeof w.nativelyOnLoad === "function") {
+        lines.push("nativelyOnLoad is a function (may be a ready callback)");
+      }
+    } else {
+      lines.push("nativelyOnLoad: NOT FOUND");
+    }
+
     if (w.NativelyNotifications) {
       try {
         const notif = new w.NativelyNotifications();
@@ -547,18 +572,67 @@ function OneSignalDebugCard() {
         const notifOwn = Object.keys(notif);
         lines.push(`NativelyNotifications methods: ${notifProto.filter((k: string) => k !== "constructor").join(", ") || "none"}`);
         if (notifOwn.length) lines.push(`NativelyNotifications props: ${notifOwn.join(", ")}`);
-        for (const method of notifProto.filter((k: string) => k !== "constructor")) {
-          if (/token|id|device|player|register|subscribe|permission/i.test(method)) {
-            try {
-              const res = await (notif as any)[method]();
-              lines.push(`notif.${method}() => ${JSON.stringify(res)}`);
-              const tid = res?.token || res?.deviceToken || res?.id || res?.playerId || res?.oneSignalId;
-              if (tid && !foundId) { foundId = tid; lines.push(`✅ Token via notif.${method}: ${tid}`); }
-            } catch (e: any) {
-              lines.push(`notif.${method}() error: ${e.message}`);
+
+        lines.push(`notif.id BEFORE call: ${JSON.stringify(notif.id)}`);
+
+        const directResult = notif.getOneSignalId();
+        lines.push(`getOneSignalId() direct return: ${JSON.stringify(directResult)}`);
+        lines.push(`getOneSignalId() return type: ${typeof directResult}`);
+        if (directResult && typeof directResult === "object" && typeof directResult.then === "function") {
+          lines.push("Return is a Promise — awaiting...");
+          try {
+            const resolved = await directResult;
+            lines.push(`Promise resolved: ${JSON.stringify(resolved)}`);
+          } catch (e: any) {
+            lines.push(`Promise rejected: ${e.message}`);
+          }
+        }
+
+        let callbackResult: any = null;
+        try {
+          const cbPromise = new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve("__timeout__"), 5000);
+            notif.getOneSignalId((result: any) => {
+              clearTimeout(timeout);
+              resolve(result);
+            });
+          });
+          callbackResult = await cbPromise;
+          if (callbackResult === "__timeout__") {
+            lines.push("getOneSignalId(callback): callback not called within 5s");
+          } else {
+            lines.push(`getOneSignalId(callback) result: ${JSON.stringify(callbackResult)}`);
+            const cid = callbackResult?.oneSignalId || callbackResult?.playerId || callbackResult?.id || (typeof callbackResult === "string" ? callbackResult : null);
+            if (cid) { foundId = cid; lines.push(`✅ Player ID via callback: ${cid}`); }
+          }
+        } catch (e: any) {
+          lines.push(`getOneSignalId(callback) error: ${e.message}`);
+        }
+
+        if (!foundId) {
+          await new Promise(r => setTimeout(r, 3000));
+          lines.push(`notif.id AFTER 3s delay: ${JSON.stringify(notif.id)}`);
+          const afterKeys = Object.keys(notif);
+          const afterVals: Record<string, any> = {};
+          for (const k of afterKeys) { afterVals[k] = notif[k]; }
+          lines.push(`notif props after delay: ${JSON.stringify(afterVals)}`);
+          if (notif.id && typeof notif.id === "string" && notif.id.length > 10) {
+            foundId = notif.id;
+            lines.push(`✅ Player ID via notif.id after delay: ${foundId}`);
+          }
+        }
+
+        if (!foundId && w.natively?.observers) {
+          const obsAfter = Object.keys(w.natively.observers);
+          lines.push(`observers keys after calls: ${obsAfter.join(", ") || "empty"}`);
+          for (const k of obsAfter) {
+            const v = w.natively.observers[k];
+            if (typeof v === "string" && v.length > 10) {
+              lines.push(`  observers.${k} = ${v}`);
             }
           }
         }
+
       } catch (e: any) {
         lines.push(`⛔ NativelyNotifications error: ${e.message}`);
       }
