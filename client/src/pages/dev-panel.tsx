@@ -549,17 +549,50 @@ function OneSignalDebugCard() {
         lines.push(`natively.observers keys: ${obsKeys.join(", ") || "empty"}`);
         for (const k of obsKeys) {
           const v = obs[k];
-          lines.push(`  observers.${k}: ${typeof v} = ${typeof v === "function" ? "[fn]" : JSON.stringify(v)?.slice(0, 120)}`);
+          let vStr: string;
+          try { vStr = typeof v === "function" ? "[fn]" : JSON.stringify(v)?.slice(0, 120) ?? "undefined"; } catch { vStr = "[non-serializable]"; }
+          lines.push(`  observers.${k}: ${typeof v} = ${vStr}`);
         }
       }
     } else {
       lines.push("natively.observers: NOT FOUND");
     }
 
-    if (w.nativelyOnLoad) {
+    if (w.nativelyOnLoad !== undefined) {
       lines.push(`nativelyOnLoad type: ${typeof w.nativelyOnLoad}`);
       if (typeof w.nativelyOnLoad === "function") {
-        lines.push("nativelyOnLoad is a function (may be a ready callback)");
+        lines.push("nativelyOnLoad is already a function — wrapping to also probe");
+        const origOnLoad = w.nativelyOnLoad;
+        try {
+          const onLoadPromise = new Promise<string>((resolve) => {
+            const timeout = setTimeout(() => resolve("__timeout__"), 5000);
+            w.nativelyOnLoad = () => {
+              try { origOnLoad(); } catch {}
+              clearTimeout(timeout);
+              if (w.NativelyNotifications) {
+                const n2 = new w.NativelyNotifications();
+                n2.getOneSignalId((res: any) => {
+                  resolve(typeof res === "string" ? res : JSON.stringify(res));
+                });
+                setTimeout(() => { resolve(n2.id || "__no_id_after_onload__"); }, 3000);
+              } else {
+                resolve("__no_NativelyNotifications__");
+              }
+            };
+          });
+          const onLoadResult = await onLoadPromise;
+          if (onLoadResult === "__timeout__") {
+            lines.push("nativelyOnLoad: not triggered within 5s (SDK already loaded?)");
+          } else {
+            lines.push(`nativelyOnLoad probe result: ${onLoadResult}`);
+          }
+          w.nativelyOnLoad = origOnLoad;
+        } catch (e: any) {
+          lines.push(`nativelyOnLoad probe error: ${e.message}`);
+          w.nativelyOnLoad = origOnLoad;
+        }
+      } else {
+        lines.push(`nativelyOnLoad value: ${typeof w.nativelyOnLoad}`);
       }
     } else {
       lines.push("nativelyOnLoad: NOT FOUND");
@@ -599,14 +632,36 @@ function OneSignalDebugCard() {
           });
           callbackResult = await cbPromise;
           if (callbackResult === "__timeout__") {
-            lines.push("getOneSignalId(callback): callback not called within 5s");
+            lines.push("getOneSignalId(fn callback): not called within 5s");
           } else {
-            lines.push(`getOneSignalId(callback) result: ${JSON.stringify(callbackResult)}`);
+            lines.push(`getOneSignalId(fn callback) result: ${JSON.stringify(callbackResult)}`);
             const cid = callbackResult?.oneSignalId || callbackResult?.playerId || callbackResult?.id || (typeof callbackResult === "string" ? callbackResult : null);
-            if (cid) { foundId = cid; lines.push(`✅ Player ID via callback: ${cid}`); }
+            if (cid) { foundId = cid; lines.push(`✅ Player ID via fn callback: ${cid}`); }
           }
         } catch (e: any) {
-          lines.push(`getOneSignalId(callback) error: ${e.message}`);
+          lines.push(`getOneSignalId(fn callback) error: ${e.message}`);
+        }
+
+        if (!foundId) {
+          try {
+            const objCbPromise = new Promise((resolve) => {
+              const timeout = setTimeout(() => resolve("__timeout__"), 5000);
+              notif.getOneSignalId({ callback: (result: any) => {
+                clearTimeout(timeout);
+                resolve(result);
+              }});
+            });
+            const objCbResult = await objCbPromise;
+            if (objCbResult === "__timeout__") {
+              lines.push("getOneSignalId({callback}): not called within 5s");
+            } else {
+              lines.push(`getOneSignalId({callback}) result: ${JSON.stringify(objCbResult)}`);
+              const cid2 = (objCbResult as any)?.oneSignalId || (objCbResult as any)?.playerId || (objCbResult as any)?.id || (typeof objCbResult === "string" ? objCbResult : null);
+              if (cid2) { foundId = cid2; lines.push(`✅ Player ID via {callback}: ${cid2}`); }
+            }
+          } catch (e: any) {
+            lines.push(`getOneSignalId({callback}) error: ${e.message}`);
+          }
         }
 
         if (!foundId) {
@@ -614,8 +669,8 @@ function OneSignalDebugCard() {
           lines.push(`notif.id AFTER 3s delay: ${JSON.stringify(notif.id)}`);
           const afterKeys = Object.keys(notif);
           const afterVals: Record<string, any> = {};
-          for (const k of afterKeys) { afterVals[k] = notif[k]; }
-          lines.push(`notif props after delay: ${JSON.stringify(afterVals)}`);
+          for (const k of afterKeys) { try { afterVals[k] = notif[k]; } catch { afterVals[k] = "[error]"; } }
+          try { lines.push(`notif props after delay: ${JSON.stringify(afterVals)}`); } catch { lines.push("notif props after delay: [non-serializable]"); }
           if (notif.id && typeof notif.id === "string" && notif.id.length > 10) {
             foundId = notif.id;
             lines.push(`✅ Player ID via notif.id after delay: ${foundId}`);
