@@ -514,6 +514,58 @@ function OneSignalDebugCard() {
       }
     }
 
+    if (w.NativelyFirebaseNotifications) {
+      try {
+        const fb = new w.NativelyFirebaseNotifications();
+        const fbProto = Object.getOwnPropertyNames(Object.getPrototypeOf(fb));
+        const fbOwn = Object.keys(fb);
+        lines.push(`NativelyFirebaseNotifications methods: ${fbProto.filter((k: string) => k !== "constructor").join(", ") || "none"}`);
+        if (fbOwn.length) lines.push(`NativelyFirebaseNotifications props: ${fbOwn.join(", ")}`);
+        for (const method of fbProto.filter((k: string) => k !== "constructor")) {
+          if (/token|id|device|player|register|subscribe/i.test(method)) {
+            try {
+              const res = await (fb as any)[method]();
+              lines.push(`fb.${method}() => ${JSON.stringify(res)}`);
+              const tid = res?.token || res?.deviceToken || res?.id || res?.playerId || res?.oneSignalId;
+              if (tid && !foundId) { foundId = tid; lines.push(`✅ Token via fb.${method}: ${tid}`); }
+            } catch (e: any) {
+              lines.push(`fb.${method}() error: ${e.message}`);
+            }
+          }
+        }
+      } catch (e: any) {
+        lines.push(`⛔ NativelyFirebaseNotifications error: ${e.message}`);
+      }
+    } else {
+      lines.push("NativelyFirebaseNotifications: NOT FOUND");
+    }
+
+    if (w.NativelyNotifications) {
+      try {
+        const notif = new w.NativelyNotifications();
+        const notifProto = Object.getOwnPropertyNames(Object.getPrototypeOf(notif));
+        const notifOwn = Object.keys(notif);
+        lines.push(`NativelyNotifications methods: ${notifProto.filter((k: string) => k !== "constructor").join(", ") || "none"}`);
+        if (notifOwn.length) lines.push(`NativelyNotifications props: ${notifOwn.join(", ")}`);
+        for (const method of notifProto.filter((k: string) => k !== "constructor")) {
+          if (/token|id|device|player|register|subscribe|permission/i.test(method)) {
+            try {
+              const res = await (notif as any)[method]();
+              lines.push(`notif.${method}() => ${JSON.stringify(res)}`);
+              const tid = res?.token || res?.deviceToken || res?.id || res?.playerId || res?.oneSignalId;
+              if (tid && !foundId) { foundId = tid; lines.push(`✅ Token via notif.${method}: ${tid}`); }
+            } catch (e: any) {
+              lines.push(`notif.${method}() error: ${e.message}`);
+            }
+          }
+        }
+      } catch (e: any) {
+        lines.push(`⛔ NativelyNotifications error: ${e.message}`);
+      }
+    } else {
+      lines.push("NativelyNotifications: NOT FOUND");
+    }
+
     if (!foundId) {
       lines.push("⛔ Could not extract player ID from any source");
       lines.push("ℹ️ Also listening for message events (bridge postMessage)...");
