@@ -31,7 +31,7 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
 
     const body = {
       app_id: ONESIGNAL_APP_ID,
-      include_player_ids: batch,
+      include_subscription_ids: batch,
       headings: { en: payload.title },
       subtitle: { en: payload.subtitle },
       contents: { en: payload.message },
@@ -39,23 +39,31 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
       data: { deepLink: payload.deepLink },
     };
 
+    log(`Sending notification to ${batch.length} subscription(s): ${JSON.stringify(batch)}`, "onesignal");
+
     try {
       const response = await fetch(ONESIGNAL_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Key ${ONESIGNAL_REST_API_KEY}`,
+          "Authorization": `Basic ${ONESIGNAL_REST_API_KEY}`,
         },
         body: JSON.stringify(body),
       });
 
+      const responseText = await response.text();
+      log(`OneSignal response (${response.status}): ${responseText}`, "onesignal");
+
       if (!response.ok) {
-        const errorText = await response.text();
-        log(`OneSignal API error (${response.status}): ${errorText}`, "onesignal");
         totalSuccess = false;
       } else {
-        const result = await response.json();
-        log(`Notification sent to ${batch.length} users: ${result.id}`, "onesignal");
+        try {
+          const result = JSON.parse(responseText);
+          if (result.errors && result.errors.length > 0) {
+            log(`OneSignal reported errors: ${JSON.stringify(result.errors)}`, "onesignal");
+            totalSuccess = false;
+          }
+        } catch {}
       }
     } catch (error: any) {
       log(`OneSignal request failed: ${error.message}`, "onesignal");

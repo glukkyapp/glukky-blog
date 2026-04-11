@@ -1,13 +1,18 @@
 import { useEffect } from "react";
 
+const BOUNCE_WRAPPER_ID = "bounce-scroll-wrapper";
+
+export { BOUNCE_WRAPPER_ID };
+
 export function useBounceScroll() {
   useEffect(() => {
     let startY = 0;
     let currentTranslate = 0;
     let isDragging = false;
-    const maxBounce = 80;
+    const maxBounce = 120;
     const resistance = 0.35;
-    const el = document.documentElement;
+
+    const getEl = () => document.getElementById(BOUNCE_WRAPPER_ID);
 
     const isAtTop = () => window.scrollY <= 0;
     const isAtBottom = () =>
@@ -20,6 +25,8 @@ export function useBounceScroll() {
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      const el = getEl();
+      if (!el) return;
       const deltaY = e.touches[0].clientY - startY;
 
       if (deltaY > 0 && isAtTop()) {
@@ -39,6 +46,8 @@ export function useBounceScroll() {
 
     const onTouchEnd = () => {
       if (!isDragging) return;
+      const el = getEl();
+      if (!el) return;
       isDragging = false;
       currentTranslate = 0;
       el.style.transition = "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
@@ -53,8 +62,11 @@ export function useBounceScroll() {
       document.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
-      el.style.transform = "";
-      el.style.transition = "";
+      const el = getEl();
+      if (el) {
+        el.style.transform = "";
+        el.style.transition = "";
+      }
     };
   }, []);
 }
