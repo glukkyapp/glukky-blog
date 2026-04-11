@@ -1,39 +1,42 @@
-type ImpactIntensity = "LIGHT" | "MEDIUM" | "HEAVY";
-type NotificationType = "SUCCESS" | "ERROR" | "WARNING";
+type ImpactIntensity = "light" | "medium" | "heavy" | "LIGHT" | "MEDIUM" | "HEAVY";
+type NotificationType = "success" | "error" | "warning" | "SUCCESS" | "ERROR" | "WARNING";
 
-interface NativelyHaptics {
-  hapticImpactIOS(intensity: ImpactIntensity): void;
-  hapticNotificationIOS(type: NotificationType): void;
-  hapticPatternIOS(pattern: string, delay: number): void;
+interface NativelyInstance {
+  hapticImpact(type: string): void;
+  hapticNotification(type: string): void;
+  hapticPattern(pattern: string, delay: number): void;
 }
 
 declare global {
   interface Window {
-    natively?: NativelyHaptics;
+    Natively?: new () => NativelyInstance;
   }
 }
 
-function getNatively(): NativelyHaptics | undefined {
-  if (typeof window !== "undefined") {
-    return window.natively;
+let nativelyInstance: NativelyInstance | undefined;
+
+function getNatively(): NativelyInstance | undefined {
+  if (nativelyInstance) return nativelyInstance;
+  if (typeof window !== "undefined" && window.Natively) {
+    nativelyInstance = new window.Natively();
   }
-  return undefined;
+  return nativelyInstance;
 }
 
-export function hapticTap(intensity: ImpactIntensity = "LIGHT") {
+export function hapticTap(intensity: ImpactIntensity = "light") {
   try {
-    getNatively()?.hapticImpactIOS(intensity);
+    getNatively()?.hapticImpact(intensity.toLowerCase());
   } catch {}
 }
 
-export function hapticNotify(type: NotificationType = "SUCCESS") {
+export function hapticNotify(type: NotificationType = "success") {
   try {
-    getNatively()?.hapticNotificationIOS(type);
+    getNatively()?.hapticNotification(type.toLowerCase());
   } catch {}
 }
 
 export function hapticPattern(pattern: string = "..oO-Oo..", delay: number = 80) {
   try {
-    getNatively()?.hapticPatternIOS(pattern, delay);
+    getNatively()?.hapticPattern(pattern, delay);
   } catch {}
 }
