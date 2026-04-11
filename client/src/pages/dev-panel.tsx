@@ -595,7 +595,34 @@ function OneSignalDebugCard() {
         lines.push(`nativelyOnLoad value: ${typeof w.nativelyOnLoad}`);
       }
     } else {
-      lines.push("nativelyOnLoad: NOT FOUND");
+      lines.push("nativelyOnLoad: NOT FOUND — registering temp handler");
+      try {
+        const onLoadPromise = new Promise<string>((resolve) => {
+          const timeout = setTimeout(() => resolve("__timeout__"), 5000);
+          w.nativelyOnLoad = () => {
+            clearTimeout(timeout);
+            if (w.NativelyNotifications) {
+              const n2 = new w.NativelyNotifications();
+              n2.getOneSignalId((res: any) => {
+                resolve(typeof res === "string" ? res : JSON.stringify(res));
+              });
+              setTimeout(() => { resolve(n2.id || "__no_id_after_onload__"); }, 3000);
+            } else {
+              resolve("__no_NativelyNotifications__");
+            }
+          };
+        });
+        const onLoadResult = await onLoadPromise;
+        if (onLoadResult === "__timeout__") {
+          lines.push("nativelyOnLoad handler: not triggered within 5s (SDK already loaded)");
+        } else {
+          lines.push(`nativelyOnLoad handler result: ${onLoadResult}`);
+        }
+        delete w.nativelyOnLoad;
+      } catch (e: any) {
+        lines.push(`nativelyOnLoad handler error: ${e.message}`);
+        delete w.nativelyOnLoad;
+      }
     }
 
     if (w.NativelyNotifications) {
