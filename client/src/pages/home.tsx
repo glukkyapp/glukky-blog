@@ -1190,82 +1190,6 @@ export default function Home() {
     return true;
   }
 
-  function renderCheckInSummary() {
-    const items: { label: string; value: string; positive: boolean }[] = [];
-
-    if (todayPlan?.walkScheduled) {
-      if (todayPlan?.standingTap) {
-        items.push({
-          label: t("home.standing_tap_label"),
-          value: todayLog?.walkCompleted ? t("home.completed") : t("home.skipped"),
-          positive: !!todayLog?.walkCompleted,
-        });
-        items.push({
-          label: t("home.duration_label"),
-          value: t("home.duration_min", { duration: 1 }),
-          positive: true,
-        });
-      } else {
-        const chkStretch = isDayStretch(todayPlan, profile);
-        const chkDur = chkStretch ? 2 : todayPlan?.walkDuration;
-        items.push({
-          label: chkStretch ? t("home.stretch_after_dinner") : t("home.walk_after_dinner"),
-          value: todayLog?.walkCompleted ? t("home.completed") : t("home.skipped"),
-          positive: !!todayLog?.walkCompleted,
-        });
-        items.push({
-          label: t("home.duration_label"),
-          value: t("home.duration_min", { duration: chkDur }),
-          positive: true,
-        });
-        items.push({
-          label: t("home.feeling_tired_label"),
-          value: todayLog?.walkTired ? t("common.tired_yes") : t("common.tired_no"),
-          positive: !todayLog?.walkTired,
-        });
-      }
-    }
-
-    if (isLateDinnerDay && dinnerLabelSet) {
-      const tacticName = todayPlan?.dinnerLabel === "move_early"
-        ? t("home.early_dinner")
-        : (DINNER_LABEL_SHORT[todayPlan?.dinnerLabel] || todayPlan?.dinnerLabel);
-      items.push({
-        label: t("home.late_dinner_tactic", { tactic: tacticName }),
-        value: todayLog?.dinnerSuccess ? t("home.followed") : t("home.not_followed"),
-        positive: !!todayLog?.dinnerSuccess,
-      });
-    }
-
-    if (calendarPlan?.dietTip) {
-      const struggleName = calendarPlan.dietStruggle ? t(`struggle.${calendarPlan.dietStruggle}`, { defaultValue: calendarPlan.dietStruggle.replace(/_/g, " ") }) : t("home.diet_row");
-      const dietVal = todayLog?.dietResponse === "yes" ? t("common.yes") :
-                      todayLog?.dietResponse === "no" ? t("common.no") : t("home.didnt_get_chance");
-      items.push({
-        label: t("home.diet_tactic_for", { struggle: struggleName }),
-        value: dietVal,
-        positive: todayLog?.dietResponse === "yes",
-      });
-    }
-
-    return (
-      <div className="space-y-2" data-testid="section-checkin-summary">
-        <div className="flex items-center gap-2 mb-2">
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
-          <p className="text-sm font-semibold text-green-700 dark:text-green-400">{t("home.checkin_complete")}</p>
-        </div>
-        {items.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-            <span className="text-sm text-muted-foreground">{item.label}</span>
-            <span className={`text-sm font-medium ${item.positive ? "text-green-600" : "text-red-500"}`}>
-              {item.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   function renderCheckInCard() {
     const is2pmOnly = show2pmWindow && !show10pmWindow;
     const is10pm = show10pmWindow;
@@ -1294,33 +1218,25 @@ export default function Home() {
 
     if (allDone) {
       return (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date">
-              <span className="font-semibold text-foreground">{t("home.today")}</span> — {formatDate()}
-            </div>
-
-            {hydrationAdvice && (
-              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-summary">
-                <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-xs mt-1 text-blue-600"
-                    onClick={() => setHydrationAdvice(null)}
-                    data-testid="button-dismiss-hydration-summary"
-                  >
-                    {t("home.got_it")}
-                  </Button>
-                </div>
+        <>
+          {hydrationAdvice && (
+            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-summary">
+              <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs mt-1 text-blue-600"
+                  onClick={() => setHydrationAdvice(null)}
+                  data-testid="button-dismiss-hydration-summary"
+                >
+                  {t("home.got_it")}
+                </Button>
               </div>
-            )}
-
-            {renderCheckInSummary()}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </>
       );
     }
 
