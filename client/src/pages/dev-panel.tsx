@@ -642,49 +642,45 @@ function OneSignalDebugCard() {
           lines.push(`getOneSignalId(fn callback) error: ${e.message}`);
         }
 
-        if (!foundId) {
-          try {
-            const objCbPromise = new Promise((resolve) => {
-              const timeout = setTimeout(() => resolve("__timeout__"), 5000);
-              notif.getOneSignalId({ callback: (result: any) => {
-                clearTimeout(timeout);
-                resolve(result);
-              }});
-            });
-            const objCbResult = await objCbPromise;
-            if (objCbResult === "__timeout__") {
-              lines.push("getOneSignalId({callback}): not called within 5s");
-            } else {
-              lines.push(`getOneSignalId({callback}) result: ${JSON.stringify(objCbResult)}`);
-              const cid2 = (objCbResult as any)?.oneSignalId || (objCbResult as any)?.playerId || (objCbResult as any)?.id || (typeof objCbResult === "string" ? objCbResult : null);
-              if (cid2) { foundId = cid2; lines.push(`✅ Player ID via {callback}: ${cid2}`); }
-            }
-          } catch (e: any) {
-            lines.push(`getOneSignalId({callback}) error: ${e.message}`);
+        try {
+          const objCbPromise = new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve("__timeout__"), 5000);
+            notif.getOneSignalId({ callback: (result: any) => {
+              clearTimeout(timeout);
+              resolve(result);
+            }});
+          });
+          const objCbResult = await objCbPromise;
+          if (objCbResult === "__timeout__") {
+            lines.push("getOneSignalId({callback}): not called within 5s");
+          } else {
+            lines.push(`getOneSignalId({callback}) result: ${JSON.stringify(objCbResult)}`);
+            const cid2 = (objCbResult as any)?.oneSignalId || (objCbResult as any)?.playerId || (objCbResult as any)?.id || (typeof objCbResult === "string" ? objCbResult : null);
+            if (cid2 && !foundId) { foundId = cid2; lines.push(`✅ Player ID via {callback}: ${cid2}`); }
           }
+        } catch (e: any) {
+          lines.push(`getOneSignalId({callback}) error: ${e.message}`);
         }
 
-        if (!foundId) {
-          await new Promise(r => setTimeout(r, 3000));
-          lines.push(`notif.id AFTER 3s delay: ${JSON.stringify(notif.id)}`);
-          const afterKeys = Object.keys(notif);
-          const afterVals: Record<string, any> = {};
-          for (const k of afterKeys) { try { afterVals[k] = notif[k]; } catch { afterVals[k] = "[error]"; } }
-          try { lines.push(`notif props after delay: ${JSON.stringify(afterVals)}`); } catch { lines.push("notif props after delay: [non-serializable]"); }
-          if (notif.id && typeof notif.id === "string" && notif.id.length > 10) {
-            foundId = notif.id;
-            lines.push(`✅ Player ID via notif.id after delay: ${foundId}`);
-          }
+        await new Promise(r => setTimeout(r, 3000));
+        lines.push(`notif.id AFTER 3s delay: ${JSON.stringify(notif.id)}`);
+        const afterKeys = Object.keys(notif);
+        const afterVals: Record<string, any> = {};
+        for (const k of afterKeys) { try { afterVals[k] = notif[k]; } catch { afterVals[k] = "[error]"; } }
+        try { lines.push(`notif props after delay: ${JSON.stringify(afterVals)}`); } catch { lines.push("notif props after delay: [non-serializable]"); }
+        if (notif.id && typeof notif.id === "string" && notif.id.length > 10 && !foundId) {
+          foundId = notif.id;
+          lines.push(`✅ Player ID via notif.id after delay: ${foundId}`);
         }
 
-        if (!foundId && w.natively?.observers) {
+        if (w.natively?.observers) {
           const obsAfter = Object.keys(w.natively.observers);
           lines.push(`observers keys after calls: ${obsAfter.join(", ") || "empty"}`);
           for (const k of obsAfter) {
             const v = w.natively.observers[k];
-            if (typeof v === "string" && v.length > 10) {
-              lines.push(`  observers.${k} = ${v}`);
-            }
+            let vStr: string;
+            try { vStr = typeof v === "function" ? "[fn]" : typeof v === "string" ? v : JSON.stringify(v)?.slice(0, 120) ?? "undefined"; } catch { vStr = "[non-serializable]"; }
+            lines.push(`  observers.${k} = ${vStr}`);
           }
         }
 
