@@ -1635,6 +1635,7 @@ export default function Home() {
           <button
             className="flex items-center justify-between w-full"
             onClick={() => setCalendarExpanded(prev => !prev)}
+            aria-expanded={calendarExpanded}
             data-testid="button-toggle-calendar"
           >
             <p className="text-sm font-semibold" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
