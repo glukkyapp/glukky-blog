@@ -289,7 +289,7 @@ export default function Home() {
 
   const logMutation = useMutation({
     mutationFn: async (data: any) => {
-      hapticTap("MEDIUM");
+      hapticTap("LIGHT");
       const res = await apiRequest("POST", "/api/log", { date: checkInDate, ...data });
       return res.json();
     },
@@ -342,7 +342,7 @@ export default function Home() {
 
   const catchupMutation = useMutation({
     mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null; dietResponse?: string | null }) => {
-      hapticTap("MEDIUM");
+      hapticTap("LIGHT");
       const res = await apiRequest("POST", "/api/log", data);
       return res.json();
     },
@@ -383,7 +383,7 @@ export default function Home() {
 
   const dinnerLabelMutation = useMutation({
     mutationFn: async (data: { planDayId: number; label: string }) => {
-      hapticTap("MEDIUM");
+      hapticTap("LIGHT");
       const res = await apiRequest("POST", "/api/plan/dinner-label", data);
       return res.json();
     },
@@ -398,7 +398,6 @@ export default function Home() {
   });
 
   function handleDinnerMoveEarly(canMove: boolean) {
-    hapticTap("MEDIUM");
     if (!todayPlan?.planDayId) return;
     if (canMove) {
       dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
@@ -408,7 +407,6 @@ export default function Home() {
   }
 
   function handleTacticPick(tactic: string) {
-    hapticTap("MEDIUM");
     if (!todayPlan?.planDayId) return;
     dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: tactic });
     setShowTacticPicker(false);
@@ -1642,7 +1640,7 @@ export default function Home() {
             </p>
             <Button
               size="sm"
-              onClick={() => { hapticTap("SOFT"); setLocation("/plan"); }}
+              onClick={() => { hapticTap("LIGHT"); setLocation("/plan"); }}
               data-testid="button-go-to-planner"
             >
               {t("home.review_plan")}
