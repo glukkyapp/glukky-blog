@@ -300,7 +300,7 @@ export default function Snap() {
           <div className="flex gap-4">
             <button
               onClick={() => { hapticTap("MEDIUM"); cameraInputRef.current?.click(); }}
-              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
               data-testid="button-snap-camera"
             >
               <Camera className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
@@ -311,7 +311,7 @@ export default function Snap() {
 
             <button
               onClick={() => { hapticTap("MEDIUM"); albumInputRef.current?.click(); }}
-              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
               data-testid="button-snap-album"
             >
               <Images className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
@@ -431,7 +431,7 @@ export default function Snap() {
             <Button
               onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
               disabled={!form.name.trim()}
-              className="w-full"
+              className="w-full btn-pop"
               data-testid="button-snap-get-advice"
             >
               {t("snap.get_advice")}

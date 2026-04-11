@@ -158,7 +158,7 @@ function GlobalPiggyBankPopup() {
               }}
             />
             <Button
-              className="w-full"
+              className="w-full btn-pop"
               onClick={() => rewardMutation.mutate(rewardInput.trim())}
               disabled={!rewardInput.trim() || rewardMutation.isPending}
               data-testid="button-save-reward-global"

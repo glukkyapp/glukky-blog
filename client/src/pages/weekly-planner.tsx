@@ -2389,7 +2389,7 @@ export default function WeeklyPlanner() {
             return (
               <>
                 <Button
-                  className="w-full mt-4"
+                  className="w-full mt-4 btn-pop"
                   onClick={() => { hapticTap("MEDIUM"); createPlanMutation.mutate(); }}
                   disabled={createPlanMutation.isPending || eatOutCommitGateActive}
                   data-testid="button-confirm-plan"
@@ -2791,6 +2791,7 @@ export default function WeeklyPlanner() {
         {!isLastStep && (
           <Button
             size="sm"
+            className="btn-pop"
             onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
             disabled={
               currentStepId === "repick" ||

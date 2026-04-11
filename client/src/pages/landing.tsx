@@ -213,7 +213,7 @@ export default function Landing() {
           <div className="flex justify-center">
             <Button
               onClick={handleSlideNext}
-              className="rounded-full px-10 py-3 text-white text-base font-semibold"
+              className="rounded-full px-10 py-3 text-white text-base font-semibold btn-pop"
               style={{ backgroundColor: "#127843", borderColor: "#127843" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
             >
@@ -315,7 +315,7 @@ export default function Landing() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full text-white mt-1"
+          className="w-full text-white mt-1 btn-pop"
           style={{ backgroundColor: "#127843", borderColor: "#127843" }}
           data-testid="button-submit"
         >

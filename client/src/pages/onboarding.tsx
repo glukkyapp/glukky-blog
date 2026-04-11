@@ -316,11 +316,11 @@ export default function Onboarding() {
         )}
 
         {step < TOTAL_STEPS ? (
-          <Button onClick={handleNext} disabled={isNextDisabled()} data-testid="button-next">
+          <Button onClick={handleNext} disabled={isNextDisabled()} className="btn-pop" data-testid="button-next">
             {t("onboarding.next")}
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={submitting} data-testid="button-get-started">
+          <Button onClick={handleSubmit} disabled={submitting} className="btn-pop" data-testid="button-get-started">
             {submitting ? t("onboarding.saving") : t("onboarding.get_started")}
           </Button>
         )}

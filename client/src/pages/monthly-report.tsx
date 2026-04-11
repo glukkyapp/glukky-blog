@@ -322,6 +322,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
         {!isLastTab && (
           <Button
             size="sm"
+            className="btn-pop"
             onClick={goNext}
             data-testid="button-next"
           >

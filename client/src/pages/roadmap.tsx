@@ -341,7 +341,7 @@ function PiggyBankCard({ data, isDev }: {
             {isFull && (
               <Button
                 onClick={() => { hapticTap("MEDIUM"); window.dispatchEvent(new Event("piggy-open-congrats")); }}
-                className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white"
+                className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white btn-pop"
                 data-testid="button-claim-reward"
               >
                 <Gift className="h-4 w-4 mr-2" />

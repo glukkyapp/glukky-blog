@@ -1565,7 +1565,7 @@ export default function Home() {
             )}
             <Button
               size="sm"
-              className="w-full"
+              className="w-full btn-pop"
               onClick={async () => {
                 if (singleMissedDay.lateDinnerScheduled && (!singleMissedDay.dinnerLabel || singleMissedDay.dinnerLabel === "none")) {
                   if (catchupDinnerChoice === "early" && singleMissedDay.planDayId) {

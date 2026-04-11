@@ -134,7 +134,7 @@ export default function AppIntro() {
         <Button
           onClick={() => markSeen.mutate()}
           disabled={markSeen.isPending}
-          className="w-full"
+          className="w-full btn-pop"
           data-testid="button-intro-continue"
         >
           {markSeen.isPending ? (
@@ -146,7 +146,7 @@ export default function AppIntro() {
       ) : (
         <Button
           onClick={goNext}
-          className="w-full"
+          className="w-full btn-pop"
           data-testid="button-intro-next"
         >
           {t("intro.next")}
