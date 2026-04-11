@@ -36,7 +36,7 @@ export default function FloatingNavBar() {
   return (
     <nav
       className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
-      style={{ width: "calc(100vw - 32px)", maxWidth: "500px", height: "80px" }}
+      style={{ width: "calc(100vw - 32px)", maxWidth: "500px", height: "58px" }}
       data-testid="nav-floating-bar"
     >
       <div
@@ -74,7 +74,7 @@ export default function FloatingNavBar() {
               <motion.span
                 animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
                 transition={{ duration: 0.2 }}
-                className="text-sm font-medium overflow-hidden"
+                className="text-xs font-medium overflow-hidden leading-tight"
                 style={{ color: "#0D5E4F" }}
               >
                 {label}
