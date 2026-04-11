@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
+import { useBounceScroll } from "@/hooks/use-bounce-scroll";
 
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
@@ -205,6 +206,8 @@ function AuthenticatedApp() {
     queryKey: ["/api/plan/current"],
     enabled: !!profile,
   });
+
+  useBounceScroll();
 
   useEffect(() => {
     if ((profile as any)?.preferredLanguage) {
