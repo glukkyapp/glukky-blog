@@ -45,13 +45,13 @@ export function useInfoSheet() {
   const [config, setConfig] = useState<InfoSheetConfig | null>(null);
 
   function openSheet(cfg: InfoSheetConfig) {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setConfig(cfg);
     setOpen(true);
   }
 
   function closeSheet() {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setOpen(false);
   }
 

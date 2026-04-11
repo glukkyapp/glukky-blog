@@ -132,6 +132,27 @@ async function sendReengagementReminder() {
   });
 }
 
+async function sendDailyCheckInReminder() {
+  const users = await getRegisteredUsers();
+  const playerIds = users
+    .map(u => u.onesignalPlayerId)
+    .filter((id): id is string => id !== null);
+
+  if (playerIds.length === 0) {
+    log("Daily check-in reminder: no registered users", "notifications");
+    return;
+  }
+
+  log(`Daily check-in reminder: sending to ${playerIds.length} users`, "notifications");
+  await sendPushNotification({
+    title: "Glukky",
+    subtitle: "Daily check-in",
+    message: "How did today go? Tap to log your check-in before bed 🌙",
+    deepLink: "/",
+    playerIds,
+  });
+}
+
 let lastRunHour = -1;
 let lastRunDate = "";
 
@@ -167,6 +188,13 @@ export function startNotificationScheduler() {
         lastRunDate = dateStr;
         log("Running 10 PM Sunday check: planning reminder", "notifications");
         await sendSundayPlanningReminder();
+      }
+
+      if (hour === 22 && dayOfWeek !== 0) {
+        lastRunHour = hour;
+        lastRunDate = dateStr;
+        log("Running 10 PM daily check-in reminder (non-Sunday)", "notifications");
+        await sendDailyCheckInReminder();
       }
     } catch (error: any) {
       log(`Notification scheduler error: ${error.message}`, "notifications");

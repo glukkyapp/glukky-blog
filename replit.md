@@ -39,10 +39,11 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 ## Push Notifications (OneSignal)
 Server-side push notifications via OneSignal REST API. Mobile wrapper (BuildNatively) handles the SDK side.
 
-**3 Notifications:**
+**4 Notifications:**
 1. **Late Dinner Reminder** — 2 PM daily, only users with `lateDinnerScheduled = true` today. Deep link: `/`
 2. **Sunday Planning Reminder** — 10 PM every Sunday, all registered users. Deep link: `/plan`
 3. **Re-engagement** — 6 PM daily, users inactive 3+ days with 3-day cooldown. Deep link: `/`
+4. **Daily Check-In Reminder** — 10 PM daily (except Sunday), all registered users. Deep link: `/`
 
 **DB columns:** `onesignal_player_id` (text), `last_reengagement_notification` (timestamp) on `user_profiles`
 **API:** POST `/api/onesignal/register` — stores player ID from BuildNatively JS bridge

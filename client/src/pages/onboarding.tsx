@@ -42,12 +42,12 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setDirection("forward");
     setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
   const handleBack = () => {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setDirection("backward");
     setStep((s) => Math.max(s - 1, 1));
   };
@@ -86,7 +86,7 @@ export default function Onboarding() {
   };
 
   const toggleStruggle = (value: string) => {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setSelectedStruggles((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
@@ -121,7 +121,7 @@ export default function Onboarding() {
       key={value}
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("LIGHT"); onSelect(value); }}
+      onClick={() => { hapticTap("SOFT"); onSelect(value); }}
       className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
         selected === value
           ? "border-primary bg-primary/10 text-foreground"

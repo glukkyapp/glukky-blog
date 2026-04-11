@@ -100,7 +100,7 @@ export function InfoCardPopup({
             ) : null}
             <Button
               className="flex-1"
-              onClick={() => { hapticTap("LIGHT"); onDismiss(); }}
+              onClick={() => { hapticTap("SOFT"); onDismiss(); }}
               data-testid="button-info-card-got-it"
             >
               {t("info_card.got_it")}

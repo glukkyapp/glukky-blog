@@ -28,7 +28,7 @@ export default function FloatingNavBar() {
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
 
   const handleNavClick = (path: string) => {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     setActivePath(path);
     setLocation(path);
   };

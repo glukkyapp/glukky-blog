@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
-import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { hapticNotify } from "@/lib/haptics";
 
 interface ProfileData {
   name: string | null;
@@ -107,7 +107,6 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
 
   const saveHba1c = () => {
     if (!editingHba1c) return;
-    hapticTap("MEDIUM");
     setEditingHba1c(false);
     const parsed = parseFloat(hba1cValue);
     const value = isNaN(parsed) ? null : parsed;
@@ -116,7 +115,6 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
 
   const saveDate = () => {
     if (!editingDate) return;
-    hapticTap("MEDIUM");
     setEditingDate(false);
     const value = dateValue || null;
     mutation.mutate({ bloodTestDate: value });
@@ -149,7 +147,7 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
           ) : (
             <button
               className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
-              onClick={() => { hapticTap("LIGHT"); setEditingHba1c(true); setHba1cValue(profile.hba1cLevel?.toString() ?? ""); }}
+              onClick={() => { setEditingHba1c(true); setHba1cValue(profile.hba1cLevel?.toString() ?? ""); }}
               data-testid="button-edit-hba1c"
             >
               {profile.hba1cLevel != null ? `${profile.hba1cLevel}%` : t("profile.tap_to_add")}
@@ -172,7 +170,7 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
           ) : (
             <button
               className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
-              onClick={() => { hapticTap("LIGHT"); setEditingDate(true); setDateValue(profile.bloodTestDate ?? ""); }}
+              onClick={() => { setEditingDate(true); setDateValue(profile.bloodTestDate ?? ""); }}
               data-testid="button-edit-blood-test-date"
             >
               {profile.bloodTestDate ?? t("profile.tap_to_add")}
@@ -209,7 +207,6 @@ function LanguageCard({ currentLang }: { currentLang: string }) {
   });
 
   const handleLangChange = (lang: string) => {
-    hapticTap("LIGHT");
     i18n.changeLanguage(lang);
     langMutation.mutate(lang);
   };
@@ -268,7 +265,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
       <CardContent>
         <div className="flex gap-2">
           <button
-            onClick={() => { hapticTap("LIGHT"); fontSizeMutation.mutate("small"); }}
+            onClick={() => { fontSizeMutation.mutate("small"); }}
             data-testid="button-font-small"
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "small"
@@ -279,7 +276,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
             {t("profile.font_small")}
           </button>
           <button
-            onClick={() => { hapticTap("LIGHT"); fontSizeMutation.mutate("large"); }}
+            onClick={() => { fontSizeMutation.mutate("large"); }}
             data-testid="button-font-large"
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "large"
@@ -320,14 +317,12 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
 
   const saveName = () => {
     if (!editingName) return;
-    hapticTap("MEDIUM");
     setEditingName(false);
     mutation.mutate({ name: nameValue.trim() || null });
   };
 
   const saveGoal = () => {
     if (!editingGoal) return;
-    hapticTap("MEDIUM");
     setEditingGoal(false);
     mutation.mutate({ goal: goalValue.trim() || null });
   };
@@ -355,7 +350,7 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
           ) : (
             <button
               className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
-              onClick={() => { hapticTap("LIGHT"); setEditingName(true); setNameValue(profile.name ?? ""); }}
+              onClick={() => { setEditingName(true); setNameValue(profile.name ?? ""); }}
               data-testid="button-edit-name"
             >
               {profile.name ?? t("profile.tap_to_add_name")}
@@ -377,7 +372,7 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
           ) : (
             <button
               className="flex items-center gap-1 text-sm hover:text-primary transition-colors text-right"
-              onClick={() => { hapticTap("LIGHT"); setEditingGoal(true); setGoalValue(profile.goal ?? ""); }}
+              onClick={() => { setEditingGoal(true); setGoalValue(profile.goal ?? ""); }}
               data-testid="button-edit-goal"
             >
               <span className="text-right">{profile.goal ?? t("profile.tap_to_add_goal")}</span>

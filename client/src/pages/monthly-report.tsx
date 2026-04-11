@@ -80,14 +80,14 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
   const [direction, setDirection] = useState(1);
 
   function goNext() {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     if (tabIndex < TABS.length - 1) {
       setDirection(1);
       setTabIndex(tabIndex + 1);
     }
   }
   function goBack() {
-    hapticTap("LIGHT");
+    hapticTap("SOFT");
     if (tabIndex > 0) {
       setDirection(-1);
       setTabIndex(tabIndex - 1);

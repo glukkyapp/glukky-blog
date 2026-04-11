@@ -105,7 +105,7 @@ export function FoodSwitchPopup({ visible, onDismiss }: FoodSwitchPopupProps) {
             ) : null}
             <Button
               className="flex-1"
-              onClick={() => { hapticTap("LIGHT"); onDismiss(); }}
+              onClick={() => { hapticTap("SOFT"); onDismiss(); }}
               data-testid="button-food-switch-got-it"
             >
               {t("info_card.got_it")}

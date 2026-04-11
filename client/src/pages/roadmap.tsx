@@ -102,7 +102,7 @@ function JourneySection({ cycleHistory, t }: {
   return (
     <div className="space-y-2">
       <button
-        onClick={() => { hapticTap("LIGHT"); setOpen(o => !o); }}
+        onClick={() => { hapticTap("SOFT"); setOpen(o => !o); }}
         className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-full text-left"
         data-testid="button-toggle-journey"
       >
@@ -120,7 +120,7 @@ function JourneySection({ cycleHistory, t }: {
               <div key={entry.id} data-testid={`card-journey-cycle-${entry.cycleNumber}`}>
                 <button
                   className="flex items-center justify-between w-full text-left py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  onClick={() => { hapticTap("LIGHT"); toggleCycle(entry.cycleNumber); }}
+                  onClick={() => { hapticTap("SOFT"); toggleCycle(entry.cycleNumber); }}
                   data-testid={`button-journey-cycle-${entry.cycleNumber}`}
                 >
                   <span className="text-sm font-medium">
@@ -330,7 +330,7 @@ function PiggyBankCard({ data, isDev }: {
               <div className="w-full mt-2">
                 <button
                   className="text-xs text-primary underline underline-offset-2"
-                  onClick={() => { hapticTap("LIGHT"); window.dispatchEvent(new Event("piggy-open-reward")); }}
+                  onClick={() => { hapticTap("SOFT"); window.dispatchEvent(new Event("piggy-open-reward")); }}
                   data-testid="button-set-reward"
                 >
                   {t("roadmap.tap_set_reward")}

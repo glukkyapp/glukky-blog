@@ -438,7 +438,7 @@ export default function Snap() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => { hapticTap("LIGHT"); reset(); }}
+              onClick={() => { hapticTap("SOFT"); reset(); }}
               className="w-full text-muted-foreground gap-1.5"
               data-testid="button-snap-try-again"
             >
@@ -483,7 +483,7 @@ export default function Snap() {
                 {Array.from({ length: totalPanels }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => { hapticTap("LIGHT"); setAdvicePanel(i); }}
+                    onClick={() => { hapticTap("SOFT"); setAdvicePanel(i); }}
                     data-testid={`dot-snap-advice-${i}`}
                     className={`w-2 h-2 rounded-full transition-colors ${
                       i === advicePanel
@@ -501,7 +501,7 @@ export default function Snap() {
                 <Button
                   variant="outline"
                   className="flex-1 gap-1"
-                  onClick={() => { hapticTap("LIGHT"); setAdvicePanel((p) => p + 1); }}
+                  onClick={() => { hapticTap("SOFT"); setAdvicePanel((p) => p + 1); }}
                   data-testid="button-snap-advice-next"
                 >
                   {t("snap.next")}
@@ -510,7 +510,7 @@ export default function Snap() {
               ) : null}
               <Button
                 className="flex-1"
-                onClick={() => { hapticTap("LIGHT"); reset(); }}
+                onClick={() => { hapticTap("SOFT"); reset(); }}
                 data-testid="button-snap-advice-done"
               >
                 {t("snap.done")}
@@ -529,7 +529,7 @@ export default function Snap() {
 
           <Button
             variant="ghost"
-            onClick={() => { hapticTap("LIGHT"); reset(); }}
+            onClick={() => { hapticTap("SOFT"); reset(); }}
             className="w-full text-muted-foreground gap-1.5"
             data-testid="button-snap-new-photo"
           >
