@@ -5,6 +5,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { hapticTap } from "@/lib/haptics";
 
 export interface InfoSheetConfig {
   title: string;
@@ -44,11 +45,13 @@ export function useInfoSheet() {
   const [config, setConfig] = useState<InfoSheetConfig | null>(null);
 
   function openSheet(cfg: InfoSheetConfig) {
+    hapticTap("LIGHT");
     setConfig(cfg);
     setOpen(true);
   }
 
   function closeSheet() {
+    hapticTap("LIGHT");
     setOpen(false);
   }
 

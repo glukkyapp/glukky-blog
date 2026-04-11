@@ -33,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
 import { EatOutCommitmentPrompt, useEatOutCommitmentPrompt } from "@/components/eat-out-commitment-prompt";
+import { hapticTap, hapticNotify, hapticPattern } from "@/lib/haptics";
 
 export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
@@ -316,6 +317,7 @@ export default function WeeklyPlanner() {
       reflection &&
       (reflection.dietJustGraduated || reflection.dinnerJustGraduated)
     ) {
+      hapticPattern("..oO-Oo..", 80);
       setGraduationPopupOpen(true);
       setGraduationPopupShownThisSession(true);
     }
@@ -367,10 +369,12 @@ export default function WeeklyPlanner() {
       return res.json();
     },
     onSuccess: async () => {
+      hapticNotify("SUCCESS");
       await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       goNext();
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -381,10 +385,12 @@ export default function WeeklyPlanner() {
       return res.json();
     },
     onSuccess: async () => {
+      hapticNotify("SUCCESS");
       await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       goNext();
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -395,11 +401,13 @@ export default function WeeklyPlanner() {
       return { data: await res.json(), struggle };
     },
     onSuccess: ({ data, struggle }: { data: { struggles3: string[] }; struggle: string }) => {
+      hapticNotify("SUCCESS");
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles3: data.struggles3 } : old);
       setCycle3GateReleased(prev => new Set([...prev, struggle]));
       setPendingSkipNavigation(true);
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -410,14 +418,13 @@ export default function WeeklyPlanner() {
       return { data: await res.json(), struggle };
     },
     onSuccess: ({ data, struggle }: { data: { struggles2: string[] }; struggle: string }) => {
+      hapticNotify("SUCCESS");
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles2: data.struggles2 } : old);
-      // Release the gate so the user is not trapped even if the swap was a no-op
-      // (e.g. focus is the last item in struggles2 and cannot move forward).
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
-      // Signal that we need to navigate to the correct next step once steps recomputes.
       setPendingSkipNavigation(true);
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -428,11 +435,13 @@ export default function WeeklyPlanner() {
       return res.json();
     },
     onSuccess: () => {
+      hapticNotify("SUCCESS");
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, eatOutExtendedCommitment: true } : old);
       queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
       eatOutCommitmentPrompt.dismiss();
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -443,6 +452,7 @@ export default function WeeklyPlanner() {
       return { data: await res.json(), fromLastStruggle: opts?.fromLastStruggle ?? false };
     },
     onSuccess: async ({ fromLastStruggle }) => {
+      hapticNotify("SUCCESS");
       await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
       await queryClient.refetchQueries({ queryKey: ["/api/plan/reflection"] });
       eatOutCommitmentPrompt.dismiss();
@@ -451,6 +461,7 @@ export default function WeeklyPlanner() {
       }
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       setEatOutLastStruggleSkipMsg(false);
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
@@ -562,6 +573,7 @@ export default function WeeklyPlanner() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
@@ -582,6 +594,7 @@ export default function WeeklyPlanner() {
       }
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
@@ -599,6 +612,7 @@ export default function WeeklyPlanner() {
   }
 
   function handleNegotiationAnswer(answer: "yes" | "no") {
+    hapticTap("LIGHT");
     const walkFreq = reflection?.walkDaysScheduled || 0;
     const walkDur = reflection?.walkDuration || 10;
 
@@ -644,6 +658,7 @@ export default function WeeklyPlanner() {
   }
 
   function toggleDay(day: number, list: number[], setList: (v: number[]) => void) {
+    hapticTap("MEDIUM");
     if (list.includes(day)) {
       setList(list.filter(d => d !== day));
     } else {
@@ -652,7 +667,7 @@ export default function WeeklyPlanner() {
   }
 
   function goNext() {
-    // Rule C: eat_out sole struggle — if user clicks Next past lateDinnerDays with no eat-out days, redirect back
+    hapticTap("LIGHT");
     if (currentStepId === "lateDinnerDays" && cycle === 1) {
       const struggles1 = (profile?.struggles as string[]) || [];
       if (struggles1.length === 1 && struggles1[0] === "eat_out" && lateDinnerDays.length === 0 && eatOutDays.length === 0) {
@@ -679,6 +694,7 @@ export default function WeeklyPlanner() {
   }
 
   function goBack() {
+    hapticTap("LIGHT");
     if (clampedStepIndex - 1 >= 0) {
       setStepDirection(-1);
       setStepIndex(clampedStepIndex - 1);
@@ -1037,7 +1053,7 @@ export default function WeeklyPlanner() {
               )}
               <Button
                 className="w-full"
-                onClick={() => setRepickSummaryDismissed(true)}
+                onClick={() => { hapticTap("LIGHT"); setRepickSummaryDismissed(true); }}
                 data-testid="button-cycle-complete-cta"
               >
                 {t("planner.cycle_complete_cta")}
@@ -1099,7 +1115,7 @@ export default function WeeklyPlanner() {
                     <div className="flex gap-0.5">
                       <button
                         disabled={i === 0}
-                        onClick={() => moveUp3(i)}
+                        onClick={() => { hapticTap("LIGHT"); moveUp3(i); }}
                         className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                         data-testid={`button-repick3-up-${s}`}
                       >
@@ -1107,14 +1123,14 @@ export default function WeeklyPlanner() {
                       </button>
                       <button
                         disabled={i === selectedStruggles3.length - 1}
-                        onClick={() => moveDown3(i)}
+                        onClick={() => { hapticTap("LIGHT"); moveDown3(i); }}
                         className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                         data-testid={`button-repick3-down-${s}`}
                       >
                         <ChevronDown className="w-3 h-3" />
                       </button>
                       <button
-                        onClick={() => toggleStruggle3(s)}
+                        onClick={() => { hapticTap("LIGHT"); toggleStruggle3(s); }}
                         className="p-1 text-muted-foreground hover:text-destructive"
                         data-testid={`button-repick3-remove-${s}`}
                       >
@@ -1134,7 +1150,7 @@ export default function WeeklyPlanner() {
                   return (
                     <button
                       key={s}
-                      onClick={() => toggleStruggle3(s)}
+                      onClick={() => { hapticTap("LIGHT"); toggleStruggle3(s); }}
                       className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-colors ${
                         isSelected
                           ? "border-primary bg-primary/10"
@@ -1153,7 +1169,7 @@ export default function WeeklyPlanner() {
             <Button
               className="w-full"
               disabled={selectedStruggles3.length === 0 || repickMutation3.isPending}
-              onClick={() => repickMutation3.mutate(selectedStruggles3)}
+              onClick={() => { hapticTap("MEDIUM"); repickMutation3.mutate(selectedStruggles3); }}
               data-testid="button-repick3-confirm"
             >
               {repickMutation3.isPending ? "…" : t("planner.repick_confirm")}
@@ -1262,7 +1278,7 @@ export default function WeeklyPlanner() {
                   <div className="flex gap-0.5">
                     <button
                       disabled={i === 0}
-                      onClick={() => moveUp(i)}
+                      onClick={() => { hapticTap("LIGHT"); moveUp(i); }}
                       className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                       data-testid={`button-repick-up-${s}`}
                     >
@@ -1270,14 +1286,14 @@ export default function WeeklyPlanner() {
                     </button>
                     <button
                       disabled={i === selectedStruggles2.length - 1}
-                      onClick={() => moveDown(i)}
+                      onClick={() => { hapticTap("LIGHT"); moveDown(i); }}
                       className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                       data-testid={`button-repick-down-${s}`}
                     >
                       <ChevronDown className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => toggleStruggle2(s)}
+                      onClick={() => { hapticTap("LIGHT"); toggleStruggle2(s); }}
                       className="p-1 text-muted-foreground hover:text-destructive"
                       data-testid={`button-repick-remove-${s}`}
                     >
@@ -1297,7 +1313,7 @@ export default function WeeklyPlanner() {
                 return (
                   <button
                     key={s}
-                    onClick={() => toggleStruggle2(s)}
+                    onClick={() => { hapticTap("LIGHT"); toggleStruggle2(s); }}
                     className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-colors ${
                       isSelected
                         ? "border-primary bg-primary/10"
@@ -1316,7 +1332,7 @@ export default function WeeklyPlanner() {
           <Button
             className="w-full"
             disabled={selectedStruggles2.length === 0 || repickMutation.isPending}
-            onClick={() => repickMutation.mutate(selectedStruggles2)}
+            onClick={() => { hapticTap("MEDIUM"); repickMutation.mutate(selectedStruggles2); }}
             data-testid="button-repick-confirm"
           >
             {repickMutation.isPending ? "…" : t("planner.repick_confirm")}
@@ -1372,6 +1388,7 @@ export default function WeeklyPlanner() {
   }
 
   function handleToggleWalkDay(day: number) {
+    hapticTap("MEDIUM");
     if (walkDays.includes(day)) {
       setWalkDays(walkDays.filter(d => d !== day));
       if (standingTapDay === day) {
@@ -1486,7 +1503,7 @@ export default function WeeklyPlanner() {
                       return (
                         <button
                           key={i}
-                          onClick={() => !inactive && setStandingTapDay(isSelected ? null : i)}
+                          onClick={() => { if (!inactive) { hapticTap("LIGHT"); setStandingTapDay(isSelected ? null : i); } }}
                           disabled={inactive}
                           className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
                             inactive
@@ -1503,7 +1520,7 @@ export default function WeeklyPlanner() {
                     })}
                   </div>
                   {standingTapDay !== null && (
-                    <Button size="sm" onClick={() => setNegotiationStep("done")} data-testid="button-standing-tap-confirm">
+                    <Button size="sm" onClick={() => { hapticTap("LIGHT"); setNegotiationStep("done"); }} data-testid="button-standing-tap-confirm">
                       {t("negotiation.confirm_standing_tap", { day: DAY_NAMES[standingTapDay] })}
                     </Button>
                   )}
@@ -1522,8 +1539,8 @@ export default function WeeklyPlanner() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => { setAcceptedEscalation(true); setNegotiationChoice("stretch_escalation"); }} data-testid="button-escalation-yes">{t("planner.yes_lets_do_it")}</Button>
-                <Button size="sm" variant="outline" onClick={() => { setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">{t("planner.not_yet")}</Button>
+                <Button size="sm" onClick={() => { hapticTap("LIGHT"); setAcceptedEscalation(true); setNegotiationChoice("stretch_escalation"); }} data-testid="button-escalation-yes">{t("planner.yes_lets_do_it")}</Button>
+                <Button size="sm" variant="outline" onClick={() => { hapticTap("LIGHT"); setAcceptedEscalation(false); setNegotiationChoice("keep_current"); }} data-testid="button-escalation-no">{t("planner.not_yet")}</Button>
               </div>
             </div>
           )}
@@ -1608,7 +1625,7 @@ export default function WeeklyPlanner() {
                         {options.map(dur => (
                           <button
                             key={dur}
-                            onClick={() => setWalkDayDurations(prev => ({ ...prev, [day]: dur }))}
+                            onClick={() => { hapticTap("LIGHT"); setWalkDayDurations(prev => ({ ...prev, [day]: dur })); }}
                             className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                               currentDur === dur
                                 ? "bg-primary text-primary-foreground"
@@ -1738,7 +1755,7 @@ export default function WeeklyPlanner() {
               {eatOutDays.length === 0 && !isEatOutSoleOrLastCycle2Plus && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle >= 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out")}
+                  onClick={() => { hapticTap("LIGHT"); cycle >= 3 ? cycle3SkipMutation.mutate("eat_out") : cycle2SkipMutation.mutate("eat_out"); }}
                   disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
                   data-testid={cycle >= 3 ? "button-cycle3-skip-eat-out" : "button-cycle2-skip-eat-out"}
                 >
@@ -1765,6 +1782,7 @@ export default function WeeklyPlanner() {
             <button
               className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
               onClick={() => {
+                hapticTap("LIGHT");
                 setEatOutLastStruggleSkipMsg(true);
                 eatOutSkipCycle1Mutation.mutate({ fromLastStruggle: true });
               }}
@@ -1827,7 +1845,7 @@ export default function WeeklyPlanner() {
               {lateDinnerDays.length === 0 && (
                 <button
                   className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2"
-                  onClick={() => cycle >= 3 ? cycle3SkipMutation.mutate("late_dinner") : cycle2SkipMutation.mutate("late_dinner")}
+                  onClick={() => { hapticTap("LIGHT"); cycle >= 3 ? cycle3SkipMutation.mutate("late_dinner") : cycle2SkipMutation.mutate("late_dinner"); }}
                   disabled={cycle2SkipMutation.isPending || cycle3SkipMutation.isPending}
                   data-testid={cycle >= 3 ? "button-cycle3-skip-late-dinner" : "button-cycle2-skip-late-dinner"}
                 >
@@ -1858,7 +1876,7 @@ export default function WeeklyPlanner() {
           {standingTapSuggestAccepted !== true ? (
             <div className="flex gap-2">
               <Button
-                onClick={() => setStandingTapSuggestAccepted(true)}
+                onClick={() => { hapticTap("LIGHT"); setStandingTapSuggestAccepted(true); }}
                 data-testid="button-standing-tap-suggest-yes"
               >
                 {t("planner.standing_tap_suggest_yes")}
@@ -1881,7 +1899,7 @@ export default function WeeklyPlanner() {
                   return (
                     <button
                       key={i}
-                      onClick={() => { if (!inactive) setStandingTapDay(selected ? null : i); }}
+                      onClick={() => { if (!inactive) { hapticTap("LIGHT"); setStandingTapDay(selected ? null : i); } }}
                       disabled={inactive}
                       className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
                         inactive
@@ -1939,7 +1957,7 @@ export default function WeeklyPlanner() {
                     <span className="font-medium text-amber-600">{t(tactic.labelKey)}</span> — {t(tactic.shortKey)}
                   </p>
                   <button
-                    onClick={() => tacticInfoSheet.openSheet({ title: t(tactic.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${tactic.key}_detail`)}</p> })}
+                    onClick={() => { hapticTap("LIGHT"); tacticInfoSheet.openSheet({ title: t(tactic.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${tactic.key}_detail`)}</p> }); }}
                     className="shrink-0 p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-full transition-colors"
                     data-testid={`button-info-planner-tactic-${tactic.key}`}
                     aria-label={t(tactic.labelKey)}
@@ -2176,7 +2194,7 @@ export default function WeeklyPlanner() {
                 variant="outline"
                 className="flex-1"
                 data-testid="button-change-tip"
-                onClick={() => setKeepSameTip(false)}
+                onClick={() => { hapticTap("LIGHT"); setKeepSameTip(false); }}
               >
                 {t("planner.try_different")}
               </Button>
@@ -2208,6 +2226,7 @@ export default function WeeklyPlanner() {
                     : "border-border hover:border-primary/50"
                 }`}
                 onClick={() => {
+                  hapticTap("LIGHT");
                   setSelectedTip(tip);
                   setExpandedTip(isExpanded ? null : tip);
                 }}
@@ -2371,7 +2390,7 @@ export default function WeeklyPlanner() {
               <>
                 <Button
                   className="w-full mt-4"
-                  onClick={() => createPlanMutation.mutate()}
+                  onClick={() => { hapticTap("MEDIUM"); createPlanMutation.mutate(); }}
                   disabled={createPlanMutation.isPending || eatOutCommitGateActive}
                   data-testid="button-confirm-plan"
                 >
@@ -2380,7 +2399,7 @@ export default function WeeklyPlanner() {
                 {eatOutCommitGateActive && (
                   <button
                     className="w-full text-sm font-medium text-muted-foreground underline underline-offset-2 mt-2"
-                    onClick={() => eatOutSkipCycle1Mutation.mutate()}
+                    onClick={() => { hapticTap("LIGHT"); eatOutSkipCycle1Mutation.mutate(); }}
                     disabled={eatOutSkipCycle1Mutation.isPending}
                     data-testid="button-eat-out-commit-skip"
                   >
@@ -2658,7 +2677,7 @@ export default function WeeklyPlanner() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setLocation("/")}
+              onClick={() => { hapticTap("LIGHT"); setLocation("/"); }}
               data-testid="button-go-home-checkin"
             >
               {t("planner.go_home")}
@@ -2817,7 +2836,7 @@ export default function WeeklyPlanner() {
             <Button
               className="w-full mt-2"
               data-testid="button-auto-focus-got-it"
-              onClick={() => { autoFocusSheet.closeSheet(); setLocation("/"); }}
+              onClick={() => { hapticTap("LIGHT"); autoFocusSheet.closeSheet(); setLocation("/"); }}
             >
               {t("planner.auto_focus_got_it")}
             </Button>
@@ -2857,7 +2876,7 @@ export default function WeeklyPlanner() {
               {t("planner.graduation_popup_body", { name: struggledName })}
             </p>
             <Button
-              onClick={() => setGraduationPopupOpen(false)}
+              onClick={() => { hapticTap("LIGHT"); setGraduationPopupOpen(false); }}
               data-testid="button-graduation-dismiss"
               className="mt-2 w-full"
             >

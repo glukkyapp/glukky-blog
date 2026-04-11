@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
 import giftImg from "@assets/cyucyu_a_presentgift._background_color_f5f1e7_--sref_httpss.m__1775313676920.png";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -288,10 +289,12 @@ export default function Home() {
 
   const logMutation = useMutation({
     mutationFn: async (data: any) => {
+      hapticTap("MEDIUM");
       const res = await apiRequest("POST", "/api/log", { date: checkInDate, ...data });
       return res.json();
     },
     onSuccess: async (data: any, variables: any) => {
+      hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
 
       if (variables.dietResponse !== undefined) {
@@ -332,16 +335,19 @@ export default function Home() {
       await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
   const catchupMutation = useMutation({
     mutationFn: async (data: { date: string; walkCompleted?: boolean | null; walkTired?: boolean | null; dinnerSuccess?: boolean | null; dietResponse?: string | null }) => {
+      hapticTap("MEDIUM");
       const res = await apiRequest("POST", "/api/log", data);
       return res.json();
     },
     onSuccess: async (data: any, variables: any) => {
+      hapticNotify("SUCCESS");
       if (variables.dietResponse !== undefined) {
         queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       }
@@ -370,24 +376,29 @@ export default function Home() {
       setCatchupCompleted(true);
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
   const dinnerLabelMutation = useMutation({
     mutationFn: async (data: { planDayId: number; label: string }) => {
+      hapticTap("MEDIUM");
       const res = await apiRequest("POST", "/api/plan/dinner-label", data);
       return res.json();
     },
     onSuccess: async () => {
+      hapticNotify("SUCCESS");
       await checkAllDoneAfterInteraction();
     },
     onError: (error: Error) => {
+      hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
   function handleDinnerMoveEarly(canMove: boolean) {
+    hapticTap("MEDIUM");
     if (!todayPlan?.planDayId) return;
     if (canMove) {
       dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
@@ -397,6 +408,7 @@ export default function Home() {
   }
 
   function handleTacticPick(tactic: string) {
+    hapticTap("MEDIUM");
     if (!todayPlan?.planDayId) return;
     dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: tactic });
     setShowTacticPicker(false);
@@ -631,7 +643,7 @@ export default function Home() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setShowTacticPicker(true)}
+              onClick={() => { hapticTap("LIGHT"); setShowTacticPicker(true); }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
               data-testid="button-catchup-dinner-tactic"
             >
@@ -679,6 +691,7 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
+                hapticTap("LIGHT");
                 setShowTacticPicker(true);
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
@@ -792,8 +805,8 @@ export default function Home() {
               {t("home.dinner_pivot_message")}
             </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-tactic-yes">{t("common.yes")}</Button>
-              <Button size="sm" variant="outline" onClick={() => setPivotStep("ask_move_early")} data-testid="button-pivot-tactic-no">{t("common.no")}</Button>
+              <Button size="sm" onClick={() => { hapticTap("LIGHT"); setPivotStep("show_tactics"); }} data-testid="button-pivot-tactic-yes">{t("common.yes")}</Button>
+              <Button size="sm" variant="outline" onClick={() => { hapticTap("LIGHT"); setPivotStep("ask_move_early"); }} data-testid="button-pivot-tactic-no">{t("common.no")}</Button>
             </div>
           </div>
         );
@@ -809,7 +822,7 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">{t("home.try_moving_dinner")}</p>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => handleDinnerMoveEarly(true)} disabled={dinnerLabelMutation.isPending} data-testid="button-pivot-move-early-yes">{t("common.yes")}</Button>
-              <Button size="sm" variant="outline" onClick={() => setPivotStep("show_tactics")} data-testid="button-pivot-move-early-no">{t("common.no")}</Button>
+              <Button size="sm" variant="outline" onClick={() => { hapticTap("LIGHT"); setPivotStep("show_tactics"); }} data-testid="button-pivot-move-early-no">{t("common.no")}</Button>
             </div>
           </div>
         );
@@ -1077,7 +1090,7 @@ export default function Home() {
                 size="sm"
                 variant="ghost"
                 className="h-7 text-xs mt-1 text-blue-600"
-                onClick={() => setHydrationAdvice(null)}
+                onClick={() => { hapticTap("LIGHT"); setHydrationAdvice(null); }}
                 data-testid="button-dismiss-hydration"
               >
                 {t("home.got_it")}
@@ -1461,15 +1474,15 @@ export default function Home() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">{singleMissedDay.standingTap ? t("home.standing_tap_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : isDayStretch(singleMissedDay, profile) ? t("home.stretch_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] }) : t("home.walk_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
-                  <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => setCatchupWalkDone(true)} data-testid="button-catchup-walk-yes">{t("common.yes")}</Button>
-                  <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => setCatchupWalkDone(false)} data-testid="button-catchup-walk-no">{t("common.no")}</Button>
+                  <Button size="sm" variant={catchupWalkDone === true ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupWalkDone(true); }} data-testid="button-catchup-walk-yes">{t("common.yes")}</Button>
+                  <Button size="sm" variant={catchupWalkDone === false ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupWalkDone(false); }} data-testid="button-catchup-walk-no">{t("common.no")}</Button>
                 </div>
                 {!singleMissedDay.standingTap && catchupWalkDone === false && (
                   <div className="space-y-2 pl-1">
                     <p className="text-sm text-muted-foreground">{t("home.tired_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => setCatchupWalkTired(true)} data-testid="button-catchup-tired-yes">{t("common.tired_yes")}</Button>
-                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => setCatchupWalkTired(false)} data-testid="button-catchup-tired-no">{t("common.tired_no")}</Button>
+                      <Button size="sm" variant={catchupWalkTired === true ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupWalkTired(true); }} data-testid="button-catchup-tired-yes">{t("common.tired_yes")}</Button>
+                      <Button size="sm" variant={catchupWalkTired === false ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupWalkTired(false); }} data-testid="button-catchup-tired-no">{t("common.tired_no")}</Button>
                     </div>
                   </div>
                 )}
@@ -1484,8 +1497,8 @@ export default function Home() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium">{t("home.eat_before_9pm", { day: missedDayName })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
-                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerDone(false); }} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
                     </div>
                   </div>
                 );
@@ -1495,8 +1508,8 @@ export default function Home() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium">{t("home.follow_tip_on", { tip: DINNER_LABEL_SHORT[label] || label, day: missedDayName })}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => setCatchupDinnerDone(true)} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
-                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => setCatchupDinnerDone(false)} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === true ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-yes">{t("common.yes")}</Button>
+                      <Button size="sm" variant={catchupDinnerDone === false ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerDone(false); }} data-testid="button-catchup-dinner-no">{t("common.no")}</Button>
                     </div>
                   </div>
                 );
@@ -1505,9 +1518,9 @@ export default function Home() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium">{t("home.dinner_question_day", { day: missedDayName })}</p>
                   <div className="flex flex-col gap-2">
-                    <Button size="sm" variant={catchupDinnerChoice === "early" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("early"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-early">{t("home.moved_early")}</Button>
-                    <Button size="sm" variant={catchupDinnerChoice === "tactic" ? "default" : "outline"} onClick={() => setCatchupDinnerChoice("tactic")} data-testid="button-catchup-dinner-tactic">{t("home.used_tactic")}</Button>
-                    <Button size="sm" variant={catchupDinnerChoice === "none" ? "default" : "outline"} onClick={() => { setCatchupDinnerChoice("none"); setCatchupDinnerDone(false); setCatchupTacticPick(null); }} data-testid="button-catchup-dinner-none">{t("home.didnt_manage")}</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "early" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerChoice("early"); setCatchupDinnerDone(true); }} data-testid="button-catchup-dinner-early">{t("home.moved_early")}</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "tactic" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerChoice("tactic"); }} data-testid="button-catchup-dinner-tactic">{t("home.used_tactic")}</Button>
+                    <Button size="sm" variant={catchupDinnerChoice === "none" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDinnerChoice("none"); setCatchupDinnerDone(false); setCatchupTacticPick(null); }} data-testid="button-catchup-dinner-none">{t("home.didnt_manage")}</Button>
                   </div>
                   {catchupDinnerChoice === "tactic" && (
                     <div className="space-y-2 pl-1">
@@ -1518,7 +1531,7 @@ export default function Home() {
                             <Button
                               size="sm"
                               variant={catchupTacticPick === opt.value ? "default" : "outline"}
-                              onClick={() => { setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }}
+                              onClick={() => { hapticTap("LIGHT"); setCatchupTacticPick(opt.value); setCatchupDinnerDone(true); }}
                               data-testid={`button-catchup-tactic-${opt.value}`}
                               className="flex-1"
                             >
@@ -1544,9 +1557,9 @@ export default function Home() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t("home.diet_tip_question_day", { day: FULL_DAY_NAMES[singleMissedDay.dayOfWeek] })}</p>
                 <div className="flex gap-2">
-                  <Button size="sm" variant={catchupDietResponse === "yes" ? "default" : "outline"} onClick={() => setCatchupDietResponse("yes")} data-testid="button-catchup-diet-yes">{t("common.yes")}</Button>
-                  <Button size="sm" variant={catchupDietResponse === "no" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no")} data-testid="button-catchup-diet-no">{t("common.no")}</Button>
-                  <Button size="sm" variant={catchupDietResponse === "no_chance" ? "default" : "outline"} onClick={() => setCatchupDietResponse("no_chance")} data-testid="button-catchup-diet-no-chance">{t("home.didnt_get_chance")}</Button>
+                  <Button size="sm" variant={catchupDietResponse === "yes" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDietResponse("yes"); }} data-testid="button-catchup-diet-yes">{t("common.yes")}</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDietResponse("no"); }} data-testid="button-catchup-diet-no">{t("common.no")}</Button>
+                  <Button size="sm" variant={catchupDietResponse === "no_chance" ? "default" : "outline"} onClick={() => { hapticTap("LIGHT"); setCatchupDietResponse("no_chance"); }} data-testid="button-catchup-diet-no-chance">{t("home.didnt_get_chance")}</Button>
                 </div>
               </div>
             )}
@@ -1630,7 +1643,7 @@ export default function Home() {
             </p>
             <Button
               size="sm"
-              onClick={() => setLocation("/plan")}
+              onClick={() => { hapticTap("LIGHT"); setLocation("/plan"); }}
               data-testid="button-go-to-planner"
             >
               {t("home.review_plan")}

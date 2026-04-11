@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { hapticTap } from "@/lib/haptics";
 
 export function useInfoCard(id: string) {
   const key = `glukky_card_${id}_seen`;
@@ -99,7 +100,7 @@ export function InfoCardPopup({
             ) : null}
             <Button
               className="flex-1"
-              onClick={onDismiss}
+              onClick={() => { hapticTap("LIGHT"); onDismiss(); }}
               data-testid="button-info-card-got-it"
             >
               {t("info_card.got_it")}

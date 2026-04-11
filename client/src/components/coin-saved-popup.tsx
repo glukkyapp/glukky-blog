@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import pigAnimationData from "@assets/wired-flat-453-savings-pig-hover-pinch_1773589181755.json";
 import { useTranslation } from "react-i18next";
+import { hapticNotify } from "@/lib/haptics";
 
 interface CoinSavedPopupProps {
   coins: number;
@@ -16,6 +17,7 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
 
   useEffect(() => {
     if (visible) {
+      hapticNotify("SUCCESS");
       lottieRef.current?.goToAndPlay(0, true);
       timerRef.current = setTimeout(() => {
         onDismiss();

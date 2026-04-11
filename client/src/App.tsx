@@ -25,6 +25,7 @@ import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { hapticPattern, hapticNotify } from "@/lib/haptics";
 
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
@@ -89,6 +90,7 @@ function GlobalPiggyBankPopup() {
     if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
       setCongratsShown(true);
       setShowCongrats(true);
+      hapticPattern("..oO-Oo..", 80);
     }
   }, [piggy?.coins, piggy?.needsRewardSetup]);
 
@@ -107,19 +109,28 @@ function GlobalPiggyBankPopup() {
     mutationFn: (reward: string) =>
       apiRequest("POST", "/api/piggybank/reward", { reward }),
     onSuccess: () => {
+      hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       setShowRewardSetup(false);
       setRewardInput("");
+    },
+    onError: () => {
+      hapticNotify("ERROR");
     },
   });
 
   const claimMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/piggybank/claim", {}),
     onSuccess: () => {
+      hapticNotify("SUCCESS");
+      hapticPattern("..oO-Oo..", 80);
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       setShowCongrats(false);
       setCongratsShown(false);
       setTimeout(() => setShowRewardSetup(true), 400);
+    },
+    onError: () => {
+      hapticNotify("ERROR");
     },
   });
 

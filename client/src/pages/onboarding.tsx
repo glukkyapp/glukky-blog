@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Sparkles } from "lucide-react";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
 
 const TOTAL_STEPS = 10;
 
@@ -41,15 +42,18 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
+    hapticTap("LIGHT");
     setDirection("forward");
     setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
   const handleBack = () => {
+    hapticTap("LIGHT");
     setDirection("backward");
     setStep((s) => Math.max(s - 1, 1));
   };
 
   const handleSubmit = async () => {
+    hapticTap("MEDIUM");
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
     const struggles = selectedStruggles;
@@ -67,8 +71,10 @@ export default function Onboarding() {
         goal: userGoal.trim() || null,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      hapticNotify("SUCCESS");
       setLocation("/plan");
     } catch (error: unknown) {
+      hapticNotify("ERROR");
       toast({
         title: t("common.error"),
         description: error instanceof Error ? error.message : "Something went wrong",
@@ -80,6 +86,7 @@ export default function Onboarding() {
   };
 
   const toggleStruggle = (value: string) => {
+    hapticTap("LIGHT");
     setSelectedStruggles((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
@@ -114,7 +121,7 @@ export default function Onboarding() {
       key={value}
       type="button"
       data-testid={testId}
-      onClick={() => onSelect(value)}
+      onClick={() => { hapticTap("LIGHT"); onSelect(value); }}
       className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
         selected === value
           ? "border-primary bg-primary/10 text-foreground"

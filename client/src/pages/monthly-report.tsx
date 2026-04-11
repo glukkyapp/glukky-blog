@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import {
   Footprints, TrendingUp, Check, Lock, ChevronLeft, ChevronRight,
   Sparkles, Activity, CircleMinus, Zap,
 } from "lucide-react";
+import { hapticTap, hapticPattern } from "@/lib/haptics";
 
 interface DietDetail {
   struggle: string;
@@ -79,12 +80,14 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
   const [direction, setDirection] = useState(1);
 
   function goNext() {
+    hapticTap("LIGHT");
     if (tabIndex < TABS.length - 1) {
       setDirection(1);
       setTabIndex(tabIndex + 1);
     }
   }
   function goBack() {
+    hapticTap("LIGHT");
     if (tabIndex > 0) {
       setDirection(-1);
       setTabIndex(tabIndex - 1);
@@ -333,6 +336,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
 export default function MonthlyReportPage() {
   const { t, i18n } = useTranslation();
   const now = new Date();
+  const patternFiredRef = useRef(false);
 
   let monthLabel: string;
   const lang = i18n.language;
@@ -346,6 +350,13 @@ export default function MonthlyReportPage() {
   const { data, isLoading, error } = useQuery<MonthlyReportData>({
     queryKey: ["/api/report/monthly", "0"],
   });
+
+  useEffect(() => {
+    if (data && data.weeksAnalyzed >= 4 && !patternFiredRef.current) {
+      patternFiredRef.current = true;
+      hapticPattern("..oO-Oo..", 80);
+    }
+  }, [data]);
 
   if (isLoading) {
     return (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ export function FatiguePopup({ dayOfWeek, onClose }: FatiguePopupProps) {
       return res.json();
     },
     onSuccess: (_, accept) => {
+      hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       if (accept) {
         toast({
@@ -42,6 +44,9 @@ export function FatiguePopup({ dayOfWeek, onClose }: FatiguePopupProps) {
       }
       setOpen(false);
       onClose();
+    },
+    onError: () => {
+      hapticNotify("ERROR");
     },
   });
 
@@ -60,7 +65,7 @@ export function FatiguePopup({ dayOfWeek, onClose }: FatiguePopupProps) {
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button
-            onClick={() => respondMutation.mutate(true)}
+            onClick={() => { hapticTap("MEDIUM"); respondMutation.mutate(true); }}
             disabled={respondMutation.isPending}
             data-testid="button-accept-rest-day"
           >
@@ -68,7 +73,7 @@ export function FatiguePopup({ dayOfWeek, onClose }: FatiguePopupProps) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => respondMutation.mutate(false)}
+            onClick={() => { hapticTap("MEDIUM"); respondMutation.mutate(false); }}
             disabled={respondMutation.isPending}
             data-testid="button-reject-rest-day"
           >

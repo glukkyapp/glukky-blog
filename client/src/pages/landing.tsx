@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
@@ -47,6 +48,7 @@ export default function Landing() {
   ];
 
   const handleSelectLanguage = useCallback((code: string) => {
+    hapticTap("LIGHT");
     localStorage.setItem("glukky_preferred_lang", code);
     i18n.changeLanguage(code);
     if (isChangingLang) {
@@ -59,6 +61,7 @@ export default function Landing() {
   }, [isChangingLang]);
 
   const handleSlideNext = useCallback(() => {
+    hapticTap("LIGHT");
     if (slideIndex < slides.length - 1) {
       setSlideIndex((i) => i + 1);
     } else {
@@ -67,6 +70,7 @@ export default function Landing() {
   }, [slideIndex, slides.length]);
 
   function switchTab(t: "login" | "register") {
+    hapticTap("LIGHT");
     setTab(t);
     setError("");
     setEmail("");
@@ -79,18 +83,22 @@ export default function Landing() {
     setError("");
 
     if (!email || !password) {
+      hapticNotify("ERROR");
       setError(t("landing.error_required"));
       return;
     }
     if (tab === "register" && password !== confirmPassword) {
+      hapticNotify("ERROR");
       setError(t("landing.error_mismatch"));
       return;
     }
     if (tab === "register" && password.length < 6) {
+      hapticNotify("ERROR");
       setError(t("landing.error_short_password"));
       return;
     }
 
+    hapticTap("MEDIUM");
     setIsLoading(true);
     try {
       const endpoint = tab === "login" ? "/api/auth/login" : "/api/auth/register";
@@ -103,17 +111,20 @@ export default function Landing() {
 
       if (!res.ok) {
         const data = await res.json();
+        hapticNotify("ERROR");
         setError(data.message || t("landing.error_generic"));
         return;
       }
 
       const user = await res.json();
       queryClient.setQueryData(["/api/auth/user"], user);
+      hapticNotify("SUCCESS");
       toast({
         title: tab === "login" ? t("landing.welcome_back") : t("landing.account_created"),
         description: t("landing.redirecting"),
       });
     } catch {
+      hapticNotify("ERROR");
       setError(t("landing.error_network"));
     } finally {
       setIsLoading(false);
@@ -190,7 +201,7 @@ export default function Landing() {
             {slides.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setSlideIndex(i)}
+                onClick={() => { hapticTap("LIGHT"); setSlideIndex(i); }}
                 data-testid={`slide-dot-${i}`}
                 className={`rounded-full transition-all ${
                   i === slideIndex ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/40"
@@ -321,6 +332,7 @@ export default function Landing() {
       <button
         type="button"
         onClick={() => {
+          hapticTap("LIGHT");
           localStorage.removeItem("glukky_preferred_lang");
           setIsChangingLang(true);
           setStep("lang");

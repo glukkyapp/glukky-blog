@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Salad } from "lucide-react";
+import { hapticTap } from "@/lib/haptics";
 
 const FOOD_SWITCH_SEEN_KEY = "food_switch_seen";
 
@@ -104,7 +105,7 @@ export function FoodSwitchPopup({ visible, onDismiss }: FoodSwitchPopupProps) {
             ) : null}
             <Button
               className="flex-1"
-              onClick={onDismiss}
+              onClick={() => { hapticTap("LIGHT"); onDismiss(); }}
               data-testid="button-food-switch-got-it"
             >
               {t("info_card.got_it")}

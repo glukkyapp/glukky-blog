@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Home, TrendingUp, CalendarDays, User, Camera, Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { hapticTap } from "@/lib/haptics";
 
 const NAV_TAP = { scale: 0.82 };
 const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
@@ -27,6 +28,7 @@ export default function FloatingNavBar() {
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
 
   const handleNavClick = (path: string) => {
+    hapticTap("LIGHT");
     setActivePath(path);
     setLocation(path);
   };

@@ -12,6 +12,7 @@ import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_s
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { hapticTap, hapticNotify, hapticPattern } from "@/lib/haptics";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -101,7 +102,7 @@ function JourneySection({ cycleHistory, t }: {
   return (
     <div className="space-y-2">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { hapticTap("LIGHT"); setOpen(o => !o); }}
         className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-full text-left"
         data-testid="button-toggle-journey"
       >
@@ -119,7 +120,7 @@ function JourneySection({ cycleHistory, t }: {
               <div key={entry.id} data-testid={`card-journey-cycle-${entry.cycleNumber}`}>
                 <button
                   className="flex items-center justify-between w-full text-left py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  onClick={() => toggleCycle(entry.cycleNumber)}
+                  onClick={() => { hapticTap("LIGHT"); toggleCycle(entry.cycleNumber); }}
                   data-testid={`button-journey-cycle-${entry.cycleNumber}`}
                 >
                   <span className="text-sm font-medium">
@@ -204,7 +205,11 @@ function PiggyBankCard({ data, isDev }: {
     mutationFn: (coins: number | null) =>
       apiRequest("POST", "/api/dev/set-coins", { coins }),
     onSuccess: () => {
+      hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+    },
+    onError: () => {
+      hapticNotify("ERROR");
     },
   });
 
@@ -325,7 +330,7 @@ function PiggyBankCard({ data, isDev }: {
               <div className="w-full mt-2">
                 <button
                   className="text-xs text-primary underline underline-offset-2"
-                  onClick={() => window.dispatchEvent(new Event("piggy-open-reward"))}
+                  onClick={() => { hapticTap("LIGHT"); window.dispatchEvent(new Event("piggy-open-reward")); }}
                   data-testid="button-set-reward"
                 >
                   {t("roadmap.tap_set_reward")}
@@ -335,7 +340,7 @@ function PiggyBankCard({ data, isDev }: {
 
             {isFull && (
               <Button
-                onClick={() => window.dispatchEvent(new Event("piggy-open-congrats"))}
+                onClick={() => { hapticTap("MEDIUM"); window.dispatchEvent(new Event("piggy-open-congrats")); }}
                 className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white"
                 data-testid="button-claim-reward"
               >
@@ -366,8 +371,20 @@ export default function RoadmapPage() {
   const cardRoadmapProgress = useInfoCard("roadmap_progress");
   const cardPiggyBank = useInfoCard("piggy_bank");
 
+  const masteredPatternFiredRef = useRef(false);
+
   useEffect(() => { if (data) cardRoadmapProgress.trigger(); }, [!!data]);
   useEffect(() => { if (piggy) cardPiggyBank.trigger(); }, [!!piggy]);
+
+  useEffect(() => {
+    if (data && !masteredPatternFiredRef.current) {
+      const hasMastered = data.masteredStruggles.length > 0 || data.dinnerMastered;
+      if (hasMastered) {
+        masteredPatternFiredRef.current = true;
+        hapticPattern("..oO-Oo..", 80);
+      }
+    }
+  }, [data]);
 
   if (isLoading || !data) {
     return <LoadingSkeleton />;

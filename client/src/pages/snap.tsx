@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -165,6 +166,7 @@ export default function Snap() {
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         const limit = data.snapsLimit ?? 3;
+        hapticNotify("ERROR");
         setError(t("snap.error_limit_label", { limit }));
         setStep("upload");
         return;
@@ -172,17 +174,20 @@ export default function Snap() {
 
       if (res.status === 422) {
         const data = await res.json().catch(() => ({}));
+        hapticNotify("ERROR");
         setError(data.message ?? t("snap.error_no_food"));
         setStep("upload");
         return;
       }
 
       if (!res.ok) {
+        hapticNotify("ERROR");
         setError(t("snap.error_generic"));
         setStep("upload");
         return;
       }
 
+      hapticNotify("SUCCESS");
       const data: LabelResult = await res.json();
       setLabelResult(data);
       setForm({
@@ -193,6 +198,7 @@ export default function Snap() {
       });
       setStep("review");
     } catch {
+      hapticNotify("ERROR");
       setError(t("snap.error_generic"));
       setStep("upload");
     }
@@ -220,21 +226,25 @@ export default function Snap() {
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         const limit = data.adviceLimit ?? 6;
+        hapticNotify("ERROR");
         setError(t("snap.error_limit_advice", { limit }));
         setStep("review");
         return;
       }
 
       if (!res.ok) {
+        hapticNotify("ERROR");
         setError(t("snap.error_generic"));
         setStep("review");
         return;
       }
 
+      hapticNotify("SUCCESS");
       const data: AdviceResult = await res.json();
       setAdviceResult(data);
       setStep("advice");
     } catch {
+      hapticNotify("ERROR");
       setError(t("snap.error_generic"));
       setStep("review");
     }
@@ -289,7 +299,7 @@ export default function Snap() {
 
           <div className="flex gap-4">
             <button
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => { hapticTap("MEDIUM"); cameraInputRef.current?.click(); }}
               className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
               data-testid="button-snap-camera"
             >
@@ -300,7 +310,7 @@ export default function Snap() {
             </button>
 
             <button
-              onClick={() => albumInputRef.current?.click()}
+              onClick={() => { hapticTap("MEDIUM"); albumInputRef.current?.click(); }}
               className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer"
               data-testid="button-snap-album"
             >
@@ -419,7 +429,7 @@ export default function Snap() {
 
           <div className="flex flex-col gap-2 pt-1">
             <Button
-              onClick={handleGetAdvice}
+              onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
               disabled={!form.name.trim()}
               className="w-full"
               data-testid="button-snap-get-advice"
@@ -428,7 +438,7 @@ export default function Snap() {
             </Button>
             <Button
               variant="ghost"
-              onClick={reset}
+              onClick={() => { hapticTap("LIGHT"); reset(); }}
               className="w-full text-muted-foreground gap-1.5"
               data-testid="button-snap-try-again"
             >
@@ -473,7 +483,7 @@ export default function Snap() {
                 {Array.from({ length: totalPanels }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setAdvicePanel(i)}
+                    onClick={() => { hapticTap("LIGHT"); setAdvicePanel(i); }}
                     data-testid={`dot-snap-advice-${i}`}
                     className={`w-2 h-2 rounded-full transition-colors ${
                       i === advicePanel
@@ -491,7 +501,7 @@ export default function Snap() {
                 <Button
                   variant="outline"
                   className="flex-1 gap-1"
-                  onClick={() => setAdvicePanel((p) => p + 1)}
+                  onClick={() => { hapticTap("LIGHT"); setAdvicePanel((p) => p + 1); }}
                   data-testid="button-snap-advice-next"
                 >
                   {t("snap.next")}
@@ -500,7 +510,7 @@ export default function Snap() {
               ) : null}
               <Button
                 className="flex-1"
-                onClick={reset}
+                onClick={() => { hapticTap("LIGHT"); reset(); }}
                 data-testid="button-snap-advice-done"
               >
                 {t("snap.done")}
@@ -519,7 +529,7 @@ export default function Snap() {
 
           <Button
             variant="ghost"
-            onClick={reset}
+            onClick={() => { hapticTap("LIGHT"); reset(); }}
             className="w-full text-muted-foreground gap-1.5"
             data-testid="button-snap-new-photo"
           >
