@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
-import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, type LucideIcon } from "lucide-react";
+import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, ChevronDown, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
 import giftImg from "@assets/cyucyu_a_presentgift._background_color_f5f1e7_--sref_httpss.m__1775313676920.png";
@@ -77,6 +77,7 @@ export default function Home() {
   const [catchupDinnerChoice, setCatchupDinnerChoice] = useState<"early" | "tactic" | "none" | null>(null);
   const [catchupTacticPick, setCatchupTacticPick] = useState<string | null>(null);
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
@@ -484,19 +485,19 @@ export default function Home() {
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
           ) : (
-            <div className="flex justify-center gap-4 py-2">
+            <div className="flex justify-center gap-3 py-2">
               {tasks.map((task, idx) => {
                 const Icon = task.icon;
                 return (
                   <div
                     key={idx}
-                    className="flex flex-col items-center gap-2 max-w-[100px]"
+                    className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
                     data-testid={task.testId}
                   >
-                    <div className={`w-14 h-14 rounded-full ${task.bgColor} flex items-center justify-center`}>
-                      <Icon className={`w-6 h-6 ${task.color}`} />
+                    <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
+                      <Icon className={`w-7 h-7 ${task.color}`} />
                     </div>
-                    <p className="text-base text-center text-muted-foreground leading-tight">{task.text}</p>
+                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
                   </div>
                 );
               })}
@@ -510,22 +511,22 @@ export default function Home() {
   function renderReadOnlyPlan(dayData: any, label: string, dateLabel: string) {
     if (!dayData) return null;
 
-    const tasks: { icon: any; text: string; testId: string; color: string }[] = [];
+    const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-amber-500/10" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-primary/10" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-amber-500/10" });
     }
     if (calendarPlan?.dietTip) {
       const showDietTask = calendarPlan?.dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
     }
 
     return (
@@ -538,20 +539,19 @@ export default function Home() {
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="flex justify-center gap-3 py-2">
               {tasks.map((task, idx) => {
                 const Icon = task.icon;
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 rounded-lg bg-muted/50 p-3"
+                    className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
                     data-testid={task.testId}
                   >
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                      {idx + 1}
+                    <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
+                      <Icon className={`w-7 h-7 ${task.color}`} />
                     </div>
-                    <Icon className={`w-4 h-4 ${task.color} shrink-0`} />
-                    <p className="text-sm">{task.text}</p>
+                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
                   </div>
                 );
               })}
@@ -1652,35 +1652,23 @@ export default function Home() {
       {!nextWeekPlanned && (
         checkInDone ? (
           <>
-            <Card>
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-today-date-summary">
-                  <span className="font-semibold text-foreground">
-                    {isCatchUp ? t("home.sunday") : t("home.today")}
-                  </span> — {isCatchUp ? formatCatchUpDate() : formatDate()}
+            {hydrationAdvice && (
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-recorded">
+                <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs mt-1 text-blue-600"
+                    onClick={() => setHydrationAdvice(null)}
+                    data-testid="button-dismiss-hydration-recorded"
+                  >
+                    {t("home.got_it")}
+                  </Button>
                 </div>
-
-                {hydrationAdvice && (
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="section-hydration-advice-recorded">
-                    <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{hydrationAdvice}</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs mt-1 text-blue-600"
-                        onClick={() => setHydrationAdvice(null)}
-                        data-testid="button-dismiss-hydration-recorded"
-                      >
-                        {t("home.got_it")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {renderCheckInSummary()}
-              </CardContent>
-            </Card>
+              </div>
+            )}
             {tomorrowInPlanWeek && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
@@ -1728,7 +1716,17 @@ export default function Home() {
 
       {(<Card>
         <CardContent className="pt-4">
-          <p className="text-sm font-semibold mb-3" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
+          <button
+            className="flex items-center justify-between w-full"
+            onClick={() => setCalendarExpanded(prev => !prev)}
+            data-testid="button-toggle-calendar"
+          >
+            <p className="text-sm font-semibold" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${calendarExpanded ? "rotate-180" : ""}`} />
+          </button>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${calendarExpanded ? "max-h-[500px] opacity-100 mt-3" : "max-h-0 opacity-0"}`}
+          >
           <div className="space-y-2">
             <div className="grid grid-cols-8 gap-1 text-center text-xs">
               <div />
@@ -1888,6 +1886,7 @@ export default function Home() {
                 <div className="flex items-center gap-1"><Wine className="w-3 h-3" /> {t("home.planned_eat_out")}</div>
               )}
             </div>
+          </div>
           </div>
         </CardContent>
       </Card>)}
