@@ -1791,8 +1791,8 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const { type } = req.body;
-      if (!["late_dinner", "sunday_planning", "reengagement"].includes(type)) {
-        return res.status(400).json({ message: "type must be late_dinner, sunday_planning, or reengagement" });
+      if (!["late_dinner", "sunday_planning", "reengagement", "daily_checkin"].includes(type)) {
+        return res.status(400).json({ message: "type must be late_dinner, sunday_planning, reengagement, or daily_checkin" });
       }
       const profile = await storage.getProfile(userId);
       if (!profile?.onesignalPlayerId) {
@@ -1815,6 +1815,12 @@ export async function registerRoutes(
           title: "Glukky",
           subtitle: "We miss you!",
           message: "Your plan is waiting — even a small step counts.",
+          deepLink: "/",
+        },
+        daily_checkin: {
+          title: "Glukky",
+          subtitle: "Daily check-in",
+          message: "Your daily check-in is open — tap to log your day!",
           deepLink: "/",
         },
       };

@@ -384,6 +384,14 @@ export default function DevPanel() {
             >
               {testNotificationMutation.isPending ? "Sending..." : "Test Re-engagement"}
             </Button>
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => testNotificationMutation.mutate("daily_checkin")}
+              disabled={testNotificationMutation.isPending}
+              data-testid="button-test-notif-daily-checkin"
+            >
+              {testNotificationMutation.isPending ? "Sending..." : "Test Daily Check-in"}
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -147,7 +147,7 @@ async function sendDailyCheckInReminder() {
   await sendPushNotification({
     title: "Glukky",
     subtitle: "Daily check-in",
-    message: "How did today go? Tap to log your check-in before bed 🌙",
+    message: "Your daily check-in is open — tap to log your day!",
     deepLink: "/",
     playerIds,
   });

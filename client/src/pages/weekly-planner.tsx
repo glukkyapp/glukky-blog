@@ -2384,7 +2384,7 @@ export default function WeeklyPlanner() {
               <>
                 <Button
                   className="w-full mt-4 btn-pop"
-                  onClick={() => { hapticTap("LIGHT"); createPlanMutation.mutate(); }}
+                  onClick={() => { hapticTap("MEDIUM"); createPlanMutation.mutate(); }}
                   disabled={createPlanMutation.isPending || eatOutCommitGateActive}
                   data-testid="button-confirm-plan"
                 >
