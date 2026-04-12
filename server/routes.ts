@@ -2161,7 +2161,7 @@ export async function registerRoutes(
         return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });
       }
 
-      const { imageBase64, mimeType } = req.body;
+      const { imageBase64, mimeType, language } = req.body;
       if (!imageBase64 || !mimeType) {
         return res.status(400).json({ message: "imageBase64 and mimeType are required" });
       }
@@ -2170,16 +2170,23 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Unsupported image type. Use JPEG, PNG, WebP, or GIF." });
       }
 
+      const isChinese = language === "zh-Hant" || language === "yue";
+      const langInstruction = isChinese
+        ? "All field values MUST be in Traditional Chinese (繁體中文). Use Chinese food names, Chinese portion descriptions, Chinese sauce/topping names."
+        : "All field values should be in English.";
+
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 512,
         system: `You are a food identification assistant. Analyse the food in the photo and return ONLY a valid JSON object with exactly these fields:
 {
-  "name": "primary food name in English",
+  "name": "primary food name",
   "portion": "estimated portion size (e.g. Medium bowl ~400ml, 1 slice, Small plate)",
   "sauces": "visible sauces or condiments as a short string, or null if none",
   "extras": "additional toppings or sides as a short string, or null if none"
 }
+
+${langInstruction}
 
 Important context: Users are based in Hong Kong. Common foods include: congee, dim sum, rice noodles, wonton noodles, milk tea, pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot.
 

@@ -101,8 +101,8 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
   const color = "hsl(var(--muted-foreground) / 0.35)";
   const r = 2.5;
 
-  const w = 40;
-  const h = 28;
+  const w = 56;
+  const h = 40;
   const svgW = w + r * 2;
   const svgH = h + r * 2;
 
@@ -113,7 +113,7 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
     pointerEvents: "none",
     zIndex: 10,
     ...(isTop ? { top: -h - r } : { bottom: -h - r }),
-    ...(isLeft ? { left: -w + 12 } : { right: -w + 12 }),
+    ...(isLeft ? { left: -w + 24 } : { right: -w + 24 }),
   };
 
   const photoX = isLeft ? svgW - r : r;
@@ -155,7 +155,7 @@ function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
 }
 
 export default function Snap() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
 
@@ -198,7 +198,7 @@ export default function Snap() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ imageBase64: base64, mimeType }),
+        body: JSON.stringify({ imageBase64: base64, mimeType, language: i18n.language }),
       });
 
       if (res.status === 429) {
@@ -404,7 +404,7 @@ export default function Snap() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={t("snap.field_placeholder_name")}
-                  className="text-sm h-9 rounded-xl bg-background"
+                  className="text-sm h-[4.5rem] rounded-xl bg-background"
                   data-testid="input-snap-name"
                 />
               </div>
@@ -417,7 +417,7 @@ export default function Snap() {
                   value={form.portion}
                   onChange={(e) => setForm((f) => ({ ...f, portion: e.target.value }))}
                   placeholder={t("snap.field_placeholder_portion")}
-                  className="text-sm h-9 rounded-xl bg-background text-right"
+                  className="text-sm h-[4.5rem] rounded-xl bg-background text-right"
                   data-testid="input-snap-portion"
                 />
               </div>
@@ -448,7 +448,7 @@ export default function Snap() {
                   value={form.sauces}
                   onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value }))}
                   placeholder={t("snap.field_placeholder_sauces")}
-                  className="text-sm h-9 rounded-xl bg-background"
+                  className="text-sm h-[4.5rem] rounded-xl bg-background"
                   data-testid="input-snap-sauces"
                 />
               </div>
@@ -461,7 +461,7 @@ export default function Snap() {
                   value={form.extras}
                   onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value }))}
                   placeholder={t("snap.field_placeholder_extras")}
-                  className="text-sm h-9 rounded-xl bg-background text-right"
+                  className="text-sm h-[4.5rem] rounded-xl bg-background text-right"
                   data-testid="input-snap-extras"
                 />
               </div>
