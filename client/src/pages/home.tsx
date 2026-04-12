@@ -462,19 +462,19 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-primary/10" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
     }
     if (dietTip) {
       const showDietTask = dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: getStruggleIcon(dietStruggle), text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(dietStruggle), text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
     }
 
     return (
@@ -514,19 +514,19 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-primary/10" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-amber-500/10" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
     }
     if (calendarPlan?.dietTip) {
       const showDietTask = calendarPlan?.dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-primary/10" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
     }
 
     return (
@@ -1653,7 +1653,7 @@ export default function Home() {
         </Card>
       )}
 
-      {(<Card>
+      {(<Card className="bg-primary/5 border-primary/20">
         <CardContent className="pt-4">
           <button
             className="flex items-center justify-between w-full"
