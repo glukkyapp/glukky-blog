@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Images, Loader2, RotateCcw, ChevronRight } from "lucide-react";
+import { Camera, Images, Loader2, RotateCcw, ChevronRight, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
@@ -97,12 +97,12 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
 function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
   const isTop = position.startsWith("top");
   const isLeft = position === "top-left" || position === "bottom-left";
-  const color = "hsl(var(--muted-foreground) / 0.35)";
-  const r = 2.5;
+  const color = "hsl(var(--muted-foreground) / 0.5)";
+  const r = 3.5;
 
   const w = 56;
   const gap = 28;
-  const inset = 10;
+  const inset = 20;
   const totalH = gap + inset;
   const svgW = w + r * 2;
   const svgH = totalH + r * 2;
@@ -120,21 +120,20 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
   const fieldX = isLeft ? r : svgW - r;
   const fieldY = isTop ? r : svgH - r;
 
-  const photoEdgeY = isTop ? gap + r : svgH - gap - r;
+  const bendX = isLeft ? r : svgW - r;
+  const bendY = isTop ? gap + r : svgH - gap - r;
 
-  const bendX = fieldX;
-  const bendY = photoEdgeY;
+  const photoX = isLeft ? svgW - r : r;
+  const photoY = bendY;
 
-  const edgeX = isLeft ? svgW - r : r;
-  const edgeY = photoEdgeY;
-
-  const circleX = edgeX;
+  const circleX = photoX;
   const circleY = isTop ? svgH - r : r;
 
   return (
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
       <line x1={fieldX} y1={fieldY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
-      <line x1={bendX} y1={bendY} x2={edgeX} y2={edgeY} stroke={color} strokeWidth="1" />
+      <line x1={bendX} y1={bendY} x2={photoX} y2={photoY} stroke={color} strokeWidth="1" />
+      <line x1={photoX} y1={photoY} x2={circleX} y2={circleY} stroke={color} strokeWidth="1" />
       <circle cx={circleX} cy={circleY} r={r} fill={color} />
       <circle cx={fieldX} cy={fieldY} r={r} fill={color} />
     </svg>
@@ -404,7 +403,8 @@ export default function Snap() {
           <div className="relative px-1">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-name" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <Label htmlFor="snap-name" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
+                  <UtensilsCrossed className="w-3 h-3" />
                   {t("snap.field_name")}
                 </Label>
                 <textarea
@@ -418,8 +418,9 @@ export default function Snap() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-portion" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
+                <Label htmlFor="snap-portion" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_portion")}
+                  <Scale className="w-3 h-3" />
                 </Label>
                 <textarea
                   id="snap-portion"
@@ -450,7 +451,8 @@ export default function Snap() {
 
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-sauces" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <Label htmlFor="snap-sauces" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
+                  <Droplets className="w-3 h-3" />
                   {t("snap.field_sauces")}
                 </Label>
                 <textarea
@@ -464,8 +466,9 @@ export default function Snap() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-extras" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
+                <Label htmlFor="snap-extras" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_extras")}
+                  <Cherry className="w-3 h-3" />
                 </Label>
                 <textarea
                   id="snap-extras"
