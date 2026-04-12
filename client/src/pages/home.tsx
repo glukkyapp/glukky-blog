@@ -79,7 +79,6 @@ export default function Home() {
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [allSetDismissed, setAllSetDismissed] = useState(false);
-  const [tomorrowDismissed, setTomorrowDismissed] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
@@ -1320,13 +1319,6 @@ export default function Home() {
     }
   }, [nextWeekPlanned, allSetDismissed]);
 
-  useEffect(() => {
-    if (checkInDone && !nextWeekPlanned && !tomorrowDismissed) {
-      const timer = setTimeout(() => setTomorrowDismissed(true), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [checkInDone, nextWeekPlanned, tomorrowDismissed]);
-
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
     const d = new Date(planSundayStr + "T00:00:00");
@@ -1530,17 +1522,19 @@ export default function Home() {
         </div>
       )}
 
-      {nextWeekPlanned && !allSetDismissed && (
+      {nextWeekPlanned && (
         <>
-          <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
-            <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
-            </CardContent>
-          </Card>
+          {!allSetDismissed && (
+            <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
+                </div>
+                <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
+              </CardContent>
+            </Card>
+          )}
           {(() => {
             const tmrwDow = (dayOfWeek + 1) % 7;
             const tmrwDay = plan?.days?.find((d: any) => d.dayOfWeek === tmrwDow);
@@ -1597,7 +1591,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {tomorrowInPlanWeek && !tomorrowDismissed && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
+            {tomorrowInPlanWeek && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
           renderCheckInCard()
