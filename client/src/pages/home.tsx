@@ -1313,11 +1313,20 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (nextWeekPlanned && !allSetDismissed) {
-      const timer = setTimeout(() => setAllSetDismissed(true), 5000);
-      return () => clearTimeout(timer);
+    if (!nextWeekPlanned || !plan?.startDate) return;
+    const storageKey = "allSetDismissedPlan";
+    const dismissed = sessionStorage.getItem(storageKey);
+    if (dismissed === plan.startDate) {
+      if (!allSetDismissed) setAllSetDismissed(true);
+      return;
     }
-  }, [nextWeekPlanned, allSetDismissed]);
+    setAllSetDismissed(false);
+    const timer = setTimeout(() => {
+      setAllSetDismissed(true);
+      sessionStorage.setItem(storageKey, plan.startDate);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [nextWeekPlanned, plan?.startDate]);
 
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
