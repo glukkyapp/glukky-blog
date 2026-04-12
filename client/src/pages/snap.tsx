@@ -135,7 +135,6 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
       <line x1={fieldX} y1={fieldY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
       <line x1={bendX} y1={bendY} x2={edgeX} y2={edgeY} stroke={color} strokeWidth="1" />
-      <line x1={edgeX} y1={edgeY} x2={circleX} y2={circleY} stroke={color} strokeWidth="1" strokeDasharray="2 2" />
       <circle cx={circleX} cy={circleY} r={r} fill={color} />
       <circle cx={fieldX} cy={fieldY} r={r} fill={color} />
     </svg>
