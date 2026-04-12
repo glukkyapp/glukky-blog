@@ -79,6 +79,9 @@ export default function Home() {
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [allSetDismissed, setAllSetDismissed] = useState(false);
+  const [allSetFading, setAllSetFading] = useState(false);
+  const [tomorrowPlanDismissed, setTomorrowPlanDismissed] = useState(false);
+  const [tomorrowPlanFading, setTomorrowPlanFading] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
@@ -1321,11 +1324,35 @@ export default function Home() {
       return;
     }
     setAllSetDismissed(false);
-    const timer = setTimeout(() => {
-      setAllSetDismissed(true);
-      sessionStorage.setItem(storageKey, plan.startDate);
+    setAllSetFading(false);
+    const fadeTimer = setTimeout(() => {
+      setAllSetFading(true);
+      setTimeout(() => {
+        setAllSetDismissed(true);
+        sessionStorage.setItem(storageKey, plan.startDate);
+      }, 500);
     }, 5000);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(fadeTimer);
+  }, [nextWeekPlanned, plan?.startDate]);
+
+  useEffect(() => {
+    if (!nextWeekPlanned || !plan?.startDate) return;
+    const storageKey = "tomorrowPlanDismissedPlan";
+    const dismissed = sessionStorage.getItem(storageKey);
+    if (dismissed === plan.startDate) {
+      if (!tomorrowPlanDismissed) setTomorrowPlanDismissed(true);
+      return;
+    }
+    setTomorrowPlanDismissed(false);
+    setTomorrowPlanFading(false);
+    const fadeTimer = setTimeout(() => {
+      setTomorrowPlanFading(true);
+      setTimeout(() => {
+        setTomorrowPlanDismissed(true);
+        sessionStorage.setItem(storageKey, plan.startDate);
+      }, 500);
+    }, 5000);
+    return () => clearTimeout(fadeTimer);
   }, [nextWeekPlanned, plan?.startDate]);
 
   const formatCatchUpDate = () => {
@@ -1534,21 +1561,27 @@ export default function Home() {
       {nextWeekPlanned && (
         <>
           {!allSetDismissed && (
-            <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
-              </CardContent>
-            </Card>
+            <div className={`transition-opacity duration-500 ${allSetFading ? "opacity-0" : "opacity-100"}`}>
+              <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
+                </CardContent>
+              </Card>
+            </div>
           )}
-          {(() => {
+          {!tomorrowPlanDismissed && (() => {
             const tmrwDow = (dayOfWeek + 1) % 7;
             const tmrwDay = plan?.days?.find((d: any) => d.dayOfWeek === tmrwDow);
             if (!tmrwDay) return null;
-            return renderTomorrowPlan(tmrwDay, formatTomorrowDate(), plan?.dietTip, plan?.dietStruggle);
+            return (
+              <div className={`transition-opacity duration-500 ${tomorrowPlanFading ? "opacity-0" : "opacity-100"}`}>
+                {renderTomorrowPlan(tmrwDay, formatTomorrowDate(), plan?.dietTip, plan?.dietStruggle)}
+              </div>
+            );
           })()}
         </>
       )}
