@@ -10,6 +10,20 @@ interface NotificationPayload {
   message: string;
   deepLink: string;
   playerIds: string[];
+  send_after?: string;
+  delayed_option?: "timezone" | "last-active";
+}
+
+interface OneSignalRequestBody {
+  app_id: string;
+  include_subscription_ids: string[];
+  headings: { en: string };
+  subtitle: { en: string };
+  contents: { en: string };
+  url: string;
+  data: { deepLink: string };
+  send_after?: string;
+  delayed_option?: "timezone" | "last-active";
 }
 
 export async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
@@ -29,7 +43,7 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
   for (let i = 0; i < payload.playerIds.length; i += batchSize) {
     const batch = payload.playerIds.slice(i, i + batchSize);
 
-    const body = {
+    const body: OneSignalRequestBody = {
       app_id: ONESIGNAL_APP_ID,
       include_subscription_ids: batch,
       headings: { en: payload.title },
@@ -39,7 +53,14 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
       data: { deepLink: payload.deepLink },
     };
 
-    log(`Sending notification to ${batch.length} subscription(s): ${JSON.stringify(batch)}`, "onesignal");
+    if (payload.send_after) {
+      body.send_after = payload.send_after;
+    }
+    if (payload.delayed_option) {
+      body.delayed_option = payload.delayed_option;
+    }
+
+    log(`Sending notification to ${batch.length} subscription(s): ${JSON.stringify(batch)}${payload.send_after ? ` (send_after: ${payload.send_after}, delayed_option: ${payload.delayed_option})` : ""}`, "onesignal");
 
     try {
       const response = await fetch(ONESIGNAL_API_URL, {

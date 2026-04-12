@@ -1,8 +1,58 @@
+import * as fs from "fs";
+import * as path from "path";
 import { db } from "./db";
 import { userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs } from "@shared/schema";
 import { eq, and, isNotNull, sql, lte, desc } from "drizzle-orm";
 import { sendPushNotification } from "./onesignal";
 import { log } from "./index";
+
+const DEDUP_FILE = path.join(process.cwd(), ".notification-scheduled-date");
+const SCHEDULE_HOUR_UTC = 13;
+
+type NotificationType = "late_dinner" | "reengagement" | "evening";
+
+function getTodayDateStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getScheduledTypes(dateStr: string): Set<NotificationType> {
+  try {
+    const content = fs.readFileSync(DEDUP_FILE, "utf-8").trim();
+    const data = JSON.parse(content);
+    if (data.date === dateStr && Array.isArray(data.types)) {
+      return new Set(data.types as NotificationType[]);
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function markTypeScheduled(dateStr: string, type: NotificationType): void {
+  const existing = getScheduledTypes(dateStr);
+  existing.add(type);
+  fs.writeFileSync(DEDUP_FILE, JSON.stringify({ date: dateStr, types: Array.from(existing) }), "utf-8");
+}
+
+function buildSendAfter(targetHourUtc: number): string {
+  const now = new Date();
+  const target = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    targetHourUtc,
+    0,
+    0,
+  ));
+  if (target.getTime() <= now.getTime()) {
+    target.setUTCDate(target.getUTCDate() + 1);
+  }
+  const y = target.getUTCFullYear();
+  const m = String(target.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(target.getUTCDate()).padStart(2, "0");
+  const h = String(target.getUTCHours()).padStart(2, "0");
+  return `${y}-${m}-${d} ${h}:00:00 GMT-0000`;
+}
 
 async function getRegisteredUsers() {
   return db.select({
@@ -16,7 +66,7 @@ async function getRegisteredUsers() {
     ));
 }
 
-async function sendLateDinnerReminder() {
+async function scheduleLateDinnerReminder(): Promise<boolean> {
   const now = new Date();
   const todayDow = (now.getDay() + 6) % 7;
 
@@ -42,41 +92,22 @@ async function sendLateDinnerReminder() {
 
   if (playerIds.length === 0) {
     log("Late dinner reminder: no users with late dinner today", "notifications");
-    return;
+    return true;
   }
 
-  log(`Late dinner reminder: sending to ${playerIds.length} users`, "notifications");
-  await sendPushNotification({
+  log(`Late dinner reminder: scheduling for ${playerIds.length} users at 2 PM local time`, "notifications");
+  return sendPushNotification({
     title: "Glukky",
     subtitle: "Dinner reminder",
     message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
     deepLink: "/",
     playerIds,
+    send_after: buildSendAfter(14),
+    delayed_option: "timezone",
   });
 }
 
-async function sendSundayPlanningReminder() {
-  const users = await getRegisteredUsers();
-  const playerIds = users
-    .map(u => u.onesignalPlayerId)
-    .filter((id): id is string => id !== null);
-
-  if (playerIds.length === 0) {
-    log("Sunday planning reminder: no registered users", "notifications");
-    return;
-  }
-
-  log(`Sunday planning reminder: sending to ${playerIds.length} users`, "notifications");
-  await sendPushNotification({
-    title: "Glukky",
-    subtitle: "Weekly review",
-    message: "Your weekly review is ready! Check your progress and plan next week.",
-    deepLink: "/plan",
-    playerIds,
-  });
-}
-
-async function sendReengagementReminder() {
+async function scheduleReengagementReminder(): Promise<boolean> {
   const threeDaysAgo = new Date();
   threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
   const threeDaysAgoStr = threeDaysAgo.toISOString().split("T")[0];
@@ -119,20 +150,45 @@ async function sendReengagementReminder() {
 
   if (eligiblePlayerIds.length === 0) {
     log("Re-engagement: no inactive users to notify", "notifications");
-    return;
+    return true;
   }
 
-  log(`Re-engagement: sending to ${eligiblePlayerIds.length} users`, "notifications");
-  await sendPushNotification({
+  log(`Re-engagement: scheduling for ${eligiblePlayerIds.length} users at 6 PM local time`, "notifications");
+  return sendPushNotification({
     title: "Glukky",
     subtitle: "We miss you!",
     message: "Your plan is waiting — even a small step counts.",
     deepLink: "/",
     playerIds: eligiblePlayerIds,
+    send_after: buildSendAfter(18),
+    delayed_option: "timezone",
   });
 }
 
-async function sendDailyCheckInReminder() {
+async function scheduleSundayPlanningReminder(): Promise<boolean> {
+  const users = await getRegisteredUsers();
+  const playerIds = users
+    .map(u => u.onesignalPlayerId)
+    .filter((id): id is string => id !== null);
+
+  if (playerIds.length === 0) {
+    log("Sunday planning reminder: no registered users", "notifications");
+    return true;
+  }
+
+  log(`Sunday planning reminder: scheduling for ${playerIds.length} users at 10 PM local time`, "notifications");
+  return sendPushNotification({
+    title: "Glukky",
+    subtitle: "Weekly review",
+    message: "Your weekly review is ready! Check your progress and plan next week.",
+    deepLink: "/plan",
+    playerIds,
+    send_after: buildSendAfter(22),
+    delayed_option: "timezone",
+  });
+}
+
+async function scheduleDailyCheckInReminder(): Promise<boolean> {
   const users = await getRegisteredUsers();
   const playerIds = users
     .map(u => u.onesignalPlayerId)
@@ -140,67 +196,79 @@ async function sendDailyCheckInReminder() {
 
   if (playerIds.length === 0) {
     log("Daily check-in reminder: no registered users", "notifications");
-    return;
+    return true;
   }
 
-  log(`Daily check-in reminder: sending to ${playerIds.length} users`, "notifications");
-  await sendPushNotification({
+  log(`Daily check-in reminder: scheduling for ${playerIds.length} users at 10 PM local time`, "notifications");
+  return sendPushNotification({
     title: "Glukky",
     subtitle: "Daily check-in",
     message: "Your daily check-in is open — tap to log your day!",
     deepLink: "/",
     playerIds,
+    send_after: buildSendAfter(22),
+    delayed_option: "timezone",
   });
 }
 
-let lastRunHour = -1;
-let lastRunDate = "";
+async function scheduleAllNotifications() {
+  const dateStr = getTodayDateStr();
+  const now = new Date();
+  const currentHourUtc = now.getUTCHours();
 
-export function startNotificationScheduler() {
-  log("Notification scheduler started (checking every 30 minutes)", "notifications");
+  if (currentHourUtc < SCHEDULE_HOUR_UTC) {
+    log(`Waiting for ${SCHEDULE_HOUR_UTC}:00 UTC to schedule notifications (currently ${currentHourUtc}:00 UTC)`, "notifications");
+    return;
+  }
 
-  const check = async () => {
-    const now = new Date();
-    const hour = now.getHours();
-    const dateStr = now.toISOString().split("T")[0];
-    const dayOfWeek = now.getDay();
-    const runKey = `${dateStr}-${hour}`;
+  const alreadyScheduled = getScheduledTypes(dateStr);
+  const allTypes: NotificationType[] = ["late_dinner", "reengagement", "evening"];
+  const pending = allTypes.filter(t => !alreadyScheduled.has(t));
 
-    if (runKey === `${lastRunDate}-${lastRunHour}`) return;
+  if (pending.length === 0) {
+    log(`All notifications already scheduled for ${dateStr}, skipping`, "notifications");
+    return;
+  }
 
+  log(`Scheduling notifications for ${dateStr} (pending: ${pending.join(", ")})`, "notifications");
+
+  for (const type of pending) {
     try {
-      if (hour === 14) {
-        lastRunHour = hour;
-        lastRunDate = dateStr;
-        log("Running 2 PM check: late dinner reminder", "notifications");
-        await sendLateDinnerReminder();
+      let success = false;
+      switch (type) {
+        case "late_dinner":
+          success = await scheduleLateDinnerReminder();
+          break;
+        case "reengagement":
+          success = await scheduleReengagementReminder();
+          break;
+        case "evening":
+          if (now.getDay() === 0) {
+            success = await scheduleSundayPlanningReminder();
+          } else {
+            success = await scheduleDailyCheckInReminder();
+          }
+          break;
       }
-
-      if (hour === 18) {
-        lastRunHour = hour;
-        lastRunDate = dateStr;
-        log("Running 6 PM check: re-engagement", "notifications");
-        await sendReengagementReminder();
-      }
-
-      if (hour === 22 && dayOfWeek === 0) {
-        lastRunHour = hour;
-        lastRunDate = dateStr;
-        log("Running 10 PM Sunday check: planning reminder", "notifications");
-        await sendSundayPlanningReminder();
-      }
-
-      if (hour === 22 && dayOfWeek !== 0) {
-        lastRunHour = hour;
-        lastRunDate = dateStr;
-        log("Running 10 PM daily check-in reminder (non-Sunday)", "notifications");
-        await sendDailyCheckInReminder();
+      if (success) {
+        markTypeScheduled(dateStr, type);
+      } else {
+        log(`OneSignal returned failure for ${type}, will retry on next run`, "notifications");
       }
     } catch (error: any) {
-      log(`Notification scheduler error: ${error.message}`, "notifications");
+      log(`Failed to schedule ${type} notification: ${error.message}`, "notifications");
     }
-  };
+  }
 
-  check();
-  setInterval(check, 30 * 60 * 1000);
+  log(`Notification scheduling complete for ${dateStr}`, "notifications");
+}
+
+export function startNotificationScheduler() {
+  log("Notification scheduler started (schedules via OneSignal timezone delivery)", "notifications");
+
+  scheduleAllNotifications();
+
+  setInterval(() => {
+    scheduleAllNotifications();
+  }, 60 * 60 * 1000);
 }
