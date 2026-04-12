@@ -95,6 +95,44 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
   );
 }
 
+function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
+  const isTop = position.startsWith("top");
+  const isLeft = position === "top-left" || position === "bottom-left";
+  const color = "hsl(var(--muted-foreground) / 0.35)";
+  const r = 2.5;
+
+  const w = 40;
+  const h = 28;
+  const svgW = w + r * 2;
+  const svgH = h + r * 2;
+
+  const style: React.CSSProperties = {
+    position: "absolute",
+    width: svgW,
+    height: svgH,
+    pointerEvents: "none",
+    zIndex: 10,
+    ...(isTop ? { top: -h - r } : { bottom: -h - r }),
+    ...(isLeft ? { left: -w + 12 } : { right: -w + 12 }),
+  };
+
+  const photoX = isLeft ? svgW - r : r;
+  const photoY = isTop ? svgH - r : r;
+  const bendX = isLeft ? r : svgW - r;
+  const bendY = photoY;
+  const fieldX = bendX;
+  const fieldY = isTop ? r : svgH - r;
+
+  return (
+    <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
+      <line x1={photoX} y1={photoY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
+      <line x1={bendX} y1={bendY} x2={fieldX} y2={fieldY} stroke={color} strokeWidth="1" />
+      <circle cx={photoX} cy={photoY} r={r} fill={color} />
+      <circle cx={fieldX} cy={fieldY} r={r} fill={color} />
+    </svg>
+  );
+}
+
 function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
   used: number;
   limit: number;
@@ -341,15 +379,6 @@ export default function Snap() {
 
       {step === "review" && (
         <div className="flex flex-col gap-4">
-          {previewUrl && (
-            <img
-              src={previewUrl}
-              alt="Food photo"
-              className="w-full rounded-2xl object-cover max-h-52"
-              data-testid="img-snap-preview"
-            />
-          )}
-
           <div>
             <p className="text-sm font-semibold">{t("snap.label_title")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
@@ -364,57 +393,78 @@ export default function Snap() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="snap-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("snap.field_name")}
-              </Label>
-              <Input
-                id="snap-name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder={t("snap.field_placeholder_name")}
-                data-testid="input-snap-name"
-              />
+          <div className="relative px-1">
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-name" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  {t("snap.field_name")}
+                </Label>
+                <Input
+                  id="snap-name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder={t("snap.field_placeholder_name")}
+                  className="text-sm h-9 rounded-xl bg-background"
+                  data-testid="input-snap-name"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-portion" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
+                  {t("snap.field_portion")}
+                </Label>
+                <Input
+                  id="snap-portion"
+                  value={form.portion}
+                  onChange={(e) => setForm((f) => ({ ...f, portion: e.target.value }))}
+                  placeholder={t("snap.field_placeholder_portion")}
+                  className="text-sm h-9 rounded-xl bg-background text-right"
+                  data-testid="input-snap-portion"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="snap-portion" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("snap.field_portion")}
-              </Label>
-              <Input
-                id="snap-portion"
-                value={form.portion}
-                onChange={(e) => setForm((f) => ({ ...f, portion: e.target.value }))}
-                placeholder={t("snap.field_placeholder_portion")}
-                data-testid="input-snap-portion"
-              />
-            </div>
+            {previewUrl && (
+              <div className="relative mx-4 my-1" style={{ overflow: "visible" }}>
+                <PointerLine position="top-left" />
+                <PointerLine position="top-right" />
+                <PointerLine position="bottom-left" />
+                <PointerLine position="bottom-right" />
+                <img
+                  src={previewUrl}
+                  alt="Food photo"
+                  className="w-full rounded-2xl object-cover max-h-56"
+                  data-testid="img-snap-preview"
+                />
+              </div>
+            )}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="snap-sauces" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("snap.field_sauces")}
-              </Label>
-              <Input
-                id="snap-sauces"
-                value={form.sauces}
-                onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value }))}
-                placeholder={t("snap.field_placeholder_sauces")}
-                data-testid="input-snap-sauces"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="snap-extras" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("snap.field_extras")}
-              </Label>
-              <Input
-                id="snap-extras"
-                value={form.extras}
-                onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value }))}
-                placeholder={t("snap.field_placeholder_extras")}
-                data-testid="input-snap-extras"
-              />
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-sauces" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  {t("snap.field_sauces")}
+                </Label>
+                <Input
+                  id="snap-sauces"
+                  value={form.sauces}
+                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value }))}
+                  placeholder={t("snap.field_placeholder_sauces")}
+                  className="text-sm h-9 rounded-xl bg-background"
+                  data-testid="input-snap-sauces"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-extras" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
+                  {t("snap.field_extras")}
+                </Label>
+                <Input
+                  id="snap-extras"
+                  value={form.extras}
+                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value }))}
+                  placeholder={t("snap.field_placeholder_extras")}
+                  className="text-sm h-9 rounded-xl bg-background text-right"
+                  data-testid="input-snap-extras"
+                />
+              </div>
             </div>
           </div>
 
