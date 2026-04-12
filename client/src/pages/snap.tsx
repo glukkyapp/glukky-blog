@@ -98,8 +98,6 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
   const isTop = position.startsWith("top");
   const isLeft = position === "top-left" || position === "bottom-left";
   const r = 3.5;
-  const strokeBlack = "rgba(0,0,0,0.6)";
-  const strokeWhite = "white";
 
   const w = 48;
   const gap = 28;
@@ -129,10 +127,9 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
 
   return (
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
-      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke={strokeBlack} strokeWidth="3" fill="none" strokeLinejoin="round" />
-      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke={strokeWhite} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
-      <circle cx={circleX} cy={circleY} r={r} fill={strokeWhite} stroke={strokeBlack} strokeWidth="1.5" />
-      <circle cx={fieldX} cy={fieldY} r={r} fill={strokeWhite} stroke={strokeBlack} strokeWidth="1.5" />
+      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke="white" strokeWidth="1" fill="none" strokeLinejoin="round" />
+      <circle cx={circleX} cy={circleY} r={r} fill="white" />
+      <circle cx={fieldX} cy={fieldY} r={r} fill="white" />
     </svg>
   );
 }
