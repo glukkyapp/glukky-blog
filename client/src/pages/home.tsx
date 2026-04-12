@@ -476,35 +476,33 @@ export default function Home() {
     }
 
     return (
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-            <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {dateLabel}
-          </div>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
+          <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {dateLabel}
+        </div>
 
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
-          ) : (
-            <div className="flex justify-center gap-3 py-2">
-              {tasks.map((task, idx) => {
-                const Icon = task.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
-                    data-testid={task.testId}
-                  >
-                    <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
-                      <Icon className={`w-7 h-7 ${task.color}`} />
-                    </div>
-                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
+        ) : (
+          <div className="flex justify-center gap-3 py-2">
+            {tasks.map((task, idx) => {
+              const Icon = task.icon;
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
+                  data-testid={task.testId}
+                >
+                  <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-7 h-7 ${task.color}`} />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -530,35 +528,33 @@ export default function Home() {
     }
 
     return (
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-            <span className="font-semibold text-foreground">{label}</span> — {dateLabel}
-          </div>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
+          <span className="font-semibold text-foreground">{label}</span> — {dateLabel}
+        </div>
 
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
-          ) : (
-            <div className="flex justify-center gap-3 py-2">
-              {tasks.map((task, idx) => {
-                const Icon = task.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
-                    data-testid={task.testId}
-                  >
-                    <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
-                      <Icon className={`w-7 h-7 ${task.color}`} />
-                    </div>
-                    <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
+        ) : (
+          <div className="flex justify-center gap-3 py-2">
+            {tasks.map((task, idx) => {
+              const Icon = task.icon;
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
+                  data-testid={task.testId}
+                >
+                  <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-7 h-7 ${task.color}`} />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   }
 
