@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Images, Loader2, RotateCcw, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
@@ -102,9 +101,11 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
   const r = 2.5;
 
   const w = 56;
-  const h = 40;
+  const gap = 28;
+  const inset = 18;
+  const totalH = gap + inset;
   const svgW = w + r * 2;
-  const svgH = h + r * 2;
+  const svgH = totalH + r * 2;
 
   const style: React.CSSProperties = {
     position: "absolute",
@@ -112,14 +113,14 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
     height: svgH,
     pointerEvents: "none",
     zIndex: 10,
-    ...(isTop ? { top: -h - r } : { bottom: -h - r }),
+    ...(isTop ? { top: -(gap + r) } : { bottom: -(gap + r) }),
     ...(isLeft ? { left: -w + 24 } : { right: -w + 24 }),
   };
 
   const photoX = isLeft ? svgW - r : r;
   const photoY = isTop ? svgH - r : r;
   const bendX = isLeft ? r : svgW - r;
-  const bendY = photoY;
+  const bendY = isTop ? gap + r : svgH - gap - r;
   const fieldX = bendX;
   const fieldY = isTop ? r : svgH - r;
 
@@ -394,17 +395,18 @@ export default function Snap() {
           )}
 
           <div className="relative px-1">
-            <div className="grid grid-cols-2 gap-3 mb-2">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="snap-name" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                   {t("snap.field_name")}
                 </Label>
-                <Input
+                <textarea
                   id="snap-name"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={t("snap.field_placeholder_name")}
-                  className="text-sm h-[4.5rem] rounded-xl bg-background"
+                  rows={2}
+                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
                   data-testid="input-snap-name"
                 />
               </div>
@@ -412,12 +414,13 @@ export default function Snap() {
                 <Label htmlFor="snap-portion" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
                   {t("snap.field_portion")}
                 </Label>
-                <Input
+                <textarea
                   id="snap-portion"
                   value={form.portion}
                   onChange={(e) => setForm((f) => ({ ...f, portion: e.target.value }))}
                   placeholder={t("snap.field_placeholder_portion")}
-                  className="text-sm h-[4.5rem] rounded-xl bg-background text-right"
+                  rows={2}
+                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
                   data-testid="input-snap-portion"
                 />
               </div>
@@ -438,17 +441,18 @@ export default function Snap() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="grid grid-cols-2 gap-3 mt-3">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="snap-sauces" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                   {t("snap.field_sauces")}
                 </Label>
-                <Input
+                <textarea
                   id="snap-sauces"
                   value={form.sauces}
                   onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value }))}
                   placeholder={t("snap.field_placeholder_sauces")}
-                  className="text-sm h-[4.5rem] rounded-xl bg-background"
+                  rows={2}
+                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
                   data-testid="input-snap-sauces"
                 />
               </div>
@@ -456,12 +460,13 @@ export default function Snap() {
                 <Label htmlFor="snap-extras" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide text-right">
                   {t("snap.field_extras")}
                 </Label>
-                <Input
+                <textarea
                   id="snap-extras"
                   value={form.extras}
                   onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value }))}
                   placeholder={t("snap.field_placeholder_extras")}
-                  className="text-sm h-[4.5rem] rounded-xl bg-background text-right"
+                  rows={2}
+                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
                   data-testid="input-snap-extras"
                 />
               </div>
