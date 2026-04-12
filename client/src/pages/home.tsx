@@ -78,6 +78,8 @@ export default function Home() {
   const [catchupTacticPick, setCatchupTacticPick] = useState<string | null>(null);
   const [catchupDietResponse, setCatchupDietResponse] = useState<"yes" | "no" | "no_chance" | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const [allSetDismissed, setAllSetDismissed] = useState(false);
+  const [tomorrowDismissed, setTomorrowDismissed] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
@@ -1311,6 +1313,20 @@ export default function Home() {
     || (isCatchUp && (sundayCheckInDone || recorded))
   );
 
+  useEffect(() => {
+    if (nextWeekPlanned && !allSetDismissed) {
+      const timer = setTimeout(() => setAllSetDismissed(true), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [nextWeekPlanned, allSetDismissed]);
+
+  useEffect(() => {
+    if (checkInDone && !nextWeekPlanned && !tomorrowDismissed) {
+      const timer = setTimeout(() => setTomorrowDismissed(true), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [checkInDone, nextWeekPlanned, tomorrowDismissed]);
+
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
     const d = new Date(planSundayStr + "T00:00:00");
@@ -1514,7 +1530,7 @@ export default function Home() {
         </div>
       )}
 
-      {nextWeekPlanned && (
+      {nextWeekPlanned && !allSetDismissed && (
         <>
           <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
             <CardContent className="pt-4 space-y-3">
@@ -1581,7 +1597,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {tomorrowInPlanWeek && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
+            {tomorrowInPlanWeek && !tomorrowDismissed && renderTomorrowPlan(tomorrowPlan, formatTomorrowDate())}
           </>
         ) : showCheckIn ? (
           renderCheckInCard()
