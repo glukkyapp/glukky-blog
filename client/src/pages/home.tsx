@@ -80,8 +80,6 @@ export default function Home() {
   const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [allSetDismissed, setAllSetDismissed] = useState(false);
   const [allSetFading, setAllSetFading] = useState(false);
-  const [tomorrowPlanDismissed, setTomorrowPlanDismissed] = useState(false);
-  const [tomorrowPlanFading, setTomorrowPlanFading] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
@@ -1336,27 +1334,6 @@ export default function Home() {
     return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
   }, [nextWeekPlanned, plan?.startDate]);
 
-  useEffect(() => {
-    if (!nextWeekPlanned || !plan?.startDate) return;
-    const storageKey = "tomorrowPlanDismissedPlan";
-    const dismissed = sessionStorage.getItem(storageKey);
-    if (dismissed === plan.startDate) {
-      if (!tomorrowPlanDismissed) setTomorrowPlanDismissed(true);
-      return;
-    }
-    setTomorrowPlanDismissed(false);
-    setTomorrowPlanFading(false);
-    let innerTimer: ReturnType<typeof setTimeout>;
-    const fadeTimer = setTimeout(() => {
-      setTomorrowPlanFading(true);
-      innerTimer = setTimeout(() => {
-        setTomorrowPlanDismissed(true);
-        sessionStorage.setItem(storageKey, plan.startDate);
-      }, 500);
-    }, 5000);
-    return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
-  }, [nextWeekPlanned, plan?.startDate]);
-
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
     const d = new Date(planSundayStr + "T00:00:00");
@@ -1575,15 +1552,11 @@ export default function Home() {
               </Card>
             </div>
           )}
-          {!tomorrowPlanDismissed && (() => {
+          {(() => {
             const tmrwDow = (dayOfWeek + 1) % 7;
             const tmrwDay = plan?.days?.find((d: any) => d.dayOfWeek === tmrwDow);
             if (!tmrwDay) return null;
-            return (
-              <div className={`transition-opacity duration-500 ${tomorrowPlanFading ? "opacity-0" : "opacity-100"}`}>
-                {renderTomorrowPlan(tmrwDay, formatTomorrowDate(), plan?.dietTip, plan?.dietStruggle)}
-              </div>
-            );
+            return renderTomorrowPlan(tmrwDay, formatTomorrowDate(), plan?.dietTip, plan?.dietStruggle);
           })()}
         </>
       )}
