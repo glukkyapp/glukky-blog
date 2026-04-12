@@ -102,7 +102,7 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
 
   const w = 56;
   const gap = 28;
-  const inset = 18;
+  const inset = 10;
   const totalH = gap + inset;
   const svgW = w + r * 2;
   const svgH = totalH + r * 2;
@@ -117,18 +117,26 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
     ...(isLeft ? { left: -w + 24 } : { right: -w + 24 }),
   };
 
-  const photoX = isLeft ? svgW - r : r;
-  const photoY = isTop ? svgH - r : r;
-  const bendX = isLeft ? r : svgW - r;
-  const bendY = isTop ? gap + r : svgH - gap - r;
-  const fieldX = bendX;
+  const fieldX = isLeft ? r : svgW - r;
   const fieldY = isTop ? r : svgH - r;
+
+  const photoEdgeY = isTop ? gap + r : svgH - gap - r;
+
+  const bendX = fieldX;
+  const bendY = photoEdgeY;
+
+  const edgeX = isLeft ? svgW - r : r;
+  const edgeY = photoEdgeY;
+
+  const circleX = edgeX;
+  const circleY = isTop ? svgH - r : r;
 
   return (
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
-      <line x1={photoX} y1={photoY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
-      <line x1={bendX} y1={bendY} x2={fieldX} y2={fieldY} stroke={color} strokeWidth="1" />
-      <circle cx={photoX} cy={photoY} r={r} fill={color} />
+      <line x1={fieldX} y1={fieldY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
+      <line x1={bendX} y1={bendY} x2={edgeX} y2={edgeY} stroke={color} strokeWidth="1" />
+      <line x1={edgeX} y1={edgeY} x2={circleX} y2={circleY} stroke={color} strokeWidth="1" strokeDasharray="2 2" />
+      <circle cx={circleX} cy={circleY} r={r} fill={color} />
       <circle cx={fieldX} cy={fieldY} r={r} fill={color} />
     </svg>
   );
