@@ -2188,7 +2188,14 @@ export async function registerRoutes(
 
 ${langInstruction}
 
-Important context: Users are based in Hong Kong. Common foods include: congee, dim sum, rice noodles, wonton noodles, milk tea, pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot.
+Important context: Users are based in Hong Kong. Common foods include: congee, dim sum, rice noodles (米線/米粉), wonton noodles, milk tea, pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, cart noodles.
+
+Food identification tips:
+- Pork belly (腩肉) has visibly thicker, layered slices with fat bands. Beef slices (牛肉) are thinner and leaner. Do NOT confuse them.
+- 腩肉 commonly pairs with rice noodles (米線) — if you see thick layered meat with rice noodles, it is very likely pork belly (腩肉), not beef.
+- Char siu (叉燒) has a reddish-brown glaze. Siu yuk (燒肉) has crispy skin on top.
+- Rice noodles (米線) are thin and white, different from flat ho fun (河粉) or egg noodles (伊麵/蛋麵).
+- If unsure between similar meats, consider the accompaniments and cooking style as context clues.
 
 If you cannot identify food in the image, return exactly: {"error":"No food detected"}
 

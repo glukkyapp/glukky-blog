@@ -97,13 +97,14 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
 function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
   const isTop = position.startsWith("top");
   const isLeft = position === "top-left" || position === "bottom-left";
-  const color = "hsl(var(--muted-foreground) / 0.5)";
   const r = 3.5;
+  const strokeBlack = "rgba(0,0,0,0.6)";
+  const strokeWhite = "white";
 
-  const w = 56;
+  const w = 48;
   const gap = 28;
-  const inset = 20;
-  const totalH = gap + inset;
+  const bendInset = 8;
+  const totalH = gap + bendInset;
   const svgW = w + r * 2;
   const svgH = totalH + r * 2;
 
@@ -114,28 +115,24 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
     pointerEvents: "none",
     zIndex: 10,
     ...(isTop ? { top: -(gap + r) } : { bottom: -(gap + r) }),
-    ...(isLeft ? { left: -w + 24 } : { right: -w + 24 }),
+    ...(isLeft ? { left: -w + 20 } : { right: -w + 20 }),
   };
 
   const fieldX = isLeft ? r : svgW - r;
   const fieldY = isTop ? r : svgH - r;
 
-  const bendX = isLeft ? r : svgW - r;
-  const bendY = isTop ? gap + r : svgH - gap - r;
+  const bendX = fieldX;
+  const bendY = isTop ? totalH + r : r;
 
-  const photoX = isLeft ? svgW - r : r;
-  const photoY = bendY;
-
-  const circleX = photoX;
-  const circleY = isTop ? svgH - r : r;
+  const circleX = isLeft ? svgW - r : r;
+  const circleY = bendY;
 
   return (
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
-      <line x1={fieldX} y1={fieldY} x2={bendX} y2={bendY} stroke={color} strokeWidth="1" />
-      <line x1={bendX} y1={bendY} x2={photoX} y2={photoY} stroke={color} strokeWidth="1" />
-      <line x1={photoX} y1={photoY} x2={circleX} y2={circleY} stroke={color} strokeWidth="1" />
-      <circle cx={circleX} cy={circleY} r={r} fill={color} />
-      <circle cx={fieldX} cy={fieldY} r={r} fill={color} />
+      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke={strokeBlack} strokeWidth="3" fill="none" strokeLinejoin="round" />
+      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke={strokeWhite} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+      <circle cx={circleX} cy={circleY} r={r} fill={strokeWhite} stroke={strokeBlack} strokeWidth="1.5" />
+      <circle cx={fieldX} cy={fieldY} r={r} fill={strokeWhite} stroke={strokeBlack} strokeWidth="1.5" />
     </svg>
   );
 }
