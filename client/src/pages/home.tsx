@@ -1325,14 +1325,15 @@ export default function Home() {
     }
     setAllSetDismissed(false);
     setAllSetFading(false);
+    let innerTimer: ReturnType<typeof setTimeout>;
     const fadeTimer = setTimeout(() => {
       setAllSetFading(true);
-      setTimeout(() => {
+      innerTimer = setTimeout(() => {
         setAllSetDismissed(true);
         sessionStorage.setItem(storageKey, plan.startDate);
       }, 500);
     }, 5000);
-    return () => clearTimeout(fadeTimer);
+    return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
   }, [nextWeekPlanned, plan?.startDate]);
 
   useEffect(() => {
@@ -1345,14 +1346,15 @@ export default function Home() {
     }
     setTomorrowPlanDismissed(false);
     setTomorrowPlanFading(false);
+    let innerTimer: ReturnType<typeof setTimeout>;
     const fadeTimer = setTimeout(() => {
       setTomorrowPlanFading(true);
-      setTimeout(() => {
+      innerTimer = setTimeout(() => {
         setTomorrowPlanDismissed(true);
         sessionStorage.setItem(storageKey, plan.startDate);
       }, 500);
     }, 5000);
-    return () => clearTimeout(fadeTimer);
+    return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
   }, [nextWeekPlanned, plan?.startDate]);
 
   const formatCatchUpDate = () => {
