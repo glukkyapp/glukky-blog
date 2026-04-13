@@ -645,7 +645,7 @@ export default function Snap() {
                   <Droplets className="w-3 h-3" />
                   {t("snap.field_sauces")}
                 </Label>
-                {labelResult?.sauceOptions?.length && !sauceManual ? (
+                {labelResult?.comboSource === "database" && labelResult?.sauceOptions?.length && !sauceManual ? (
                   <div className="flex flex-wrap gap-1.5 h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-sauces">
                     {labelResult.sauceOptions.map((opt) => {
                       const selected = form.sauceIds.includes(opt.id);
@@ -702,7 +702,7 @@ export default function Snap() {
                   {t("snap.field_extras")}
                   <Cherry className="w-3 h-3" />
                 </Label>
-                {labelResult?.toppingOptions?.length && !toppingManual ? (
+                {labelResult?.comboSource === "database" && labelResult?.toppingOptions?.length && !toppingManual ? (
                   <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-extras">
                     {labelResult.toppingOptions.map((opt) => {
                       const selected = form.toppingIds.includes(opt.id);

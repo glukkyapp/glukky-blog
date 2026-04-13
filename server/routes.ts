@@ -2224,7 +2224,7 @@ export async function registerRoutes(
         "zh-Hant": "食物名稱",
         yue: "食物名稱",
       };
-      const nameLocale = language || "zh-Hant";
+      const nameLocale = language || "en";
       const nameResponse = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 100,
