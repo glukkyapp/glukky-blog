@@ -1,0 +1,694 @@
+ask Claude to return food name only (not advice) instead of all four labels (API call 1)
+build DB tables - food combo (4 labels)+ advice paired with the food combo, in all three locales, order does not matter
+if not found, ask Claude to return ALL FOUR LABELS again (API call 2, conditional)
+fill the fields either by DB or claude (from step 2 or 3). If filled by DB, add dropdown menu for portion/sauce/toppings if more than one combo are present in DB. if user picks 'something else/其他'，let them edit manually. If filled by claude, completely ignore this dropdown menu, still let user edit manually.
+after user mofidication, search the DB for advice of that combo. If present, show it. If not, ask claude to generate advice based on the labels (API call 3, conditional) , and save the combo + advice pair in DB for future use.
+
+this is the updated workflow. Check if the codes are correct.
+
+
+
+// ─── FOOD SNAP COMBO + ADVICE CACHE ─────────────────────────────────
+
+export const ingredientVocabulary = pgTable("ingredient_vocabulary", {
+id: serial("id").primaryKey(),
+internalId: varchar("internal_id").unique().notNull(),
+category: varchar("category").notNull(), // "sauce" | "topping" | "portion"
+labelEn: text("label_en").notNull(),
+labelZh: text("label_zh").notNull(),
+labelYue: text("label_yue").notNull(),
+aliases: text("aliases").array().default([]),
+});
+
+export const foodCombos = pgTable("food_combos", {
+id: serial("id").primaryKey(),
+foodName: text("food_name").notNull(),
+foodNameEn: text("food_name_en"),
+foodNameAliases: text("food_name_aliases").array().default([]),
+defaultPortion: varchar("default_portion"), // internal_id ref
+defaultSauces: text("default_sauces").array().default([]), // internal_id refs
+defaultToppings: text("default_toppings").array().default([]), // internal_id refs
+caloriesEstimate: integer("calories_estimate"),
+});
+
+export const foodAdviceCache = pgTable("food_advice_cache", {
+id: serial("id").primaryKey(),
+foodName: text("food_name").notNull(),
+comboKey: varchar("combo_key").notNull(),
+locale: varchar("locale").notNull(), // "en" | "zh-Hant" | "yue"
+adviceText: text("advice_text").notNull(),
+createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertIngredientVocabularySchema = createInsertSchema(ingredientVocabulary).omit({ id: true });
+export const insertFoodComboSchema = createInsertSchema(foodCombos).omit({ id: true });
+export const insertFoodAdviceCacheSchema = createInsertSchema(foodAdviceCache).omit({ id: true, createdAt: true });
+
+export type IngredientVocabulary = typeof ingredientVocabulary.$inferSelect;
+export type InsertIngredientVocabulary = z.infer<typeof insertIngredientVocabularySchema>;
+export type FoodCombo = typeof foodCombos.$inferSelect;
+export type InsertFoodCombo = z.infer<typeof insertFoodComboSchema>;
+export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;
+export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
+
+// Add to IStorage interface:
+getFoodCombos(foodName: string): Promise<FoodCombo[]>;
+saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo>;
+getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]>;
+getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null>;
+getCachedAdvice(comboKey: string, locale: string): Promise<string | null>;
+saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void>;
+
+// Add to DatabaseStorage class:
+
+async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
+const normalised = foodName.trim().toLowerCase();
+const all = await db.select().from(foodCombos);
+return all.filter(c =>
+c.foodName.toLowerCase() === normalised ||
+c.foodNameEn?.toLowerCase() === normalised ||
+(c.foodNameAliases ?? []).some(a => a.toLowerCase() === normalised)
+);
+}
+
+async saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo> {
+const [row] = await db.insert(foodCombos).values(combo).returning();
+return row;
+}
+
+async getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]> {
+const normalised = text.trim().toLowerCase();
+if (!normalised) return [];
+const all = await db.select().from(ingredientVocabulary)
+.where(eq(ingredientVocabulary.category, category));
+return all.filter(v =>
+v.internalId.toLowerCase() === normalised ||
+v.labelEn.toLowerCase() === normalised ||
+v.labelZh === text.trim() ||
+v.labelYue === text.trim() ||
+(v.aliases ?? []).some(a => a.toLowerCase() === normalised)
+);
+}
+
+async getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null> {
+const [row] = await db.select().from(ingredientVocabulary)
+.where(eq(ingredientVocabulary.internalId, internalId));
+return row ?? null;
+}
+
+async getCachedAdvice(comboKey: string, locale: string): Promise<string | null> {
+const [row] = await db.select().from(foodAdviceCache)
+.where(and(
+eq(foodAdviceCache.comboKey, comboKey),
+eq(foodAdviceCache.locale, locale)
+));
+return row?.adviceText ?? null;
+}
+
+async saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void> {
+await db.insert(foodAdviceCache)
+.values({ foodName, comboKey, locale, adviceText: advice })
+.onConflictDoNothing();
+}
+
+// ─── HELPER: Build canonical combo key ──────────────────────────────
+function buildComboKey(foodName: string, portion: string, sauces: string[], toppings: string[]): string {
+const sortedSauces = [...sauces].sort().join(",") || "none";
+const sortedToppings = [...toppings].sort().join(",") || "none";
+return `${foodName}|${portion}|${sortedSauces}|${sortedToppings}`;
+}
+
+// ─── HELPER: Resolve internal_id to locale label ────────────────────
+function getIngredientLabel(vocab: IngredientVocabulary, locale: string): string {
+if (locale === "zh-Hant") return vocab.labelZh;
+if (locale === "yue") return vocab.labelYue;
+return vocab.labelEn;
+}
+
+// ─── MODIFIED: /api/snap/label ──────────────────────────────────────
+app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
+try {
+const userId = req.user.claims.sub;
+if (getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
+return res.status(429).json({
+message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached.`,
+snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+snapsUsedToday: SNAP_LABEL_DAILY_LIMIT
+});
+}
+
+const { imageBase64, mimeType, language } = req.body;
+if (!imageBase64 || !mimeType) {
+return res.status(400).json({ message: "imageBase64 and mimeType are required" });
+}
+
+// STEP 1: Claude returns food name only
+const nameResponse = await anthropic.messages.create({
+model: "claude-sonnet-4-6",
+max_tokens: 100,
+system: `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a JSON object with the food name in Traditional Chinese:
+{ "name": "食物名稱" }
+
+Important:
+- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
+- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
+- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
+- If you cannot identify food, return: {"error":"No food detected"}
+- Return ONLY the JSON. No explanation.`,
+messages: [{
+role: "user",
+content: [
+{ type: "image", source: { type: "base64", media_type: mimeType, data: imageBase64 } },
+{ type: "text", text: "What food is this?" }
+]
+}]
+});
+
+const nameRaw = nameResponse.content[0].type === "text" ? nameResponse.content[0].text.trim() : "";
+let nameParsed: any;
+try { nameParsed = JSON.parse(nameRaw); } catch {
+return res.status(422).json({ message: "Could not parse food name response." });
+}
+if (nameParsed.error) return res.status(422).json({ message: nameParsed.error });
+
+const foodName = nameParsed.name;
+incrementDailyCount(snapLabelCount, userId);
+
+// STEP 2: Look up combos in DB
+const combos = await storage.getFoodCombos(foodName);
+const locale = language || "en";
+
+if (combos.length > 0) {
+// Resolve internal_ids to locale labels for each combo
+const resolvedCombos = await Promise.all(combos.map(async (combo) => {
+const portionVocab = combo.defaultPortion
+? await storage.getIngredientByInternalId(combo.defaultPortion) : null;
+const sauceVocabs = await Promise.all(
+(combo.defaultSauces ?? []).map(id => storage.getIngredientByInternalId(id))
+);
+const toppingVocabs = await Promise.all(
+(combo.defaultToppings ?? []).map(id => storage.getIngredientByInternalId(id))
+);
+
+return {
+portion: portionVocab ? getIngredientLabel(portionVocab, locale) : null,
+portionId: combo.defaultPortion,
+sauces: sauceVocabs.filter(Boolean).map(v => ({
+id: v!.internalId,
+label: getIngredientLabel(v!, locale)
+})),
+toppings: toppingVocabs.filter(Boolean).map(v => ({
+id: v!.internalId,
+label: getIngredientLabel(v!, locale)
+})),
+};
+}));
+
+// Build per-field option lists from all combos
+const portionOptions = [...new Set(resolvedCombos.map(c => c.portion).filter(Boolean))] as string[];
+const sauceOptions = [...new Map(resolvedCombos.flatMap(c => c.sauces).map(s => [s.id, s])).values()];
+const toppingOptions = [...new Map(resolvedCombos.flatMap(c => c.toppings).map(t => [t.id, t])).values()];
+
+// Use first combo as default pre-fill
+const first = resolvedCombos[0];
+
+return res.json({
+name: foodName,
+portion: first.portion,
+sauces: first.sauces.map(s => s.label).join(", ") || null,
+extras: first.toppings.map(t => t.label).join(", ") || null,
+comboSource: "database",
+// Dropdown options (only included when >1 combo exists)
+portionOptions: portionOptions.length > 1 ? portionOptions : undefined,
+sauceOptions: sauceOptions.length > 1 ? sauceOptions.map(s => s.label) : undefined,
+toppingOptions: toppingOptions.length > 1 ? toppingOptions.map(t => t.label) : undefined,
+snapsUsedToday: getDailyCount(snapLabelCount, userId),
+snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+});
+}
+
+// STEP 3: Combo not in DB → ask Claude for all 4 labels
+const isChinese = locale === "zh-Hant" || locale === "yue";
+const langInstruction = isChinese
+? "All field values MUST be in Traditional Chinese (繁體中文)."
+: "All field values should be in English.";
+
+const fullResponse = await anthropic.messages.create({
+model: "claude-sonnet-4-6",
+max_tokens: 512,
+system: `You are a food identification assistant. The food has been identified as "${foodName}". Return a JSON object with portion, sauces, and extras details:
+{
+"portion": "estimated portion size (小/中/大)",
+"sauces": "visible sauces or condiments, or null if none",
+"extras": "additional toppings or sides, or null if none"
+}
+${langInstruction}
+Return ONLY the JSON object.`,
+messages: [{
+role: "user",
+content: [
+{ type: "image", source: { type: "base64", media_type: mimeType, data: imageBase64 } },
+{ type: "text", text: `This is ${foodName}. What are the portion, sauces, and extras?` }
+]
+}]
+});
+
+const fullRaw = fullResponse.content[0].type === "text" ? fullResponse.content[0].text.trim() : "";
+let fullParsed: any;
+try { fullParsed = JSON.parse(fullRaw); } catch {
+return res.status(422).json({ message: "Could not parse label response." });
+}
+
+// Save new combo to DB for future lookups
+// (sauces/extras stored as free text for now — no internal_id mapping for unknown combos)
+await storage.saveFoodCombo({
+foodName,
+foodNameEn: null,
+foodNameAliases: [],
+defaultPortion: fullParsed.portion ?? "medium",
+defaultSauces: fullParsed.sauces ? [fullParsed.sauces] : [],
+defaultToppings: fullParsed.extras ? [fullParsed.extras] : [],
+caloriesEstimate: null,
+});
+
+res.json({
+name: foodName,
+portion: fullParsed.portion ?? null,
+sauces: fullParsed.sauces ?? null,
+extras: fullParsed.extras ?? null,
+comboSource: "claude",
+snapsUsedToday: getDailyCount(snapLabelCount, userId),
+snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+});
+} catch (error: any) {
+console.error("Snap label error:", error);
+res.status(500).json({ message: "Food identification failed." });
+}
+});
+
+
+// ─── NEW: /api/snap/disambiguate ────────────────────────────────────
+app.post("/api/snap/disambiguate", isAuthenticated, async (req: any, res) => {
+try {
+const { text, field } = req.body; // field: "sauce" | "topping"
+if (!text || !field) return res.status(400).json({ message: "text and field required" });
+
+const locale = req.body.locale || "en";
+const matches = await storage.getIngredientsByAlias(text.trim(), field);
+
+if (matches.length === 0) {
+return res.json({ matches: [], exact: false });
+}
+if (matches.length === 1) {
+return res.json({
+matches: [{ internalId: matches[0].internalId, label: getIngredientLabel(matches[0], locale) }],
+exact: true
+});
+}
+
+// Multiple matches — disambiguation needed
+return res.json({
+matches: matches.map(m => ({
+internalId: m.internalId,
+label: getIngredientLabel(m, locale)
+})),
+exact: false
+});
+} catch (error: any) {
+console.error("Disambiguate error:", error);
+res.status(500).json({ message: "Disambiguation failed." });
+}
+});
+
+
+// ─── MODIFIED: /api/snap/advice ─────────────────────────────────────
+app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
+try {
+const userId = req.user.claims.sub;
+if (getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
+return res.status(429).json({
+message: "Daily limit reached.",
+adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT
+});
+}
+
+const { name, portion, sauces, extras } = req.body;
+if (!name) return res.status(400).json({ message: "name is required" });
+
+const profile = await storage.getProfile(userId);
+const currentPlanForAdvice = await storage.getCurrentWeeklyPlan(userId);
+const struggle = currentPlanForAdvice?.dietStruggle ?? "sugary_food_drink";
+const lang = profile?.preferredLanguage ?? "en";
+const tip = currentPlanForAdvice?.dietTip ?? "Choose lower-GI options where possible";
+
+// Build combo key for cache lookup
+// Parse sauces/extras into sorted arrays for key
+const sauceArr = sauces ? sauces.split(/[,、，]/).map((s: string) => s.trim().toLowerCase()).filter(Boolean).sort() : [];
+const toppingArr = extras ? extras.split(/[,、，]/).map((s: string) => s.trim().toLowerCase()).filter(Boolean).sort() : [];
+const portionNorm = (portion || "medium").trim().toLowerCase();
+const comboKey = buildComboKey(name, portionNorm, sauceArr, toppingArr);
+
+// Check cache
+const cachedAdvice = await storage.getCachedAdvice(comboKey, lang);
+
+// Focus panel (unchanged — always computed)
+const tipIndexForPanel = currentPlanForAdvice?.dietTip
+? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
+const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, name, portion, sauces, extras);
+
+if (cachedAdvice) {
+// Cache hit — no Claude call needed
+return res.json({
+advice: cachedAdvice,
+focusPanelData,
+adviceUsedToday: getDailyCount(snapAdviceCount, userId),
+adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+adviceSource: "cache",
+});
+}
+
+// Cache miss — call Claude
+const langLabel: Record<string, string> = {
+en: "English",
+"zh-Hant": "Traditional Chinese (繁體中文)",
+yue: "Written Cantonese (廣東話書面語)",
+};
+
+const foodDesc = [
+`Food: ${name}`,
+portion ? `Portion: ${portion}` : null,
+sauces ? `Sauces / condiments: ${sauces}` : null,
+extras ? `Extras / toppings: ${extras}` : null,
+].filter(Boolean).join("\\n");
+
+const response = await anthropic.messages.create({
+model: "claude-sonnet-4-6",
+max_tokens: 300,
+system: `You are a dietary advisor helping a person manage blood sugar levels and glycaemic impact through practical food choices. Your sole focus is glycaemic impact and practical sugar reduction.
+
+Users are based in Hong Kong. You are familiar with local foods: congee, dim sum, rice noodles, wonton noodles, Hong Kong milk tea (with condensed milk), pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, siu mai, har gow, cheung fun, lo mai gai, turnip cake.
+
+Reply in ${langLabel[lang] ?? "English"}.
+
+Important rules:
+- If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings or unnecessary advice.
+- Your advice must not contradict the user's current weekly tip: "${tip}"
+- Never use the word "diabetes" in any form.
+
+Always reply in this format:
+
+🩸 Blood sugar impact: [High / Medium / Low]
+⚠️ Watch out: [the single biggest GI or sugar risk — 1 concise sentence]
+⚡ Right now: [one specific thing to do with THIS meal right now — be concrete]
+📝 Next time: [one change for the next time this dish is prepared or ordered]
+
+If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead.`,
+messages: [{ role: "user", content: foodDesc }],
+});
+
+const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+
+// Save to cache for future use
+await storage.saveCachedAdvice(name, comboKey, lang, advice);
+
+incrementDailyCount(snapAdviceCount, userId);
+
+res.json({
+advice,
+focusPanelData,
+adviceUsedToday: getDailyCount(snapAdviceCount, userId),
+adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+adviceSource: "claude",
+});
+} catch (error: any) {
+console.error("Snap advice error:", error);
+res.status(500).json({ message: "Diet advice generation failed." });
+}
+});
+
+{
+"snap": {
+"other": "Other",
+"did_you_mean": "\\"{{text}}\\" — did you mean:",
+"keep_as_typed": "Keep as typed"
+}
+}
+
+{
+"snap": {
+"other": "其他",
+"did_you_mean": "「{{text}}」— 你係咪想揀：",
+"keep_as_typed": "保持原樣"
+}
+}
+
+import { db } from "../server/db";
+import { ingredientVocabulary, foodCombos } from "../shared/schema";
+
+const PORTIONS = [
+{ internalId: "small", category: "portion", labelEn: "Small", labelZh: "小", labelYue: "小", aliases: ["small", "細", "少"] },
+{ internalId: "medium", category: "portion", labelEn: "Medium", labelZh: "中", labelYue: "中", aliases: ["medium", "中", "標準", "regular"] },
+{ internalId: "large", category: "portion", labelEn: "Large", labelZh: "大", labelYue: "大", aliases: ["large", "大", "加大", "extra"] },
+];
+
+const SAUCES = [
+{ internalId: "soy_sauce", category: "sauce", labelEn: "Soy sauce", labelZh: "豉油", labelYue: "豉油", aliases: ["soy sauce", "soy", "醬油", "豉油", "生抽", "老抽"] },
+{ internalId: "chili_sauce", category: "sauce", labelEn: "Chili sauce", labelZh: "辣醬", labelYue: "辣醬", aliases: ["chili sauce", "chilli sauce", "辣醬", "辣椒醬", "辣"] },
+{ internalId: "sweet_sauce", category: "sauce", labelEn: "Sweet sauce", labelZh: "甜醬", labelYue: "甜醬", aliases: ["sweet sauce", "甜醬", "海鮮醬"] },
+{ internalId: "oyster_sauce", category: "sauce", labelEn: "Oyster sauce", labelZh: "蠔油", labelYue: "蠔油", aliases: ["oyster sauce", "蠔油"] },
+{ internalId: "xo_sauce", category: "sauce", labelEn: "XO sauce", labelZh: "XO醬", labelYue: "XO醬", aliases: ["xo sauce", "xo醬", "xo"] },
+{ internalId: "satay_sauce", category: "sauce", labelEn: "Satay sauce", labelZh: "沙嗲醬", labelYue: "沙嗲醬", aliases: ["satay", "沙嗲", "沙嗲醬"] },
+{ internalId: "curry_sauce", category: "sauce", labelEn: "Curry sauce", labelZh: "咖喱汁", labelYue: "咖喱汁", aliases: ["curry", "curry sauce", "咖喱", "咖喱汁"] },
+{ internalId: "char_siu_sauce", category: "sauce", labelEn: "Char siu sauce", labelZh: "叉燒汁", labelYue: "叉燒汁", aliases: ["char siu sauce", "叉燒汁", "bbq sauce"] },
+// ... more sauces
+];
+
+const TOPPINGS = [
+{ internalId: "spring_onion", category: "topping", labelEn: "Spring onion", labelZh: "蔥", labelYue: "蔥", aliases: ["spring onion", "scallion", "green onion", "蔥", "青蔥"] },
+{ internalId: "coriander", category: "topping", labelEn: "Coriander", labelZh: "芫荽", labelYue: "芫荽", aliases: ["coriander", "cilantro", "芫荽"] },
+{ internalId: "fried_garlic", category: "topping", labelEn: "Fried garlic", labelZh: "炸蒜", labelYue: "炸蒜", aliases: ["fried garlic", "炸蒜", "蒜酥"] },
+{ internalId: "pork_skin", category: "topping", labelEn: "Pork skin", labelZh: "豬皮", labelYue: "豬皮", aliases: ["pork skin", "豬皮", "炸豬皮"] },
+// ... more toppings
+];
+
+const DISHES = [
+{ foodName: "魚蛋粗麵", foodNameEn: "Fish ball thick noodles", aliases: ["fish ball noodles", "魚蛋麵"], defaultPortion: "medium", defaultSauces: ["chili_sauce", "sweet_sauce"], defaultToppings: [] },
+{ foodName: "叉燒飯", foodNameEn: "Char siu rice", aliases: ["bbq pork rice", "char siu rice"], defaultPortion: "medium", defaultSauces: ["char_siu_sauce"], defaultToppings: [] },
+{ foodName: "雲吞麵", foodNameEn: "Wonton noodles", aliases: ["wonton noodles", "wonton mein"], defaultPortion: "medium", defaultSauces: [], defaultToppings: ["spring_onion"] },
+{ foodName: "腩肉米線", foodNameEn: "Pork belly rice noodles", aliases: ["pork belly mixian"], defaultPortion: "medium", defaultSauces: ["chili_sauce"], defaultToppings: ["spring_onion"] },
+{ foodName: "燒鵝飯", foodNameEn: "Roast goose rice", aliases: ["roast goose rice"], defaultPortion: "medium", defaultSauces: ["soy_sauce"], defaultToppings: [] },
+// ... 50-100 more dishes
+];
+
+async function seed() {
+console.log("Seeding ingredient vocabulary...");
+for (const item of [...PORTIONS, ...SAUCES, ...TOPPINGS]) {
+await db.insert(ingredientVocabulary).values(item).onConflictDoNothing();
+}
+
+console.log("Seeding food combos...");
+for (const dish of DISHES) {
+await db.insert(foodCombos).values(dish).onConflictDoNothing();
+}
+
+console.log("Done! Seeded", PORTIONS.length, "portions,", SAUCES.length, "sauces,", TOPPINGS.length, "toppings,", DISHES.length, "dishes.");
+process.exit(0);
+}
+
+seed().catch(e => { console.error(e); process.exit(1); });
+
+Good work overall — the architecture is solid and well-structured. Let me go through the code systematically and flag every issue I find.
+
+✅ What is correct
+DB schema design is clean and appropriate
+
+buildComboKey correctly sorts sauces/toppings
+
+Advice cache lookup by comboKey + locale is correct
+
+Disambiguate endpoint logic is sound
+
+Seed structure matches schema properly
+
+onConflictDoNothing() is correct for idempotent seeding
+
+focusPanelData computed regardless of cache hit — correct
+
+❌ Issues Found
+Issue 1 — saveFoodCombo stores raw free text as defaultSauces/defaultToppings
+In Step 3 (Claude fallback), you save the combo like this:
+
+typescript
+await storage.saveFoodCombo({
+  defaultSauces: fullParsed.sauces ? [fullParsed.sauces] : [],
+  defaultToppings: fullParsed.extras ? [fullParsed.extras] : [],
+});
+Problem: defaultSauces and defaultToppings are supposed to store internal_id references, not raw Claude text like "辣醬, 甜醬". This breaks getFoodCombos later because getIngredientByInternalId("辣醬, 甜醬") will return null.
+
+Fix: Run the raw text through your normalizer before saving:
+
+typescript
+async function resolveToInternalIds(
+  rawText: string | null,
+  category: string
+): Promise<string[]> {
+  if (!rawText) return [];
+  const parts = rawText.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+  const ids: string[] = [];
+  for (const part of parts) {
+    const matches = await storage.getIngredientsByAlias(part, category);
+    if (matches.length === 1) ids.push(matches[0].internalId);
+    // if 0 or >1 matches: skip or log for manual review
+  }
+  return ids;
+}
+
+// Then in Step 3:
+const sauceIds   = await resolveToInternalIds(fullParsed.sauces, "sauce");
+const toppingIds = await resolveToInternalIds(fullParsed.extras, "topping");
+
+await storage.saveFoodCombo({
+  foodName,
+  defaultPortion: fullParsed.portion ?? "medium",
+  defaultSauces: sauceIds,
+  defaultToppings: toppingIds,
+  // ...
+});
+Issue 2 — buildComboKey in /api/snap/advice uses raw user text, not internal IDs
+typescript
+// Current — fragile
+const sauceArr = sauces
+  ? sauces.split(/[,、，]/).map((s: string) => s.trim().toLowerCase())
+  : [];
+const comboKey = buildComboKey(name, portionNorm, sauceArr, toppingArr);
+Problem: If user confirmed "豉油" but the advice was originally cached with "soy_sauce" as the key, you get a cache miss even though it is the same combo. The combo key must use internal IDs, not display labels.
+
+Fix: The frontend should pass internal_ids not display labels to /api/snap/advice. Change the request body to:
+
+typescript
+// Client sends:
+{
+  name: "魚蛋粗麵",
+  portionId: "medium",
+  sauceIds: ["chili_sauce", "sweet_sauce"],
+  toppingIds: ["pork_skin"],
+  // optional display labels for advice text generation
+  portion: "中",
+  sauces: "辣醬, 甜醬",
+  extras: "豬皮"
+}
+
+// Server builds key from IDs:
+const comboKey = buildComboKey(
+  name,
+  req.body.portionId ?? portionNorm,
+  req.body.sauceIds ?? sauceArr,
+  req.body.toppingIds ?? toppingArr
+);
+Issue 3 — foodCombos table has no unique constraint for deduplication
+typescript
+export const foodCombos = pgTable("food_combos", {
+  id: serial("id").primaryKey(),
+  foodName: text("food_name").notNull(),
+  // ...
+});
+Problem: If Step 3 runs twice for the same food (e.g. network retry), you get duplicate combo records. getFoodCombos returns duplicates, which creates duplicate dropdown options.
+
+Fix: Add a unique constraint on foodName (or foodName + defaultPortion if one food can have multiple default combos):
+
+typescript
+export const foodCombos = pgTable("food_combos", {
+  // ...
+}, (table) => ({
+  foodNameUnique: uniqueIndex("food_combos_food_name_idx").on(table.foodName),
+}));
+
+// And use upsert in saveFoodCombo:
+await db.insert(foodCombos)
+  .values(combo)
+  .onConflictDoUpdate({
+    target: foodCombos.foodName,
+    set: { defaultSauces: combo.defaultSauces, defaultToppings: combo.defaultToppings }
+  });
+Issue 4 — foodAdviceCache has no unique constraint, onConflictDoNothing is on wrong key
+typescript
+await db.insert(foodAdviceCache)
+  .values({ foodName, comboKey, locale, adviceText: advice })
+  .onConflictDoNothing();
+Problem: There is no unique constraint defined on (comboKey, locale) in the schema, so onConflictDoNothing has nothing to act on. You can get duplicate advice rows for the same combo + locale.
+
+Fix:
+
+typescript
+export const foodAdviceCache = pgTable("food_advice_cache", {
+  // ...
+}, (table) => ({
+  comboLocaleUnique: uniqueIndex("food_advice_cache_combo_locale_idx")
+    .on(table.comboKey, table.locale),
+}));
+Issue 5 — getFoodCombos does a full table scan
+typescript
+const all = await db.select().from(foodCombos);
+return all.filter(c => c.foodName.toLowerCase() === normalised || ...);
+Problem: This loads the entire food_combos table into memory on every snap. Fine now with 100 dishes, but will degrade. Also does not use Postgres's index capabilities.
+
+Fix:
+
+typescript
+async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
+  const normalised = foodName.trim().toLowerCase();
+  // Use Postgres ilike for case-insensitive match
+  return await db.select().from(foodCombos)
+    .where(
+      or(
+        sql`lower(${foodCombos.foodName}) = ${normalised}`,
+        sql`lower(${foodCombos.foodNameEn}) = ${normalised}`,
+        sql`${normalised} = ANY(${foodCombos.foodNameAliases})`
+      )
+    );
+}
+Issue 6 — Daily limit counter for advice is incremented even on cache hits
+typescript
+// Currently, incrementDailyCount is AFTER the cache check
+// but adviceUsedToday in the cache-hit response shows the OLD count
+if (cachedAdvice) {
+  return res.json({
+    adviceUsedToday: getDailyCount(snapAdviceCount, userId), // not incremented
+    ...
+  });
+}
+// ... Claude call ...
+incrementDailyCount(snapAdviceCount, userId); // only incremented here
+This is actually fine as written — cache hits correctly do NOT increment the count. But the naming SNAP_ADVICE_DAILY_LIMIT should apply only to Claude calls, not cache hits. Just make sure your frontend communicates this to users clearly — unlimited cached advice, limited Claude-generated advice.
+
+Issue 7 — Missing \n escape in advice request
+typescript
+const foodDesc = [
+  `Food: ${name}`,
+  // ...
+].filter(Boolean).join("\\n");  // ← double-escaped
+Problem: "\\n" produces a literal backslash-n string in the API request, not a newline. Claude will see Food: 魚蛋粗麵\nPortion: 中 instead of actual line breaks.
+
+Fix:
+
+typescript
+].filter(Boolean).join("\n"); // single backslash
+Issue 8 — Step 3 sends image again to Claude unnecessarily
+In Step 3, the image is sent a second time to Claude to get portion/sauce/extras. But you already identified the food name, and portion/sauce/extras for known combos come from your DB. Step 3 should only be triggered for unknown foods — and for unknown foods, Claude mostly guesses standard defaults anyway.
+
+Consider: For Step 3, you can call Claude with text only (no image re-upload) since the food name is already known:
+
+typescript
+// Step 3 — text only, no image needed
+const fullResponse = await anthropic.messages.create({
+  model: "claude-sonnet-4-6",
+  max_tokens: 200,
+  system: `You are a Hong Kong food expert. Return typical default portion, sauces, and toppings for the named dish as JSON only.`,
+  messages: [{
+    role: "user",
+    content: `What are the typical default portion, sauces, and extras for "${foodName}" in Hong Kong?`
+  }]
+});
+This reduces image token cost on every Step 3 fallback call.
+
