@@ -656,7 +656,7 @@ export default function Snap() {
                             setForm((f) => {
                               const ids = selected ? f.sauceIds.filter(id => id !== opt.id) : [...f.sauceIds, opt.id];
                               const labels = ids.map(id => labelResult.sauceOptions!.find(o => o.id === id)?.label).filter(Boolean);
-                              return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map(id => ({ token: labelResult.sauceOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id, source: "db" as const })) };
+                              return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map(id => ({ text: labelResult.sauceOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
                             });
                           }}
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
@@ -713,7 +713,7 @@ export default function Snap() {
                             setForm((f) => {
                               const ids = selected ? f.toppingIds.filter(id => id !== opt.id) : [...f.toppingIds, opt.id];
                               const labels = ids.map(id => labelResult.toppingOptions!.find(o => o.id === id)?.label).filter(Boolean);
-                              return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map(id => ({ token: labelResult.toppingOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id, source: "db" as const })) };
+                              return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map(id => ({ text: labelResult.toppingOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
                             });
                           }}
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${

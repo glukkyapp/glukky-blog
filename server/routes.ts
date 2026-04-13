@@ -2302,8 +2302,8 @@ Important:
           comboSource: "database",
           portionOptions: portionOptions.length > 1 ? portionOptions : undefined,
           portionIdMap: Object.keys(portionIdMap).length > 1 ? portionIdMap : undefined,
-          sauceOptions: sauceOptions.length > 1 ? sauceOptions : undefined,
-          toppingOptions: toppingOptions.length > 1 ? toppingOptions : undefined,
+          sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
+          toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
           snapsUsedToday: getDailyCount(snapLabelCount, userId),
           snapsLimit: SNAP_LABEL_DAILY_LIMIT,
         });
