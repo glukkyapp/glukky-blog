@@ -2508,15 +2508,30 @@ If there is a genuine concern, output all 4 lines.`;
 
       const comboExists = await storage.getFoodCombos(comboName);
       if (comboExists.length === 0) {
-        const isEnglishName = /^[a-zA-Z\s,'-]+$/.test(name.trim());
-        const foodNameEnField = isEnglishName ? name : null;
-        const aliases: string[] = [];
-        if (name !== comboName) aliases.push(name);
         try {
+          const translationResponse = await anthropic.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 200,
+            system: `You translate food dish names between English, Traditional Chinese, and Cantonese. Return ONLY a JSON object with these exact keys:
+{ "en": "English name", "zh": "繁體中文名", "yue": "廣東話名" }
+No explanation, just JSON.`,
+            messages: [{ role: "user", content: `Translate this food name into all three languages: "${comboName}"` }],
+          });
+          const translationText = translationResponse.content[0].type === "text" ? translationResponse.content[0].text.trim() : "{}";
+          let translations: { en?: string; zh?: string; yue?: string } = {};
+          try { translations = JSON.parse(translationText); } catch { /* ignore parse errors */ }
+
+          const foodNameEn = translations.en || (/^[a-zA-Z\s,'-]+$/.test(comboName.trim()) ? comboName : null);
+          const aliases: string[] = [];
+          if (name !== comboName) aliases.push(name);
+          if (translations.en && translations.en !== comboName && translations.en !== name) aliases.push(translations.en);
+          if (translations.zh && translations.zh !== comboName && translations.zh !== name) aliases.push(translations.zh);
+          if (translations.yue && translations.yue !== comboName && translations.yue !== name && translations.yue !== translations.zh) aliases.push(translations.yue);
+
           await storage.saveFoodCombo({
             foodName: comboName,
-            foodNameEn: foodNameEnField,
-            foodNameAliases: aliases,
+            foodNameEn: foodNameEn,
+            foodNameAliases: [...new Set(aliases)],
             defaultPortion: resolvedPortionId,
             defaultSauces: resolvedSauceIds,
             defaultToppings: resolvedToppingIds,
