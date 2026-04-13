@@ -87,7 +87,7 @@ Self-learning food knowledge pipeline to reduce Claude API calls.
 
 **Pipeline:**
 1. `/api/snap/label`: Claude returns food name only → DB combo lookup → if found, return pre-filled labels with internal IDs; if not, fallback Claude call for portion/sauces/extras
-2. `/api/snap/advice`: Check advice cache by combo_key+locale → if cached, return immediately; if not, call Claude → save to cache → background: translate advice to other 2 locales, learn new vocabulary, save combo if new
+2. `/api/snap/advice`: Check advice cache by combo_key+locale → if cached, return immediately; if not, call Claude → save to cache
 3. `/api/snap/disambiguate`: Resolve user-typed text to internal ingredient IDs by category
 
 **Seed script:** `scripts/seed-food-combos.ts` — 26 vocabulary items + 15 HK dish combos
