@@ -2180,6 +2180,31 @@ export async function registerRoutes(
     return ids;
   }
 
+  async function mergeConfirmedWithText(confirmedIds: string[], rawText: string | null, category: string): Promise<string[]> {
+    if (!rawText) return confirmedIds;
+    const parts = rawText.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const result: string[] = [];
+    let confirmedIdx = 0;
+    for (const part of parts) {
+      if (confirmedIdx < confirmedIds.length) {
+        result.push(confirmedIds[confirmedIdx]);
+        confirmedIdx++;
+      } else {
+        const matches = await storage.getIngredientsByAlias(part, category);
+        if (matches.length === 1) {
+          result.push(matches[0].internalId);
+        } else {
+          result.push(part.toLowerCase());
+        }
+      }
+    }
+    while (confirmedIdx < confirmedIds.length) {
+      result.push(confirmedIds[confirmedIdx]);
+      confirmedIdx++;
+    }
+    return result;
+  }
+
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2385,7 +2410,7 @@ Return ONLY the JSON object.`,
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
-      const { name, portion, sauces, extras, portionId } = req.body;
+      const { name, portion, sauces, extras, portionId, sauceIds, toppingIds } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
@@ -2396,8 +2421,15 @@ Return ONLY the JSON object.`,
       const lang = profile.preferredLanguage ?? "en";
       const tip = currentPlanForAdvice?.dietTip ?? (DIET_TIP_LADDERS[struggle]?.[0] ?? "Choose lower-GI options where possible");
 
-      const resolvedSauceIds = await resolveToInternalIds(sauces, "sauce");
-      const resolvedToppingIds = await resolveToInternalIds(extras, "topping");
+      const confirmedSauceIds = (sauceIds && Array.isArray(sauceIds) && sauceIds.length > 0) ? sauceIds as string[] : null;
+      const confirmedToppingIds = (toppingIds && Array.isArray(toppingIds) && toppingIds.length > 0) ? toppingIds as string[] : null;
+
+      const resolvedSauceIds = confirmedSauceIds
+        ? await mergeConfirmedWithText(confirmedSauceIds, sauces, "sauce")
+        : await resolveToInternalIds(sauces, "sauce");
+      const resolvedToppingIds = confirmedToppingIds
+        ? await mergeConfirmedWithText(confirmedToppingIds, extras, "topping")
+        : await resolveToInternalIds(extras, "topping");
       const resolvedPortionId = portionId || (portion ? (await resolveToInternalIds(portion, "portion"))[0] || portion.toLowerCase() : "medium");
 
       const comboKey = buildComboKey(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
