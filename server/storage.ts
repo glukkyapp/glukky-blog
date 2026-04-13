@@ -7,10 +7,14 @@ import {
   type MonthlyReport, type InsertMonthlyReport,
   type PiggyBankEvent, type InsertPiggyBankEvent,
   type CycleHistoryRow, type InsertCycleHistory,
+  type IngredientVocabulary, type InsertIngredientVocabulary,
+  type FoodCombo, type InsertFoodCombo,
+  type FoodAdviceCache,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
+  ingredientVocabulary, foodCombos, foodAdviceCache,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql, inArray, gt } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -60,6 +64,14 @@ export interface IStorage {
 
   saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow>;
   getCycleHistory(userId: string): Promise<CycleHistoryRow[]>;
+
+  getFoodCombos(foodName: string): Promise<FoodCombo[]>;
+  saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo>;
+  getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]>;
+  getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null>;
+  saveIngredient(item: InsertIngredientVocabulary): Promise<IngredientVocabulary>;
+  getCachedAdvice(comboKey: string, locale: string): Promise<string | null>;
+  saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -420,6 +432,66 @@ export class DatabaseStorage implements IStorage {
       difficultStruggles3: [],
       cycle3Active: null,
     }).where(eq(userProfiles.userId, userId));
+  }
+
+  async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
+    const normalised = foodName.trim().toLowerCase();
+    return await db.select().from(foodCombos)
+      .where(
+        or(
+          sql`lower(${foodCombos.foodName}) = ${normalised}`,
+          sql`lower(${foodCombos.foodNameEn}) = ${normalised}`,
+          sql`${normalised} = ANY(SELECT lower(unnest(${foodCombos.foodNameAliases})))`
+        )
+      );
+  }
+
+  async saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo> {
+    const [row] = await db.insert(foodCombos).values(combo).returning();
+    return row;
+  }
+
+  async getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]> {
+    const normalised = text.trim().toLowerCase();
+    if (!normalised) return [];
+    const all = await db.select().from(ingredientVocabulary)
+      .where(eq(ingredientVocabulary.category, category));
+    return all.filter(v =>
+      v.internalId.toLowerCase() === normalised ||
+      v.labelEn.toLowerCase() === normalised ||
+      v.labelZh.toLowerCase() === normalised ||
+      v.labelYue.toLowerCase() === normalised ||
+      (v.aliases ?? []).some(a => a.toLowerCase() === normalised)
+    );
+  }
+
+  async getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null> {
+    const [row] = await db.select().from(ingredientVocabulary)
+      .where(eq(ingredientVocabulary.internalId, internalId));
+    return row ?? null;
+  }
+
+  async saveIngredient(item: InsertIngredientVocabulary): Promise<IngredientVocabulary> {
+    const [row] = await db.insert(ingredientVocabulary).values(item).onConflictDoNothing().returning();
+    if (row) return row;
+    const [existing] = await db.select().from(ingredientVocabulary)
+      .where(eq(ingredientVocabulary.internalId, item.internalId));
+    return existing;
+  }
+
+  async getCachedAdvice(comboKey: string, locale: string): Promise<string | null> {
+    const [row] = await db.select().from(foodAdviceCache)
+      .where(and(
+        eq(foodAdviceCache.comboKey, comboKey),
+        eq(foodAdviceCache.locale, locale)
+      ));
+    return row?.adviceText ?? null;
+  }
+
+  async saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void> {
+    await db.insert(foodAdviceCache)
+      .values({ foodName, comboKey, locale, adviceText: advice })
+      .onConflictDoNothing();
   }
 }
 

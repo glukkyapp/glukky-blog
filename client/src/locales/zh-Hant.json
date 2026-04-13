@@ -782,7 +782,13 @@
     "focus_immediate_prefix": "我們的建議是 ",
     "focus_immediate_suffix": "，記得哦～",
     "focus_future_prefix": "如果你一定要吃它，沒問題，但接下來的餐點，記得我們的建議：",
-    "focus_struggle_portions": "大份量食物"
+    "focus_struggle_portions": "大份量食物",
+    "other": "其他",
+    "did_you_mean": "「{{text}}」— 你是不是想選：",
+    "keep_as_typed": "保持原樣",
+    "portion_small": "小",
+    "portion_medium": "中",
+    "portion_large": "大"
   },
   "slides": {
     "s1_headline": "血糖，\n由你掌控",

@@ -782,7 +782,13 @@
     "focus_immediate_prefix": "我哋嘅建議係 ",
     "focus_immediate_suffix": "，記得喎～",
     "focus_future_prefix": "如果你一定要食佢，冇問題，但嚟緊幾日，記得我哋嘅小貼士：",
-    "focus_struggle_portions": "大份量食物"
+    "focus_struggle_portions": "大份量食物",
+    "other": "其他",
+    "did_you_mean": "「{{text}}」— 你係咪想揀：",
+    "keep_as_typed": "保持原樣",
+    "portion_small": "小",
+    "portion_medium": "中",
+    "portion_large": "大"
   },
   "slides": {
     "s1_headline": "血糖，\n由你話事",

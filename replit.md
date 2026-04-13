@@ -77,6 +77,22 @@ A coin-based reward system displayed on the Roadmap page. Users earn coins for h
 
 **API:** GET /api/piggybank, POST /api/piggybank/reward, POST /api/piggybank/claim
 
+## FoodSnap Combo DB & Advice Cache
+Self-learning food knowledge pipeline to reduce Claude API calls.
+
+**3 New Tables:**
+- `ingredient_vocabulary`: internal_id (unique), category (portion/sauce/topping), 3-locale labels, aliases array
+- `food_combos`: foodName, foodNameEn, aliases, defaultPortion/Sauces/Toppings (internal_ids), caloriesEstimate
+- `food_advice_cache`: foodName, comboKey (unique with locale), locale, adviceText
+
+**Pipeline:**
+1. `/api/snap/label`: Claude returns food name only → DB combo lookup → if found, return pre-filled labels with internal IDs; if not, fallback Claude call for portion/sauces/extras
+2. `/api/snap/advice`: Check advice cache by combo_key+locale → if cached, return immediately; if not, call Claude → save to cache → background: translate advice to other 2 locales, learn new vocabulary, save combo if new
+3. `/api/snap/disambiguate`: Resolve user-typed text to internal ingredient IDs by category
+
+**Seed script:** `scripts/seed-food-combos.ts` — 26 vocabulary items + 15 HK dish combos
+**Frontend:** Portion chips (小/中/大) replace textarea, internal IDs tracked in form state and sent to advice endpoint
+
 **Frontend:**
 - `client/src/components/piggy-bank-svg.tsx` — inline SVG cartoon teal pig, 5 fill states (0–9, 10–24, 25–39, 40–54, 55–60 coins), sparkles when full; plain HTML SVG (compatible with web + Capacitor/WebView wrapper)
 - Roadmap page: piggy bank card at top, CSS coin-drop animation on coin award, reward-setup modal (auto-shown when needsRewardSetup=true), congratulations modal when full

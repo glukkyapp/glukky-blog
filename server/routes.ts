@@ -2153,6 +2153,86 @@ export async function registerRoutes(
     }
   });
 
+  function getIngredientLabel(vocab: { labelEn: string; labelZh: string; labelYue: string }, locale: string): string {
+    if (locale === "zh-Hant") return vocab.labelZh;
+    if (locale === "yue") return vocab.labelYue;
+    return vocab.labelEn;
+  }
+
+  function buildComboKey(foodName: string, portion: string, sauces: string[], toppings: string[]): string {
+    const sortedSauces = [...sauces].sort().join(",") || "none";
+    const sortedToppings = [...toppings].sort().join(",") || "none";
+    return `${foodName}|${portion || "medium"}|${sortedSauces}|${sortedToppings}`;
+  }
+
+  async function resolveToInternalIds(rawText: string | null, category: string): Promise<string[]> {
+    if (!rawText) return [];
+    const parts = rawText.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const ids: string[] = [];
+    for (const part of parts) {
+      const matches = await storage.getIngredientsByAlias(part, category);
+      if (matches.length === 1) {
+        ids.push(matches[0].internalId);
+      } else {
+        ids.push(part.toLowerCase());
+      }
+    }
+    return ids;
+  }
+
+  async function translateAndSaveNewLabels(
+    labels: { text: string; category: string }[],
+    anthropicClient: typeof anthropic
+  ): Promise<void> {
+    const newLabels = [];
+    for (const label of labels) {
+      const matches = await storage.getIngredientsByAlias(label.text, label.category);
+      if (matches.length === 0) {
+        newLabels.push(label);
+      }
+    }
+    if (newLabels.length === 0) return;
+
+    try {
+      const labelList = newLabels.map(l => `${l.text} (${l.category})`).join(", ");
+      const transResponse = await anthropicClient.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 500,
+        system: `You are a food label translator. For each food label given, return a JSON array where each element has:
+- "original": the original text
+- "internal_id": a snake_case English ID (e.g. "shrimp_paste", "chili_oil")
+- "en": English label
+- "zh": Traditional Chinese label
+- "yue": Cantonese label
+Return ONLY the JSON array, no explanation.`,
+        messages: [{ role: "user", content: `Translate these HK food labels: ${labelList}` }],
+      });
+
+      const transRaw = transResponse.content[0].type === "text" ? transResponse.content[0].text.trim() : "[]";
+      let translations: any[];
+      try {
+        const cleaned = transRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        translations = JSON.parse(cleaned);
+      } catch { return; }
+
+      for (let i = 0; i < translations.length; i++) {
+        const t = translations[i];
+        const label = newLabels[i];
+        if (!t || !label) continue;
+        await storage.saveIngredient({
+          internalId: t.internal_id || t.original?.toLowerCase().replace(/\s+/g, "_") || `unknown_${Date.now()}`,
+          category: label.category,
+          labelEn: t.en || t.original || "",
+          labelZh: t.zh || t.original || "",
+          labelYue: t.yue || t.original || "",
+          aliases: [t.original, t.en, t.zh, t.yue, t.internal_id].filter(Boolean).map((a: string) => a.toLowerCase()),
+        });
+      }
+    } catch (err) {
+      console.error("translateAndSaveNewLabels error:", err);
+    }
+  }
+
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2170,79 +2250,161 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Unsupported image type. Use JPEG, PNG, WebP, or GIF." });
       }
 
-      const isChinese = language === "zh-Hant" || language === "yue";
-      const langInstruction = isChinese
-        ? "All field values MUST be in Traditional Chinese (繁體中文). Use Chinese food names, Chinese portion descriptions, Chinese sauce/topping names."
-        : "All field values should be in English.";
-
-      const response = await anthropic.messages.create({
+      const nameResponse = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 512,
-        system: `You are a food identification assistant. Analyse the food in the photo and return ONLY a valid JSON object with exactly these fields:
-{
-  "name": "primary food name",
-  "portion": "estimated portion size (e.g. Medium bowl ~400ml, 1 slice, Small plate)",
-  "sauces": "visible sauces or condiments as a short string, or null if none",
-  "extras": "additional toppings or sides as a short string, or null if none"
-}
+        max_tokens: 100,
+        system: `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a JSON object with the food name in Traditional Chinese:
+{ "name": "食物名稱" }
 
-${langInstruction}
-
-Important context: Users are based in Hong Kong. Common foods include: congee, dim sum, rice noodles (米線/米粉), wonton noodles, milk tea, pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, cart noodles.
-
-Food identification tips:
-- Pork belly (腩肉) has visibly thicker, layered slices with fat bands. Beef slices (牛肉) are thinner and leaner. Do NOT confuse them.
-- 腩肉 commonly pairs with rice noodles (米線) — if you see thick layered meat with rice noodles, it is very likely pork belly (腩肉), not beef.
-- Char siu (叉燒) has a reddish-brown glaze. Siu yuk (燒肉) has crispy skin on top.
-- Rice noodles (米線) are thin and white, different from flat ho fun (河粉) or egg noodles (伊麵/蛋麵).
-- If unsure between similar meats, consider the accompaniments and cooking style as context clues.
-
-If you cannot identify food in the image, return exactly: {"error":"No food detected"}
-
-Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
-                  data: imageBase64,
-                },
-              },
-              { type: "text", text: "Identify the food in this image." },
-            ],
-          },
-        ],
+Important:
+- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
+- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
+- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
+- If you cannot identify food, return: {"error":"No food detected"}
+- Return ONLY the JSON. No explanation.`,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
+            { type: "text", text: "What food is this?" }
+          ]
+        }]
       });
 
-      const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "";
-      let parsed: any;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return res.status(422).json({ message: "Could not parse food identification response." });
+      const nameRaw = nameResponse.content[0].type === "text" ? nameResponse.content[0].text.trim() : "";
+      let nameParsed: any;
+      try { nameParsed = JSON.parse(nameRaw); } catch {
+        return res.status(422).json({ message: "Could not parse food name response." });
       }
+      if (nameParsed.error) return res.status(422).json({ message: nameParsed.error });
 
-      if (parsed.error) {
-        return res.status(422).json({ message: parsed.error });
-      }
-
+      const foodName = nameParsed.name;
       incrementDailyCount(snapLabelCount, userId);
 
+      const locale = language || "en";
+      const combos = await storage.getFoodCombos(foodName);
+
+      if (combos.length > 0) {
+        const resolvedCombos = await Promise.all(combos.map(async (combo) => {
+          const portionVocab = combo.defaultPortion
+            ? await storage.getIngredientByInternalId(combo.defaultPortion) : null;
+          const sauceVocabs = await Promise.all(
+            (combo.defaultSauces ?? []).map(id => storage.getIngredientByInternalId(id))
+          );
+          const toppingVocabs = await Promise.all(
+            (combo.defaultToppings ?? []).map(id => storage.getIngredientByInternalId(id))
+          );
+          return {
+            portion: portionVocab ? getIngredientLabel(portionVocab, locale) : null,
+            portionId: combo.defaultPortion,
+            sauces: sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) })),
+            toppings: toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) })),
+          };
+        }));
+
+        const portionOptions = [...new Set(resolvedCombos.map(c => c.portion).filter(Boolean))] as string[];
+        const portionIdMap: Record<string, string> = {};
+        resolvedCombos.forEach(c => { if (c.portion && c.portionId) portionIdMap[c.portion] = c.portionId; });
+
+        const sauceMap = new Map<string, { id: string; label: string }>();
+        resolvedCombos.forEach(c => c.sauces.forEach(s => sauceMap.set(s.id, s)));
+        const sauceOptions = [...sauceMap.values()];
+
+        const toppingMap = new Map<string, { id: string; label: string }>();
+        resolvedCombos.forEach(c => c.toppings.forEach(t => toppingMap.set(t.id, t)));
+        const toppingOptions = [...toppingMap.values()];
+
+        const first = resolvedCombos[0];
+
+        return res.json({
+          name: foodName,
+          portion: first.portion,
+          portionId: first.portionId,
+          sauces: first.sauces.map(s => s.label).join(", ") || null,
+          sauceIds: first.sauces.map(s => s.id),
+          extras: first.toppings.map(t => t.label).join(", ") || null,
+          toppingIds: first.toppings.map(t => t.id),
+          comboSource: "database",
+          portionOptions: portionOptions.length > 1 ? portionOptions : undefined,
+          portionIdMap: Object.keys(portionIdMap).length > 1 ? portionIdMap : undefined,
+          sauceOptions: sauceOptions.length > 1 ? sauceOptions : undefined,
+          toppingOptions: toppingOptions.length > 1 ? toppingOptions : undefined,
+          snapsUsedToday: getDailyCount(snapLabelCount, userId),
+          snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+        });
+      }
+
+      const isChinese = locale === "zh-Hant" || locale === "yue";
+      const langInstruction = isChinese
+        ? "All field values MUST be in Traditional Chinese (繁體中文)."
+        : "All field values should be in English.";
+
+      const fullResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 512,
+        system: `You are a food identification assistant. The food has been identified as "${foodName}". Return a JSON object with details:
+{
+  "portion": "estimated portion size (小/中/大)",
+  "sauces": "visible sauces or condiments, or null if none",
+  "extras": "additional toppings or sides, or null if none"
+}
+${langInstruction}
+Return ONLY the JSON object.`,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
+            { type: "text", text: `This is ${foodName}. What are the portion, sauces, and extras?` }
+          ]
+        }]
+      });
+
+      const fullRaw = fullResponse.content[0].type === "text" ? fullResponse.content[0].text.trim() : "";
+      let fullParsed: any;
+      try { fullParsed = JSON.parse(fullRaw); } catch {
+        return res.status(422).json({ message: "Could not parse label response." });
+      }
+
       res.json({
-        name: parsed.name ?? null,
-        portion: parsed.portion ?? null,
-        sauces: parsed.sauces ?? null,
-        extras: parsed.extras ?? null,
+        name: foodName,
+        portion: fullParsed.portion ?? null,
+        sauces: fullParsed.sauces ?? null,
+        extras: fullParsed.extras ?? null,
+        comboSource: "claude",
         snapsUsedToday: getDailyCount(snapLabelCount, userId),
         snapsLimit: SNAP_LABEL_DAILY_LIMIT,
       });
     } catch (error: any) {
       console.error("Snap label error:", error);
       res.status(500).json({ message: "Food identification failed. Please try again." });
+    }
+  });
+
+  app.post("/api/snap/disambiguate", isAuthenticated, async (req: any, res) => {
+    try {
+      const { text, field, locale } = req.body;
+      if (!text || !field) return res.status(400).json({ message: "text and field required" });
+
+      const userLocale = locale || "en";
+      const matches = await storage.getIngredientsByAlias(text.trim(), field);
+
+      if (matches.length === 0) {
+        return res.json({ matches: [], exact: false });
+      }
+      if (matches.length === 1) {
+        return res.json({
+          matches: [{ internalId: matches[0].internalId, label: getIngredientLabel(matches[0], userLocale) }],
+          exact: true
+        });
+      }
+
+      return res.json({
+        matches: matches.map(m => ({ internalId: m.internalId, label: getIngredientLabel(m, userLocale) })),
+        exact: false
+      });
+    } catch (error: any) {
+      console.error("Disambiguate error:", error);
+      res.status(500).json({ message: "Disambiguation failed." });
     }
   });
 
@@ -2254,29 +2416,42 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
-      const { name, portion, sauces, extras } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "name is required" });
-      }
+      const { name, portion, sauces, extras, portionId, sauceIds, toppingIds } = req.body;
+      if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
-      if (!profile) {
-        return res.status(404).json({ message: "Profile not found" });
-      }
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
 
       const currentPlanForAdvice = await storage.getCurrentWeeklyPlan(userId);
       const struggle = currentPlanForAdvice?.dietStruggle ?? "sugary_food_drink";
       const lang = profile.preferredLanguage ?? "en";
-
       const tip = currentPlanForAdvice?.dietTip ?? (DIET_TIP_LADDERS[struggle]?.[0] ?? "Choose lower-GI options where possible");
 
-      const struggleLabel: Record<string, string> = {
-        sugary_food_drink: "sugary food & drinks",
-        oily_fried_food: "oily / fried food",
-        eat_out: "eating out / takeaway",
-        portions: "portion control",
-        snacks: "snacking",
-      };
+      const resolvedSauceIds = sauceIds && sauceIds.length > 0
+        ? sauceIds as string[]
+        : await resolveToInternalIds(sauces, "sauce");
+      const resolvedToppingIds = toppingIds && toppingIds.length > 0
+        ? toppingIds as string[]
+        : await resolveToInternalIds(extras, "topping");
+      const resolvedPortionId = portionId || (portion ? (await resolveToInternalIds(portion, "portion"))[0] || portion.toLowerCase() : "medium");
+
+      const comboKey = buildComboKey(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+
+      const tipIndexForPanel = currentPlanForAdvice?.dietTip ? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
+      const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, name, portion, sauces, extras);
+
+      const cachedAdvice = await storage.getCachedAdvice(comboKey, lang);
+
+      if (cachedAdvice) {
+        incrementDailyCount(snapAdviceCount, userId);
+        return res.json({
+          advice: cachedAdvice,
+          focusPanelData,
+          adviceUsedToday: getDailyCount(snapAdviceCount, userId),
+          adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+          adviceSource: "cache",
+        });
+      }
 
       const langLabel: Record<string, string> = {
         en: "English",
@@ -2289,9 +2464,7 @@ Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
         portion ? `Portion: ${portion}` : null,
         sauces ? `Sauces / condiments: ${sauces}` : null,
         extras ? `Extras / toppings: ${extras}` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
+      ].filter(Boolean).join("\n");
 
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
@@ -2316,18 +2489,76 @@ Always reply in this format:
 
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (🩸, ⚡, 📝).
 If there is a genuine concern, output all 4 lines.`,
-        messages: [
-          {
-            role: "user",
-            content: foodDesc,
-          },
-        ],
+        messages: [{ role: "user", content: foodDesc }],
       });
 
       const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
-      const tipIndexForPanel = currentPlanForAdvice?.dietTip ? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
-      const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, name, portion, sauces, extras);
+      await storage.saveCachedAdvice(name, comboKey, lang, advice);
+
+      const newLabels: { text: string; category: string }[] = [];
+      if (sauces) {
+        sauces.split(/[,、，]/).map((s: string) => s.trim()).filter(Boolean).forEach((s: string) => {
+          newLabels.push({ text: s, category: "sauce" });
+        });
+      }
+      if (extras) {
+        extras.split(/[,、，]/).map((s: string) => s.trim()).filter(Boolean).forEach((s: string) => {
+          newLabels.push({ text: s, category: "topping" });
+        });
+      }
+
+      (async () => {
+        try {
+          if (newLabels.length > 0) {
+            await translateAndSaveNewLabels(newLabels, anthropic);
+          }
+
+          const existingCombos = await storage.getFoodCombos(name);
+          if (existingCombos.length === 0) {
+            const finalSauceIds = await resolveToInternalIds(sauces, "sauce");
+            const finalToppingIds = await resolveToInternalIds(extras, "topping");
+            const finalPortionId = resolvedPortionId;
+            await storage.saveFoodCombo({
+              foodName: name,
+              foodNameEn: null,
+              foodNameAliases: [],
+              defaultPortion: finalPortionId,
+              defaultSauces: finalSauceIds,
+              defaultToppings: finalToppingIds,
+              caloriesEstimate: null,
+            });
+          }
+
+          const otherLocales = ["en", "zh-Hant", "yue"].filter(l => l !== lang);
+          if (otherLocales.length > 0) {
+            try {
+              const transResponse = await anthropic.messages.create({
+                model: "claude-sonnet-4-6",
+                max_tokens: 600,
+                system: `You are a translator. Translate the dietary advice below into the requested languages. Return a JSON object where each key is a locale code and the value is the translated advice. Preserve the emoji markers (🩸, ⚠️, ⚡, 📝) exactly. Return ONLY the JSON object.`,
+                messages: [{ role: "user", content: `Translate this advice to ${otherLocales.map(l => langLabel[l] ?? l).join(" and ")}:\n\n${advice}\n\nReturn JSON: { ${otherLocales.map(l => `"${l}": "..."`).join(", ")} }` }],
+              });
+              const transRaw = transResponse.content[0].type === "text" ? transResponse.content[0].text.trim() : "{}";
+              let translations: any;
+              try {
+                const cleaned = transRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                translations = JSON.parse(cleaned);
+              } catch { translations = {}; }
+
+              for (const loc of otherLocales) {
+                if (translations[loc]) {
+                  await storage.saveCachedAdvice(name, comboKey, loc, translations[loc]);
+                }
+              }
+            } catch (transErr) {
+              console.error("Advice translation error:", transErr);
+            }
+          }
+        } catch (bgErr) {
+          console.error("Background save error:", bgErr);
+        }
+      })();
 
       incrementDailyCount(snapAdviceCount, userId);
 
@@ -2336,6 +2567,7 @@ If there is a genuine concern, output all 4 lines.`,
         focusPanelData,
         adviceUsedToday: getDailyCount(snapAdviceCount, userId),
         adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+        adviceSource: "claude",
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);

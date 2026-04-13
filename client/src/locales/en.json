@@ -778,7 +778,13 @@
     "focus_immediate_prefix": "Remember our advice? ",
     "focus_immediate_suffix": " — you can do it right now!",
     "focus_future_prefix": "It might be hard to change right now, but for your coming meals, remember: ",
-    "focus_struggle_portions": "Portion Control"
+    "focus_struggle_portions": "Portion Control",
+    "other": "Other",
+    "did_you_mean": "\"{{text}}\" — did you mean:",
+    "keep_as_typed": "Keep as typed",
+    "portion_small": "Small",
+    "portion_medium": "Medium",
+    "portion_large": "Large"
   },
   "slides": {
     "s1_headline": "Your blood sugar,\nin your hands",

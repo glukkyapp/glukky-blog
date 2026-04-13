@@ -12,8 +12,16 @@ type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 interface LabelResult {
   name: string | null;
   portion: string | null;
+  portionId?: string | null;
   sauces: string | null;
+  sauceIds?: string[];
   extras: string | null;
+  toppingIds?: string[];
+  comboSource?: "database" | "claude";
+  portionOptions?: string[];
+  portionIdMap?: Record<string, string>;
+  sauceOptions?: { id: string; label: string }[];
+  toppingOptions?: { id: string; label: string }[];
   snapsUsedToday: number;
   snapsLimit: number;
 }
@@ -31,8 +39,11 @@ interface AdviceResult {
 interface LabelForm {
   name: string;
   portion: string;
+  portionId: string | null;
   sauces: string;
+  sauceIds: string[];
   extras: string;
+  toppingIds: string[];
 }
 
 function parseAdvicePanels(advice: string): string[] {
@@ -164,7 +175,7 @@ export default function Snap() {
   const [error, setError] = useState<string | null>(null);
   const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", sauces: "", extras: "" });
+  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
 
@@ -179,7 +190,7 @@ export default function Snap() {
     setError(null);
     setLabelResult(null);
     setPreviewUrl(null);
-    setForm({ name: "", portion: "", sauces: "", extras: "" });
+    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
     setAdviceResult(null);
     setAdvicePanel(0);
   }
@@ -232,8 +243,11 @@ export default function Snap() {
       setForm({
         name: data.name ?? "",
         portion: data.portion ?? "",
+        portionId: data.portionId ?? null,
         sauces: data.sauces ?? "",
+        sauceIds: data.sauceIds ?? [],
         extras: data.extras ?? "",
+        toppingIds: data.toppingIds ?? [],
       });
       setStep("review");
     } catch {
@@ -259,6 +273,9 @@ export default function Snap() {
           portion: form.portion || null,
           sauces: form.sauces || null,
           extras: form.extras || null,
+          portionId: form.portionId || null,
+          sauceIds: form.sauceIds.length > 0 ? form.sauceIds : undefined,
+          toppingIds: form.toppingIds.length > 0 ? form.toppingIds : undefined,
         }),
       });
 
@@ -416,15 +433,37 @@ export default function Snap() {
                   {t("snap.field_portion")}
                   <Scale className="w-3 h-3" />
                 </Label>
-                <textarea
-                  id="snap-portion"
-                  value={form.portion}
-                  onChange={(e) => setForm((f) => ({ ...f, portion: e.target.value }))}
-                  placeholder={t("snap.field_placeholder_portion")}
-                  rows={2}
-                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
-                  data-testid="input-snap-portion"
-                />
+                <div className="flex gap-1.5 justify-end h-[4.5rem] items-start pt-1" data-testid="input-snap-portion">
+                  {[
+                    { key: "small", label: t("snap.portion_small") },
+                    { key: "medium", label: t("snap.portion_medium") },
+                    { key: "large", label: t("snap.portion_large") },
+                  ].map((opt) => {
+                    const isActive = form.portion.toLowerCase() === opt.key || form.portion === opt.label;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          hapticTap("LIGHT");
+                          setForm((f) => ({
+                            ...f,
+                            portion: opt.label,
+                            portionId: opt.key,
+                          }));
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-muted-foreground border-input hover:bg-muted"
+                        }`}
+                        data-testid={`chip-portion-${opt.key}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
