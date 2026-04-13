@@ -300,13 +300,19 @@ export default function Snap() {
     if (!form.name.trim()) return;
     setError(null);
 
-    if (form.sauceIds.length === 0 || form.toppingIds.length === 0) {
-      setForm(f => ({ ...f, sauceIds: [], toppingIds: [] }));
+    const needsSauceResolve = form.sauces.trim() && form.sauceIds.length === 0;
+    const needsToppingResolve = form.extras.trim() && form.toppingIds.length === 0;
+
+    if (needsSauceResolve || needsToppingResolve) {
       const queue: DisambigItem[] = [];
-      const sauceItems = await disambiguateField(form.sauces, "sauce");
-      queue.push(...sauceItems);
-      const toppingItems = await disambiguateField(form.extras, "topping");
-      queue.push(...toppingItems);
+      if (needsSauceResolve) {
+        const sauceItems = await disambiguateField(form.sauces, "sauce");
+        queue.push(...sauceItems);
+      }
+      if (needsToppingResolve) {
+        const toppingItems = await disambiguateField(form.extras, "topping");
+        queue.push(...toppingItems);
+      }
 
       if (queue.length > 0) {
         setDisambigQueue(queue);
@@ -569,7 +575,7 @@ export default function Snap() {
                 <textarea
                   id="snap-sauces"
                   value={form.sauces}
-                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [] }))}
                   placeholder={t("snap.field_placeholder_sauces")}
                   rows={2}
                   className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
@@ -584,7 +590,7 @@ export default function Snap() {
                 <textarea
                   id="snap-extras"
                   value={form.extras}
-                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [] }))}
                   placeholder={t("snap.field_placeholder_extras")}
                   rows={2}
                   className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
