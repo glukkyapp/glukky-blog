@@ -456,13 +456,24 @@ export class DatabaseStorage implements IStorage {
     if (!normalised) return [];
     const all = await db.select().from(ingredientVocabulary)
       .where(eq(ingredientVocabulary.category, category));
-    return all.filter(v =>
+
+    const exact = all.filter(v =>
       v.internalId.toLowerCase() === normalised ||
       v.labelEn.toLowerCase() === normalised ||
       v.labelZh.toLowerCase() === normalised ||
       v.labelYue.toLowerCase() === normalised ||
       (v.aliases ?? []).some(a => a.toLowerCase() === normalised)
     );
+    if (exact.length > 0) return exact;
+
+    const fuzzy = all.filter(v => {
+      const fields = [v.internalId, v.labelEn, v.labelZh, v.labelYue, ...(v.aliases ?? [])];
+      return fields.some(f => {
+        const fl = f.toLowerCase();
+        return fl.includes(normalised) || normalised.includes(fl);
+      });
+    });
+    return fuzzy;
   }
 
   async getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null> {

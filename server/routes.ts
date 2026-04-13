@@ -2180,59 +2180,6 @@ export async function registerRoutes(
     return ids;
   }
 
-  async function translateAndSaveNewLabels(
-    labels: { text: string; category: string }[],
-    anthropicClient: typeof anthropic
-  ): Promise<void> {
-    const newLabels = [];
-    for (const label of labels) {
-      const matches = await storage.getIngredientsByAlias(label.text, label.category);
-      if (matches.length === 0) {
-        newLabels.push(label);
-      }
-    }
-    if (newLabels.length === 0) return;
-
-    try {
-      const labelList = newLabels.map(l => `${l.text} (${l.category})`).join(", ");
-      const transResponse = await anthropicClient.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 500,
-        system: `You are a food label translator. For each food label given, return a JSON array where each element has:
-- "original": the original text
-- "internal_id": a snake_case English ID (e.g. "shrimp_paste", "chili_oil")
-- "en": English label
-- "zh": Traditional Chinese label
-- "yue": Cantonese label
-Return ONLY the JSON array, no explanation.`,
-        messages: [{ role: "user", content: `Translate these HK food labels: ${labelList}` }],
-      });
-
-      const transRaw = transResponse.content[0].type === "text" ? transResponse.content[0].text.trim() : "[]";
-      let translations: any[];
-      try {
-        const cleaned = transRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        translations = JSON.parse(cleaned);
-      } catch { return; }
-
-      for (let i = 0; i < translations.length; i++) {
-        const t = translations[i];
-        const label = newLabels[i];
-        if (!t || !label) continue;
-        await storage.saveIngredient({
-          internalId: t.internal_id || t.original?.toLowerCase().replace(/\s+/g, "_") || `unknown_${Date.now()}`,
-          category: label.category,
-          labelEn: t.en || t.original || "",
-          labelZh: t.zh || t.original || "",
-          labelYue: t.yue || t.original || "",
-          aliases: [t.original, t.en, t.zh, t.yue, t.internal_id].filter(Boolean).map((a: string) => a.toLowerCase()),
-        });
-      }
-    } catch (err) {
-      console.error("translateAndSaveNewLabels error:", err);
-    }
-  }
-
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2365,6 +2312,28 @@ Return ONLY the JSON object.`,
         return res.status(422).json({ message: "Could not parse label response." });
       }
 
+      (async () => {
+        try {
+          const sauceIds = await resolveToInternalIds(fullParsed.sauces, "sauce");
+          const toppingIds = await resolveToInternalIds(fullParsed.extras, "topping");
+          const portionId = fullParsed.portion ? ((await resolveToInternalIds(fullParsed.portion, "portion"))[0] || "medium") : "medium";
+          const existing = await storage.getFoodCombos(foodName);
+          if (existing.length === 0) {
+            await storage.saveFoodCombo({
+              foodName,
+              foodNameEn: null,
+              foodNameAliases: [],
+              defaultPortion: portionId,
+              defaultSauces: sauceIds,
+              defaultToppings: toppingIds,
+              caloriesEstimate: null,
+            });
+          }
+        } catch (bgErr) {
+          console.error("Background combo save error:", bgErr);
+        }
+      })();
+
       res.json({
         name: foodName,
         portion: fullParsed.portion ?? null,
@@ -2495,70 +2464,6 @@ If there is a genuine concern, output all 4 lines.`,
       const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
       await storage.saveCachedAdvice(name, comboKey, lang, advice);
-
-      const newLabels: { text: string; category: string }[] = [];
-      if (sauces) {
-        sauces.split(/[,、，]/).map((s: string) => s.trim()).filter(Boolean).forEach((s: string) => {
-          newLabels.push({ text: s, category: "sauce" });
-        });
-      }
-      if (extras) {
-        extras.split(/[,、，]/).map((s: string) => s.trim()).filter(Boolean).forEach((s: string) => {
-          newLabels.push({ text: s, category: "topping" });
-        });
-      }
-
-      (async () => {
-        try {
-          if (newLabels.length > 0) {
-            await translateAndSaveNewLabels(newLabels, anthropic);
-          }
-
-          const existingCombos = await storage.getFoodCombos(name);
-          if (existingCombos.length === 0) {
-            const finalSauceIds = await resolveToInternalIds(sauces, "sauce");
-            const finalToppingIds = await resolveToInternalIds(extras, "topping");
-            const finalPortionId = resolvedPortionId;
-            await storage.saveFoodCombo({
-              foodName: name,
-              foodNameEn: null,
-              foodNameAliases: [],
-              defaultPortion: finalPortionId,
-              defaultSauces: finalSauceIds,
-              defaultToppings: finalToppingIds,
-              caloriesEstimate: null,
-            });
-          }
-
-          const otherLocales = ["en", "zh-Hant", "yue"].filter(l => l !== lang);
-          if (otherLocales.length > 0) {
-            try {
-              const transResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-6",
-                max_tokens: 600,
-                system: `You are a translator. Translate the dietary advice below into the requested languages. Return a JSON object where each key is a locale code and the value is the translated advice. Preserve the emoji markers (🩸, ⚠️, ⚡, 📝) exactly. Return ONLY the JSON object.`,
-                messages: [{ role: "user", content: `Translate this advice to ${otherLocales.map(l => langLabel[l] ?? l).join(" and ")}:\n\n${advice}\n\nReturn JSON: { ${otherLocales.map(l => `"${l}": "..."`).join(", ")} }` }],
-              });
-              const transRaw = transResponse.content[0].type === "text" ? transResponse.content[0].text.trim() : "{}";
-              let translations: any;
-              try {
-                const cleaned = transRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-                translations = JSON.parse(cleaned);
-              } catch { translations = {}; }
-
-              for (const loc of otherLocales) {
-                if (translations[loc]) {
-                  await storage.saveCachedAdvice(name, comboKey, loc, translations[loc]);
-                }
-              }
-            } catch (transErr) {
-              console.error("Advice translation error:", transErr);
-            }
-          }
-        } catch (bgErr) {
-          console.error("Background save error:", bgErr);
-        }
-      })();
 
       incrementDailyCount(snapAdviceCount, userId);
 

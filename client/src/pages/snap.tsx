@@ -166,6 +166,12 @@ function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
   );
 }
 
+interface DisambigItem {
+  field: "sauce" | "topping";
+  text: string;
+  matches: { internalId: string; label: string }[];
+}
+
 export default function Snap() {
   const { t, i18n } = useTranslation();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +184,8 @@ export default function Snap() {
   const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
+  const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
+  const [disambigIndex, setDisambigIndex] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -193,6 +201,8 @@ export default function Snap() {
     setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
     setAdviceResult(null);
     setAdvicePanel(0);
+    setDisambigQueue([]);
+    setDisambigIndex(0);
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -257,9 +267,77 @@ export default function Snap() {
     }
   }
 
+  async function disambiguateField(text: string, field: "sauce" | "topping"): Promise<DisambigItem[]> {
+    if (!text.trim()) return [];
+    const parts = text.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const items: DisambigItem[] = [];
+    for (const part of parts) {
+      try {
+        const res = await fetch("/api/snap/disambiguate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ text: part, field, locale: i18n.language }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.exact && data.matches.length > 0) {
+            items.push({ field, text: part, matches: data.matches });
+          } else if (data.exact && data.matches.length === 1) {
+            if (field === "sauce") {
+              setForm(f => ({ ...f, sauceIds: [...f.sauceIds, data.matches[0].internalId] }));
+            } else {
+              setForm(f => ({ ...f, toppingIds: [...f.toppingIds, data.matches[0].internalId] }));
+            }
+          }
+        }
+      } catch {}
+    }
+    return items;
+  }
+
   async function handleGetAdvice() {
     if (!form.name.trim()) return;
     setError(null);
+
+    if (form.sauceIds.length === 0 || form.toppingIds.length === 0) {
+      setForm(f => ({ ...f, sauceIds: [], toppingIds: [] }));
+      const queue: DisambigItem[] = [];
+      const sauceItems = await disambiguateField(form.sauces, "sauce");
+      queue.push(...sauceItems);
+      const toppingItems = await disambiguateField(form.extras, "topping");
+      queue.push(...toppingItems);
+
+      if (queue.length > 0) {
+        setDisambigQueue(queue);
+        setDisambigIndex(0);
+        return;
+      }
+    }
+
+    await callAdviceApi();
+  }
+
+  function handleDisambigSelect(internalId: string | null) {
+    const current = disambigQueue[disambigIndex];
+    if (current && internalId) {
+      if (current.field === "sauce") {
+        setForm(f => ({ ...f, sauceIds: [...f.sauceIds, internalId] }));
+      } else {
+        setForm(f => ({ ...f, toppingIds: [...f.toppingIds, internalId] }));
+      }
+    }
+    hapticTap("LIGHT");
+    if (disambigIndex < disambigQueue.length - 1) {
+      setDisambigIndex(i => i + 1);
+    } else {
+      setDisambigQueue([]);
+      setDisambigIndex(0);
+      setTimeout(() => callAdviceApi(), 50);
+    }
+  }
+
+  async function callAdviceApi() {
     setStep("advising");
     setAdvicePanel(0);
 
@@ -525,10 +603,37 @@ export default function Snap() {
             />
           )}
 
+          {disambigQueue.length > 0 && disambigQueue[disambigIndex] && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3" data-testid="dialog-disambiguate">
+              <p className="text-sm font-medium text-center">
+                {t("snap.did_you_mean", { text: disambigQueue[disambigIndex].text })}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {disambigQueue[disambigIndex].matches.map((m) => (
+                  <button
+                    key={m.internalId}
+                    onClick={() => handleDisambigSelect(m.internalId)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-background border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
+                    data-testid={`chip-disambig-${m.internalId}`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handleDisambigSelect(null)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-input hover:bg-muted/80 transition-colors"
+                  data-testid="button-disambig-keep"
+                >
+                  {t("snap.keep_as_typed")}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 pt-1">
             <Button
               onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
-              disabled={!form.name.trim()}
+              disabled={!form.name.trim() || disambigQueue.length > 0}
               className="w-full btn-pop"
               data-testid="button-snap-get-advice"
             >
