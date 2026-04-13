@@ -358,8 +358,6 @@ export default function Snap() {
           sauces: form.sauces || null,
           extras: form.extras || null,
           portionId: form.portionId || null,
-          sauceIds: form.sauceIds.length > 0 ? form.sauceIds : undefined,
-          toppingIds: form.toppingIds.length > 0 ? form.toppingIds : undefined,
         }),
       });
 

@@ -2385,7 +2385,7 @@ Return ONLY the JSON object.`,
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
-      const { name, portion, sauces, extras, portionId, sauceIds, toppingIds } = req.body;
+      const { name, portion, sauces, extras, portionId } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
@@ -2396,12 +2396,8 @@ Return ONLY the JSON object.`,
       const lang = profile.preferredLanguage ?? "en";
       const tip = currentPlanForAdvice?.dietTip ?? (DIET_TIP_LADDERS[struggle]?.[0] ?? "Choose lower-GI options where possible");
 
-      const resolvedSauceIds = sauceIds && sauceIds.length > 0
-        ? sauceIds as string[]
-        : await resolveToInternalIds(sauces, "sauce");
-      const resolvedToppingIds = toppingIds && toppingIds.length > 0
-        ? toppingIds as string[]
-        : await resolveToInternalIds(extras, "topping");
+      const resolvedSauceIds = await resolveToInternalIds(sauces, "sauce");
+      const resolvedToppingIds = await resolveToInternalIds(extras, "topping");
       const resolvedPortionId = portionId || (portion ? (await resolveToInternalIds(portion, "portion"))[0] || portion.toLowerCase() : "medium");
 
       const comboKey = buildComboKey(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
