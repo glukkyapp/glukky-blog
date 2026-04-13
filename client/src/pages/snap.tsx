@@ -36,14 +36,21 @@ interface AdviceResult {
   adviceLimit: number;
 }
 
+interface TokenResolution {
+  text: string;
+  resolvedId: string | null;
+}
+
 interface LabelForm {
   name: string;
   portion: string;
   portionId: string | null;
   sauces: string;
   sauceIds: string[];
+  sauceResolutions: TokenResolution[];
   extras: string;
   toppingIds: string[];
+  toppingResolutions: TokenResolution[];
 }
 
 function parseAdvicePanels(advice: string): string[] {
@@ -181,7 +188,7 @@ export default function Snap() {
   const [error, setError] = useState<string | null>(null);
   const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
+  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
@@ -198,7 +205,7 @@ export default function Snap() {
     setError(null);
     setLabelResult(null);
     setPreviewUrl(null);
-    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], extras: "", toppingIds: [] });
+    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
     setAdviceResult(null);
     setAdvicePanel(0);
     setDisambigQueue([]);
@@ -250,14 +257,20 @@ export default function Snap() {
       hapticNotify("SUCCESS");
       const data: LabelResult = await res.json();
       setLabelResult(data);
+      const sIds = data.sauceIds ?? [];
+      const tIds = data.toppingIds ?? [];
+      const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+      const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
       setForm({
         name: data.name ?? "",
         portion: data.portion ?? "",
         portionId: data.portionId ?? null,
         sauces: data.sauces ?? "",
-        sauceIds: data.sauceIds ?? [],
+        sauceIds: sIds,
+        sauceResolutions: sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null })),
         extras: data.extras ?? "",
-        toppingIds: data.toppingIds ?? [],
+        toppingIds: tIds,
+        toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
       });
       setStep("review");
     } catch {
@@ -284,10 +297,31 @@ export default function Snap() {
           if (!data.exact && data.matches.length > 0) {
             items.push({ field, text: part, matches: data.matches });
           } else if (data.exact && data.matches.length === 1) {
+            const resolvedId = data.matches[0].internalId;
             if (field === "sauce") {
-              setForm(f => ({ ...f, sauceIds: [...f.sauceIds, data.matches[0].internalId] }));
+              setForm(f => ({
+                ...f,
+                sauceIds: [...f.sauceIds, resolvedId],
+                sauceResolutions: [...f.sauceResolutions, { text: part, resolvedId }],
+              }));
             } else {
-              setForm(f => ({ ...f, toppingIds: [...f.toppingIds, data.matches[0].internalId] }));
+              setForm(f => ({
+                ...f,
+                toppingIds: [...f.toppingIds, resolvedId],
+                toppingResolutions: [...f.toppingResolutions, { text: part, resolvedId }],
+              }));
+            }
+          } else {
+            if (field === "sauce") {
+              setForm(f => ({
+                ...f,
+                sauceResolutions: [...f.sauceResolutions, { text: part, resolvedId: null }],
+              }));
+            } else {
+              setForm(f => ({
+                ...f,
+                toppingResolutions: [...f.toppingResolutions, { text: part, resolvedId: null }],
+              }));
             }
           }
         }
@@ -326,11 +360,20 @@ export default function Snap() {
 
   function handleDisambigSelect(internalId: string | null) {
     const current = disambigQueue[disambigIndex];
-    if (current && internalId) {
+    if (current) {
+      const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
       if (current.field === "sauce") {
-        setForm(f => ({ ...f, sauceIds: [...f.sauceIds, internalId] }));
+        setForm(f => ({
+          ...f,
+          sauceIds: internalId ? [...f.sauceIds, internalId] : f.sauceIds,
+          sauceResolutions: [...f.sauceResolutions, resolution],
+        }));
       } else {
-        setForm(f => ({ ...f, toppingIds: [...f.toppingIds, internalId] }));
+        setForm(f => ({
+          ...f,
+          toppingIds: internalId ? [...f.toppingIds, internalId] : f.toppingIds,
+          toppingResolutions: [...f.toppingResolutions, resolution],
+        }));
       }
     }
     hapticTap("LIGHT");
@@ -358,8 +401,8 @@ export default function Snap() {
           sauces: form.sauces || null,
           extras: form.extras || null,
           portionId: form.portionId || null,
-          sauceIds: form.sauceIds.length > 0 ? form.sauceIds : undefined,
-          toppingIds: form.toppingIds.length > 0 ? form.toppingIds : undefined,
+          sauceResolutions: form.sauceResolutions.length > 0 ? form.sauceResolutions : undefined,
+          toppingResolutions: form.toppingResolutions.length > 0 ? form.toppingResolutions : undefined,
         }),
       });
 
@@ -575,7 +618,7 @@ export default function Snap() {
                 <textarea
                   id="snap-sauces"
                   value={form.sauces}
-                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [] }))}
+                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] }))}
                   placeholder={t("snap.field_placeholder_sauces")}
                   rows={2}
                   className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
@@ -590,7 +633,7 @@ export default function Snap() {
                 <textarea
                   id="snap-extras"
                   value={form.extras}
-                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [] }))}
+                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] }))}
                   placeholder={t("snap.field_placeholder_extras")}
                   rows={2}
                   className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
