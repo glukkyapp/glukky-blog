@@ -2329,27 +2329,25 @@ Return ONLY the JSON object.`,
         return res.status(422).json({ message: "Could not parse label response." });
       }
 
-      (async () => {
-        try {
-          const sauceIds = await resolveToInternalIds(fullParsed.sauces, "sauce");
-          const toppingIds = await resolveToInternalIds(fullParsed.extras, "topping");
-          const portionId = fullParsed.portion ? ((await resolveToInternalIds(fullParsed.portion, "portion"))[0] || "medium") : "medium";
-          const existing = await storage.getFoodCombos(foodName);
-          if (existing.length === 0) {
-            await storage.saveFoodCombo({
-              foodName,
-              foodNameEn: null,
-              foodNameAliases: [],
-              defaultPortion: portionId,
-              defaultSauces: sauceIds,
-              defaultToppings: toppingIds,
-              caloriesEstimate: null,
-            });
-          }
-        } catch (bgErr) {
-          console.error("Background combo save error:", bgErr);
+      try {
+        const sauceIds = await resolveToInternalIds(fullParsed.sauces, "sauce");
+        const toppingIds = await resolveToInternalIds(fullParsed.extras, "topping");
+        const portionId = fullParsed.portion ? ((await resolveToInternalIds(fullParsed.portion, "portion"))[0] || "medium") : "medium";
+        const existing = await storage.getFoodCombos(foodName);
+        if (existing.length === 0) {
+          await storage.saveFoodCombo({
+            foodName,
+            foodNameEn: null,
+            foodNameAliases: [],
+            defaultPortion: portionId,
+            defaultSauces: sauceIds,
+            defaultToppings: toppingIds,
+            caloriesEstimate: null,
+          });
         }
-      })();
+      } catch (comboSaveErr) {
+        console.error("Combo save error (non-blocking):", comboSaveErr);
+      }
 
       res.json({
         name: foodName,
@@ -2402,7 +2400,7 @@ Return ONLY the JSON object.`,
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
-      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions } = req.body;
+      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
@@ -2410,7 +2408,7 @@ Return ONLY the JSON object.`,
 
       const currentPlanForAdvice = await storage.getCurrentWeeklyPlan(userId);
       const struggle = currentPlanForAdvice?.dietStruggle ?? "sugary_food_drink";
-      const lang = profile.preferredLanguage ?? "en";
+      const lang = requestLocale || profile.preferredLanguage || "en";
       const tip = currentPlanForAdvice?.dietTip ?? (DIET_TIP_LADDERS[struggle]?.[0] ?? "Choose lower-GI options where possible");
 
       const resolvedSauceIds = (sauceResolutions && Array.isArray(sauceResolutions) && sauceResolutions.length > 0)

@@ -403,6 +403,7 @@ export default function Snap() {
           portionId: form.portionId || null,
           sauceResolutions: form.sauceResolutions.length > 0 ? form.sauceResolutions : undefined,
           toppingResolutions: form.toppingResolutions.length > 0 ? form.toppingResolutions : undefined,
+          locale: i18n.language,
         }),
       });
 
