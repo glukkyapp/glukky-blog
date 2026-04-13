@@ -280,10 +280,16 @@ export default function Snap() {
     }
   }
 
-  async function disambiguateField(text: string, field: "sauce" | "topping"): Promise<DisambigItem[]> {
-    if (!text.trim()) return [];
+  interface DisambigResult {
+    resolved: TokenResolution[];
+    ambiguous: DisambigItem[];
+  }
+
+  async function disambiguateField(text: string, field: "sauce" | "topping"): Promise<DisambigResult> {
+    if (!text.trim()) return { resolved: [], ambiguous: [] };
     const parts = text.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
-    const items: DisambigItem[] = [];
+    const resolved: TokenResolution[] = [];
+    const ambiguous: DisambigItem[] = [];
     for (const part of parts) {
       try {
         const res = await fetch("/api/snap/disambiguate", {
@@ -295,67 +301,68 @@ export default function Snap() {
         if (res.ok) {
           const data = await res.json();
           if (!data.exact && data.matches.length > 0) {
-            items.push({ field, text: part, matches: data.matches });
+            ambiguous.push({ field, text: part, matches: data.matches });
           } else if (data.exact && data.matches.length === 1) {
-            const resolvedId = data.matches[0].internalId;
-            if (field === "sauce") {
-              setForm(f => ({
-                ...f,
-                sauceIds: [...f.sauceIds, resolvedId],
-                sauceResolutions: [...f.sauceResolutions, { text: part, resolvedId }],
-              }));
-            } else {
-              setForm(f => ({
-                ...f,
-                toppingIds: [...f.toppingIds, resolvedId],
-                toppingResolutions: [...f.toppingResolutions, { text: part, resolvedId }],
-              }));
-            }
+            resolved.push({ text: part, resolvedId: data.matches[0].internalId });
           } else {
-            if (field === "sauce") {
-              setForm(f => ({
-                ...f,
-                sauceResolutions: [...f.sauceResolutions, { text: part, resolvedId: null }],
-              }));
-            } else {
-              setForm(f => ({
-                ...f,
-                toppingResolutions: [...f.toppingResolutions, { text: part, resolvedId: null }],
-              }));
-            }
+            resolved.push({ text: part, resolvedId: null });
           }
+        } else {
+          resolved.push({ text: part, resolvedId: null });
         }
-      } catch {}
+      } catch {
+        resolved.push({ text: part, resolvedId: null });
+      }
     }
-    return items;
+    return { resolved, ambiguous };
   }
+
+  const pendingResolutionsRef = useRef<{
+    sauceResolutions: TokenResolution[];
+    toppingResolutions: TokenResolution[];
+  }>({ sauceResolutions: [], toppingResolutions: [] });
 
   async function handleGetAdvice() {
     if (!form.name.trim()) return;
     setError(null);
 
-    const needsSauceResolve = form.sauces.trim() && form.sauceIds.length === 0;
-    const needsToppingResolve = form.extras.trim() && form.toppingIds.length === 0;
+    const needsSauceResolve = form.sauces.trim() && form.sauceResolutions.length === 0;
+    const needsToppingResolve = form.extras.trim() && form.toppingResolutions.length === 0;
 
-    if (needsSauceResolve || needsToppingResolve) {
-      const queue: DisambigItem[] = [];
-      if (needsSauceResolve) {
-        const sauceItems = await disambiguateField(form.sauces, "sauce");
-        queue.push(...sauceItems);
-      }
-      if (needsToppingResolve) {
-        const toppingItems = await disambiguateField(form.extras, "topping");
-        queue.push(...toppingItems);
-      }
+    let finalSauceResolutions = form.sauceResolutions;
+    let finalToppingResolutions = form.toppingResolutions;
+    const queue: DisambigItem[] = [];
 
-      if (queue.length > 0) {
-        setDisambigQueue(queue);
-        setDisambigIndex(0);
-        return;
-      }
+    if (needsSauceResolve) {
+      const result = await disambiguateField(form.sauces, "sauce");
+      finalSauceResolutions = result.resolved;
+      queue.push(...result.ambiguous);
+    }
+    if (needsToppingResolve) {
+      const result = await disambiguateField(form.extras, "topping");
+      finalToppingResolutions = result.resolved;
+      queue.push(...result.ambiguous);
     }
 
-    await callAdviceApi();
+    setForm(f => ({
+      ...f,
+      sauceResolutions: finalSauceResolutions,
+      sauceIds: finalSauceResolutions.filter(r => r.resolvedId).map(r => r.resolvedId!),
+      toppingResolutions: finalToppingResolutions,
+      toppingIds: finalToppingResolutions.filter(r => r.resolvedId).map(r => r.resolvedId!),
+    }));
+
+    if (queue.length > 0) {
+      pendingResolutionsRef.current = {
+        sauceResolutions: finalSauceResolutions,
+        toppingResolutions: finalToppingResolutions,
+      };
+      setDisambigQueue(queue);
+      setDisambigIndex(0);
+      return;
+    }
+
+    await callAdviceApi(finalSauceResolutions, finalToppingResolutions);
   }
 
   function handleDisambigSelect(internalId: string | null) {
@@ -363,32 +370,42 @@ export default function Snap() {
     if (current) {
       const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
       if (current.field === "sauce") {
-        setForm(f => ({
-          ...f,
-          sauceIds: internalId ? [...f.sauceIds, internalId] : f.sauceIds,
-          sauceResolutions: [...f.sauceResolutions, resolution],
-        }));
+        pendingResolutionsRef.current.sauceResolutions = [
+          ...pendingResolutionsRef.current.sauceResolutions,
+          resolution,
+        ];
       } else {
-        setForm(f => ({
-          ...f,
-          toppingIds: internalId ? [...f.toppingIds, internalId] : f.toppingIds,
-          toppingResolutions: [...f.toppingResolutions, resolution],
-        }));
+        pendingResolutionsRef.current.toppingResolutions = [
+          ...pendingResolutionsRef.current.toppingResolutions,
+          resolution,
+        ];
       }
     }
     hapticTap("LIGHT");
     if (disambigIndex < disambigQueue.length - 1) {
       setDisambigIndex(i => i + 1);
     } else {
+      const finalSauce = pendingResolutionsRef.current.sauceResolutions;
+      const finalTopping = pendingResolutionsRef.current.toppingResolutions;
+      setForm(f => ({
+        ...f,
+        sauceResolutions: finalSauce,
+        sauceIds: finalSauce.filter(r => r.resolvedId).map(r => r.resolvedId!),
+        toppingResolutions: finalTopping,
+        toppingIds: finalTopping.filter(r => r.resolvedId).map(r => r.resolvedId!),
+      }));
       setDisambigQueue([]);
       setDisambigIndex(0);
-      setTimeout(() => callAdviceApi(), 50);
+      callAdviceApi(finalSauce, finalTopping);
     }
   }
 
-  async function callAdviceApi() {
+  async function callAdviceApi(sauceRes?: TokenResolution[], toppingRes?: TokenResolution[]) {
     setStep("advising");
     setAdvicePanel(0);
+
+    const finalSauceResolutions = sauceRes || form.sauceResolutions;
+    const finalToppingResolutions = toppingRes || form.toppingResolutions;
 
     try {
       const res = await fetch("/api/snap/advice", {
@@ -401,8 +418,8 @@ export default function Snap() {
           sauces: form.sauces || null,
           extras: form.extras || null,
           portionId: form.portionId || null,
-          sauceResolutions: form.sauceResolutions.length > 0 ? form.sauceResolutions : undefined,
-          toppingResolutions: form.toppingResolutions.length > 0 ? form.toppingResolutions : undefined,
+          sauceResolutions: finalSauceResolutions.length > 0 ? finalSauceResolutions : undefined,
+          toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
           locale: i18n.language,
         }),
       });

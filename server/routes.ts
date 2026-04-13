@@ -2160,9 +2160,9 @@ export async function registerRoutes(
   }
 
   function buildComboKey(foodName: string, portion: string, sauces: string[], toppings: string[]): string {
-    const sortedSauces = [...sauces].sort().join(",") || "none";
-    const sortedToppings = [...toppings].sort().join(",") || "none";
-    return `${foodName}|${portion || "medium"}|${sortedSauces}|${sortedToppings}`;
+    const dedupedSauces = [...new Set(sauces)].sort().join(",") || "none";
+    const dedupedToppings = [...new Set(toppings)].sort().join(",") || "none";
+    return `${foodName}|${portion || "medium"}|${dedupedSauces}|${dedupedToppings}`;
   }
 
   async function resolveToInternalIds(rawText: string | null, category: string): Promise<string[]> {
