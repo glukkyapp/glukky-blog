@@ -326,19 +326,25 @@ export default function Snap() {
     if (!form.name.trim()) return;
     setError(null);
 
-    const needsSauceResolve = form.sauces.trim() && form.sauceResolutions.length === 0;
-    const needsToppingResolve = form.extras.trim() && form.toppingResolutions.length === 0;
+    const hasUnresolvedSauces = form.sauces.trim() && (
+      form.sauceResolutions.length === 0 ||
+      form.sauceResolutions.some(r => r.resolvedId === null)
+    );
+    const hasUnresolvedToppings = form.extras.trim() && (
+      form.toppingResolutions.length === 0 ||
+      form.toppingResolutions.some(r => r.resolvedId === null)
+    );
 
     let finalSauceResolutions = form.sauceResolutions;
     let finalToppingResolutions = form.toppingResolutions;
     const queue: DisambigItem[] = [];
 
-    if (needsSauceResolve) {
+    if (hasUnresolvedSauces) {
       const result = await disambiguateField(form.sauces, "sauce");
       finalSauceResolutions = result.resolved;
       queue.push(...result.ambiguous);
     }
-    if (needsToppingResolve) {
+    if (hasUnresolvedToppings) {
       const result = await disambiguateField(form.extras, "topping");
       finalToppingResolutions = result.resolved;
       queue.push(...result.ambiguous);
