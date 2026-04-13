@@ -86,12 +86,12 @@ Self-learning food knowledge pipeline to reduce Claude API calls.
 - `food_advice_cache`: foodName, comboKey (unique with locale), locale, adviceText
 
 **Pipeline:**
-1. `/api/snap/label`: Claude returns food name only → DB combo lookup → if found, return pre-filled labels with internal IDs; if not, fallback Claude call for portion/sauces/extras
-2. `/api/snap/advice`: Check advice cache by combo_key+locale → if cached, return immediately; if not, call Claude → save to cache
+1. `/api/snap/label`: Claude returns food name in the user's app language (locale-aware prompt) → DB combo lookup → if found, return pre-filled labels with internal IDs + sauceOptions/toppingOptions; if not, fallback Claude call for portion/sauces/extras
+2. `/api/snap/advice`: Check advice cache by combo_key+locale → if cached, return immediately; if cache miss, generate advice in ALL 3 locales (en, zh-Hant, yue) in parallel, save all to DB, return user's locale only; also auto-save new food_combos on first encounter
 3. `/api/snap/disambiguate`: Resolve user-typed text to internal ingredient IDs by category
 
 **Seed script:** `scripts/seed-food-combos.ts` — 26 vocabulary items + 15 HK dish combos
-**Frontend:** Portion chips (小/中/大) replace textarea, internal IDs tracked in form state and sent to advice endpoint
+**Frontend:** Portion chips (小/中/大) replace textarea; sauce/topping dropdowns (multi-select chips) when DB options available, with "Something else / 其他" option to switch to manual text input; internal IDs tracked in form state and sent to advice endpoint
 
 **Frontend:**
 - `client/src/components/piggy-bank-svg.tsx` — inline SVG cartoon teal pig, 5 fill states (0–9, 10–24, 25–39, 40–54, 55–60 coins), sparkles when full; plain HTML SVG (compatible with web + Capacitor/WebView wrapper)

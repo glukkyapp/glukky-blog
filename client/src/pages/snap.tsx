@@ -193,6 +193,8 @@ export default function Snap() {
   const [advicePanel, setAdvicePanel] = useState(0);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
   const [disambigIndex, setDisambigIndex] = useState(0);
+  const [sauceManual, setSauceManual] = useState(false);
+  const [toppingManual, setToppingManual] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -210,6 +212,8 @@ export default function Snap() {
     setAdvicePanel(0);
     setDisambigQueue([]);
     setDisambigIndex(0);
+    setSauceManual(false);
+    setToppingManual(false);
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -639,30 +643,114 @@ export default function Snap() {
                   <Droplets className="w-3 h-3" />
                   {t("snap.field_sauces")}
                 </Label>
-                <textarea
-                  id="snap-sauces"
-                  value={form.sauces}
-                  onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] }))}
-                  placeholder={t("snap.field_placeholder_sauces")}
-                  rows={2}
-                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
-                  data-testid="input-snap-sauces"
-                />
+                {labelResult?.sauceOptions?.length && !sauceManual ? (
+                  <div className="flex flex-wrap gap-1.5 h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-sauces">
+                    {labelResult.sauceOptions.map((opt) => {
+                      const selected = form.sauceIds.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            hapticTap("LIGHT");
+                            setForm((f) => {
+                              const ids = selected ? f.sauceIds.filter(id => id !== opt.id) : [...f.sauceIds, opt.id];
+                              const labels = ids.map(id => labelResult.sauceOptions!.find(o => o.id === id)?.label).filter(Boolean);
+                              return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map(id => ({ token: labelResult.sauceOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id, source: "db" as const })) };
+                            });
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-input hover:bg-muted"
+                          }`}
+                          data-testid={`chip-sauce-${opt.id}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hapticTap("LIGHT");
+                        setSauceManual(true);
+                        setForm((f) => ({ ...f, sauces: "", sauceIds: [], sauceResolutions: [] }));
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
+                      data-testid="chip-sauce-other"
+                    >
+                      {t("snap.something_else")}
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    id="snap-sauces"
+                    value={form.sauces}
+                    onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] }))}
+                    placeholder={t("snap.field_placeholder_sauces")}
+                    rows={2}
+                    className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
+                    data-testid="input-snap-sauces"
+                  />
+                )}
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="snap-extras" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_extras")}
                   <Cherry className="w-3 h-3" />
                 </Label>
-                <textarea
-                  id="snap-extras"
-                  value={form.extras}
-                  onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] }))}
-                  placeholder={t("snap.field_placeholder_extras")}
-                  rows={2}
-                  className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
-                  data-testid="input-snap-extras"
-                />
+                {labelResult?.toppingOptions?.length && !toppingManual ? (
+                  <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-extras">
+                    {labelResult.toppingOptions.map((opt) => {
+                      const selected = form.toppingIds.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            hapticTap("LIGHT");
+                            setForm((f) => {
+                              const ids = selected ? f.toppingIds.filter(id => id !== opt.id) : [...f.toppingIds, opt.id];
+                              const labels = ids.map(id => labelResult.toppingOptions!.find(o => o.id === id)?.label).filter(Boolean);
+                              return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map(id => ({ token: labelResult.toppingOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id, source: "db" as const })) };
+                            });
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-input hover:bg-muted"
+                          }`}
+                          data-testid={`chip-topping-${opt.id}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hapticTap("LIGHT");
+                        setToppingManual(true);
+                        setForm((f) => ({ ...f, extras: "", toppingIds: [], toppingResolutions: [] }));
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
+                      data-testid="chip-topping-other"
+                    >
+                      {t("snap.something_else")}
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    id="snap-extras"
+                    value={form.extras}
+                    onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] }))}
+                    placeholder={t("snap.field_placeholder_extras")}
+                    rows={2}
+                    className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
+                    data-testid="input-snap-extras"
+                  />
+                )}
               </div>
             </div>
           </div>

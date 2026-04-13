@@ -2214,11 +2214,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Unsupported image type. Use JPEG, PNG, WebP, or GIF." });
       }
 
+      const nameLangLabel: Record<string, string> = {
+        en: "English",
+        "zh-Hant": "Traditional Chinese (繁體中文)",
+        yue: "Written Cantonese (廣東話書面語)",
+      };
+      const nameLangExample: Record<string, string> = {
+        en: "Pork belly rice noodles",
+        "zh-Hant": "食物名稱",
+        yue: "食物名稱",
+      };
+      const nameLocale = language || "zh-Hant";
       const nameResponse = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 100,
-        system: `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a JSON object with the food name in Traditional Chinese:
-{ "name": "食物名稱" }
+        system: `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a JSON object with the food name in ${nameLangLabel[nameLocale] ?? "English"}:
+{ "name": "${nameLangExample[nameLocale] ?? "Food name"}" }
 
 Important:
 - Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
@@ -2437,6 +2448,7 @@ Return ONLY the JSON object.`,
         });
       }
 
+      const allLocales = ["en", "zh-Hant", "yue"] as const;
       const langLabel: Record<string, string> = {
         en: "English",
         "zh-Hant": "Traditional Chinese (繁體中文)",
@@ -2450,14 +2462,11 @@ Return ONLY the JSON object.`,
         extras ? `Extras / toppings: ${extras}` : null,
       ].filter(Boolean).join("\n");
 
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 300,
-        system: `You are a dietary advisor helping a person manage blood sugar levels and glycaemic impact through practical food choices. Your sole focus is glycaemic impact and practical sugar reduction.
+      const advicePromptSystem = (locale: string) => `You are a dietary advisor helping a person manage blood sugar levels and glycaemic impact through practical food choices. Your sole focus is glycaemic impact and practical sugar reduction.
 
 Users are based in Hong Kong. You are familiar with local foods: congee, dim sum, rice noodles, wonton noodles, Hong Kong milk tea (with condensed milk), pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, siu mai, har gow, cheung fun, lo mai gai, turnip cake.
 
-Reply in ${langLabel[lang] ?? "English"}.
+Reply in ${langLabel[locale] ?? "English"}.
 
 Important rules:
 - If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings or unnecessary advice for healthy food.
@@ -2472,22 +2481,56 @@ Always reply in this format:
 📝 Next time: [one change for the next time this dish is prepared or ordered]
 
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (🩸, ⚡, 📝).
-If there is a genuine concern, output all 4 lines.`,
-        messages: [{ role: "user", content: foodDesc }],
-      });
+If there is a genuine concern, output all 4 lines.`;
 
-      const advice = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+      const adviceResults = await Promise.all(
+        allLocales.map(async (locale) => {
+          const existing = await storage.getCachedAdvice(comboKey, locale);
+          if (existing) return { locale, advice: existing, fromCache: true };
+          const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 300,
+            system: advicePromptSystem(locale),
+            messages: [{ role: "user", content: foodDesc }],
+          });
+          const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+          return { locale, advice: text, fromCache: false };
+        })
+      );
 
-      await storage.saveCachedAdvice(name, comboKey, lang, advice);
+      await Promise.all(
+        adviceResults
+          .filter(r => !r.fromCache && r.advice)
+          .map(r => storage.saveCachedAdvice(name, comboKey, r.locale, r.advice))
+      );
+
+      const comboExists = await storage.getFoodCombos(name);
+      if (comboExists.length === 0) {
+        try {
+          await storage.saveFoodCombo({
+            foodName: name,
+            foodNameEn: null,
+            foodNameAliases: [],
+            defaultPortion: resolvedPortionId,
+            defaultSauces: resolvedSauceIds,
+            defaultToppings: resolvedToppingIds,
+            caloriesEstimate: null,
+          });
+        } catch (comboSaveErr) {
+          console.error("Combo save error (non-blocking):", comboSaveErr);
+        }
+      }
+
+      const userAdvice = adviceResults.find(r => r.locale === lang)?.advice ?? adviceResults[0].advice;
 
       incrementDailyCount(snapAdviceCount, userId);
 
       res.json({
-        advice,
+        advice: userAdvice,
         focusPanelData,
         adviceUsedToday: getDailyCount(snapAdviceCount, userId),
         adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
-        adviceSource: "claude",
+        adviceSource: adviceResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);

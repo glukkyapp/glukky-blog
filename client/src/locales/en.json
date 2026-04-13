@@ -784,7 +784,8 @@
     "keep_as_typed": "Keep as typed",
     "portion_small": "Small",
     "portion_medium": "Medium",
-    "portion_large": "Large"
+    "portion_large": "Large",
+    "something_else": "Something else"
   },
   "slides": {
     "s1_headline": "Your blood sugar,\nin your hands",

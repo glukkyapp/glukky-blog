@@ -788,7 +788,8 @@
     "keep_as_typed": "保持原樣",
     "portion_small": "小",
     "portion_medium": "中",
-    "portion_large": "大"
+    "portion_large": "大",
+    "something_else": "其他"
   },
   "slides": {
     "s1_headline": "血糖，\n由你話事",
