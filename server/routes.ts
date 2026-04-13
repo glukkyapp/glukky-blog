@@ -2293,6 +2293,7 @@ Important:
 
         return res.json({
           name: foodName,
+          canonicalName: combos[0].foodName,
           portion: first.portion,
           portionId: first.portionId,
           sauces: first.sauces.map(s => s.label).join(", ") || null,
@@ -2411,8 +2412,9 @@ Return ONLY the JSON object.`,
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
-      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
+      const { name, canonicalName, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
+      const comboName = canonicalName || name;
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
@@ -2430,7 +2432,7 @@ Return ONLY the JSON object.`,
         : await resolveToInternalIds(extras, "topping");
       const resolvedPortionId = portionId || (portion ? (await resolveToInternalIds(portion, "portion"))[0] || portion.toLowerCase() : "medium");
 
-      const comboKey = buildComboKey(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      const comboKey = buildComboKey(comboName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
       const tipIndexForPanel = currentPlanForAdvice?.dietTip ? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
       const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, name, portion, sauces, extras);
@@ -2501,16 +2503,20 @@ If there is a genuine concern, output all 4 lines.`;
       await Promise.all(
         adviceResults
           .filter(r => !r.fromCache && r.advice)
-          .map(r => storage.saveCachedAdvice(name, comboKey, r.locale, r.advice))
+          .map(r => storage.saveCachedAdvice(comboName, comboKey, r.locale, r.advice))
       );
 
-      const comboExists = await storage.getFoodCombos(name);
+      const comboExists = await storage.getFoodCombos(comboName);
       if (comboExists.length === 0) {
+        const isEnglishName = /^[a-zA-Z\s,'-]+$/.test(name.trim());
+        const foodNameEnField = isEnglishName ? name : null;
+        const aliases: string[] = [];
+        if (name !== comboName) aliases.push(name);
         try {
           await storage.saveFoodCombo({
-            foodName: name,
-            foodNameEn: null,
-            foodNameAliases: [],
+            foodName: comboName,
+            foodNameEn: foodNameEnField,
+            foodNameAliases: aliases,
             defaultPortion: resolvedPortionId,
             defaultSauces: resolvedSauceIds,
             defaultToppings: resolvedToppingIds,

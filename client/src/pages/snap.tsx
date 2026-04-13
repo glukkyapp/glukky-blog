@@ -17,6 +17,7 @@ interface LabelResult {
   sauceIds?: string[];
   extras: string | null;
   toppingIds?: string[];
+  canonicalName?: string;
   comboSource?: "database" | "claude";
   portionOptions?: string[];
   portionIdMap?: Record<string, string>;
@@ -424,6 +425,7 @@ export default function Snap() {
         credentials: "include",
         body: JSON.stringify({
           name: form.name,
+          canonicalName: labelResult?.canonicalName || undefined,
           portion: form.portion || null,
           sauces: form.sauces || null,
           extras: form.extras || null,
