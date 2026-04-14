@@ -1,0 +1,76 @@
+function toInternalId(s: string): string {
+  return s.trim().toLowerCase()
+    .replace(/\([^)]*\)/g, "")    // delete "(sweet soy)" entirely
+    .replace(/[^a-z0-9]+/g, "_")  // spaces/symbols → underscore
+    .replace(/^_+|_+$/g, "");     // trim leading/trailing underscores
+}
+
+function parseSauceIds(saucesEn: string | null): string[] {
+  if (!saucesEn) return [];
+  return saucesEn.split(",").map(s => toInternalId(s)).filter(Boolean);
+}
+
+function parseToppingIds(toppingsEn: string | null): string[] {
+  if (!toppingsEn) return [];
+  return toppingsEn.split(",").map(s => toInternalId(s)).filter(Boolean);
+}
+Bug 5 — Portion tip checks the wrong value
+Plain language: The large-portion tip should fire based on what the user actually confirmed. But the code reads the default portion from food_seeds (almost always "Medium"), so the tip never fires even when the user changed it to Large.
+
+Also: Category flags (isSugaryFood etc.) must only be checked at the advice step — after the user confirms the final food name — not at the label step where Claude's suggestion hasn't been confirmed yet.
+
+Fix — pass user's confirmed portion:
+
+typescript
+// In /api/snap/advice — after user has confirmed all labels
+const { name, portion, sauces, extras } = req.body;
+
+// Look up flags using FINAL confirmed food name
+const foodSeed = await storage.getFoodSeedByName(name);
+
+// Pass user's confirmed portion, not seed default
+const focusPanelData = computeFocusPanel(struggle, tipIndex, foodSeed, portion ?? "medium");
+Fix — update function signature:
+
+typescript
+function computeFocusPanel(
+  struggle: string,
+  tipIndex: number,
+  seed: FoodSeed | null,
+  userPortion: string,       // ← user's confirmed value
+): FocusPanelData | null {
+  // ...
+  if (struggle === "portions") {
+    if (userPortion.toLowerCase() !== "large") return null;  // ✅
+    return { struggleKey: struggle, tips: [{ key: "diet_tip.plate_method", timing: "immediate" }] };
+  }
+}
+Fix — remove all category flag logic from /api/snap/label: That endpoint returns food name and default labels only. No isSugaryFood, isOily etc. at this stage.
+
+Bug 6 — Missing imports in storage.ts
+Plain language: getFoodSeedByName uses or() and sql to search the database but they are not imported. The function crashes immediately when called.
+
+Fix:
+
+typescript
+import { eq, or, sql, and } from "drizzle-orm";
+Bug 7 — Risk of deleting code that is still needed
+Plain language: Step 3a says delete lines 22–58. But DIET_TIP_LADDERS and DIET_TIP_I18N_KEYS — which the new computeFocusPanel still uses — may be on those same lines. Deleting them breaks the function.
+
+Fix: Before deleting anything, check those line numbers. Only delete the six _KW arrays:
+
+SUGARY_DRINK_KW
+
+SUGARY_FRUIT_KW
+
+SUGARY_FOOD_KW
+
+OILY_KW
+
+LARGE_PORTION_KW
+
+SNACK_KW
+
+Do not touch DIET_TIP_LADDERS or DIET_TIP_I18N_KEYS.
+
+Prepared using Claude Sonnet 4.6 Thinking
