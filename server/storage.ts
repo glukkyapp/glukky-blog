@@ -9,9 +9,10 @@ import {
   type CycleHistoryRow, type InsertCycleHistory,
   type IngredientVocabulary, type InsertIngredientVocabulary,
   type FoodCombo, type InsertFoodCombo,
+  type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
-  ingredientVocabulary, foodCombos, foodAdviceCache,
+  ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
@@ -71,7 +72,10 @@ export interface IStorage {
   getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null>;
   saveIngredient(item: InsertIngredientVocabulary): Promise<IngredientVocabulary>;
   getCachedAdvice(comboKey: string, locale: string): Promise<string | null>;
-  saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void>;
+  saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string, adviceSource?: string): Promise<void>;
+  getFoodLabelByName(name: string): Promise<FoodLabel | null>;
+  getFoodLabelByCombo(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodLabel | null>;
+  saveFoodLabel(label: InsertFoodLabel): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -499,10 +503,67 @@ export class DatabaseStorage implements IStorage {
     return row?.adviceText ?? null;
   }
 
-  async saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string): Promise<void> {
+  async saveCachedAdvice(foodName: string, comboKey: string, locale: string, advice: string, adviceSource?: string): Promise<void> {
     await db.insert(foodAdviceCache)
-      .values({ foodName, comboKey, locale, adviceText: advice })
+      .values({ foodName, comboKey, locale, adviceText: advice, adviceSource: adviceSource ?? "claude" })
       .onConflictDoNothing();
+  }
+
+  async getFoodLabelByName(name: string): Promise<FoodLabel | null> {
+    const normalised = name.trim().toLowerCase();
+    if (!normalised) return null;
+
+    const rows = await db.select().from(foodLabels).where(
+      or(
+        sql`lower(${foodLabels.foodNameEn}) = ${normalised}`,
+        sql`lower(${foodLabels.foodNameZhHant}) = ${normalised}`,
+        sql`lower(${foodLabels.foodNameYue}) = ${normalised}`,
+      )
+    );
+
+    if (rows.length === 0) return null;
+
+    const maxCount = Math.max(...rows.map(r => r.useCount));
+    if (maxCount === 0) return rows[Math.floor(Math.random() * rows.length)];
+    return rows.reduce((best, r) => r.useCount > best.useCount ? r : best);
+  }
+
+  async getFoodLabelByCombo(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodLabel | null> {
+    const normalised = name.trim().toLowerCase();
+    if (!normalised) return null;
+
+    const sortedSauces = [...sauceIds].sort();
+    const sortedToppings = [...toppingIds].sort();
+
+    const rows = await db.select().from(foodLabels).where(
+      or(
+        sql`lower(${foodLabels.foodNameEn}) = ${normalised}`,
+        sql`lower(${foodLabels.foodNameZhHant}) = ${normalised}`,
+        sql`lower(${foodLabels.foodNameYue}) = ${normalised}`,
+      )
+    );
+
+    const match = rows.find(r => {
+      if (r.defaultPortionId !== portionId) return false;
+      const rSauces = [...(r.defaultSauces ?? [])].sort();
+      const rToppings = [...(r.defaultToppings ?? [])].sort();
+      if (rSauces.length !== sortedSauces.length) return false;
+      if (rToppings.length !== sortedToppings.length) return false;
+      return rSauces.every((s, i) => s === sortedSauces[i]) &&
+        rToppings.every((t, i) => t === sortedToppings[i]);
+    });
+
+    if (!match) return null;
+
+    await db.update(foodLabels)
+      .set({ useCount: sql`${foodLabels.useCount} + 1` })
+      .where(eq(foodLabels.internalId, match.internalId));
+
+    return { ...match, useCount: match.useCount + 1 };
+  }
+
+  async saveFoodLabel(label: InsertFoodLabel): Promise<void> {
+    await db.insert(foodLabels).values(label).onConflictDoNothing();
   }
 }
 

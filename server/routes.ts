@@ -13,80 +13,41 @@ import {
   getWeekStartDate, evaluateDietStruggle, checkRepickCondition, checkCycle3RepickCondition, checkCurrentCycleRepickCondition,
 } from "./engine";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_PRIORITY, type InsertUserProfile } from "@shared/schema";
+import type { FoodLabel } from "@shared/schema";
 import {
   evaluateDailyAchievements,
   evaluateWeeklyAchievements,
   awardStruggleGraduationCoin,
 } from "./achievements";
 
-const SUGARY_DRINK_KW = [
-  "juice", "tea", "milk tea", "bubble tea", "boba", "soda", "cola", "lemonade",
-  "smoothie", "drink", "beverage", "yakult", "vitasoy", "horlicks", "milo",
-  "ovaltine", "cocoa", "hot chocolate", "latte", "cappuccino", "coffee",
-  "7up", "sprite", "fanta", "ribena", "coke", "pepsi", "iced coffee",
-  "herbal tea", "chrysanthemum", "barley water", "sugar cane", "matcha",
-  "condensed milk", "sweetened milk",
-];
-const SUGARY_FRUIT_KW = [
-  "fruit", "mango", "orange", "apple", "banana", "grape", "melon", "watermelon",
-  "lychee", "longan", "strawberry", "blueberry", "kiwi", "pear", "peach",
-  "papaya", "pineapple", "guava", "durian", "jackfruit", "rambutan",
-  "plum", "cherry", "fig", "pomelo", "tangerine", "mandarin",
-];
-const SUGARY_FOOD_KW = [
-  "cake", "biscuit", "cookie", "dessert", "sweet", "candy", "chocolate",
-  "pudding", "tart", "pastry", "bun", "pineapple bun", "egg tart",
-  "wife cake", "walnut cookie", "sesame ball", "sago", "glutinous",
-  "sweet soup", "tang yuan", "red bean", "tong yuen", "sugar", "sugary",
-  "donut", "doughnut", "waffle", "brownie", "ice cream", "gelato",
-  "custard", "caramel", "syrup", "mochi",
-];
-const OILY_KW = [
-  "fried", "oily", "crispy", "deep-fried", "deep fried", "pan-fried", "pan fried",
-  "stir-fried", "stir fried", "lard", "butter", "greasy", "tempura",
-  "french fries", "spring roll", "doughnut", "sausage", "char siu",
-  "roast", "roasted", "bbq", "pork belly", "bacon",
-];
-const LARGE_PORTION_KW = [
-  "large", "big", "jumbo", "extra", "double", "xl", "full", "whole", "super",
-  "king size", "oversized", "king-size",
-];
-const SNACK_KW = [
-  "snack", "chips", "biscuit", "cookie", "cracker", "candy", "chocolate",
-  "sweets", "cake", "pastry", "puff", "pudding", "wafer", "popcorn",
-  "mochi", "gummy", "jelly", "toffee", "caramel", "fudge", "prawn crackers",
-];
-
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
+interface FoodTags { isSugaryFood: boolean; isSugaryDrink: boolean; isOily: boolean; isSnack: boolean; }
 
 function computeFocusPanel(
   struggle: string,
   tipIndex: number,
-  name: string,
-  portion: string | null,
-  sauces: string | null,
-  extras: string | null
+  label: FoodLabel | null,
+  userPortion: string,
+  claudeTags?: FoodTags | null,
 ): FocusPanelData | null {
   const supported = ["sugary_food_drink", "oily_fried_food", "portions", "snacks"];
   if (!supported.includes(struggle)) return null;
 
-  const txt = [name, portion, sauces, extras].filter(Boolean).join(" ").toLowerCase();
+  const tags: FoodTags = label
+    ? { isSugaryFood: label.isSugaryFood, isSugaryDrink: label.isSugaryDrink, isOily: label.isOily, isSnack: label.isSnack }
+    : claudeTags ?? { isSugaryFood: false, isSugaryDrink: false, isOily: false, isSnack: false };
 
   if (struggle === "sugary_food_drink") {
-    const isDrink = SUGARY_DRINK_KW.some(kw => txt.includes(kw));
-    const isFruit = SUGARY_FRUIT_KW.some(kw => txt.includes(kw));
-    const isFood  = SUGARY_FOOD_KW.some(kw => txt.includes(kw));
-    if (!isDrink && !isFruit && !isFood) return null;
-
+    if (!tags.isSugaryFood && !tags.isSugaryDrink) return null;
     const tips: TipEntry[] = [];
-    if (isDrink) tips.push({ key: "diet_tip.dilute_juice", timing: "immediate" });
-    if (!isDrink && (isFruit || isFood)) tips.push({ key: "diet_tip.swap_dessert", timing: "future" });
+    if (tags.isSugaryDrink) tips.push({ key: "diet_tip.dilute_juice", timing: "immediate" });
+    if (!tags.isSugaryDrink && tags.isSugaryFood) tips.push({ key: "diet_tip.swap_dessert", timing: "future" });
     return { struggleKey: struggle, tips };
   }
 
   if (struggle === "oily_fried_food") {
-    if (!OILY_KW.some(kw => txt.includes(kw))) return null;
+    if (!tags.isOily) return null;
     const tipList = DIET_TIP_LADDERS[struggle] ?? [];
     const tip = tipList[tipIndex] ?? tipList[0];
     const tipKey = DIET_TIP_I18N_KEYS[tip];
@@ -95,13 +56,13 @@ function computeFocusPanel(
   }
 
   if (struggle === "portions") {
-    if (!LARGE_PORTION_KW.some(kw => txt.includes(kw))) return null;
-    if (SUGARY_FOOD_KW.some(kw => txt.includes(kw))) return null;
+    if (userPortion !== "large") return null;
+    if (tags.isSugaryFood) return null;
     return { struggleKey: struggle, tips: [{ key: "diet_tip.plate_method", timing: "immediate" }] };
   }
 
   if (struggle === "snacks") {
-    if (!SNACK_KW.some(kw => txt.includes(kw))) return null;
+    if (!tags.isSnack) return null;
     const tipList = DIET_TIP_LADDERS[struggle] ?? [];
     const tip = tipList[tipIndex] ?? tipList[0];
     const tipKey = DIET_TIP_I18N_KEYS[tip];
@@ -2161,10 +2122,16 @@ export async function registerRoutes(
     return vocab.labelEn;
   }
 
-  function buildComboKey(foodName: string, portion: string, sauces: string[], toppings: string[]): string {
-    const dedupedSauces = [...new Set(sauces)].sort().join(",") || "none";
-    const dedupedToppings = [...new Set(toppings)].sort().join(",") || "none";
-    return `${foodName}|${portion || "medium"}|${dedupedSauces}|${dedupedToppings}`;
+  function buildInternalId(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): string {
+    const namePart = name.trim().toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    return [
+      namePart,
+      portionId,
+      ...[...sauceIds].sort(),
+      ...[...toppingIds].sort(),
+    ].filter(Boolean).join("__");
   }
 
   async function resolveToInternalIds(rawText: string | null, category: string): Promise<string[]> {
@@ -2259,6 +2226,37 @@ Important:
       incrementDailyCount(snapLabelCount, userId);
 
       const locale = language || "en";
+
+      const foodLabel = await storage.getFoodLabelByName(foodName);
+      if (foodLabel) {
+        const portionVocab = await storage.getIngredientByInternalId(foodLabel.defaultPortionId);
+        const sauceVocabs = await Promise.all(
+          (foodLabel.defaultSauces ?? []).map(id => storage.getIngredientByInternalId(id))
+        );
+        const toppingVocabs = await Promise.all(
+          (foodLabel.defaultToppings ?? []).map(id => storage.getIngredientByInternalId(id))
+        );
+
+        const sauceOptions = sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
+        const toppingOptions = toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
+
+        return res.json({
+          name: foodName,
+          canonicalName: foodLabel.internalId,
+          portion: portionVocab ? getIngredientLabel(portionVocab, locale) : null,
+          portionId: foodLabel.defaultPortionId,
+          sauces: sauceOptions.map(s => s.label).join(", ") || null,
+          sauceIds: sauceOptions.map(s => s.id),
+          extras: toppingOptions.map(t => t.label).join(", ") || null,
+          toppingIds: toppingOptions.map(t => t.id),
+          comboSource: "database",
+          sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
+          toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
+          snapsUsedToday: getDailyCount(snapLabelCount, userId),
+          snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+        });
+      }
+
       const combos = await storage.getFoodCombos(foodName);
 
       if (combos.length > 0) {
@@ -2434,10 +2432,13 @@ Return ONLY the JSON object.`,
         : await resolveToInternalIds(extras, "topping");
       const resolvedPortionId = portionId || (portion ? (await resolveToInternalIds(portion, "portion"))[0] || portion.toLowerCase() : "medium");
 
-      const comboKey = buildComboKey(comboName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      const comboKey = buildInternalId(comboName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+
+      let label = await storage.getFoodLabelByCombo(comboName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      if (!label) label = await storage.getFoodLabelByName(comboName);
 
       const tipIndexForPanel = currentPlanForAdvice?.dietTip ? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
-      const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, name, portion, sauces, extras);
+      const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
 
       const cachedAdvice = await storage.getCachedAdvice(comboKey, lang);
 
@@ -2489,8 +2490,8 @@ If there is a genuine concern, output all 4 lines.`;
 
       const adviceResults = await Promise.all(
         allLocales.map(async (locale) => {
-          const existing = await storage.getCachedAdvice(comboKey, locale);
-          if (existing) return { locale, advice: existing, fromCache: true };
+          const existingAdvice = await storage.getCachedAdvice(comboKey, locale);
+          if (existingAdvice) return { locale, advice: existingAdvice, fromCache: true };
           const response = await anthropic.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 300,
@@ -2505,7 +2506,7 @@ If there is a genuine concern, output all 4 lines.`;
       await Promise.all(
         adviceResults
           .filter(r => !r.fromCache && r.advice)
-          .map(r => storage.saveCachedAdvice(comboName, comboKey, r.locale, r.advice))
+          .map(r => storage.saveCachedAdvice(comboName, comboKey, r.locale, r.advice, "claude"))
       );
 
       const comboExists = await storage.getFoodCombos(comboName);

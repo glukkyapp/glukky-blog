@@ -239,12 +239,29 @@ export const foodCombos = pgTable("food_combos", {
   caloriesEstimate: integer("calories_estimate"),
 });
 
+export const foodLabels = pgTable("food_labels", {
+  id: serial("id").primaryKey(),
+  internalId: varchar("internal_id").unique().notNull(),
+  foodNameEn: text("food_name_en").notNull(),
+  foodNameZhHant: text("food_name_zh_hant").notNull(),
+  foodNameYue: text("food_name_yue").notNull(),
+  defaultPortionId: varchar("default_portion_id").notNull().default("medium"),
+  defaultSauces: text("default_sauces").array().notNull().default(sql`'{}'::text[]`),
+  defaultToppings: text("default_toppings").array().notNull().default(sql`'{}'::text[]`),
+  isSugaryFood: boolean("is_sugary_food").notNull().default(false),
+  isSugaryDrink: boolean("is_sugary_drink").notNull().default(false),
+  isOily: boolean("is_oily").notNull().default(false),
+  isSnack: boolean("is_snack").notNull().default(false),
+  useCount: integer("use_count").notNull().default(0),
+});
+
 export const foodAdviceCache = pgTable("food_advice_cache", {
   id: serial("id").primaryKey(),
   foodName: text("food_name").notNull(),
   comboKey: varchar("combo_key").notNull(),
   locale: varchar("locale").notNull(),
   adviceText: text("advice_text").notNull(),
+  adviceSource: varchar("advice_source").notNull().default("claude"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   comboLocaleUniq: uniqueIndex("food_advice_cache_combo_locale_idx").on(table.comboKey, table.locale),
@@ -252,11 +269,14 @@ export const foodAdviceCache = pgTable("food_advice_cache", {
 
 export const insertIngredientVocabularySchema = createInsertSchema(ingredientVocabulary).omit({ id: true });
 export const insertFoodComboSchema = createInsertSchema(foodCombos).omit({ id: true });
+export const insertFoodLabelSchema = createInsertSchema(foodLabels).omit({ id: true });
 export const insertFoodAdviceCacheSchema = createInsertSchema(foodAdviceCache).omit({ id: true, createdAt: true });
 
 export type IngredientVocabulary = typeof ingredientVocabulary.$inferSelect;
 export type InsertIngredientVocabulary = z.infer<typeof insertIngredientVocabularySchema>;
 export type FoodCombo = typeof foodCombos.$inferSelect;
 export type InsertFoodCombo = z.infer<typeof insertFoodComboSchema>;
+export type FoodLabel = typeof foodLabels.$inferSelect;
+export type InsertFoodLabel = z.infer<typeof insertFoodLabelSchema>;
 export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;
 export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
