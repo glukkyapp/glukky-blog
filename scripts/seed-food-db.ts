@@ -58,8 +58,6 @@ async function seed() {
 
   console.log(`Parsed ${sheet1.length} rows from Sheet 1 (labels), ${sheet2.length} rows from Sheet 2 (advice)`);
 
-  const allSauceIds = new Set<string>();
-  const allToppingIds = new Set<string>();
   const sauceLabels = new Map<string, { en: string; zh: string; yue: string }>();
   const toppingLabels = new Map<string, { en: string; zh: string; yue: string }>();
 
@@ -67,7 +65,6 @@ async function seed() {
     const saucesEn = parseEnglishIds(row.sauces_en);
     const toppingsEn = parseEnglishIds(row.toppings_en);
     saucesEn.forEach(id => {
-      allSauceIds.add(id);
       if (!sauceLabels.has(id)) {
         const rawEn = (row.sauces_en || "").replace(/\([^)]*\)/g, "").replace(/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef、，].*/u, "");
         const parts = rawEn.split(",").map((s: string) => s.trim()).filter(Boolean);
@@ -81,7 +78,6 @@ async function seed() {
       }
     });
     toppingsEn.forEach(id => {
-      allToppingIds.add(id);
       if (!toppingLabels.has(id)) {
         const rawEn = (row.toppings_en || "").replace(/\([^)]*\)/g, "").replace(/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef、，].*/u, "");
         const parts = rawEn.split(",").map((s: string) => s.trim()).filter(Boolean);
