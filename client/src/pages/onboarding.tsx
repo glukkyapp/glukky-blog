@@ -14,7 +14,7 @@ import i18n from "@/i18n";
 import { Sparkles } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 12;
 
 export default function Onboarding() {
   const { t } = useTranslation();
@@ -32,6 +32,9 @@ export default function Onboarding() {
   const [sleepPattern, setSleepPattern] = useState<string>("");
   const [eatingOutFrequency, setEatingOutFrequency] = useState<string>("");
   const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
+  const [healthCondition, setHealthCondition] = useState<string>("");
+  const [referralSource, setReferralSource] = useState<string>("");
+  const [referralOther, setReferralOther] = useState<string>("");
   const [notificationEmail, setNotificationEmail] = useState("");
 
   const getWalkData = () => {
@@ -69,6 +72,8 @@ export default function Onboarding() {
         preferredLanguage: i18n.language || "en",
         name: userName.trim() || null,
         goal: userGoal.trim() || null,
+        healthCondition: healthCondition || null,
+        referralSource: referralSource === "others" ? (referralOther.trim() || "others") : (referralSource || null),
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       hapticNotify("SUCCESS");
@@ -286,9 +291,47 @@ export default function Onboarding() {
       )}
 
       {step === 10 && (
-        <Card data-testid="card-step-6">
+        <Card data-testid="card-step-health">
           <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q6_title")}</CardTitle>
+            <CardTitle className="text-lg">{t("onboarding.q6_health_title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {renderRadioOption("diabetes", t("onboarding.q6_diabetes"), healthCondition, setHealthCondition, "option-diabetes")}
+            {renderRadioOption("prediabetes", t("onboarding.q6_prediabetes"), healthCondition, setHealthCondition, "option-prediabetes")}
+            {renderRadioOption("no_but_health", t("onboarding.q6_no_but_health"), healthCondition, setHealthCondition, "option-no-but-health")}
+            {renderRadioOption("prefer_not_tell", t("onboarding.q6_prefer_not_tell"), healthCondition, setHealthCondition, "option-prefer-not-tell")}
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 11 && (
+        <Card data-testid="card-step-referral">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.q7_referral_title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {renderRadioOption("facebook", t("onboarding.q7_facebook"), referralSource, setReferralSource, "option-facebook")}
+            {renderRadioOption("instagram", t("onboarding.q7_instagram"), referralSource, setReferralSource, "option-instagram")}
+            {renderRadioOption("friends_relatives", t("onboarding.q7_friends_relatives"), referralSource, setReferralSource, "option-friends-relatives")}
+            {renderRadioOption("others", t("onboarding.q7_others"), referralSource, setReferralSource, "option-others")}
+            {referralSource === "others" && (
+              <Input
+                type="text"
+                placeholder={t("onboarding.q7_others_placeholder")}
+                value={referralOther}
+                onChange={(e) => setReferralOther(e.target.value)}
+                className="mt-2"
+                data-testid="input-referral-other"
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 12 && (
+        <Card data-testid="card-step-email">
+          <CardHeader>
+            <CardTitle className="text-lg">{t("onboarding.q8_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Label htmlFor="email" className="sr-only">Email</Label>

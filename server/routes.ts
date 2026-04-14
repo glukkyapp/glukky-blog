@@ -120,7 +120,7 @@ export async function registerRoutes(
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal } = req.body;
+      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal, healthCondition, referralSource } = req.body;
 
       const sortedStruggles = sortStruggles(struggles || []);
       const hasLateDinner = dinnerTime === "after_9pm";
@@ -143,6 +143,8 @@ export async function registerRoutes(
         currentWeek: 1,
         name: name || null,
         goal: goal || null,
+        healthCondition: healthCondition || null,
+        referralSource: referralSource || null,
       };
 
       let profile;
