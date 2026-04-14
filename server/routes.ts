@@ -2434,12 +2434,11 @@ Return ONLY the JSON object.`,
       const tipIndexForPanel = currentPlanForAdvice?.dietTip ? (DIET_TIP_LADDERS[struggle]?.indexOf(currentPlanForAdvice.dietTip) ?? 0) : 0;
 
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
       if (label) {
-        const comboKey = label.internalId;
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
-
-        const cachedAdvice = await storage.getCachedAdvice(comboKey, lang);
+        const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
           incrementDailyCount(snapAdviceCount, userId);
           return res.json({
@@ -2452,12 +2451,9 @@ Return ONLY the JSON object.`,
         }
       }
 
-      const comboName = canonicalName || name;
-      const newInternalId = buildInternalId(comboName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
-
-      const existingCachedAdvice = await storage.getCachedAdvice(newInternalId, lang);
+      const existingCachedAdvice = !label ? await storage.getCachedAdvice(activeComboKey, lang) : null;
       if (existingCachedAdvice) {
-        const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
+        const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId);
         incrementDailyCount(snapAdviceCount, userId);
         return res.json({
           advice: existingCachedAdvice,
@@ -2481,6 +2477,8 @@ Return ONLY the JSON object.`,
         sauces ? `Sauces / condiments: ${sauces}` : null,
         extras ? `Extras / toppings: ${extras}` : null,
       ].filter(Boolean).join("\n");
+
+      const needTags = !label;
 
       const tagInstruction = `\n\nAfter your advice, on a NEW line output ONLY a JSON object with these keys (no other text on that line):\n{"is_sugary_food":true/false,"is_sugary_drink":true/false,"is_oily":true/false,"is_snack":true/false}`;
 
@@ -2507,9 +2505,9 @@ If there is a genuine concern, output all 4 lines.${includeTagLine ? tagInstruct
 
       const adviceResults = await Promise.all(
         allLocales.map(async (locale) => {
-          const existing = await storage.getCachedAdvice(newInternalId, locale);
+          const existing = await storage.getCachedAdvice(activeComboKey, locale);
           if (existing) return { locale, advice: existing, fromCache: true };
-          const includeTagLine = locale === "en";
+          const includeTagLine = needTags && locale === "en";
           const response = await anthropic.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 400,
@@ -2522,14 +2520,15 @@ If there is a genuine concern, output all 4 lines.${includeTagLine ? tagInstruct
       );
 
       let claudeTags: FoodTags | null = null;
-      const enResult = adviceResults.find(r => r.locale === "en" && !r.fromCache);
-      if (enResult) {
-        const tagMatch = enResult.advice.match(/\{[^}]*"is_sugary_food"[^}]*\}/);
-        if (tagMatch) {
-          try {
-            claudeTags = JSON.parse(tagMatch[0]);
-            enResult.advice = enResult.advice.replace(tagMatch[0], "").trim();
-          } catch { /* ignore parse errors */ }
+      if (needTags) {
+        const enResult = adviceResults.find(r => r.locale === "en" && !r.fromCache);
+        if (enResult) {
+          const tagMatch = enResult.advice.match(/\{[^}]*"is_sugary_food"[^}]*\}/);
+          if (tagMatch) {
+            try {
+              claudeTags = JSON.parse(tagMatch[0]);
+            } catch { /* ignore parse errors */ }
+          }
         }
       }
 
@@ -2538,65 +2537,70 @@ If there is a genuine concern, output all 4 lines.${includeTagLine ? tagInstruct
         advice: r.advice.replace(/\{[^}]*"is_sugary_food"[^}]*\}/g, "").trim(),
       }));
 
+      const foodName = name;
+
       await Promise.all(
         cleanedResults
           .filter(r => !r.fromCache && r.advice)
-          .map(r => storage.saveCachedAdvice(comboName, newInternalId, r.locale, r.advice, "claude"))
+          .map(r => storage.saveCachedAdvice(foodName, activeComboKey, r.locale, r.advice, "claude"))
       );
 
-      try {
-        const translationResponse = await anthropic.messages.create({
-          model: "claude-sonnet-4-6",
-          max_tokens: 200,
-          system: `You translate food dish names between English, Traditional Chinese, and Cantonese. Return ONLY a JSON object with these exact keys:
+      if (needTags) {
+        try {
+          const translationResponse = await anthropic.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 200,
+            system: `You translate food dish names between English, Traditional Chinese, and Cantonese. Return ONLY a JSON object with these exact keys:
 { "en": "English name", "zh": "繁體中文名", "yue": "廣東話名" }
 No explanation, just JSON.`,
-          messages: [{ role: "user", content: `Translate this food name into all three languages: "${comboName}"` }],
-        });
-        const translationText = translationResponse.content[0].type === "text" ? translationResponse.content[0].text.trim() : "{}";
-        let translations: { en?: string; zh?: string; yue?: string } = {};
-        try { translations = JSON.parse(translationText); } catch { /* ignore parse errors */ }
+            messages: [{ role: "user", content: `Translate this food name into all three languages: "${foodName}"` }],
+          });
+          const translationText = translationResponse.content[0].type === "text" ? translationResponse.content[0].text.trim() : "{}";
+          let translations: { en?: string; zh?: string; yue?: string } = {};
+          try { translations = JSON.parse(translationText); } catch { /* ignore parse errors */ }
 
-        const foodNameEn = translations.en || (/^[a-zA-Z\s,'-]+$/.test(comboName.trim()) ? comboName : null);
+          const foodNameEn = translations.en || (/^[a-zA-Z\s,'-]+$/.test(foodName.trim()) ? foodName : null);
 
-        await storage.saveFoodLabel({
-          internalId: newInternalId,
-          foodNameEn: foodNameEn || comboName,
-          foodNameZhHant: translations.zh || comboName,
-          foodNameYue: translations.yue || translations.zh || comboName,
-          defaultPortionId: resolvedPortionId,
-          defaultSauces: resolvedSauceIds,
-          defaultToppings: resolvedToppingIds,
-          isSugaryFood: claudeTags?.isSugaryFood ?? false,
-          isSugaryDrink: claudeTags?.isSugaryDrink ?? false,
-          isOily: claudeTags?.isOily ?? false,
-          isSnack: claudeTags?.isSnack ?? false,
-          useCount: 0,
-        });
-
-        const aliases: string[] = [];
-        if (name !== comboName) aliases.push(name);
-        if (translations.en && translations.en !== comboName && translations.en !== name) aliases.push(translations.en);
-        if (translations.zh && translations.zh !== comboName && translations.zh !== name) aliases.push(translations.zh);
-        if (translations.yue && translations.yue !== comboName && translations.yue !== name && translations.yue !== translations.zh) aliases.push(translations.yue);
-
-        const comboExists = await storage.getFoodCombos(comboName);
-        if (comboExists.length === 0) {
-          await storage.saveFoodCombo({
-            foodName: comboName,
-            foodNameEn: foodNameEn,
-            foodNameAliases: [...new Set(aliases)],
-            defaultPortion: resolvedPortionId,
+          await storage.saveFoodLabel({
+            internalId: activeComboKey,
+            foodNameEn: foodNameEn || foodName,
+            foodNameZhHant: translations.zh || foodName,
+            foodNameYue: translations.yue || translations.zh || foodName,
+            defaultPortionId: resolvedPortionId,
             defaultSauces: resolvedSauceIds,
             defaultToppings: resolvedToppingIds,
-            caloriesEstimate: null,
+            isSugaryFood: claudeTags?.isSugaryFood ?? false,
+            isSugaryDrink: claudeTags?.isSugaryDrink ?? false,
+            isOily: claudeTags?.isOily ?? false,
+            isSnack: claudeTags?.isSnack ?? false,
+            useCount: 0,
           });
+
+          const aliases: string[] = [];
+          if (translations.en && translations.en !== foodName) aliases.push(translations.en);
+          if (translations.zh && translations.zh !== foodName) aliases.push(translations.zh);
+          if (translations.yue && translations.yue !== foodName && translations.yue !== translations.zh) aliases.push(translations.yue);
+
+          const comboExists = await storage.getFoodCombos(foodName);
+          if (comboExists.length === 0) {
+            await storage.saveFoodCombo({
+              foodName: foodName,
+              foodNameEn: foodNameEn,
+              foodNameAliases: [...new Set(aliases)],
+              defaultPortion: resolvedPortionId,
+              defaultSauces: resolvedSauceIds,
+              defaultToppings: resolvedToppingIds,
+              caloriesEstimate: null,
+            });
+          }
+        } catch (saveErr) {
+          console.error("Food label/combo save error (non-blocking):", saveErr);
         }
-      } catch (saveErr) {
-        console.error("Food label/combo save error (non-blocking):", saveErr);
       }
 
-      const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId, claudeTags);
+      const focusPanelData = label
+        ? computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId)
+        : computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId, claudeTags);
 
       const userAdvice = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
 
