@@ -49,10 +49,18 @@ function buildAdviceText(impact: string, watchOut: string, rightNow: string, nex
   return lines.filter(Boolean).join("\n");
 }
 
-async function seed() {
-  const xlsxPath = path.resolve(__dirname, "../attached_assets/hk_food_seed_1776185792306.xlsx");
-  const workbook = XLSX.readFile(xlsxPath);
+const localeMap = [
+  { suffix: "eng", locale: "en" },
+  { suffix: "zh_hant", locale: "zh-Hant" },
+  { suffix: "yue", locale: "yue" },
+];
 
+async function seedOneFile(label: string, xlsxPath: string) {
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`Processing: ${label}`);
+  console.log(`${"=".repeat(60)}`);
+
+  const workbook = XLSX.readFile(xlsxPath);
   const sheet1 = XLSX.utils.sheet_to_json<Record<string, any>>(workbook.Sheets[workbook.SheetNames[0]], { range: 1 });
   const sheet2 = XLSX.utils.sheet_to_json<Record<string, any>>(workbook.Sheets[workbook.SheetNames[1]], { range: 1 });
 
@@ -164,11 +172,6 @@ async function seed() {
   }
 
   console.log("\nSeeding food_advice_cache from Sheet 2...");
-  const localeMap = [
-    { suffix: "eng", locale: "en" },
-    { suffix: "zh_hant", locale: "zh-Hant" },
-    { suffix: "yue", locale: "yue" },
-  ];
 
   for (const row of sheet2) {
     const foodId = row.internal_id;
@@ -232,7 +235,23 @@ async function seed() {
     }
   }
 
-  console.log("\nDone! Seeded from xlsx.");
+  console.log(`\nDone with ${label}!`);
+}
+
+const SEED_FILES = [
+  { label: "HK foods", file: "hk_food_seed_1776185792306.xlsx" },
+  { label: "JP foods", file: "jp_food_seed_(1)_1776244914411.xlsx" },
+  { label: "Western foods", file: "western_food_seed_(1)_1776244914413.xlsx" },
+];
+
+async function seed() {
+  for (const { label, file } of SEED_FILES) {
+    const xlsxPath = path.resolve(__dirname, "../attached_assets", file);
+    await seedOneFile(label, xlsxPath);
+  }
+
+  console.log("\n" + "=".repeat(60));
+  console.log("All files seeded successfully!");
   process.exit(0);
 }
 
