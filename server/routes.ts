@@ -2695,6 +2695,16 @@ No explanation, just JSON.`,
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
+      const insightsGate = canUseFeature(profile, "insights");
+      if (!insightsGate.allowed) {
+        return res.json({
+          success: false,
+          showPaywall: true,
+          lockApp: insightsGate.lockApp || false,
+          feature: "insights",
+        });
+      }
+
       const allPlans: any[] = [];
       for (let w = 1; w <= (profile.currentWeek || 1); w++) {
         const plan = await storage.getWeeklyPlan(userId, w);
