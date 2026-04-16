@@ -249,11 +249,9 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     setPaywallLockApp(isLocked);
-    if (isLocked) {
+    if (isLocked && location !== "/profile") {
+      setLocation("/profile");
       setPaywallOpen(true);
-      if (location !== "/profile") {
-        setLocation("/profile");
-      }
     }
   }, [isLocked, location, setLocation]);
 
@@ -466,6 +464,7 @@ function AuthenticatedApp() {
         <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
           <div id={BOUNCE_WRAPPER_ID}>
             <Switch>
+              <Route path="/profile" component={Profile} />
               <Route path="/health-info" component={HealthInfo} />
               <Route component={WeeklyPlanner} />
             </Switch>
