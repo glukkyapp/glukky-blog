@@ -1,0 +1,454 @@
+/*
+IMPLEMENT A FULL MONTHLY SUBSCRIPTION GATE SYSTEM
+
+IMPORTANT PRODUCT RULES
+
+- Homepage is locked after paywall trigger if user is not premium
+- Only Profile remains accessible when locked
+- Soft mode:
+  - first weekly planner is free
+  - first food snap labels are free
+  - paywall appears when user taps "Get Advice"
+- Hard mode:
+  - paywall appears immediately after onboarding completion
+  - homepage and all premium tabs remain locked unless subscribed
+- RevenueCat is only accessed through Build Natively
+*/
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ENVIRONMENT VARIABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+// Replit Secret:
+// GATE_MODE = off | soft | hard
+
+const GATE_MODE = process.env.GATE_MODE || 'soft';
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DATABASE FIELDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/*
+Add these boolean fields to user:
+
+has_completed_onboarding = false
+has_created_first_weekly_plan = false
+has_tried_first_food_snap = false
+has_reached_paywall = false
+is_premium = false
+*/
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FEATURE KEYS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/*
+Use these server-side feature keys:
+
+homepage
+weekly_plan_create
+food_snap_capture
+food_snap_advice
+roadmap
+diet_advice
+insights
+*/
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SERVER GATE FUNCTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+async function canUseFeature(userId, featureName) {
+  const gateMode = process.env.GATE_MODE || 'soft';
+
+  if (gateMode === 'off') {
+    return { allowed: true };
+  }
+
+  const user = await getUser(userId);
+
+  if (!user) {
+    return { allowed: false, error: 'USER_NOT_FOUND' };
+  }
+
+  if (user.is_premium) {
+    return { allowed: true };
+  }
+
+  // HARD MODE:
+  // Once onboarding is completed, show paywall immediately
+  if (gateMode === 'hard') {
+    if (user.has_completed_onboarding) {
+      return {
+        allowed: false,
+        showPaywall: true,
+        lockApp: true
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  // SOFT MODE
+  if (gateMode === 'soft') {
+    if (
+      featureName === 'weekly_plan_create' &&
+      !user.has_created_first_weekly_plan
+    ) {
+      return { allowed: true, isFreeAction: true };
+    }
+
+    if (
+      featureName === 'food_snap_capture' &&
+      !user.has_tried_first_food_snap
+    ) {
+      return { allowed: true, isFreeAction: true };
+    }
+
+    if (user.has_reached_paywall) {
+      return {
+        allowed: false,
+        showPaywall: true,
+        lockApp: true
+      };
+    }
+
+    if (
+      ['food_snap_advice', 'diet_advice', 'roadmap', 'insights', 'homepage'].includes(featureName)
+    ) {
+      return {
+        allowed: false,
+        showPaywall: true
+      };
+    }
+  }
+
+  return {
+    allowed: false,
+    showPaywall: true
+  };
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MILESTONE UPDATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+// After onboarding completes
+async function markOnboardingComplete(userId) {
+  await updateUser(userId, { has_completed_onboarding: true });
+}
+
+// After first weekly planner succeeds
+async function markFirstWeeklyPlanComplete(userId) {
+  await updateUser(userId, { has_created_first_weekly_plan: true });
+}
+
+// After first food labels are shown
+async function markFirstFoodSnapComplete(userId) {
+  await updateUser(userId, { has_tried_first_food_snap: true });
+}
+
+// When paywall is shown to a non-premium user
+async function markReachedPaywall(userId) {
+  await updateUser(userId, { has_reached_paywall: true });
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BACKEND ROUTES EXAMPLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+// Homepage access
+app.get('/api/homepage', async (req, res) => {
+  const userId = req.user.id;
+  const access = await canUseFeature(userId, 'homepage');
+
+  if (!access.allowed) {
+    return res.json({
+      success: false,
+      showPaywall: true,
+      lockApp: true,
+      feature: 'homepage'
+    });
+  }
+
+  const data = await getHomepageData(userId);
+  return res.json({ success: true, data });
+});
+
+// Weekly planner
+app.post('/api/weekly-plan/create', async (req, res) => {
+  const userId = req.user.id;
+  const access = await canUseFeature(userId, 'weekly_plan_create');
+
+  if (!access.allowed) {
+    return res.json({
+      success: false,
+      showPaywall: true,
+      lockApp: !!access.lockApp,
+      feature: 'weekly_plan_create'
+    });
+  }
+
+  const result = await createWeeklyPlan(req.body, userId);
+
+  if (result.success) {
+    await markFirstWeeklyPlanComplete(userId);
+  }
+
+  return res.json({ success: true, data: result });
+});
+
+// Food snap labels
+app.post('/api/food-snap/analyze', async (req, res) => {
+  const userId = req.user.id;
+  const access = await canUseFeature(userId, 'food_snap_capture');
+
+  if (!access.allowed) {
+    return res.json({
+      success: false,
+      showPaywall: true,
+      lockApp: !!access.lockApp,
+      feature: 'food_snap_capture'
+    });
+  }
+
+  const result = await analyzeFoodSnap(req.body, userId);
+
+  if (result.success) {
+    await markFirstFoodSnapComplete(userId);
+  }
+
+  return res.json({ success: true, data: result });
+});
+
+// Food advice after labels
+app.post('/api/food-snap/get-advice', async (req, res) => {
+  const userId = req.user.id;
+  const access = await canUseFeature(userId, 'food_snap_advice');
+
+  if (!access.allowed) {
+    await markReachedPaywall(userId);
+
+    return res.json({
+      success: false,
+      showPaywall: true,
+      lockApp: true,
+      feature: 'food_snap_advice'
+    });
+  }
+
+  const result = await generateDietAdvice(req.body, userId);
+  return res.json({ success: true, data: result });
+});
+
+// Roadmap
+app.get('/api/roadmap', async (req, res) => {
+  const userId = req.user.id;
+  const access = await canUseFeature(userId, 'roadmap');
+
+  if (!access.allowed) {
+    return res.json({
+      success: false,
+      showPaywall: true,
+      lockApp: true,
+      feature: 'roadmap'
+    });
+  }
+
+  const data = await getRoadmap(userId);
+  return res.json({ success: true, data });
+});
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PREMIUM STATUS SYNC ENDPOINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+app.post('/api/update-premium-status', async (req, res) => {
+  const { userId, isPremium } = req.body;
+
+  if (!userId || typeof isPremium !== 'boolean') {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_REQUEST'
+    });
+  }
+
+  await updateUser(userId, { is_premium: isPremium });
+
+  return res.json({ success: true });
+});
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FRONTEND — BUILD NATIVELY BRIDGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+let pendingPremiumAction = null;
+
+function getCurrentUserId() {
+  return window.currentUser?.id || null;
+}
+
+function checkPremiumStatus(userId) {
+  if (!userId || !window.natively) return;
+
+  natively.getRevenueCatCustomerInfo(function(info) {
+    const isPremium =
+      info?.entitlements?.active?.premium !== undefined;
+
+    fetch('/api/update-premium-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, isPremium })
+    });
+
+    updateUIForPremiumStatus(isPremium);
+  });
+}
+
+function startPurchase(userId) {
+  if (!window.natively) {
+    showMessage('Please open this app on your iPhone to subscribe.');
+    return;
+  }
+
+  natively.purchaseRevenueCatPackage('$rc_monthly', function(result) {
+    if (result?.success) {
+      checkPremiumStatus(userId);
+      showSuccessMessage('Welcome to Glukky Premium!');
+      dismissPaywall();
+      unlockEntireApp();
+
+      if (pendingPremiumAction) {
+        const action = pendingPremiumAction;
+        pendingPremiumAction = null;
+        action();
+      }
+    } else {
+      showError('Purchase failed. Please try again.');
+    }
+  });
+}
+
+function restorePurchases(userId) {
+  if (!window.natively) return;
+
+  natively.restoreRevenueCatPurchases(function(result) {
+    checkPremiumStatus(userId);
+    showSuccessMessage('Purchases restored if available.');
+  });
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PAYWALL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function showPremiumPaywall(onSuccessAction = null) {
+  pendingPremiumAction = onSuccessAction;
+  const userId = getCurrentUserId();
+
+  openModal({
+    title: 'Upgrade to Glukky Premium',
+    message:
+      'Subscribe monthly to unlock homepage access, unlimited weekly plans, food snaps, roadmap access, and AI nutrition advice.',
+    buttons: [
+      {
+        label: 'Subscribe Now',
+        onClick: () => startPurchase(userId)
+      },
+      {
+        label: 'Restore Purchases',
+        onClick: () => restorePurchases(userId)
+      },
+      {
+        label: 'Maybe Later',
+        onClick: () => dismissPaywall()
+      }
+    ]
+  });
+}
+
+function dismissPaywall() {
+  closeModal();
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   UI LOCKING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function lockAppExceptProfile() {
+  document.querySelectorAll('[data-app-tab]').forEach(tab => {
+    if (tab.dataset.tab !== 'profile') {
+      tab.classList.add('locked');
+      tab.setAttribute('aria-disabled', 'true');
+    }
+  });
+
+  const homepage = document.querySelector('[data-homepage]');
+  if (homepage) {
+    homepage.classList.add('locked');
+  }
+}
+
+function unlockEntireApp() {
+  document.querySelectorAll('[data-app-tab]').forEach(tab => {
+    tab.classList.remove('locked');
+    tab.removeAttribute('aria-disabled');
+  });
+
+  const homepage = document.querySelector('[data-homepage]');
+  if (homepage) {
+    homepage.classList.remove('locked');
+  }
+}
+
+function updateUIForPremiumStatus(isPremium) {
+  if (isPremium) {
+    unlockEntireApp();
+  }
+}
+
+function bindLockedNavigation() {
+  document.querySelectorAll('[data-app-tab]').forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      if (
+        tab.classList.contains('locked') &&
+        tab.dataset.tab !== 'profile'
+      ) {
+        e.preventDefault();
+        showPremiumPaywall();
+      }
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  bindLockedNavigation();
+
+  const userId = getCurrentUserId();
+  if (userId) {
+    checkPremiumStatus(userId);
+  }
+});
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   KEY FRONTEND ACTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+// Called when user taps "Get Advice" after food labels are shown
+async function requestFoodAdvice(payload) {
+  const response = await fetch('/api/food-snap/get-advice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+
+  if (data.showPaywall) {
+    lockAppExceptProfile();
+    showPremiumPaywall(() => requestFoodAdvice(payload));
+    return;
+  }
+
+  renderDietAdvice(data.data);
+}
