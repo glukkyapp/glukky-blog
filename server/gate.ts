@@ -36,9 +36,6 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
   }
 
   if (mode === "hard") {
-    if (feature === "homepage") {
-      return { allowed: true, isFreeAction: true };
-    }
     return {
       allowed: false,
       showPaywall: true,
@@ -47,9 +44,6 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
   }
 
   if (profile.hasReachedPaywall) {
-    if (feature === "homepage") {
-      return { allowed: true };
-    }
     return {
       allowed: false,
       showPaywall: true,

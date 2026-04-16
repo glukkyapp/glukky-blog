@@ -247,9 +247,6 @@ function AuthenticatedApp() {
     if (!gateStatus) return;
     const anyLock = Object.values(gateStatus.features).some((f) => f.lockApp);
     setPaywallLockApp(anyLock);
-    if (anyLock && !gateStatus.isPremium) {
-      setPaywallOpen(true);
-    }
   }, [gateStatus]);
 
   const showPaywall = useCallback((onSuccess?: () => void) => {

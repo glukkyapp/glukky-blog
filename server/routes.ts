@@ -426,6 +426,18 @@ export async function registerRoutes(
       const days = await storage.getWeeklyPlanDays(plan.id);
       const profile = await storage.getProfile(userId);
 
+      if (profile) {
+        const homeGate = canUseFeature(profile, "homepage");
+        if (!homeGate.allowed) {
+          return res.json({
+            success: false,
+            showPaywall: true,
+            lockApp: homeGate.lockApp || false,
+            feature: "homepage",
+          });
+        }
+      }
+
       let lastWeekDinnerEarlyPct: number | null = null;
       let prevPrevWeekDinnerEarlyPct: number | null = null;
 
