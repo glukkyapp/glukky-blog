@@ -46,6 +46,17 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
     };
   }
 
+  if (profile.hasReachedPaywall) {
+    if (feature === "homepage") {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      showPaywall: true,
+      lockApp: true,
+    };
+  }
+
   if (feature === "homepage") {
     return { allowed: true, isFreeAction: true };
   }
@@ -70,14 +81,7 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
   }
 
   if (feature === "roadmap" || feature === "diet_advice" || feature === "insights") {
-    if (!profile.hasReachedPaywall) {
-      return { allowed: true };
-    }
-    return {
-      allowed: false,
-      showPaywall: true,
-      lockApp: false,
-    };
+    return { allowed: true };
   }
 
   return { allowed: true };

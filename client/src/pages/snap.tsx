@@ -261,8 +261,16 @@ export default function Snap() {
         return;
       }
 
+      const rawData = await res.json();
+      if (rawData.showPaywall) {
+        setStep("upload");
+        refetchGate();
+        showPaywall();
+        return;
+      }
+
       hapticNotify("SUCCESS");
-      const data: LabelResult = await res.json();
+      const data: LabelResult = rawData;
       setLabelResult(data);
       const sIds = data.sauceIds ?? [];
       const tIds = data.toppingIds ?? [];

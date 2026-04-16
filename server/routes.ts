@@ -960,6 +960,16 @@ export async function registerRoutes(
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
+      const planGate = canUseFeature(profile, "weekly_plan_create");
+      if (!planGate.allowed) {
+        return res.json({
+          success: false,
+          showPaywall: true,
+          lockApp: planGate.lockApp || false,
+          feature: "weekly_plan_create",
+        });
+      }
+
       const existingPlan = await storage.getWeeklyPlan(userId, profile.currentWeek);
       if (existingPlan) {
         return res.status(409).json({ message: "You've already planned this week" });
@@ -2184,6 +2194,19 @@ export async function registerRoutes(
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+
+      const snapProfile = await storage.getProfile(userId);
+      if (snapProfile) {
+        const snapGate = canUseFeature(snapProfile, "food_snap_capture");
+        if (!snapGate.allowed) {
+          return res.json({
+            success: false,
+            showPaywall: true,
+            lockApp: snapGate.lockApp || false,
+            feature: "food_snap_capture",
+          });
+        }
+      }
 
       if (getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
         return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });

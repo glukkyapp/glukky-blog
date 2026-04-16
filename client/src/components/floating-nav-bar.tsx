@@ -36,7 +36,11 @@ export default function FloatingNavBar() {
   const isActive = (path: string) =>
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
 
+  const isAppLocked = gate?.hasReachedPaywall && !gate?.isPremium;
+
   const isNavLocked = (key: string): boolean => {
+    if (key === "home" || key === "profile") return false;
+    if (isAppLocked) return true;
     if (!gate) return false;
     const featureKey = NAV_FEATURE_MAP[key];
     if (!featureKey) return false;

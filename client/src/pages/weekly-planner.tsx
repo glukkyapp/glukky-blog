@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useGate } from "@/App";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { EatOutNonFocusPopup, useEatOutNonFocusPopup } from "@/components/eat-out-nonfocus-popup";
@@ -39,6 +40,7 @@ export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { showPaywall, refetchGate } = useGate();
   const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
   const STRUGGLE_NAMES: Record<string, string> = {
     sugary_food_drink: t("struggle.sugary_food_drink"),
@@ -573,6 +575,11 @@ export default function WeeklyPlanner() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      if (data?.showPaywall) {
+        refetchGate();
+        showPaywall();
+        return;
+      }
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
