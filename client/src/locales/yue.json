@@ -929,6 +929,7 @@
     "open_in_app": "請喺 iPhone 上打開呢個 app 嚟訂閱。",
     "error_purchase": "購買失敗，請再試吓。",
     "error_restore": "搵唔到有效嘅訂閱。",
-    "restored_success": "訂閱已恢復！"
+    "restored_success": "訂閱已恢復！",
+    "maybe_later": "遲啲先啦"
   }
 }

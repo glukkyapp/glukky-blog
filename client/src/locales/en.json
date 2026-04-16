@@ -925,6 +925,7 @@
     "open_in_app": "Please open this app on your iPhone to subscribe.",
     "error_purchase": "Purchase failed. Please try again.",
     "error_restore": "No active subscription found.",
-    "restored_success": "Subscription restored!"
+    "restored_success": "Subscription restored!",
+    "maybe_later": "Maybe Later"
   }
 }

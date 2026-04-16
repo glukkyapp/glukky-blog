@@ -243,6 +243,15 @@ function AuthenticatedApp() {
   const [paywallLockApp, setPaywallLockApp] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
+  useEffect(() => {
+    if (!gateStatus) return;
+    const anyLock = Object.values(gateStatus.features).some((f) => f.lockApp);
+    setPaywallLockApp(anyLock);
+    if (anyLock && !gateStatus.isPremium) {
+      setPaywallOpen(true);
+    }
+  }, [gateStatus]);
+
   const showPaywall = useCallback((onSuccess?: () => void) => {
     pendingActionRef.current = onSuccess || null;
     setPaywallOpen(true);

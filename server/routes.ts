@@ -1516,6 +1516,16 @@ export async function registerRoutes(
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
+      const roadmapGate = canUseFeature(profile, "roadmap");
+      if (!roadmapGate.allowed) {
+        return res.json({
+          success: false,
+          showPaywall: true,
+          lockApp: roadmapGate.lockApp || false,
+          feature: "roadmap",
+        });
+      }
+
       const plan = await storage.getCurrentWeeklyPlan(userId);
       const weekNumber = plan?.weekNumber || 0;
 

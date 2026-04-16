@@ -35,20 +35,27 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
     return { allowed: true };
   }
 
+  if (mode === "hard") {
+    if (feature === "homepage") {
+      return { allowed: true, isFreeAction: true };
+    }
+    return {
+      allowed: false,
+      showPaywall: true,
+      lockApp: true,
+    };
+  }
+
   if (feature === "homepage") {
     return { allowed: true, isFreeAction: true };
   }
 
   if (feature === "weekly_plan_create") {
-    if (!profile.hasCreatedFirstWeeklyPlan) {
-      return { allowed: true, isFreeAction: true };
-    }
+    return { allowed: true, isFreeAction: !profile.hasCreatedFirstWeeklyPlan };
   }
 
   if (feature === "food_snap_capture") {
-    if (!profile.hasTriedFirstFoodSnap) {
-      return { allowed: true, isFreeAction: true };
-    }
+    return { allowed: true, isFreeAction: !profile.hasTriedFirstFoodSnap };
   }
 
   if (feature === "food_snap_advice") {
@@ -58,18 +65,18 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
     return {
       allowed: false,
       showPaywall: true,
-      lockApp: mode === "hard",
+      lockApp: false,
     };
   }
 
   if (feature === "roadmap" || feature === "diet_advice" || feature === "insights") {
     if (!profile.hasReachedPaywall) {
-      return { allowed: true, isFreeAction: true };
+      return { allowed: true };
     }
     return {
       allowed: false,
       showPaywall: true,
-      lockApp: mode === "hard",
+      lockApp: false,
     };
   }
 
