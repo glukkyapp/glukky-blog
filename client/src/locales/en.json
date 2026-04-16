@@ -911,5 +911,20 @@
     "wellbeing": "Achieve better sugar control, health and wellbeing",
     "button": "Let's go",
     "next": "Next"
+  },
+  "paywall": {
+    "title": "Unlock Glukky Premium",
+    "subtitle": "Continue your diabetes management journey with full access to all features.",
+    "feature_plans": "Unlimited weekly plans",
+    "feature_snap": "Unlimited food snap advice",
+    "feature_roadmap": "Full roadmap access",
+    "feature_insights": "Diet insights and progress tracking",
+    "subscribe_button": "Subscribe Now",
+    "restore": "Restore Purchases",
+    "processing": "Processing…",
+    "open_in_app": "Please open this app on your iPhone to subscribe.",
+    "error_purchase": "Purchase failed. Please try again.",
+    "error_restore": "No active subscription found.",
+    "restored_success": "Subscription restored!"
   }
 }

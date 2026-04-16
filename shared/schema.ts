@@ -65,6 +65,10 @@ export const userProfiles = pgTable("user_profiles", {
   introSeen: boolean("intro_seen").notNull().default(false),
   onesignalPlayerId: text("onesignal_player_id"),
   lastReengagementNotification: timestamp("last_reengagement_notification"),
+  hasCreatedFirstWeeklyPlan: boolean("has_created_first_weekly_plan").notNull().default(false),
+  hasTriedFirstFoodSnap: boolean("has_tried_first_food_snap").notNull().default(false),
+  hasReachedPaywall: boolean("has_reached_paywall").notNull().default(false),
+  isPremium: boolean("is_premium").notNull().default(false),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

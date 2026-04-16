@@ -18,7 +18,7 @@ import HealthInfo from "@/pages/health-info";
 import AppIntro from "@/pages/app-intro";
 import DevPanel from "@/pages/dev-panel";
 import NotFound from "@/pages/not-found";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
+import PaywallModal from "@/components/paywall-modal";
+import { getCustomerInfo, isPremiumFromCustomerInfo, isNativelyAvailable } from "@/lib/natively-purchases";
 
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
@@ -199,6 +201,31 @@ function GlobalPiggyBankPopup() {
   );
 }
 
+interface GateStatus {
+  gateMode: string;
+  isPremium: boolean;
+  hasCreatedFirstWeeklyPlan: boolean;
+  hasTriedFirstFoodSnap: boolean;
+  hasReachedPaywall: boolean;
+  features: Record<string, { allowed: boolean; showPaywall?: boolean; lockApp?: boolean; isFreeAction?: boolean }>;
+}
+
+interface GateContextType {
+  gate: GateStatus | null;
+  showPaywall: (onSuccess?: () => void) => void;
+  refetchGate: () => void;
+}
+
+const GateContext = createContext<GateContextType>({
+  gate: null,
+  showPaywall: () => {},
+  refetchGate: () => {},
+});
+
+export function useGate() {
+  return useContext(GateContext);
+}
+
 function AuthenticatedApp() {
   const [location] = useLocation();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
@@ -206,6 +233,56 @@ function AuthenticatedApp() {
     queryKey: ["/api/plan/current"],
     enabled: !!profile,
   });
+
+  const { data: gateStatus, refetch: refetchGate } = useQuery<GateStatus>({
+    queryKey: ["/api/gate-status"],
+    enabled: !!(profile as any)?.onboardingComplete,
+  });
+
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallLockApp, setPaywallLockApp] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  const showPaywall = useCallback((onSuccess?: () => void) => {
+    pendingActionRef.current = onSuccess || null;
+    setPaywallOpen(true);
+  }, []);
+
+  const handlePurchaseSuccess = useCallback(async () => {
+    setPaywallOpen(false);
+    await refetchGate();
+    await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+    if (pendingActionRef.current) {
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      setTimeout(action, 100);
+    }
+  }, [refetchGate]);
+
+  useEffect(() => {
+    if (!(profile as any)?.onboardingComplete) return;
+    if (!isNativelyAvailable()) return;
+
+    const syncPremium = async () => {
+      try {
+        const info = await getCustomerInfo();
+        const premium = isPremiumFromCustomerInfo(info);
+        if (premium && !(profile as any)?.isPremium) {
+          await fetch("/api/update-premium-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ isPremium: true }),
+          });
+          refetchGate();
+          queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+        }
+      } catch (e) {
+        console.warn("[purchases] sync error:", e);
+      }
+    };
+    syncPremium();
+  }, [(profile as any)?.onboardingComplete, (profile as any)?.userId]);
 
   useBounceScroll();
 
@@ -362,41 +439,63 @@ function AuthenticatedApp() {
     return <AppIntro />;
   }
 
+  const gateCtx: GateContextType = {
+    gate: gateStatus || null,
+    showPaywall,
+    refetchGate: () => { refetchGate(); },
+  };
+
   if (!currentPlan) {
     return (
-      <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
-        <div id={BOUNCE_WRAPPER_ID}>
-          <Switch>
-            <Route path="/health-info" component={HealthInfo} />
-            <Route component={WeeklyPlanner} />
-          </Switch>
+      <GateContext.Provider value={gateCtx}>
+        <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
+          <div id={BOUNCE_WRAPPER_ID}>
+            <Switch>
+              <Route path="/health-info" component={HealthInfo} />
+              <Route component={WeeklyPlanner} />
+            </Switch>
+          </div>
+          <FloatingNavBar />
+          <GlobalPiggyBankPopup />
+          <PaywallModal
+            open={paywallOpen}
+            onClose={() => { setPaywallOpen(false); pendingActionRef.current = null; }}
+            onPurchaseSuccess={handlePurchaseSuccess}
+            lockApp={paywallLockApp}
+          />
         </div>
-        <FloatingNavBar />
-        <GlobalPiggyBankPopup />
-      </div>
+      </GateContext.Provider>
     );
   }
 
   return (
-    <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
-      <div id={BOUNCE_WRAPPER_ID}>
-        <AnimatedPageWrapper>
-          <Switch>
-            <Route path="/" component={Home} />
-            <Route path="/roadmap" component={Roadmap} />
-            <Route path="/plan" component={WeeklyPlanner} />
-            <Route path="/snap" component={Snap} />
-            <Route path="/health-info" component={HealthInfo} />
-            <Route path="/profile" component={Profile} />
-            <Route path="/monthly" component={MonthlyReport} />
-            <Route path="/dev" component={DevPanel} />
-            <Route component={NotFound} />
-          </Switch>
-        </AnimatedPageWrapper>
+    <GateContext.Provider value={gateCtx}>
+      <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
+        <div id={BOUNCE_WRAPPER_ID}>
+          <AnimatedPageWrapper>
+            <Switch>
+              <Route path="/" component={Home} />
+              <Route path="/roadmap" component={Roadmap} />
+              <Route path="/plan" component={WeeklyPlanner} />
+              <Route path="/snap" component={Snap} />
+              <Route path="/health-info" component={HealthInfo} />
+              <Route path="/profile" component={Profile} />
+              <Route path="/monthly" component={MonthlyReport} />
+              <Route path="/dev" component={DevPanel} />
+              <Route component={NotFound} />
+            </Switch>
+          </AnimatedPageWrapper>
+        </div>
+        <FloatingNavBar />
+        <GlobalPiggyBankPopup />
+        <PaywallModal
+          open={paywallOpen}
+          onClose={() => { setPaywallOpen(false); pendingActionRef.current = null; }}
+          onPurchaseSuccess={handlePurchaseSuccess}
+          lockApp={paywallLockApp}
+        />
       </div>
-      <FloatingNavBar />
-      <GlobalPiggyBankPopup />
-    </div>
+    </GateContext.Provider>
   );
 }
 

@@ -13,6 +13,8 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { hapticNotify } from "@/lib/haptics";
+import { isNativelyAvailable, restorePurchases, isPremiumFromCustomerInfo } from "@/lib/natively-purchases";
+import { Crown, RotateCcw } from "lucide-react";
 
 interface ProfileData {
   name: string | null;
@@ -493,6 +495,36 @@ export default function ProfilePage() {
           >
             <Settings className="w-4 h-4" />
             Dev Panel
+          </Button>
+        </div>
+      )}
+
+      {isNativelyAvailable() && (
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            data-testid="button-restore-purchases"
+            onClick={async () => {
+              hapticNotify("SUCCESS");
+              const result = await restorePurchases();
+              if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
+                await fetch("/api/update-premium-status", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ isPremium: true }),
+                });
+                queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+                queryClient.refetchQueries({ queryKey: ["/api/gate-status"] });
+                hapticNotify("SUCCESS");
+              } else {
+                hapticNotify("ERROR");
+              }
+            }}
+          >
+            <RotateCcw className="w-4 h-4" />
+            {t("paywall.restore")}
           </Button>
         </div>
       )}

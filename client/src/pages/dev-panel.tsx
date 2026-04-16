@@ -353,6 +353,8 @@ export default function DevPanel() {
 
       <OneSignalDebugCard />
 
+      <NativelyPurchasesProbeCard />
+
       <Card className="border-blue-200 dark:border-blue-900">
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -423,6 +425,78 @@ export default function DevPanel() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function NativelyPurchasesProbeCard() {
+  const [status, setStatus] = useState<string[]>([]);
+  const [probing, setProbing] = useState(false);
+
+  const probe = async () => {
+    setProbing(true);
+    const lines: string[] = [];
+    const w = window as any;
+
+    const hasClass = typeof w.NativelyPurchases === "function";
+    lines.push(`NativelyPurchases: ${hasClass ? "YES" : "NO"}`);
+
+    if (!hasClass) {
+      lines.push("⛔ NativelyPurchases not found (not in mobile wrapper or RevenueCat not configured)");
+      setStatus(lines);
+      setProbing(false);
+      return;
+    }
+
+    try {
+      const p = new w.NativelyPurchases();
+      lines.push("✅ NativelyPurchases instantiated");
+
+      const proto = Object.getOwnPropertyNames(Object.getPrototypeOf(p)).filter((k: string) => k !== "constructor");
+      lines.push(`Methods: ${proto.join(", ") || "none"}`);
+
+      try {
+        const info = await new Promise<any>((resolve) => {
+          const timeout = setTimeout(() => resolve({ _timeout: true }), 8000);
+          p.getCustomerInfo((res: any) => { clearTimeout(timeout); resolve(res); });
+        });
+        lines.push(`getCustomerInfo: ${JSON.stringify(info)?.slice(0, 200)}`);
+        const subs = info?.activeSubscriptions || [];
+        const ent = info?.entitlements?.active ? Object.keys(info.entitlements.active) : [];
+        lines.push(`Active subs: ${subs.length > 0 ? subs.join(", ") : "none"}`);
+        lines.push(`Active entitlements: ${ent.length > 0 ? ent.join(", ") : "none"}`);
+        lines.push(subs.length > 0 || ent.length > 0 ? "✅ PREMIUM" : "⛔ NOT PREMIUM");
+      } catch (e: any) {
+        lines.push(`⛔ getCustomerInfo error: ${e.message}`);
+      }
+    } catch (e: any) {
+      lines.push(`⛔ Instantiation error: ${e.message}`);
+    }
+
+    setStatus(lines);
+    setProbing(false);
+  };
+
+  return (
+    <Card className="border-amber-200 dark:border-amber-900">
+      <CardContent className="pt-4 space-y-3">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">NativelyPurchases Debug</p>
+        {status.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-3 space-y-1">
+            {status.map((line, i) => (
+              <p key={i} className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid={`text-purchases-debug-${i}`}>{line}</p>
+            ))}
+          </div>
+        )}
+        <Button
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+          onClick={probe}
+          disabled={probing}
+          data-testid="button-purchases-probe"
+        >
+          {probing ? "Probing..." : "Probe NativelyPurchases"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

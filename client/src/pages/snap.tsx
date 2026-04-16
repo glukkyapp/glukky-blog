@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { useGate } from "@/App";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -184,6 +185,7 @@ export default function Snap() {
   const { t, i18n } = useTranslation();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
+  const { showPaywall, refetchGate } = useGate();
 
   const [step, setStep] = useState<Step>("upload");
   const [error, setError] = useState<string | null>(null);
@@ -452,9 +454,19 @@ export default function Snap() {
         return;
       }
 
+      const data = await res.json();
+
+      if (data.showPaywall) {
+        setStep("review");
+        refetchGate();
+        showPaywall(() => {
+          callAdviceApi(sauceRes, toppingRes);
+        });
+        return;
+      }
+
       hapticNotify("SUCCESS");
-      const data: AdviceResult = await res.json();
-      setAdviceResult(data);
+      setAdviceResult(data as AdviceResult);
       setStep("advice");
     } catch {
       hapticNotify("ERROR");

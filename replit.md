@@ -50,6 +50,34 @@ Server-side push notifications via OneSignal REST API. Mobile wrapper (BuildNati
 **Scheduler:** `server/notifications.ts` — `setInterval` every 30 min, acts at hours 14, 18, 22
 **Config:** `server/onesignal.ts` — OneSignal REST API wrapper using `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY` secrets
 
+## Subscription Paywall Gate System
+Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/`hard`, default `soft`).
+
+**DB columns on `user_profiles`:** `has_created_first_weekly_plan`, `has_tried_first_food_snap`, `has_reached_paywall`, `is_premium` (all boolean, default false)
+
+**Gate logic (`server/gate.ts`):**
+- `canUseFeature(profile, featureKey)` returns `{ allowed, showPaywall?, lockApp?, isFreeAction? }`
+- Feature keys: `homepage`, `weekly_plan_create`, `food_snap_capture`, `food_snap_advice`, `roadmap`, `diet_advice`, `insights`
+- Free users get: first weekly plan, first food snap label; blocked on advice after first snap, locked nav items after paywall reached
+- Blocked endpoints return 200 JSON `{ success: false, showPaywall: true }` (not HTTP 403)
+
+**API:** GET `/api/gate-status`, POST `/api/update-premium-status { isPremium: boolean }`
+
+**Milestone flags (set server-side):** `hasCreatedFirstWeeklyPlan` on plan creation, `hasTriedFirstFoodSnap` on first food label return, `hasReachedPaywall` when advice endpoint blocks
+
+**NativelyPurchases integration (`client/src/lib/natively-purchases.ts`):**
+- Constructor-style: `new NativelyPurchases().purchasePackage("$rc_monthly", callback)`
+- Auto-sync on app load via `getCustomerInfo()` → POST to `/api/update-premium-status`
+- Non-native fallback: "Please open this app on your iPhone to subscribe."
+
+**Frontend:**
+- `PaywallModal` (`client/src/components/paywall-modal.tsx`) — bottom sheet with subscribe/restore buttons
+- `useGate()` context from App.tsx — provides gate status and `showPaywall()` function
+- Nav bar locks tabs (shows lock icon) when feature is gated
+- Snap page: advice API gated response triggers paywall with resume-after-purchase callback
+- Profile page: "Restore Purchases" button (only visible in native wrapper)
+- Dev panel: NativelyPurchases probe card
+
 ## External Dependencies
 - **PostgreSQL:** Primary database for all application data.
 - **Drizzle ORM:** Used for interacting with the PostgreSQL database.

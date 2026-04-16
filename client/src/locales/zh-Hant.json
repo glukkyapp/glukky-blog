@@ -915,5 +915,20 @@
     "wellbeing": "控糖令生活更理想",
     "button": "出發",
     "next": "下一頁"
+  },
+  "paywall": {
+    "title": "解鎖 Glukky 進階版",
+    "subtitle": "繼續你的糖尿病管理旅程，享用所有功能。",
+    "feature_plans": "無限次每週計劃",
+    "feature_snap": "無限次食物拍照建議",
+    "feature_roadmap": "完整進度路線圖",
+    "feature_insights": "飲食見解與進度追蹤",
+    "subscribe_button": "立即訂閱",
+    "restore": "恢復購買",
+    "processing": "處理中…",
+    "open_in_app": "請在 iPhone 上打開此應用以訂閱。",
+    "error_purchase": "購買失敗，請再試一次。",
+    "error_restore": "找不到有效的訂閱。",
+    "restored_success": "訂閱已恢復！"
   }
 }

@@ -19,6 +19,7 @@ import {
   evaluateWeeklyAchievements,
   awardStruggleGraduationCoin,
 } from "./achievements";
+import { canUseFeature, getGateStatus } from "./gate";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -1247,6 +1248,10 @@ export async function registerRoutes(
 
       await storage.updateProfile(userId, { currentWeek: profile.currentWeek + 1 });
 
+      if (!profile.hasCreatedFirstWeeklyPlan) {
+        await storage.updateProfile(userId, { hasCreatedFirstWeeklyPlan: true });
+      }
+
       if (profile.currentWeek > 1) {
         const planWeekEventDate = new Date().toISOString().split("T")[0];
         const dinnerCheckData = await getDinnerGraduationData(userId);
@@ -2225,6 +2230,13 @@ Important:
       const foodName = nameParsed.name;
       incrementDailyCount(snapLabelCount, userId);
 
+      {
+        const snapProfile = await storage.getProfile(userId);
+        if (snapProfile && !snapProfile.hasTriedFirstFoodSnap) {
+          await storage.updateProfile(userId, { hasTriedFirstFoodSnap: true });
+        }
+      }
+
       const locale = language || "en";
 
       const foodLabel = await storage.getFoodLabelByName(foodName);
@@ -2417,6 +2429,19 @@ Return ONLY the JSON object.`,
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const gateCheck = canUseFeature(profile, "food_snap_advice");
+      if (!gateCheck.allowed) {
+        if (!profile.hasReachedPaywall) {
+          await storage.updateProfile(userId, { hasReachedPaywall: true });
+        }
+        return res.json({
+          success: false,
+          showPaywall: true,
+          lockApp: gateCheck.lockApp || false,
+          feature: "food_snap_advice",
+        });
+      }
 
       const currentPlanForAdvice = await storage.getCurrentWeeklyPlan(userId);
       const struggle = currentPlanForAdvice?.dietStruggle ?? "sugary_food_drink";
@@ -2649,6 +2674,35 @@ No explanation, just JSON.`,
     } catch (error) {
       console.error("Error fetching diet tips:", error);
       res.status(500).json({ message: "Failed to fetch diet tips" });
+    }
+  });
+
+  app.get("/api/gate-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json(getGateStatus(profile));
+    } catch (error: any) {
+      console.error("Error fetching gate status:", error);
+      res.status(500).json({ message: "Failed to fetch gate status" });
+    }
+  });
+
+  app.post("/api/update-premium-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { isPremium } = req.body;
+      if (typeof isPremium !== "boolean") {
+        return res.status(400).json({ message: "isPremium boolean is required" });
+      }
+      await storage.updateProfile(userId, { isPremium });
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json(getGateStatus(profile));
+    } catch (error: any) {
+      console.error("Error updating premium status:", error);
+      res.status(500).json({ message: "Failed to update premium status" });
     }
   });
 

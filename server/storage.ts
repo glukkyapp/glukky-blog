@@ -435,6 +435,10 @@ export class DatabaseStorage implements IStorage {
       skippedStruggles3: [],
       difficultStruggles3: [],
       cycle3Active: null,
+      hasCreatedFirstWeeklyPlan: false,
+      hasTriedFirstFoodSnap: false,
+      hasReachedPaywall: false,
+      isPremium: false,
     }).where(eq(userProfiles.userId, userId));
   }
 
