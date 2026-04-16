@@ -212,12 +212,14 @@ interface GateStatus {
 
 interface GateContextType {
   gate: GateStatus | null;
+  isLocked: boolean;
   showPaywall: (onSuccess?: () => void) => void;
   refetchGate: () => void;
 }
 
 const GateContext = createContext<GateContextType>({
   gate: null,
+  isLocked: false,
   showPaywall: () => {},
   refetchGate: () => {},
 });
@@ -227,7 +229,7 @@ export function useGate() {
 }
 
 function AuthenticatedApp() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan, isLoading: planLoading } = useQuery({
     queryKey: ["/api/plan/current"],
@@ -243,11 +245,17 @@ function AuthenticatedApp() {
   const [paywallLockApp, setPaywallLockApp] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
+  const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
+
   useEffect(() => {
-    if (!gateStatus) return;
-    const anyLock = Object.values(gateStatus.features).some((f) => f.lockApp);
-    setPaywallLockApp(anyLock);
-  }, [gateStatus]);
+    setPaywallLockApp(isLocked);
+    if (isLocked) {
+      setPaywallOpen(true);
+      if (location !== "/profile") {
+        setLocation("/profile");
+      }
+    }
+  }, [isLocked, location, setLocation]);
 
   const showPaywall = useCallback((onSuccess?: () => void) => {
     pendingActionRef.current = onSuccess || null;
@@ -447,6 +455,7 @@ function AuthenticatedApp() {
 
   const gateCtx: GateContextType = {
     gate: gateStatus || null,
+    isLocked,
     showPaywall,
     refetchGate: () => { refetchGate(); },
   };

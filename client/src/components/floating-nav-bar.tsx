@@ -22,7 +22,7 @@ export default function FloatingNavBar() {
   const [location, setLocation] = useLocation();
   const [activePath, setActivePath] = useState(location || "/");
   const isMobile = useIsMobile();
-  const { gate, showPaywall } = useGate();
+  const { gate, isLocked, showPaywall } = useGate();
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
@@ -36,11 +36,9 @@ export default function FloatingNavBar() {
   const isActive = (path: string) =>
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
 
-  const isAppLocked = gate?.hasReachedPaywall && !gate?.isPremium;
-
   const isNavLocked = (key: string): boolean => {
     if (key === "profile") return false;
-    if (isAppLocked) return true;
+    if (isLocked) return true;
     if (!gate) return false;
     const featureKey = NAV_FEATURE_MAP[key];
     if (!featureKey) return false;
