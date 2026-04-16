@@ -2696,12 +2696,14 @@ No explanation, just JSON.`,
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
       const insightsGate = canUseFeature(profile, "insights");
-      if (!insightsGate.allowed) {
+      const dietGate = canUseFeature(profile, "diet_advice");
+      if (!insightsGate.allowed || !dietGate.allowed) {
+        const gate = !insightsGate.allowed ? insightsGate : dietGate;
         return res.json({
           success: false,
           showPaywall: true,
-          lockApp: insightsGate.lockApp || false,
-          feature: "insights",
+          lockApp: gate.lockApp || false,
+          feature: !insightsGate.allowed ? "insights" : "diet_advice",
         });
       }
 

@@ -435,12 +435,11 @@ function NativelyPurchasesProbeCard() {
   const probe = async () => {
     setProbing(true);
     const lines: string[] = [];
-    const w = window as any;
 
-    const hasClass = typeof w.NativelyPurchases === "function";
+    const hasClass = typeof window.NativelyPurchases === "function";
     lines.push(`NativelyPurchases: ${hasClass ? "YES" : "NO"}`);
 
-    if (!hasClass) {
+    if (!hasClass || !window.NativelyPurchases) {
       lines.push("⛔ NativelyPurchases not found (not in mobile wrapper or RevenueCat not configured)");
       setStatus(lines);
       setProbing(false);
@@ -448,28 +447,29 @@ function NativelyPurchasesProbeCard() {
     }
 
     try {
-      const p = new w.NativelyPurchases();
+      const p = new window.NativelyPurchases();
       lines.push("✅ NativelyPurchases instantiated");
 
       const proto = Object.getOwnPropertyNames(Object.getPrototypeOf(p)).filter((k: string) => k !== "constructor");
       lines.push(`Methods: ${proto.join(", ") || "none"}`);
 
       try {
-        const info = await new Promise<any>((resolve) => {
+        const info = await new Promise<Record<string, unknown> | null>((resolve) => {
           const timeout = setTimeout(() => resolve({ _timeout: true }), 8000);
-          p.getCustomerInfo((res: any) => { clearTimeout(timeout); resolve(res); });
+          p.getCustomerInfo((res) => { clearTimeout(timeout); resolve(res as Record<string, unknown> | null); });
         });
         lines.push(`getCustomerInfo: ${JSON.stringify(info)?.slice(0, 200)}`);
-        const subs = info?.activeSubscriptions || [];
-        const ent = info?.entitlements?.active ? Object.keys(info.entitlements.active) : [];
+        const subs = (info as Record<string, unknown>)?.activeSubscriptions as string[] || [];
+        const entActive = ((info as Record<string, unknown>)?.entitlements as Record<string, unknown>)?.active as Record<string, unknown> | undefined;
+        const ent = entActive ? Object.keys(entActive) : [];
         lines.push(`Active subs: ${subs.length > 0 ? subs.join(", ") : "none"}`);
         lines.push(`Active entitlements: ${ent.length > 0 ? ent.join(", ") : "none"}`);
         lines.push(subs.length > 0 || ent.length > 0 ? "✅ PREMIUM" : "⛔ NOT PREMIUM");
-      } catch (e: any) {
-        lines.push(`⛔ getCustomerInfo error: ${e.message}`);
+      } catch (e: unknown) {
+        lines.push(`⛔ getCustomerInfo error: ${e instanceof Error ? e.message : "unknown"}`);
       }
-    } catch (e: any) {
-      lines.push(`⛔ Instantiation error: ${e.message}`);
+    } catch (e: unknown) {
+      lines.push(`⛔ Instantiation error: ${e instanceof Error ? e.message : "unknown"}`);
     }
 
     setStatus(lines);
