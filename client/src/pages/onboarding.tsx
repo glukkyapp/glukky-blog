@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Sparkles } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { useGlobalLoading } from "@/components/global-loading-overlay";
 
 const TOTAL_STEPS = 12;
 
@@ -23,6 +24,7 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  useGlobalLoading(submitting);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
 
   const [userName, setUserName] = useState("");
