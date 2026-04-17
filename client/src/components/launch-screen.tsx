@@ -1,12 +1,13 @@
 import glukkyLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
 
-interface SplashScreenProps {
+interface LaunchScreenProps {
   visible: boolean;
 }
 
-export function SplashScreen({ visible }: SplashScreenProps) {
+export function LaunchScreen({ visible }: LaunchScreenProps) {
   return (
     <div
+      data-testid="launch-screen"
       style={{
         position: "fixed",
         inset: 0,

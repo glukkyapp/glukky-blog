@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
+import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { getCustomerInfo, isPremiumFromCustomerInfo, isNativelyAvailable } from "@/lib/natively-purchases";
 
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
@@ -572,7 +573,9 @@ function App() {
 function AppWithProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <App />
+      <LoadingOverlayProvider>
+        <App />
+      </LoadingOverlayProvider>
     </QueryClientProvider>
   );
 }

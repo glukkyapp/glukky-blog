@@ -7,6 +7,7 @@ import { compressImage } from "@/lib/compress-image";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
+import { useGlobalLoading } from "@/components/global-loading-overlay";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -198,6 +199,8 @@ export default function Snap() {
   const [disambigIndex, setDisambigIndex] = useState(0);
   const [sauceManual, setSauceManual] = useState(false);
   const [toppingManual, setToppingManual] = useState(false);
+
+  useGlobalLoading(step === "labeling" || step === "advising");
 
   useEffect(() => {
     return () => {
