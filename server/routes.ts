@@ -1743,6 +1743,11 @@ export async function registerRoutes(
   const SNAP_ADVICE_DAILY_LIMIT = 2;
   const snapLabelCount = new Map<string, { date: string; count: number }>();
   const snapAdviceCount = new Map<string, { date: string; count: number }>();
+  // Internal/test allowlist: these user IDs bypass the snap/label and snap/advice daily caps.
+  const UNLIMITED_SNAP_USER_IDS = new Set<string>([
+    "352049ea-0f08-4ca5-a980-62bef203e2a3", // yusycyn@gmail.com
+    "770c837e-10bc-4ec1-b891-0683cdc07a96", // cynthiayuyu@hotmail.com
+  ]);
 
   function getDailyCount(map: Map<string, { date: string; count: number }>, userId: string): number {
     const today = new Date().toISOString().slice(0, 10);
@@ -2221,7 +2226,7 @@ export async function registerRoutes(
         }
       }
 
-      if (getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
+      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
         return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });
       }
 
@@ -2475,7 +2480,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      if (getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
+      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
         return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
       }
 
