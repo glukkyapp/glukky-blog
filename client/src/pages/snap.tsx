@@ -252,7 +252,14 @@ export default function Snap() {
       if (res.status === 422) {
         const data = await res.json().catch(() => ({}));
         hapticNotify("ERROR");
-        setError(data.message ?? t("snap.error_no_food"));
+        const code = (data as { code?: string }).code;
+        if (code === "PARSE_FAILED") {
+          setError(t("snap.error_parse_failed"));
+        } else if (code === "NO_FOOD") {
+          setError(t("snap.error_no_food"));
+        } else {
+          setError((data as { message?: string }).message ?? t("snap.error_no_food"));
+        }
         setStep("upload");
         return;
       }

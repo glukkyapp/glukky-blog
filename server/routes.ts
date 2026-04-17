@@ -20,6 +20,7 @@ import {
   awardStruggleGraduationCoin,
 } from "./achievements";
 import { canUseFeature, getGateStatus } from "./gate";
+import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -2238,41 +2239,81 @@ export async function registerRoutes(
         "zh-Hant": "Traditional Chinese (繁體中文)",
         yue: "Written Cantonese (廣東話書面語)",
       };
-      const nameLangExample: Record<string, string> = {
-        en: "Pork belly rice noodles",
-        "zh-Hant": "食物名稱",
-        yue: "食物名稱",
-      };
       const nameLocale = language || "en";
-      const nameResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 100,
-        system: `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a JSON object with the food name in ${nameLangLabel[nameLocale] ?? "English"}:
-{ "name": "${nameLangExample[nameLocale] ?? "Food name"}" }
+      const responseLang = nameLangLabel[nameLocale] ?? "English";
+
+      const baseSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
+{ "name": "<food name in ${responseLang}>", "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides or null>" }
+
+All field values MUST be in ${responseLang}.
 
 Important:
 - Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
 - 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
 - Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
-- If you cannot identify food, return: {"error":"No food detected"}
-- Return ONLY the JSON. No explanation.`,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
-            { type: "text", text: "What food is this?" }
-          ]
-        }]
-      });
+- If you cannot identify any food, return: {"error":"no_food"}
+- Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
-      const nameRaw = nameResponse.content[0].type === "text" ? nameResponse.content[0].text.trim() : "";
-      let nameParsed: any;
-      try { nameParsed = JSON.parse(nameRaw); } catch {
-        return res.status(422).json({ message: "Could not parse food name response." });
+      const strictSystem = `${baseSystem}
+
+CRITICAL: Respond with the JSON object only. No surrounding text. No code fences. No commentary.`;
+
+      const callClaude = async (system: string, maxTokens: number) =>
+        anthropic.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: maxTokens,
+          system,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
+              { type: "text", text: "Identify this food and return the JSON object." }
+            ]
+          }]
+        });
+
+      const readText = (resp: any): string => {
+        const blocks = resp?.content;
+        if (!Array.isArray(blocks) || blocks.length === 0) return "";
+        const first = blocks[0];
+        if (!first || first.type !== "text" || typeof first.text !== "string") return "";
+        return first.text.trim();
+      };
+
+      let labelResponse = await callClaude(baseSystem, 800);
+      let labelRaw = readText(labelResponse);
+      let labelParsed = extractJsonObject(labelRaw);
+      const truncated = labelResponse?.stop_reason === "max_tokens";
+      if (!labelParsed || truncated) {
+        try {
+          labelResponse = await callClaude(strictSystem, 1200);
+          labelRaw = readText(labelResponse);
+          labelParsed = extractJsonObject(labelRaw);
+        } catch (retryErr) {
+          console.error("Snap label retry error:", retryErr);
+        }
       }
-      if (nameParsed.error) return res.status(422).json({ message: nameParsed.error });
 
-      const foodName = nameParsed.name;
+      if (!labelParsed) {
+        return res.status(422).json({ code: "PARSE_FAILED", message: "Could not parse label response." });
+      }
+
+      if (labelParsed.error) {
+        const errStr = String(labelParsed.error).toLowerCase();
+        if (errStr.includes("no_food") || errStr.includes("no food")) {
+          return res.status(422).json({ code: "NO_FOOD", message: "No food detected" });
+        }
+        return res.status(422).json({ code: "NO_FOOD", message: String(labelParsed.error) });
+      }
+
+      const foodName = sanitizeFoodName(labelParsed.name);
+      if (!foodName) {
+        return res.status(422).json({ code: "NO_FOOD", message: "No food detected" });
+      }
+      const claudePortion = typeof labelParsed.portion === "string" ? labelParsed.portion.trim() || null : null;
+      const claudeSauces = typeof labelParsed.sauces === "string" ? labelParsed.sauces.trim() || null : null;
+      const claudeExtras = typeof labelParsed.extras === "string" ? labelParsed.extras.trim() || null : null;
+
       incrementDailyCount(snapLabelCount, userId);
 
       {
@@ -2367,41 +2408,10 @@ Important:
         });
       }
 
-      const isChinese = locale === "zh-Hant" || locale === "yue";
-      const langInstruction = isChinese
-        ? "All field values MUST be in Traditional Chinese (繁體中文)."
-        : "All field values should be in English.";
-
-      const fullResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 512,
-        system: `You are a food identification assistant. The food has been identified as "${foodName}". Return a JSON object with details:
-{
-  "portion": "estimated portion size (小/中/大)",
-  "sauces": "visible sauces or condiments, or null if none",
-  "extras": "additional toppings or sides, or null if none"
-}
-${langInstruction}
-Return ONLY the JSON object.`,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
-            { type: "text", text: `This is ${foodName}. What are the portion, sauces, and extras?` }
-          ]
-        }]
-      });
-
-      const fullRaw = fullResponse.content[0].type === "text" ? fullResponse.content[0].text.trim() : "";
-      let fullParsed: any;
-      try { fullParsed = JSON.parse(fullRaw); } catch {
-        return res.status(422).json({ message: "Could not parse label response." });
-      }
-
       try {
-        const sauceIds = await resolveToInternalIds(fullParsed.sauces, "sauce");
-        const toppingIds = await resolveToInternalIds(fullParsed.extras, "topping");
-        const portionId = fullParsed.portion ? ((await resolveToInternalIds(fullParsed.portion, "portion"))[0] || "medium") : "medium";
+        const sauceIds = await resolveToInternalIds(claudeSauces, "sauce");
+        const toppingIds = await resolveToInternalIds(claudeExtras, "topping");
+        const portionId = claudePortion ? ((await resolveToInternalIds(claudePortion, "portion"))[0] || "medium") : "medium";
         const existing = await storage.getFoodCombos(foodName);
         if (existing.length === 0) {
           await storage.saveFoodCombo({
@@ -2420,9 +2430,9 @@ Return ONLY the JSON object.`,
 
       res.json({
         name: foodName,
-        portion: fullParsed.portion ?? null,
-        sauces: fullParsed.sauces ?? null,
-        extras: fullParsed.extras ?? null,
+        portion: claudePortion,
+        sauces: claudeSauces,
+        extras: claudeExtras,
         comboSource: "claude",
         snapsUsedToday: getDailyCount(snapLabelCount, userId),
         snapsLimit: SNAP_LABEL_DAILY_LIMIT,

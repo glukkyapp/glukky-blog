@@ -786,6 +786,7 @@
     "done": "完成",
     "next": "下一頁",
     "error_no_food": "未能識別食物，請嘗試拍攝更清晰的照片。",
+    "error_parse_failed": "無法清楚分析這張照片，請換一張再試。",
     "error_limit_label": "今日已用盡 {{limit}} 次照片分析，明天再見！",
     "error_limit_advice": "今日已用盡 {{limit}} 次飲食建議，明天再來吧。",
     "error_generic": "發生錯誤，請再試一次。",

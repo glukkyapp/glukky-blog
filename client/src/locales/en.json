@@ -782,6 +782,7 @@
     "done": "Done",
     "next": "Next",
     "error_no_food": "No food detected in this photo. Please try a clearer shot.",
+    "error_parse_failed": "We couldn't read the photo clearly. Please try another shot.",
     "error_limit_label": "You've used all {{limit}} photo analyses for today. Come back tomorrow.",
     "error_limit_advice": "You've used all {{limit}} advice requests for today. Come back tomorrow.",
     "error_generic": "Something went wrong. Please try again.",
