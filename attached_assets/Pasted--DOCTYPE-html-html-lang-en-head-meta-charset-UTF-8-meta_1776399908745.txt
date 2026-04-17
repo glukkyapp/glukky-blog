@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App Loading Animation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: -apple-system, sans-serif;
+  }
+
+  .loader-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .badge {
+    width: 120px;
+    height: 120px;
+    background: #F5EFE6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: badge-breathe 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    will-change: transform;
+  }
+
+  .shadow-oval {
+    width: 80px;
+    height: 12px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 50%;
+    animation: shadow-pulse 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    will-change: transform, opacity;
+    margin-top: -18px;
+  }
+
+  @keyframes badge-breathe {
+    0%   { transform: scaleX(1.00) scaleY(1.00) translateY(0px); }
+    30%  { transform: scaleX(1.04) scaleY(0.94) translateY(4px); }
+    60%  { transform: scaleX(0.98) scaleY(1.02) translateY(-2px); }
+    100% { transform: scaleX(1.00) scaleY(1.00) translateY(0px); }
+  }
+
+  @keyframes shadow-pulse {
+    0%   { transform: scaleX(1.00); opacity: 0.55; }
+    30%  { transform: scaleX(1.20); opacity: 0.70; }
+    60%  { transform: scaleX(0.90); opacity: 0.45; }
+    100% { transform: scaleX(1.00); opacity: 0.55; }
+  }
+
+  .dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    background: #A8C8BC;
+    border-radius: 50%;
+    animation: dot-bounce 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    will-change: transform, opacity;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.18s; }
+  .dot:nth-child(3) { animation-delay: 0.36s; }
+
+  @keyframes dot-bounce {
+    0%, 100% { transform: translateY(0);    opacity: 0.45; }
+    40%       { transform: translateY(-5px); opacity: 1.00; }
+  }
+
+  /* Checkerboard preview background — shows transparency. Remove in production */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: #eee;
+    z-index: -1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .badge, .shadow-oval, .dot { animation: none; }
+  }
+
+  .preview-note {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.10);
+    color: rgba(0,0,0,0.5);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="loader-wrap">
+  <div class="badge">
+    <svg width="66" height="66" viewBox="0 0 66 66" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M33 14.2 C38.6 14.9, 44 16.5, 49.2 19.0 C49.8 19.3, 49.9 19.9, 49.3 20.3 L33.6 28.1 C33.2 28.35, 32.8 28.35, 32.4 28.1 L16.7 20.3 C16.1 19.9, 16.2 19.3, 16.8 19.0 C22 16.5, 27.4 14.9, 33 14.2 Z" fill="#A8C8BC"/>
+      <path d="M16.7 20.3 C16.2 20.0, 15.9 20.3, 15.9 20.9 L15.9 43.1 C15.9 43.6, 16.2 44.0, 16.7 44.3 L32.4 52.2 C32.8 52.4, 33 52.2, 33 51.8 L33 28.5 C33 28.35, 32.8 28.2, 32.4 28.0 L16.7 20.3 Z" fill="#9BBFB1"/>
+      <path d="M49.3 20.3 C49.8 20.0, 50.1 20.3, 50.1 20.9 L50.1 43.1 C50.1 43.6, 49.8 44.0, 49.3 44.3 L33.6 52.2 C33.2 52.4, 33 52.2, 33 51.8 L33 28.5 C33 28.35, 33.2 28.2, 33.6 28.0 L49.3 20.3 Z" fill="#88B4A5"/>
+    </svg>
+  </div>
+  <div class="shadow-oval"></div>
+  <div class="dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+</div>
+
+<div class="preview-note">Checkerboard = transparent background. Remove body::before in production</div>
+
+</body>
+</html>
