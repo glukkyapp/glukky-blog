@@ -2226,9 +2226,7 @@ export async function registerRoutes(
         }
       }
 
-      const isAllowlistedLabel = UNLIMITED_SNAP_USER_IDS.has(userId);
-      console.log(`[snap/label] userId=${userId} allowlisted=${isAllowlistedLabel} usedToday=${getDailyCount(snapLabelCount, userId)}`);
-      if (!isAllowlistedLabel && getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
+      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
         return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });
       }
 
