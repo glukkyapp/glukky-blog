@@ -8,135 +8,145 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
   return (
     <>
       <style>{`
-        @keyframes glukky-badge-breathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.06); }
+        @keyframes cube-breathe {
+          0%   { transform: scaleX(1.00) scaleY(1.00) translateY(0px); }
+          30%  { transform: scaleX(1.04) scaleY(0.94) translateY(4px); }
+          60%  { transform: scaleX(0.98) scaleY(1.02) translateY(-2px); }
+          100% { transform: scaleX(1.00) scaleY(1.00) translateY(0px); }
         }
-        @keyframes glukky-shadow-pulse {
-          0%, 100% { transform: scaleX(1); opacity: 0.35; }
-          50% { transform: scaleX(0.78); opacity: 0.18; }
+        @keyframes cube-shadow-pulse {
+          0%   { transform: scaleX(1.00); opacity: 0.55; }
+          30%  { transform: scaleX(1.20); opacity: 0.70; }
+          60%  { transform: scaleX(0.90); opacity: 0.45; }
+          100% { transform: scaleX(1.00); opacity: 0.55; }
         }
-        @keyframes glukky-dot-bounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-          40% { transform: translateY(-10px); opacity: 1; }
+        @keyframes cube-dot-bounce {
+          0%, 100% { transform: translateY(0);    opacity: 0.45; }
+          40%      { transform: translateY(-5px); opacity: 1.00; }
         }
-        @keyframes glukky-overlay-fade {
+        @keyframes cube-overlay-fade {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        .glukky-loading-overlay {
-          animation: glukky-overlay-fade 0.18s ease-out forwards;
+        .cube-loading-overlay {
+          animation: cube-overlay-fade 0.18s ease-out forwards;
         }
-        .glukky-loading-badge {
-          animation: glukky-badge-breathe 2.4s ease-in-out infinite;
+        .cube-loader-wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 28px;
         }
-        .glukky-loading-shadow {
-          animation: glukky-shadow-pulse 2.4s ease-in-out infinite;
+        .cube-circle-holder {
+          width: 120px;
+          height: 120px;
+          background: #F5EFE6;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: cube-breathe 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          will-change: transform;
         }
-        .glukky-loading-dot {
-          animation: glukky-dot-bounce 1.2s ease-in-out infinite;
+        .cube-shadow {
+          width: 80px;
+          height: 12px;
+          background: rgba(0,0,0,0.25);
+          border-radius: 50%;
+          animation: cube-shadow-pulse 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          will-change: transform, opacity;
+          margin-top: -18px;
         }
+        .cube-dots-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        .cube-dot {
+          width: 7px;
+          height: 7px;
+          background: #A8C8BC;
+          border-radius: 50%;
+          animation: cube-dot-bounce 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          will-change: transform, opacity;
+        }
+        .cube-dot:nth-child(2) { animation-delay: 0.18s; }
+        .cube-dot:nth-child(3) { animation-delay: 0.36s; }
         @media (prefers-reduced-motion: reduce) {
-          .glukky-loading-overlay,
-          .glukky-loading-badge,
-          .glukky-loading-shadow,
-          .glukky-loading-dot {
+          .cube-loading-overlay,
+          .cube-circle-holder,
+          .cube-shadow,
+          .cube-dot {
             animation: none !important;
           }
         }
       `}</style>
       <div
         data-testid="loading-screen"
-        className="glukky-loading-overlay"
+        className="cube-loading-overlay"
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 9998,
           backgroundColor: "rgba(0, 0, 0, 0.3)",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: "18px",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <div
-            className="glukky-loading-badge"
-            data-testid="loading-badge"
-            style={{
-              width: "96px",
-              height: "96px",
-              borderRadius: "50%",
-              backgroundColor: "#F5EFE6",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-            }}
-          >
+        <div className="cube-loader-wrap">
+          <div className="cube-circle-holder">
             <svg
-              width="52"
-              height="58"
-              viewBox="0 0 52 58"
+              width="66"
+              height="66"
+              viewBox="0 0 66 66"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
+              aria-label="3D cube icon"
+              role="img"
             >
               <path
-                d="M26 2 L48 10 V28 C48 42 38 52 26 56 C14 52 4 42 4 28 V10 Z"
-                fill="#127843"
-                stroke="#0e5f35"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
+                d="M33 14.2 C38.6 14.9, 44 16.5, 49.2 19.0
+                   C49.8 19.3, 49.9 19.9, 49.3 20.3
+                   L33.6 28.1
+                   C33.2 28.35, 32.8 28.35, 32.4 28.1
+                   L16.7 20.3
+                   C16.1 19.9, 16.2 19.3, 16.8 19.0
+                   C22 16.5, 27.4 14.9, 33 14.2 Z"
+                fill="#A8C8BC"
               />
               <path
-                d="M18 30 C18 24 22 20 26 20 C30 20 34 22 34 26 C34 30 30 31 26 31 C22 31 18 33 18 37 C18 41 22 43 26 43 C30 43 34 39 34 35"
-                stroke="#F5EFE6"
-                strokeWidth="3"
-                strokeLinecap="round"
-                fill="none"
+                d="M16.7 20.3
+                   C16.2 20.0, 15.9 20.3, 15.9 20.9
+                   L15.9 43.1
+                   C15.9 43.6, 16.2 44.0, 16.7 44.3
+                   L32.4 52.2
+                   C32.8 52.4, 33 52.2, 33 51.8
+                   L33 28.5
+                   C33 28.35, 32.8 28.2, 32.4 28.0
+                   L16.7 20.3 Z"
+                fill="#9BBFB1"
+              />
+              <path
+                d="M49.3 20.3
+                   C49.8 20.0, 50.1 20.3, 50.1 20.9
+                   L50.1 43.1
+                   C50.1 43.6, 49.8 44.0, 49.3 44.3
+                   L33.6 52.2
+                   C33.2 52.4, 33 52.2, 33 51.8
+                   L33 28.5
+                   C33 28.35, 33.2 28.2, 33.6 28.0
+                   L49.3 20.3 Z"
+                fill="#88B4A5"
               />
             </svg>
           </div>
-          <div
-            className="glukky-loading-shadow"
-            style={{
-              width: "70px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor: "rgba(0,0,0,0.35)",
-              filter: "blur(3px)",
-            }}
-          />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginTop: "4px",
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="glukky-loading-dot"
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                backgroundColor: "#A8C8BC",
-                animationDelay: `${i * 0.15}s`,
-              }}
-            />
-          ))}
+          <div className="cube-shadow" />
+          <div className="cube-dots-row">
+            <span className="cube-dot" />
+            <span className="cube-dot" />
+            <span className="cube-dot" />
+          </div>
         </div>
       </div>
     </>
