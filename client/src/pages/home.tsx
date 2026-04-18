@@ -1377,7 +1377,6 @@ export default function Home() {
           background: #eef9d7;
           border-radius: 20px;
           padding: 16px 18px;
-          box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06);
         }
         .home-page-v2 .goal-bubble::after {
           content: "";
@@ -1434,7 +1433,7 @@ export default function Home() {
         <div data-testid="text-week-header">
           <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
         </div>
-        <p className="text-[33px] font-bold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
+        <p className="text-[50px] font-bold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
           {profile?.name
             ? t("home.greeting_with_name", { name: profile.name })
             : t("home.greeting_no_name")}
