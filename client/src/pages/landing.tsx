@@ -229,7 +229,8 @@ export default function Landing() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-background px-6 pt-8 pb-8"
+      className="flex flex-col min-h-screen px-6 pt-8 pb-8"
+      style={{ backgroundColor: "#fdfbee" }}
       data-testid="landing-auth-screen"
     >
       <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
@@ -253,7 +254,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "login" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "login" ? { backgroundColor: "#127843" } : undefined}
+          style={tab === "login" ? { backgroundColor: "#214B36" } : undefined}
           data-testid="tab-login"
         >
           {t("landing.log_in")}
@@ -264,7 +265,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "register" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "register" ? { backgroundColor: "#127843" } : undefined}
+          style={tab === "register" ? { backgroundColor: "#214B36" } : undefined}
           data-testid="tab-register"
         >
           {t("landing.register")}
@@ -318,7 +319,7 @@ export default function Landing() {
           type="submit"
           disabled={isLoading}
           className="w-full text-white mt-1 btn-pop"
-          style={{ backgroundColor: "#127843", borderColor: "#127843" }}
+          style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
           data-testid="button-submit"
         >
           {isLoading ? (
