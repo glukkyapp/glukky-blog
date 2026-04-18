@@ -360,6 +360,8 @@ html.font-small {
   background-color: #fbfbf3 !important;
 }
 .app-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
+.app-page-v2:not(.home-page-v2) .shadcn-card > div:first-child { padding: 22px 22px 6px 22px !important; }
+.app-page-v2:not(.home-page-v2) .shadcn-card > div + div { padding: 6px 22px 22px 22px !important; }
 /* Soft amber alert variant */
 .app-page-v2 .shadcn-card.is-alert {
   background-color: #FBF4E4 !important;
