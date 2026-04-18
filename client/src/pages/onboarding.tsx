@@ -131,7 +131,7 @@ export default function Onboarding() {
       onClick={() => { hapticTap("SOFT"); onSelect(value); }}
       className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
         selected === value
-          ? "border-primary bg-primary/10 text-foreground"
+          ? "bg-[#d0f38f] border-[#214B36] text-[#214B36] font-medium"
           : "border-border text-muted-foreground"
       }`}
     >
@@ -140,7 +140,7 @@ export default function Onboarding() {
   );
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-8" data-testid="onboarding-container">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-8 min-h-screen" data-testid="onboarding-container">
       <Progress
         value={(step / TOTAL_STEPS) * 100}
         className="mb-6 h-2"
@@ -155,7 +155,7 @@ export default function Onboarding() {
       {step === 1 && (
         <Card data-testid="card-step-name">
           <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.name_title")}</CardTitle>
+            <CardTitle className="text-[26px] font-bold" style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-0.02em" }}>{t("onboarding.name_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Label htmlFor="user-name" className="sr-only">{t("onboarding.name_placeholder")}</Label>
@@ -173,7 +173,7 @@ export default function Onboarding() {
 
       {step === 2 && (
         <div className="flex flex-col items-center text-center py-8" data-testid="card-step-social-proof">
-          <h2 className="text-3xl font-bold mb-4" data-testid="text-welcome-title">
+          <h2 className="text-[26px] font-bold uppercase tracking-wide mb-4" data-testid="text-welcome-title">
             {t("onboarding.social_proof_title")}
           </h2>
           <Sparkles className="w-10 h-10 text-primary mb-4" data-testid="icon-welcome" />

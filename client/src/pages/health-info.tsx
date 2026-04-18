@@ -249,7 +249,7 @@ export default function HealthInfo() {
   }
 
   return (
-    <div className="max-w-sm sm:max-w-none mx-auto pb-32" data-testid="page-health-info">
+    <div className="app-page-v2 max-w-sm sm:max-w-none mx-auto pb-32" data-testid="page-health-info">
       <div
         className="relative w-full overflow-hidden mb-[-5px] rounded-b-3xl"
         data-testid="hero-health-info"
@@ -265,7 +265,7 @@ export default function HealthInfo() {
       </p>
 
       <section className="px-5" data-testid="section-diet-advice">
-        <h2 className="text-base font-semibold mb-4" data-testid="text-diet-advice-heading">
+        <h2 className="text-[21px] font-bold uppercase tracking-wide mb-4" data-testid="text-diet-advice-heading">
           {t("health_info.diet_advice_heading")}
         </h2>
 

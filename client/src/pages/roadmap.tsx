@@ -56,7 +56,7 @@ interface PiggyBankData {
 
 function LoadingSkeleton() {
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-5 w-full" />
       <Skeleton className="h-32 w-full" />
@@ -446,7 +446,7 @@ export default function RoadmapPage() {
 
   return (
     <ContentFade>
-    <div className="max-w-sm mx-auto px-4 pb-24 space-y-4">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pb-24 space-y-4">
       <div
         className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
         style={{ width: "calc(100% + 2rem)" }}
@@ -472,7 +472,7 @@ export default function RoadmapPage() {
 
       <Card data-testid="card-walk-progress">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("roadmap.walk_card_title")}</CardTitle>
+          <CardTitle className="text-[21px] font-bold uppercase tracking-wide">{t("roadmap.walk_card_title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -488,7 +488,7 @@ export default function RoadmapPage() {
       {isDinnerFocus && (
         <Card data-testid="card-dinner-progress">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("roadmap.dinner_card_title")}</CardTitle>
+            <CardTitle className="text-[21px] font-bold uppercase tracking-wide">{t("roadmap.dinner_card_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -504,7 +504,7 @@ export default function RoadmapPage() {
 
       <Card data-testid="card-diet-tip-progress">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("roadmap.diet_tip_title")}</CardTitle>
+          <CardTitle className="text-[21px] font-bold uppercase tracking-wide">{t("roadmap.diet_tip_title")}</CardTitle>
         </CardHeader>
         <CardContent>
           {currentTip && (
