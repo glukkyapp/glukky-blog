@@ -1,0 +1,179 @@
+Layout tokens
+Use a simple spacing scale and apply it everywhere instead of ad hoc values. Consistent spacing and radius tokens make the interface feel cleaner and more intentional.
+
+Page side padding: 24px
+
+Top safe header spacing: 24–32px
+
+Gap between major sections: 20–24px
+
+Gap inside cards between title/body/items: 12–16px
+
+Small icon/text gap: 8px
+
+Bottom nav height: 88–96px
+
+Corner radius
+Rounded corners strongly shape the app’s personality, and larger radii generally feel softer and friendlier. A large mobile card radius around 24–32px is consistent with modern expressive design systems.
+
+Main cards: 28px
+
+Smaller pills / icon circles: 20px
+
+Buttons: 22px
+
+Bottom nav container: 28px
+
+Input / small tag: 16px
+
+If you nest cards or panels, the inner radius should usually equal outer radius minus padding so the curves align cleanly.
+
+Typography
+Use a clean sans-serif, but make the type hierarchy more deliberate. Balanced font sizing and readable body text improve card usability.
+
+Suggested type scale:
+
+Date title: 22–24px, semibold
+
+Greeting: 20–22px, semibold
+
+Large card title: 18–20px, semibold
+
+Section title: 16–18px, semibold
+
+Body text: 15–16px, regular
+
+Secondary / muted text: 13–14px
+
+Bottom nav label: 12–13px
+
+Use:
+
+Primary text color for titles
+
+Muted green-gray for secondary copy
+
+Avoid all-caps except tiny labels like “TOMORROW”
+
+Color system
+Use a more unified green system so the app feels branded instead of mixing unrelated neutrals. A clear contrast between background and cards helps distinguish card surfaces.
+
+Suggested palette:
+
+Background: #F6F2EC
+
+Surface card: #FCFBF8
+
+Surface soft green: #EEF5EF
+
+Border: #C9D8CC
+
+Primary green: #5F9D7A
+
+Deep green: #214B36
+
+Muted text: #6E8477
+
+Soft icon fill: #E5EEE7
+
+Bottom nav mint: #CFE5DC
+
+Use orange only very sparingly, if at all, because your new illustration-led style reads better as a green-first system. (see the generated image above)
+
+Card styling
+Your current cards are functional, but to match the new direction they should feel softer and less dashboard-like. Cards benefit from either a subtle border or a soft shadow rather than heavy treatment.
+
+Use:
+
+Background: off-white or pale green-tinted white
+
+Border: 1.5px solid #C9D8CC
+
+Shadow: 0 4px 14px rgba(44, 72, 56, 0.06)
+
+Padding: 20–24px
+
+Internal row spacing: 12–16px
+
+Avoid:
+
+Hard gray borders
+
+Stark white against beige without separation
+
+Tight content packing
+
+Homepage sections
+Header
+Left aligned
+
+Date row with icon and title on one line
+
+16px gap below date
+
+Greeting below with larger, warmer spacing
+
+Goal reminder row
+Put the tiny illustration and speech box on one shared row
+
+Illustration width: 56–64px
+
+Reminder bubble padding: 16px 18px
+
+Bubble radius: 20px
+
+Border only, no heavy shadow
+
+“All set” card
+Card padding: 22–24px
+
+Icon + title in one row
+
+10–12px gap to supporting sentence
+
+Keep text left-aligned
+
+Tomorrow plan card
+Card padding: 20–24px
+
+Section label at top
+
+Two-column activity layout
+
+Each icon sits in a 56–64px pale green circle
+
+Activity text centered under icon
+
+Keep equal width for both columns
+
+Weekly calendar card
+Card padding: 20px
+
+Reduce tiny text density
+
+Make day chips and cells slightly larger
+
+Use soft green-gray fills instead of flat pale gray
+
+Keep the legend lighter and smaller
+
+Bottom nav
+Your bottom nav should feel integrated, not like a heavy slab overlay. Large rounded nav containers are common, but visual weight should stay soft.
+
+Use:
+
+Height: 92px
+
+Top padding inside nav: 14px
+
+Bottom padding: 18px
+
+Icon size: 24px
+
+Active item color: deep green
+
+Inactive item color: muted green-gray
+
+Background: #CFE5DC
+
+Radius top-left/top-right: 28px
