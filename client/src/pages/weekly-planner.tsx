@@ -1358,7 +1358,7 @@ export default function WeeklyPlanner() {
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-col items-center text-center gap-3">
             <Calendar className="w-10 h-10 text-primary" />
-            <h2 className="text-lg font-semibold" data-testid="text-plan-transition-title">
+            <h2 className="text-[21px] font-bold uppercase tracking-wide" data-testid="text-plan-transition-title">
               {t("planner.plan_transition_title")}
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -2606,13 +2606,13 @@ export default function WeeklyPlanner() {
     const titleKey = variant === "mid_week" ? "planner.pending_sunday" : "planner.first_week_pending";
     const descKey  = variant === "mid_week" ? "planner.pending_sunday_desc" : "planner.first_week_pending_desc";
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         {plannerHero}
         <Card data-testid="card-report-pending">
           <CardContent className="pt-6 pb-6">
             <div className="flex flex-col items-center text-center gap-3">
               <Clock className="w-10 h-10 text-muted-foreground" />
-              <h2 className="text-lg font-semibold" data-testid="text-report-pending-title">
+              <h2 className="text-[21px] font-bold uppercase tracking-wide" data-testid="text-report-pending-title">
                 {t(titleKey)}
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -2628,7 +2628,7 @@ export default function WeeklyPlanner() {
 
   function renderLastWeekReport() {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         {plannerHero}
         <h1 className="text-lg font-bold" data-testid="text-last-week-title">
           {t("planner.stats_last_week")}
@@ -2644,13 +2644,13 @@ export default function WeeklyPlanner() {
   function renderPlanReady() {
     const planWeekNum = currentPlan?.weekNumber || (profile?.currentWeek ? profile.currentWeek - 1 : 1);
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         {plannerHero}
         <Card data-testid="card-plan-ready">
           <CardContent className="pt-6 pb-6">
             <div className="flex flex-col items-center text-center gap-3">
               <CalendarDays className="w-10 h-10 text-primary" />
-              <h2 className="text-lg font-semibold" data-testid="text-plan-ready-title">
+              <h2 className="text-[21px] font-bold uppercase tracking-wide" data-testid="text-plan-ready-title">
                 {t("planner.week_plan_set", { week: planWeekNum })}
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -2668,7 +2668,7 @@ export default function WeeklyPlanner() {
 
   function renderCatchupGate() {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
         {plannerHero}
         <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-sunday-checkin-gate">
           <CardContent className="pt-4 space-y-3">
@@ -2717,7 +2717,7 @@ export default function WeeklyPlanner() {
 
   return (
     <>
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       {plannerHero}
 
       <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
@@ -2740,7 +2740,7 @@ export default function WeeklyPlanner() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold" data-testid="text-planner-title">
+          <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-planner-title">
             {isFirstWeek ? t("planner.plan_first_week") : t("planner.plan_week", { week: profile?.currentWeek || "" })}
           </h1>
           {!isFirstWeek && (() => {
@@ -2877,7 +2877,7 @@ export default function WeeklyPlanner() {
         >
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-8 flex flex-col items-center text-center gap-4 max-w-sm w-full">
             <Award className="w-16 h-16 text-primary" data-testid="icon-graduation-trophy" />
-            <h2 className="text-2xl font-bold" data-testid="text-graduation-heading">
+            <h2 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-graduation-heading">
               {t("planner.graduation_popup_heading")}
             </h2>
             <p className="text-base text-muted-foreground" data-testid="text-graduation-body">
