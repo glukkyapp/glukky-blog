@@ -40,7 +40,7 @@ export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { showPaywall, refetchGate } = useGate();
+  const { gate, showPaywall, refetchGate } = useGate();
   const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
   const STRUGGLE_NAMES: Record<string, string> = {
     sugary_food_drink: t("struggle.sugary_food_drink"),
@@ -580,6 +580,7 @@ export default function WeeklyPlanner() {
         showPaywall();
         return;
       }
+      const wasFirstPlan = gate?.hasCreatedFirstWeeklyPlan === false;
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
@@ -596,6 +597,9 @@ export default function WeeklyPlanner() {
           title: t(titleKey),
           body: <p className="text-sm text-muted-foreground">{t(bodyKey)}</p>,
         });
+      } else if (wasFirstPlan) {
+        refetchGate();
+        setLocation("/snap");
       } else {
         setLocation("/");
       }
