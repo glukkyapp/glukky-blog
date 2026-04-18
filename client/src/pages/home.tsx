@@ -480,15 +480,15 @@ export default function Home() {
     return (
       <div
         className="space-y-3"
-        style={{ background: "#d6f3b1", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+        style={{ background: "#fbfbf3", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
       >
-        <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
+        <div className="flex items-center gap-2 text-[14px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
           <span className="font-semibold" style={{ color: "#214B36" }}>{t("home.tomorrow")}</span>
           <span>— {dateLabel}</span>
         </div>
 
         {tasks.length === 0 ? (
-          <p className="text-[15px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
+          <p className="text-[18px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 py-1">
             {tasks.map((task, idx) => {
@@ -505,7 +505,7 @@ export default function Home() {
                   >
                     <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
-                  <p className="text-[13px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
+                  <p className="text-[16px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
                 </div>
               );
             })}
@@ -539,15 +539,15 @@ export default function Home() {
     return (
       <div
         className="space-y-3"
-        style={{ background: "#d6f3b1", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+        style={{ background: "#fbfbf3", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
       >
-        <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
+        <div className="flex items-center gap-2 text-[14px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
           <span className="font-semibold" style={{ color: "#214B36" }}>{label}</span>
           <span>— {dateLabel}</span>
         </div>
 
         {tasks.length === 0 ? (
-          <p className="text-[15px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
+          <p className="text-[18px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 py-1">
             {tasks.map((task, idx) => {
@@ -564,7 +564,7 @@ export default function Home() {
                   >
                     <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
-                  <p className="text-[13px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
+                  <p className="text-[16px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
                 </div>
               );
             })}
@@ -1364,7 +1364,6 @@ export default function Home() {
     >
       <style>{`
         .home-page-v2 { background: #fdfbee; min-height: 100vh; color: #214B36; }
-        .home-page-v2 [data-testid="text-week-header"] h1,
         .home-page-v2 [data-testid="text-greeting"] {
           font-family: 'Playfair Display', serif !important;
           font-weight: 700 !important;
@@ -1406,9 +1405,14 @@ export default function Home() {
           background-color: #FBF4E4 !important;
           border: 0 !important;
         }
-        /* Emphasis card (all-set / report-ready / calendar) */
+        /* Emphasis card (all-set / report-ready) */
         .home-page-v2 .shadcn-card.is-emphasis {
           background-color: #d8f3ae !important;
+          border: 0 !important;
+        }
+        /* Calendar card — its own green */
+        .home-page-v2 .shadcn-card.is-calendar {
+          background-color: #e0f8ac !important;
           border: 0 !important;
         }
         /* Calendar day chips — strip outlines */
@@ -1428,10 +1432,10 @@ export default function Home() {
 
       <div className="flex items-center gap-2" data-testid="text-week-header">
         <Target className="w-6 h-6" style={{ color: "#5F9D7A" }} />
-        <h1 className="text-[22px] font-semibold" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
+        <h1 className="text-[17px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
       </div>
 
-      <p className="text-[21px] font-semibold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
+      <p className="text-[33px] font-bold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
         {profile?.name
           ? t("home.greeting_with_name", { name: profile.name })
           : t("home.greeting_no_name")}
@@ -1444,7 +1448,7 @@ export default function Home() {
             className="flex-1 min-w-0 goal-bubble"
             data-testid="text-goal-reminder"
           >
-            <p className="text-[15px] leading-snug" style={{ color: "#214B36" }}>
+            <p className="text-[18px] leading-snug" style={{ color: "#214B36" }}>
               {(() => {
                 const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
                 const parts = full.split("{{GOAL}}");
@@ -1626,9 +1630,9 @@ export default function Home() {
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-6 h-6" style={{ color: "#5F9D7A" }} />
-                    <p className="text-[18px] font-semibold" style={{ color: "#214B36" }} data-testid="text-all-set">{t("home.all_set")}</p>
+                    <p className="text-[22px] font-semibold" style={{ color: "#214B36" }} data-testid="text-all-set">{t("home.all_set")}</p>
                   </div>
-                  <p className="text-[15px] leading-snug" style={{ color: "#3F6B52" }}>{t("home.all_set_desc")}</p>
+                  <p className="text-[18px] leading-snug" style={{ color: "#3F6B52" }}>{t("home.all_set_desc")}</p>
                 </CardContent>
               </Card>
             </div>
@@ -1734,7 +1738,7 @@ export default function Home() {
         </Card>
       )}
 
-      {(<Card className="is-emphasis bg-primary/5 border-primary/20">
+      {(<Card className="is-calendar bg-primary/5 border-primary/20">
         <CardContent className="pt-4">
           <button
             className="flex items-center justify-between w-full"
@@ -1757,7 +1761,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-              <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{profile?.isStretchMode ? t("home.stretch_row") : t("home.walk_row")}</div>
+              <div className="text-[12px] text-muted-foreground font-medium text-right pr-1">{profile?.isStretchMode ? t("home.stretch_row") : t("home.walk_row")}</div>
               {calendarData?.calendar?.map((d: any, i: number) => {
                 const inactive = d.dayOfWeek < planFirstActiveDay;
                 const isFuture = d.date > todayStr;
@@ -1779,25 +1783,25 @@ export default function Home() {
                      isStandingTap ? (
                        <>
                          {answered ? (d.walkCompleted ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />) : <Timer className="w-3 h-3" />}
-                         <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: 1 })}</span>
+                         <span className="text-[11px] leading-none mt-0.5">{t("home.duration_min_short", { duration: 1 })}</span>
                        </>
                      ) :
                      answered && d.walkCompleted ? (
                        <>
                          <Check className="w-3 h-3" />
-                         {dur && <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
+                         {dur && <span className="text-[11px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) :
                      answered && !d.walkCompleted ? (
                        <>
                          <X className="w-3 h-3" />
-                         {dur && <span className="text-[9px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
+                         {dur && <span className="text-[11px] leading-none mt-0.5">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) :
                      d.walkScheduled ? (
                        <>
                          {isDayStretch(d, profile) ? <Activity className="w-3 h-3 text-muted-foreground" /> : <Footprints className="w-3 h-3 text-muted-foreground" />}
-                         {dur && <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">{t("home.duration_min_short", { duration: dur })}</span>}
+                         {dur && <span className="text-[11px] leading-none mt-0.5 text-muted-foreground">{t("home.duration_min_short", { duration: dur })}</span>}
                        </>
                      ) : null}
                   </div>
@@ -1807,7 +1811,7 @@ export default function Home() {
 
             {calendarData?.calendar?.some((d: any) => d.lateDinnerScheduled) && (cycle < 2 || calendarPlan?.isDinnerFocus) && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
+                <div className="text-[12px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.late_dinner_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1836,7 +1840,7 @@ export default function Home() {
 
             {calendarData?.calendar?.some((d: any) => d.eatOutScheduled) && !calendarPlan?.isDinnerFocus && (!calendarPlan?.dietStruggle || calendarPlan?.dietStruggle === 'eat_out') && (cycle < 2 || calendarPlan?.dietStruggle === 'eat_out') && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
+                <div className="text-[12px] text-muted-foreground font-medium text-right pr-1 leading-tight">{t("home.eat_out_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1864,7 +1868,7 @@ export default function Home() {
 
             {calendarPlan?.dietTip && calendarPlan?.dietStruggle !== 'eat_out' && (
               <div className="grid grid-cols-8 gap-1 text-center text-xs items-center">
-                <div className="text-[10px] text-muted-foreground font-medium text-right pr-1">{t("home.diet_row")}</div>
+                <div className="text-[12px] text-muted-foreground font-medium text-right pr-1">{t("home.diet_row")}</div>
                 {calendarData?.calendar?.map((d: any, i: number) => {
                   const inactive = d.dayOfWeek < planFirstActiveDay;
                   const isFuture = d.date > todayStr;
@@ -1887,7 +1891,7 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-2 text-[10px] text-muted-foreground flex-wrap" data-testid="calendar-legend">
+            <div className="flex items-center gap-4 pt-2 text-[12px] text-muted-foreground flex-wrap" data-testid="calendar-legend">
               <div className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" /> {t("home.done")}</div>
               <div className="flex items-center gap-1"><X className="w-3 h-3 text-red-400" /> {t("home.missed")}</div>
               <div className="flex items-center gap-1">
