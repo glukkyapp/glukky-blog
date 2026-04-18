@@ -139,8 +139,8 @@
     "duration_min_short": "{{duration}}分",
     "dinner_yes": "可以",
     "dinner_no": "不可以",
-    "greeting_with_name": "你好，{{name}}",
-    "greeting_no_name": "你好",
+    "greeting_with_name": "你好，{{name}}！",
+    "greeting_no_name": "你好！",
     "goal_reminder": "記住你的目標 — {{goal}}！繼續加油！"
   },
   "mitigation": {

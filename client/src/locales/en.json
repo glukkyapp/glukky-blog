@@ -139,8 +139,8 @@
     "duration_min_short": "{{duration}}m",
     "dinner_yes": "Yes",
     "dinner_no": "No",
-    "greeting_with_name": "Hi, {{name}}",
-    "greeting_no_name": "Hi there",
+    "greeting_with_name": "Hi, {{name}}!",
+    "greeting_no_name": "Hi there!",
     "goal_reminder": "Remember your goal — {{goal}}! Keep it up!"
   },
   "mitigation": {
