@@ -462,43 +462,50 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "#5F9D7A", bgColor: "#EEF5EF" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "#5F9D7A", bgColor: "#EEF5EF" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "#5F9D7A", bgColor: "#EEF5EF" });
     }
     if (dietTip) {
       const showDietTask = dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: getStruggleIcon(dietStruggle), text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(dietStruggle), text: `"${translateDietTip(dietTip, t)}"`, testId: "text-plan-diet", color: "#5F9D7A", bgColor: "#EEF5EF" });
     }
 
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-          <span className="font-semibold text-foreground">{t("home.tomorrow")}</span> — {dateLabel}
+      <div
+        className="space-y-3"
+        style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+      >
+        <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
+          <span className="font-semibold" style={{ color: "#214B36" }}>{t("home.tomorrow")}</span>
+          <span>— {dateLabel}</span>
         </div>
 
         {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
+          <p className="text-[15px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
         ) : (
-          <div className="flex justify-center gap-3 py-2">
+          <div className="grid grid-cols-2 gap-3 py-1">
             {tasks.map((task, idx) => {
               const Icon = task.icon;
               return (
                 <div
                   key={idx}
-                  className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
+                  className="flex flex-col items-center gap-2 py-2"
                   data-testid={task.testId}
                 >
-                  <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-7 h-7 ${task.color}`} />
+                  <div
+                    className="flex items-center justify-center"
+                    style={{ width: 60, height: 60, borderRadius: 20, background: task.bgColor, border: "1px solid #DDE8DD" }}
+                  >
+                    <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
-                  <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                  <p className="text-[13px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
                 </div>
               );
             })}
@@ -514,43 +521,50 @@ export default function Home() {
     const tasks: { icon: any; text: string; testId: string; color: string; bgColor: string }[] = [];
     if (dayData.walkScheduled) {
       if (dayData.standingTap) {
-        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
+        tasks.push({ icon: Timer, text: t("home.standing_tap_task"), testId: "text-plan-standing-tap", color: "#5F9D7A", bgColor: "#EEF5EF" });
       } else {
         const isStretch = isDayStretch(dayData, profile);
         const dur = isStretch ? 2 : dayData.walkDuration;
-        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
+        tasks.push({ icon: isStretch ? Activity : Footprints, text: isStretch ? t("home.stretch_task", { duration: dur }) : t("home.walk_task", { duration: dur }), testId: "text-plan-walk", color: "#5F9D7A", bgColor: "#EEF5EF" });
       }
     }
     if (dayData.lateDinnerScheduled) {
-      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "text-amber-500", bgColor: "bg-white shadow-sm border border-border/50" });
+      tasks.push({ icon: UtensilsCrossed, text: t("home.late_dinner_task"), testId: "text-plan-late-dinner", color: "#5F9D7A", bgColor: "#EEF5EF" });
     }
     if (calendarPlan?.dietTip) {
       const showDietTask = calendarPlan?.dietStruggle !== "eat_out" || dayData.eatOutScheduled === true;
-      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "text-primary", bgColor: "bg-white shadow-sm border border-border/50" });
+      if (showDietTask) tasks.push({ icon: getStruggleIcon(calendarPlan?.dietStruggle), text: `"${translateDietTip(calendarPlan.dietTip, t)}"`, testId: "text-plan-diet", color: "#5F9D7A", bgColor: "#EEF5EF" });
     }
 
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-plan-date">
-          <span className="font-semibold text-foreground">{label}</span> — {dateLabel}
+      <div
+        className="space-y-3"
+        style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+      >
+        <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
+          <span className="font-semibold" style={{ color: "#214B36" }}>{label}</span>
+          <span>— {dateLabel}</span>
         </div>
 
         {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("home.rest_day")}</p>
+          <p className="text-[15px]" style={{ color: "#6E8477" }}>{t("home.rest_day")}</p>
         ) : (
-          <div className="flex justify-center gap-3 py-2">
+          <div className="grid grid-cols-2 gap-3 py-1">
             {tasks.map((task, idx) => {
               const Icon = task.icon;
               return (
                 <div
                   key={idx}
-                  className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
+                  className="flex flex-col items-center gap-2 py-2"
                   data-testid={task.testId}
                 >
-                  <div className={`w-16 h-16 rounded-xl ${task.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-7 h-7 ${task.color}`} />
+                  <div
+                    className="flex items-center justify-center"
+                    style={{ width: 60, height: 60, borderRadius: 20, background: task.bgColor, border: "1px solid #DDE8DD" }}
+                  >
+                    <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
-                  <p className="text-xs text-center text-muted-foreground leading-tight">{task.text}</p>
+                  <p className="text-[13px] text-center leading-tight" style={{ color: "#214B36" }}>{task.text}</p>
                 </div>
               );
             })}
@@ -1343,17 +1357,51 @@ export default function Home() {
   return (
     <>
     <motion.div
-      className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4"
+      className="home-page-v2 max-w-sm mx-auto px-6 pt-7 pb-28 space-y-5"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
     >
+      <style>{`
+        .home-page-v2 { background: #F6F2EC; min-height: 100vh; color: #214B36; }
+        .home-page-v2 h1 { letter-spacing: -0.01em; }
+        .home-page-v2 .text-muted-foreground { color: #6E8477; }
+        /* Cards */
+        .home-page-v2 .shadcn-card {
+          background-color: #FCFBF8 !important;
+          border: 1.5px solid #C9D8CC !important;
+          border-radius: 28px !important;
+          box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06) !important;
+        }
+        .home-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
+        /* Soft amber alert variant for catchup banners — keep the warning tone but softer */
+        .home-page-v2 .shadcn-card.is-alert {
+          background-color: #FBF4E4 !important;
+          border-color: #E8D9B5 !important;
+        }
+        /* Soft green tint for all-set / report-ready emphasis cards */
+        .home-page-v2 .shadcn-card.is-emphasis {
+          background-color: #EEF5EF !important;
+          border-color: #C9D8CC !important;
+        }
+        /* Pill / button radius */
+        .home-page-v2 button { border-radius: 22px; }
+        .home-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
+        /* Calendar day chips: soft green-gray fills */
+        .home-page-v2 .bg-muted { background-color: #EAEDE6 !important; }
+        .home-page-v2 .bg-muted\\/50 { background-color: #F1F4ED !important; }
+        .home-page-v2 .bg-muted\\/30 { background-color: #F5F2EC !important; }
+        .home-page-v2 .bg-green-100 { background-color: #DDEAD9 !important; color: #2F6B43 !important; }
+        .home-page-v2 .text-green-600 { color: #2F6B43 !important; }
+        /* Tomorrow icon squares (set inline below) win via rounded-[20px] */
+      `}</style>
+
       <div className="flex items-center gap-2" data-testid="text-week-header">
-        <Target className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-bold">{formatWeekday()}</h1>
+        <Target className="w-6 h-6" style={{ color: "#5F9D7A" }} />
+        <h1 className="text-[22px] font-semibold" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
       </div>
 
-      <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
+      <p className="text-[21px] font-semibold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
         {profile?.name
           ? t("home.greeting_with_name", { name: profile.name })
           : t("home.greeting_no_name")}
@@ -1361,13 +1409,17 @@ export default function Home() {
 
       {profile?.goal && (
         <div className="flex items-center gap-3">
-          <img src={giftImg} alt="" className="w-24 h-24 rounded-lg shrink-0" />
-          <div className="flex-1 min-w-0 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
-            <p className="text-sm text-primary/80">
+          <img src={giftImg} alt="" className="w-16 h-16 rounded-2xl shrink-0" />
+          <div
+            className="flex-1 min-w-0"
+            style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 20, padding: "16px 18px" }}
+            data-testid="text-goal-reminder"
+          >
+            <p className="text-[15px] leading-snug" style={{ color: "#214B36" }}>
               {(() => {
                 const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
                 const parts = full.split("{{GOAL}}");
-                return <>{parts[0]}<strong>{profile.goal}</strong>{parts[1]}</>;
+                return <>{parts[0]}<strong style={{ color: "#214B36" }}>{profile.goal}</strong>{parts[1]}</>;
               })()}
             </p>
           </div>
@@ -1375,7 +1427,7 @@ export default function Home() {
       )}
 
       {isCatchUp && !sundayCheckInDone && !recorded && (
-        <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">
+        <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
@@ -1391,7 +1443,7 @@ export default function Home() {
       )}
 
       {singleMissedDay && !isCatchUp && (
-        <Card className="border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-missed-day-catchup">
+        <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-missed-day-catchup">
           <CardContent className="pt-4 pb-4 space-y-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600" />
@@ -1541,13 +1593,13 @@ export default function Home() {
         <>
           {!allSetDismissed && (
             <div className={`transition-opacity duration-500 ${allSetFading ? "opacity-0" : "opacity-100"}`}>
-              <Card className="border-primary/30 bg-primary/5" data-testid="card-all-set">
+              <Card className="is-emphasis border-primary/30 bg-primary/5" data-testid="card-all-set">
                 <CardContent className="pt-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <p className="text-sm font-semibold" data-testid="text-all-set">{t("home.all_set")}</p>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-6 h-6" style={{ color: "#5F9D7A" }} />
+                    <p className="text-[18px] font-semibold" style={{ color: "#214B36" }} data-testid="text-all-set">{t("home.all_set")}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">{t("home.all_set_desc")}</p>
+                  <p className="text-[15px] leading-snug" style={{ color: "#3F6B52" }}>{t("home.all_set_desc")}</p>
                 </CardContent>
               </Card>
             </div>
@@ -1562,7 +1614,7 @@ export default function Home() {
       )}
 
       {!nextWeekPlanned && showReviewCard && (
-        <Card className="border-primary/30 bg-primary/5" data-testid="card-weekly-report-ready">
+        <Card className="is-emphasis border-primary/30 bg-primary/5" data-testid="card-weekly-report-ready">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" />
