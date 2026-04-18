@@ -77,7 +77,7 @@ export default function AppIntro() {
   const currentItems = pages[page];
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-8 pb-28 flex flex-col items-center" data-testid="page-app-intro">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-8 pb-28 flex flex-col items-center" data-testid="page-app-intro">
       <div className="w-full min-h-[260px] flex items-start">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
@@ -88,7 +88,8 @@ export default function AppIntro() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="w-full rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-3"
+            className="w-full rounded-[28px] p-5 space-y-3"
+            style={{ backgroundColor: "#fdfbee", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}
           >
             {currentItems.map((item, idx) => {
               const Icon = item.icon;
@@ -98,7 +99,7 @@ export default function AppIntro() {
                     <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
                       <Icon className={`w-5 h-5 ${item.color}`} />
                     </div>
-                    <p className="text-base font-bold text-foreground">{t(item.textKey)}</p>
+                    <p className="text-[21px] font-bold" style={{ color: "#214B36" }}>{t(item.textKey)}</p>
                   </div>
                 );
               }

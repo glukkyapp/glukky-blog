@@ -43,7 +43,7 @@ interface RoadmapData {
 
 function ProfileSkeleton() {
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-skeleton">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-skeleton">
       <Skeleton className="h-8 w-48" />
       <Card>
         <CardHeader>
@@ -424,8 +424,8 @@ export default function ProfilePage() {
   const currentLang = profile?.preferredLanguage || "en";
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-page">
-      <h1 className="text-xl font-bold" data-testid="text-profile-heading">{t("profile.title")}</h1>
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-6" data-testid="profile-page">
+      <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-profile-heading">{t("profile.title")}</h1>
 
       {profile && <NameGoalCard profile={profile} />}
 

@@ -116,7 +116,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(152 73% 17%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
             </svg>
-            <h1 className="text-lg font-bold" data-testid="text-monthly-title">
+            <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-monthly-title">
               {t("monthlyReport.title", { month: monthLabel })}
             </h1>
           </div>
@@ -124,7 +124,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
             {t("monthlyReport.dateRange", { range: formatDateRange(data.dateRange, i18n.language) })}
           </p>
 
-          <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2" data-testid="card-highlights">
+          <div className="rounded-[28px] p-5 space-y-2" style={{ backgroundColor: "#fdfbee", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }} data-testid="card-highlights">
             {data.piggyBankReward ? (
               <p className="text-sm text-muted-foreground" data-testid="text-piggy-reward">
                 {t("monthlyReport.piggyBankGoal", { reward: data.piggyBankReward })}
@@ -361,7 +361,7 @@ export default function MonthlyReportPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="loading-monthly-report">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4" data-testid="loading-monthly-report">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-32 w-full" />
@@ -372,7 +372,7 @@ export default function MonthlyReportPage() {
 
   if (error || !data) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="error-monthly-report">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="error-monthly-report">
         <p className="text-muted-foreground text-center">{t("monthlyReport.loadError")}</p>
       </div>
     );
@@ -380,7 +380,7 @@ export default function MonthlyReportPage() {
 
   if (data.weeksAnalyzed < 4) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="no-data-monthly-report">
+      <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="no-data-monthly-report">
         <p className="text-muted-foreground text-center text-lg">
           {t("monthlyReport.notEnoughWeeks")}
         </p>
@@ -389,7 +389,7 @@ export default function MonthlyReportPage() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="monthly-report-page">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24" data-testid="monthly-report-page">
       <MonthlyReportContent data={data} monthLabel={monthLabel} />
     </div>
   );
