@@ -1364,8 +1364,35 @@ export default function Home() {
     >
       <style>{`
         .home-page-v2 { background: #F6F2EC; min-height: 100vh; color: #214B36; }
+        .home-page-v2 [data-testid="text-week-header"] h1,
+        .home-page-v2 [data-testid="text-greeting"] {
+          font-family: 'Playfair Display', serif !important;
+          font-weight: 700 !important;
+          letter-spacing: -0.02em !important;
+        }
         .home-page-v2 h1 { letter-spacing: -0.01em; }
         .home-page-v2 .text-muted-foreground { color: #6E8477; }
+        /* Goal speech bubble */
+        .home-page-v2 .goal-bubble {
+          position: relative;
+          background: #FCFBF8;
+          border-radius: 20px;
+          padding: 16px 18px;
+          box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06);
+        }
+        .home-page-v2 .goal-bubble::after {
+          content: "";
+          position: absolute;
+          left: 28px;
+          bottom: -9px;
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-top: 10px solid #FCFBF8;
+          filter: drop-shadow(0 2px 1px rgba(44, 72, 56, 0.05));
+        }
+        .home-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
         /* Cards */
         .home-page-v2 .shadcn-card {
           background-color: #FCFBF8 !important;
@@ -1408,11 +1435,10 @@ export default function Home() {
       </p>
 
       {profile?.goal && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 goal-bubble-wrap">
           <img src={giftImg} alt="" className="w-16 h-16 rounded-2xl shrink-0" />
           <div
-            className="flex-1 min-w-0"
-            style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 20, padding: "16px 18px" }}
+            className="flex-1 min-w-0 goal-bubble"
             data-testid="text-goal-reminder"
           >
             <p className="text-[15px] leading-snug" style={{ color: "#214B36" }}>
