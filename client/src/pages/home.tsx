@@ -1429,7 +1429,7 @@ export default function Home() {
         /* Tomorrow icon squares (set inline below) win via rounded-[20px] */
       `}</style>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <div data-testid="text-week-header">
           <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
         </div>
