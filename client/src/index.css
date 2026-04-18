@@ -319,3 +319,68 @@ html.font-small {
 .slide-in-backward {
   animation: slide-in-from-right 0.3s ease-out both;
 }
+
+/* === Glukky shared page design tokens (lifted from Home) === */
+.app-page-v2 { background: #fdfbee; min-height: 100vh; color: #214B36; }
+.app-page-v2 [data-testid="text-greeting"] {
+  font-family: 'Playfair Display', serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+.app-page-v2 h1 { letter-spacing: -0.01em; }
+.app-page-v2 .text-muted-foreground { color: #6E8477; }
+/* Goal speech bubble */
+.app-page-v2 .goal-bubble {
+  position: relative;
+  background: #eef9d7;
+  border-radius: 20px;
+  padding: 16px 18px;
+}
+.app-page-v2 .goal-bubble::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid #eef9d7;
+  filter: drop-shadow(0 2px 1px rgba(44, 72, 56, 0.05));
+}
+.app-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
+/* Cards */
+.app-page-v2 .shadcn-card {
+  background-color: #fdfbee !important;
+  border: 0 !important;
+  border-radius: 28px !important;
+  box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06) !important;
+}
+.app-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
+/* Soft amber alert variant */
+.app-page-v2 .shadcn-card.is-alert {
+  background-color: #FBF4E4 !important;
+  border: 0 !important;
+}
+/* Emphasis card */
+.app-page-v2 .shadcn-card.is-emphasis {
+  background-color: #d8f3ae !important;
+  border: 0 !important;
+}
+/* Calendar card */
+.app-page-v2 .shadcn-card.is-calendar {
+  background-color: #e0f8ac !important;
+  border: 0 !important;
+}
+/* Strip card child borders */
+.app-page-v2 .shadcn-card .border,
+.app-page-v2 .shadcn-card [class*="border-"] { border-color: transparent !important; }
+/* Pill / button radius */
+.app-page-v2 button { border-radius: 22px; }
+.app-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
+/* Day chip / muted overrides */
+.app-page-v2 .bg-muted { background-color: #d0f38f !important; }
+.app-page-v2 .bg-muted\/50 { background-color: #F1F4ED !important; }
+.app-page-v2 .bg-muted\/30 { background-color: #F5F2EC !important; }
+.app-page-v2 .bg-green-100 { background-color: #d0f38f !important; color: #2F6B43 !important; }
+.app-page-v2 .text-green-600 { color: #2F6B43 !important; }

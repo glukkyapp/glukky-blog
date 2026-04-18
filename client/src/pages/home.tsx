@@ -1357,78 +1357,11 @@ export default function Home() {
   return (
     <>
     <motion.div
-      className="home-page-v2 max-w-sm mx-auto px-6 pt-7 pb-28 space-y-5"
+      className="app-page-v2 home-page-v2 max-w-sm mx-auto px-6 pt-7 pb-28 space-y-5"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
     >
-      <style>{`
-        .home-page-v2 { background: #fdfbee; min-height: 100vh; color: #214B36; }
-        .home-page-v2 [data-testid="text-greeting"] {
-          font-family: 'Playfair Display', serif !important;
-          font-weight: 700 !important;
-          letter-spacing: -0.02em !important;
-        }
-        .home-page-v2 h1 { letter-spacing: -0.01em; }
-        .home-page-v2 .text-muted-foreground { color: #6E8477; }
-        /* Goal speech bubble */
-        .home-page-v2 .goal-bubble {
-          position: relative;
-          background: #eef9d7;
-          border-radius: 20px;
-          padding: 16px 18px;
-        }
-        .home-page-v2 .goal-bubble::after {
-          content: "";
-          position: absolute;
-          left: 28px;
-          bottom: -9px;
-          width: 0;
-          height: 0;
-          border-left: 8px solid transparent;
-          border-right: 8px solid transparent;
-          border-top: 10px solid #eef9d7;
-          filter: drop-shadow(0 2px 1px rgba(44, 72, 56, 0.05));
-        }
-        .home-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
-        /* Cards */
-        .home-page-v2 .shadcn-card {
-          background-color: #fdfbee !important;
-          border: 0 !important;
-          border-radius: 28px !important;
-          box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06) !important;
-        }
-        .home-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
-        /* Soft amber alert variant for catchup banners — keep the warning tone but softer */
-        .home-page-v2 .shadcn-card.is-alert {
-          background-color: #FBF4E4 !important;
-          border: 0 !important;
-        }
-        /* Emphasis card (all-set / report-ready) */
-        .home-page-v2 .shadcn-card.is-emphasis {
-          background-color: #d8f3ae !important;
-          border: 0 !important;
-        }
-        /* Calendar card — its own green */
-        .home-page-v2 .shadcn-card.is-calendar {
-          background-color: #e0f8ac !important;
-          border: 0 !important;
-        }
-        /* Calendar day chips — strip outlines */
-        .home-page-v2 .shadcn-card .border,
-        .home-page-v2 .shadcn-card [class*="border-"] { border-color: transparent !important; }
-        /* Pill / button radius */
-        .home-page-v2 button { border-radius: 22px; }
-        .home-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
-        /* Calendar day chips: soft green-gray fills */
-        .home-page-v2 .bg-muted { background-color: #d0f38f !important; }
-        .home-page-v2 .bg-muted\\/50 { background-color: #F1F4ED !important; }
-        .home-page-v2 .bg-muted\\/30 { background-color: #F5F2EC !important; }
-        .home-page-v2 .bg-green-100 { background-color: #d0f38f !important; color: #2F6B43 !important; }
-        .home-page-v2 .text-green-600 { color: #2F6B43 !important; }
-        /* Tomorrow icon squares (set inline below) win via rounded-[20px] */
-      `}</style>
-
       <div className="space-y-0.5">
         <div data-testid="text-week-header">
           <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
