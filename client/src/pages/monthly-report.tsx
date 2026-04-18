@@ -124,7 +124,7 @@ export function MonthlyReportContent({ data, monthLabel }: { data: MonthlyReport
             {t("monthlyReport.dateRange", { range: formatDateRange(data.dateRange, i18n.language) })}
           </p>
 
-          <div className="rounded-[28px] p-5 space-y-2" style={{ backgroundColor: "#fdfbee", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }} data-testid="card-highlights">
+          <div className="rounded-[28px] p-5 space-y-2" style={{ backgroundColor: "#fbfbf3", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }} data-testid="card-highlights">
             {data.piggyBankReward ? (
               <p className="text-sm text-muted-foreground" data-testid="text-piggy-reward">
                 {t("monthlyReport.piggyBankGoal", { reward: data.piggyBankReward })}

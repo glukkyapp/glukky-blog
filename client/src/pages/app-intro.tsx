@@ -89,7 +89,7 @@ export default function AppIntro() {
             exit="exit"
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="w-full rounded-[28px] p-5 space-y-3"
-            style={{ backgroundColor: "#fdfbee", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}
+            style={{ backgroundColor: "#fbfbf3", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}
           >
             {currentItems.map((item, idx) => {
               const Icon = item.icon;
