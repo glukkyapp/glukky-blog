@@ -483,7 +483,7 @@ export default function Home() {
         style={{ background: "#fbfbf3", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
       >
         <div className="flex items-center gap-2 text-[14px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
-          <span className="font-semibold" style={{ color: "#214B36" }}>{t("home.tomorrow")}</span>
+          <span className="font-semibold text-[21px] uppercase" style={{ color: "#214B36" }}>{t("home.tomorrow")}</span>
           <span>— {dateLabel}</span>
         </div>
 
@@ -501,7 +501,7 @@ export default function Home() {
                 >
                   <div
                     className="flex items-center justify-center"
-                    style={{ width: 60, height: 60, borderRadius: 20, background: task.bgColor, border: "1px solid #DDE8DD" }}
+                    style={{ width: 60, height: 60, borderRadius: 20, background: "#ffffff", border: "none" }}
                   >
                     <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
@@ -560,7 +560,7 @@ export default function Home() {
                 >
                   <div
                     className="flex items-center justify-center"
-                    style={{ width: 60, height: 60, borderRadius: 20, background: task.bgColor, border: "1px solid #DDE8DD" }}
+                    style={{ width: 60, height: 60, borderRadius: 20, background: "#ffffff", border: "none" }}
                   >
                     <Icon className="w-7 h-7" style={{ color: task.color }} />
                   </div>
@@ -1422,24 +1422,24 @@ export default function Home() {
         .home-page-v2 button { border-radius: 22px; }
         .home-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
         /* Calendar day chips: soft green-gray fills */
-        .home-page-v2 .bg-muted { background-color: #EAEDE6 !important; }
+        .home-page-v2 .bg-muted { background-color: #d0f38f !important; }
         .home-page-v2 .bg-muted\\/50 { background-color: #F1F4ED !important; }
         .home-page-v2 .bg-muted\\/30 { background-color: #F5F2EC !important; }
-        .home-page-v2 .bg-green-100 { background-color: #DDEAD9 !important; color: #2F6B43 !important; }
+        .home-page-v2 .bg-green-100 { background-color: #d0f38f !important; color: #2F6B43 !important; }
         .home-page-v2 .text-green-600 { color: #2F6B43 !important; }
         /* Tomorrow icon squares (set inline below) win via rounded-[20px] */
       `}</style>
 
-      <div className="flex items-center gap-2" data-testid="text-week-header">
-        <Target className="w-6 h-6" style={{ color: "#5F9D7A" }} />
-        <h1 className="text-[17px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
+      <div className="space-y-1">
+        <div data-testid="text-week-header">
+          <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
+        </div>
+        <p className="text-[33px] font-bold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
+          {profile?.name
+            ? t("home.greeting_with_name", { name: profile.name })
+            : t("home.greeting_no_name")}
+        </p>
       </div>
-
-      <p className="text-[33px] font-bold leading-tight" style={{ color: "#214B36" }} data-testid="text-greeting">
-        {profile?.name
-          ? t("home.greeting_with_name", { name: profile.name })
-          : t("home.greeting_no_name")}
-      </p>
 
       {profile?.goal && (
         <div className="flex items-center gap-3 goal-bubble-wrap">
@@ -1746,7 +1746,7 @@ export default function Home() {
             aria-expanded={calendarExpanded}
             data-testid="button-toggle-calendar"
           >
-            <p className="text-sm font-semibold" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
+            <p className="text-[21px] font-semibold uppercase" data-testid="text-calendar-title">{t("home.weekly_calendar")}</p>
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${calendarExpanded ? "rotate-180" : ""}`} />
           </button>
           <div
