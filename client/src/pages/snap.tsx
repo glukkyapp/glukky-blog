@@ -866,10 +866,21 @@ export default function Snap() {
               {isFocusPanel && focusPanelData ? (
                 <FocusPanelContent data={focusPanelData} />
               ) : (
-                <div className="text-sm leading-relaxed min-h-[64px] text-center flex flex-col gap-3">
-                  {(panels[advicePanel] ?? "").split("\n").map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
+                <div className="text-sm leading-relaxed min-h-[64px] text-left flex flex-col gap-3">
+                  {(panels[advicePanel] ?? "").split("\n").map((line, i) => {
+                    const colonIdx = line.indexOf(": ");
+                    if (colonIdx === -1) {
+                      return <p key={i}>{line}</p>;
+                    }
+                    const heading = line.slice(0, colonIdx + 1);
+                    const body = line.slice(colonIdx + 2);
+                    return (
+                      <div key={i} className="flex flex-col gap-1">
+                        <p className="text-[21px] font-bold leading-snug">{heading}</p>
+                        <p>{body}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
