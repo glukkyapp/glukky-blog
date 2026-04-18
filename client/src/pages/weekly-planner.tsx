@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -548,8 +548,10 @@ export default function WeeklyPlanner() {
     setNegotiationInitialized(true);
   }, [reflection, isStretchMode, isFirstWeek, negotiationInitialized]);
 
+  const wasFirstPlanRef = useRef(false);
   const createPlanMutation = useMutation({
     mutationFn: async () => {
+      wasFirstPlanRef.current = gate?.hasCreatedFirstWeeklyPlan === false;
       const effectiveWalkDays = isEmptyWeekStretch ? stretchDays : walkDays;
       const durationsPayload: Record<string, number> = {};
       for (const d of effectiveWalkDays) {
@@ -580,7 +582,7 @@ export default function WeeklyPlanner() {
         showPaywall();
         return;
       }
-      const wasFirstPlan = gate?.hasCreatedFirstWeeklyPlan === false;
+      const wasFirstPlan = wasFirstPlanRef.current;
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
