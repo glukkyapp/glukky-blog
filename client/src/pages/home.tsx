@@ -480,7 +480,7 @@ export default function Home() {
     return (
       <div
         className="space-y-3"
-        style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+        style={{ background: "#d6f3b1", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
       >
         <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
           <span className="font-semibold" style={{ color: "#214B36" }}>{t("home.tomorrow")}</span>
@@ -539,7 +539,7 @@ export default function Home() {
     return (
       <div
         className="space-y-3"
-        style={{ background: "#FCFBF8", border: "1.5px solid #C9D8CC", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
+        style={{ background: "#d6f3b1", borderRadius: 28, padding: 22, boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
       >
         <div className="flex items-center gap-2 text-[12px] tracking-wider uppercase" style={{ color: "#6E8477" }} data-testid="text-plan-date">
           <span className="font-semibold" style={{ color: "#214B36" }}>{label}</span>
@@ -1363,7 +1363,7 @@ export default function Home() {
       transition={{ duration: 0.2 }}
     >
       <style>{`
-        .home-page-v2 { background: #F6F2EC; min-height: 100vh; color: #214B36; }
+        .home-page-v2 { background: #fdfbee; min-height: 100vh; color: #214B36; }
         .home-page-v2 [data-testid="text-week-header"] h1,
         .home-page-v2 [data-testid="text-greeting"] {
           font-family: 'Playfair Display', serif !important;
@@ -1375,7 +1375,7 @@ export default function Home() {
         /* Goal speech bubble */
         .home-page-v2 .goal-bubble {
           position: relative;
-          background: #FCFBF8;
+          background: #eef9d7;
           border-radius: 20px;
           padding: 16px 18px;
           box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06);
@@ -1389,14 +1389,14 @@ export default function Home() {
           height: 0;
           border-left: 8px solid transparent;
           border-right: 8px solid transparent;
-          border-top: 10px solid #FCFBF8;
+          border-top: 10px solid #eef9d7;
           filter: drop-shadow(0 2px 1px rgba(44, 72, 56, 0.05));
         }
         .home-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
         /* Cards */
         .home-page-v2 .shadcn-card {
-          background-color: #FCFBF8 !important;
-          border: 1.5px solid #C9D8CC !important;
+          background-color: #fdfbee !important;
+          border: 0 !important;
           border-radius: 28px !important;
           box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06) !important;
         }
@@ -1404,13 +1404,16 @@ export default function Home() {
         /* Soft amber alert variant for catchup banners — keep the warning tone but softer */
         .home-page-v2 .shadcn-card.is-alert {
           background-color: #FBF4E4 !important;
-          border-color: #E8D9B5 !important;
+          border: 0 !important;
         }
-        /* Soft green tint for all-set / report-ready emphasis cards */
+        /* Emphasis card (all-set / report-ready / calendar) */
         .home-page-v2 .shadcn-card.is-emphasis {
-          background-color: #EEF5EF !important;
-          border-color: #C9D8CC !important;
+          background-color: #d8f3ae !important;
+          border: 0 !important;
         }
+        /* Calendar day chips — strip outlines */
+        .home-page-v2 .shadcn-card .border,
+        .home-page-v2 .shadcn-card [class*="border-"] { border-color: transparent !important; }
         /* Pill / button radius */
         .home-page-v2 button { border-radius: 22px; }
         .home-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
@@ -1731,7 +1734,7 @@ export default function Home() {
         </Card>
       )}
 
-      {(<Card className="bg-primary/5 border-primary/20">
+      {(<Card className="is-emphasis bg-primary/5 border-primary/20">
         <CardContent className="pt-4">
           <button
             className="flex items-center justify-between w-full"
