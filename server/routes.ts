@@ -80,6 +80,35 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  app.post("/api/admin/wipe-user", async (req, res) => {
+    try {
+      const adminSecret = process.env.ADMIN_WIPE_SECRET;
+      if (!adminSecret) {
+        return res.status(503).json({ message: "Admin wipe not configured" });
+      }
+      const provided = req.header("x-admin-secret");
+      if (provided !== adminSecret) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const schema = z.object({ email: z.string().email() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+      const email = parsed.data.email.toLowerCase();
+      const user = await authStorage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found", email });
+      }
+      const deleted = await storage.deleteUserCompletely(user.id);
+      console.log(`[admin/wipe-user] Wiped ${email} (id=${user.id})`, deleted);
+      res.json({ ok: true, email, userId: user.id, deleted });
+    } catch (error: any) {
+      console.error("Error wiping user:", error);
+      res.status(500).json({ message: error?.message || "Failed to wipe user" });
+    }
+  });
+
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

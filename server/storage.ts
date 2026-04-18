@@ -13,6 +13,7 @@ import {
   type FoodAdviceCache,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
+  users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
@@ -62,6 +63,7 @@ export interface IStorage {
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
   resetUser(userId: string): Promise<void>;
+  deleteUserCompletely(userId: string): Promise<Record<string, number>>;
 
   saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow>;
   getCycleHistory(userId: string): Promise<CycleHistoryRow[]>;
@@ -440,6 +442,50 @@ export class DatabaseStorage implements IStorage {
       hasReachedPaywall: false,
       isPremium: false,
     }).where(eq(userProfiles.userId, userId));
+  }
+
+  async deleteUserCompletely(userId: string): Promise<Record<string, number>> {
+    return await db.transaction(async (tx) => {
+      const counts: Record<string, number> = {};
+
+      const piggy = await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId)).returning({ id: piggyBankEvents.id });
+      counts.piggy_bank_events = piggy.length;
+
+      const monthly = await tx.delete(monthlyReports).where(eq(monthlyReports.userId, userId)).returning({ id: monthlyReports.id });
+      counts.monthly_reports = monthly.length;
+
+      const weekly = await tx.delete(weeklyReports).where(eq(weeklyReports.userId, userId)).returning({ id: weeklyReports.id });
+      counts.weekly_reports = weekly.length;
+
+      const logs = await tx.delete(dailyLogs).where(eq(dailyLogs.userId, userId)).returning({ id: dailyLogs.id });
+      counts.daily_logs = logs.length;
+
+      const cycles = await tx.delete(cycleHistory).where(eq(cycleHistory.userId, userId)).returning({ id: cycleHistory.id });
+      counts.cycle_history = cycles.length;
+
+      const planRows = await tx.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
+      const planIds = planRows.map(p => p.id);
+      if (planIds.length > 0) {
+        const days = await tx.delete(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds)).returning({ id: weeklyPlanDays.id });
+        counts.weekly_plan_days = days.length;
+      } else {
+        counts.weekly_plan_days = 0;
+      }
+
+      const plans = await tx.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId)).returning({ id: weeklyPlans.id });
+      counts.weekly_plans = plans.length;
+
+      const profiles = await tx.delete(userProfiles).where(eq(userProfiles.userId, userId)).returning({ id: userProfiles.id });
+      counts.user_profiles = profiles.length;
+
+      const sess = await tx.delete(sessions).where(sql`${sessions.sess}::text LIKE ${'%' + userId + '%'}`).returning({ sid: sessions.sid });
+      counts.sessions = sess.length;
+
+      const userDel = await tx.delete(users).where(eq(users.id, userId)).returning({ id: users.id });
+      counts.users = userDel.length;
+
+      return counts;
+    });
   }
 
   async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
