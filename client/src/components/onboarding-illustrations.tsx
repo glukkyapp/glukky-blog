@@ -20,7 +20,7 @@ import {
   GlassWater,
 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
-import mealTimeImg from "@assets/Screenshot_2026-04-19_at_10.53.15_1776567215467.png";
+import mealTimeImg from "@assets/generated-image_(1)_1776588384790.png";
 
 const GREEN = "#214B36";
 const LIME = "#d0f38f";

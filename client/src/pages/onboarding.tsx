@@ -322,8 +322,18 @@ export default function Onboarding() {
                 color: selected ? "#7a5a2c" : GREEN_DARK,
               }}
             >
-              <div className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{smallLabel}</div>
-              <div className="text-xl font-bold leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>{bigLabel}</div>
+              <div
+                className="font-bold leading-tight"
+                style={{ fontFamily: "'Playfair Display', serif", fontSize: 16 }}
+              >
+                {smallLabel}
+              </div>
+              <div
+                className="font-bold leading-tight"
+                style={{ fontFamily: "'Playfair Display', serif", fontSize: 22 }}
+              >
+                {bigLabel}
+              </div>
             </div>
             <div className="text-[12px] font-semibold">{caption}</div>
           </button>
@@ -340,7 +350,7 @@ export default function Onboarding() {
                   dinnerTime === "before_9pm",
                   <Sunset size={36} style={{ color: "#e0a458" }} />,
                   "Before",
-                  "8:45 pm",
+                  "9 pm",
                   t("onboarding.q2_before_9pm"),
                   () => setDinnerTime("before_9pm"),
                   "option-before-9pm",
@@ -350,7 +360,7 @@ export default function Onboarding() {
                   dinnerTime === "after_9pm",
                   <Moon size={32} style={{ color: "#5b7a8a" }} />,
                   "After",
-                  "9:15 pm",
+                  "9 pm",
                   t("onboarding.q2_after_9pm"),
                   () => setDinnerTime("after_9pm"),
                   "option-after-9pm",
