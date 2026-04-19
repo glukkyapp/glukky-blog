@@ -366,7 +366,19 @@ export default function Onboarding() {
                   "option-after-9pm",
                 )}
               </div>
-              <div className="relative" style={{ marginTop: -28, pointerEvents: "none" }}>
+              <div
+                className="relative"
+                style={{
+                  marginTop: -64,
+                  marginLeft: -22,
+                  marginRight: -22,
+                  pointerEvents: "none",
+                  overflow: "hidden",
+                  borderBottomLeftRadius: 28,
+                  borderBottomRightRadius: 28,
+                  zIndex: 1,
+                }}
+              >
                 <DinnerTableIllustration />
               </div>
             </div>
