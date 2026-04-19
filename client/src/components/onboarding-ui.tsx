@@ -21,6 +21,7 @@ export function OnboardingCard({
   testId,
   scrollable = false,
   background,
+  minHeight,
 }: {
   visual?: ReactNode;
   title?: ReactNode;
@@ -30,6 +31,7 @@ export function OnboardingCard({
   testId?: string;
   scrollable?: boolean;
   background?: string;
+  minHeight?: string | number;
 }) {
   const isDark = variant === "dark";
   return (
@@ -46,7 +48,7 @@ export function OnboardingCard({
         display: "flex",
         flexDirection: "column",
         gap: 18,
-        minHeight: "min(72vh, 620px)",
+        minHeight: minHeight ?? "min(72vh, 620px)",
       }}
     >
       {visual && (

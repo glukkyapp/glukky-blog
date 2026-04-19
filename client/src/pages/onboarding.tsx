@@ -206,6 +206,7 @@ export default function Onboarding() {
             testId="card-step-name"
             title={t("onboarding.name_title")}
             footer={cardFooter}
+            minHeight="auto"
           >
             <Label htmlFor="user-name" className="sr-only">{t("onboarding.name_placeholder")}</Label>
             <Input
