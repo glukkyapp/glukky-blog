@@ -394,50 +394,44 @@ export default function Onboarding() {
           >
             <div
               style={{
-                position: "relative",
                 marginLeft: -22,
                 marginRight: -22,
                 marginTop: -22,
-                marginBottom: 16,
-                height: 130,
+                marginBottom: 12,
+                height: 160,
                 overflow: "hidden",
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
-                backgroundImage: `url(${sleepBgImg})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
+                background: "#0d2418",
               }}
             >
-              <div
+              <img
+                src={sleepBgImg}
+                alt=""
+                aria-hidden
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: "62%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingLeft: 16,
-                  paddingRight: 16,
+                  display: "block",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center center",
                 }}
-              >
-                <h2
-                  style={{
-                    fontFamily: "'Playfair Display', serif",
-                    fontWeight: 700,
-                    fontSize: 26,
-                    letterSpacing: "-0.02em",
-                    lineHeight: 1.2,
-                    color: "#fff",
-                    textAlign: "center",
-                    textShadow: "0 1px 4px rgba(0,0,0,0.45)",
-                  }}
-                >
-                  {t("onboarding.q3_title")}
-                </h2>
-              </div>
+              />
             </div>
+            <h2
+              className="text-center"
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: 26,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.2,
+                color: "#fff",
+                marginBottom: 4,
+              }}
+            >
+              {t("onboarding.q3_title")}
+            </h2>
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
               image={bedImg}
