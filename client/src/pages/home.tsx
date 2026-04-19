@@ -12,7 +12,7 @@ import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-po
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, ChevronDown, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
-import giftImg from "@assets/cyucyu_a_presentgift._background_color_f5f1e7_--sref_httpss.m__1775313676920.png";
+import giftImg from "@assets/generated-image_(17)_1776599869514.png";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 
@@ -1366,18 +1366,20 @@ export default function Home() {
         <div data-testid="text-week-header">
           <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }}>{formatWeekday()}</h1>
         </div>
-        <p className="text-[50px] font-bold leading-none -mt-2" style={{ color: "#214B36" }} data-testid="text-greeting">
-          {profile?.name
-            ? t("home.greeting_with_name", { name: profile.name })
-            : t("home.greeting_no_name")}
-        </p>
+        <div className="flex items-center justify-between gap-3 -mt-2">
+          <p className="text-[50px] font-bold leading-none flex-1 min-w-0" style={{ color: "#214B36" }} data-testid="text-greeting">
+            {profile?.name
+              ? t("home.greeting_with_name", { name: profile.name })
+              : t("home.greeting_no_name")}
+          </p>
+          <img src={giftImg} alt="" className="w-16 h-16 shrink-0" data-testid="img-gift-greeting" />
+        </div>
       </div>
 
       {profile?.goal && (
-        <div className="flex items-center gap-3 goal-bubble-wrap">
-          <img src={giftImg} alt="" className="w-16 h-16 rounded-2xl shrink-0" />
+        <div className="goal-bubble-wrap">
           <div
-            className="flex-1 min-w-0 goal-bubble"
+            className="min-w-0 goal-bubble"
             data-testid="text-goal-reminder"
           >
             <p className="text-[18px] leading-snug" style={{ color: "#214B36" }}>
