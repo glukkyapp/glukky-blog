@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Clock, Calendar, Database, ChevronLeft, Trash2 } from "lucide-react";
+import { Settings, Clock, Calendar, Database, ChevronLeft, Trash2, Eye } from "lucide-react";
 import { useLocation } from "wouter";
 
 const TIME_OPTIONS = [
@@ -395,6 +395,23 @@ export default function DevPanel() {
               {testNotificationMutation.isPending ? "Sending..." : "Test Daily Check-in"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-emerald-200 dark:border-emerald-900">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-emerald-600" />
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Preview Onboarding</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Walk through every onboarding question for review. Nothing is saved — your profile, plans, and premium status stay untouched.</p>
+          <Button
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => setLocation("/onboarding?preview=1")}
+            data-testid="button-preview-onboarding"
+          >
+            Preview Onboarding
+          </Button>
         </CardContent>
       </Card>
 

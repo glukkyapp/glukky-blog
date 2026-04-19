@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Bed, Moon, Clock, Sunset, Check } from "lucide-react";
+import { Bed, Moon, Clock, Sunset, Check, Eye, X } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import {
@@ -41,6 +41,14 @@ export default function Onboarding() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const isPreview =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("preview") === "1";
+
+  const exitPreview = () => {
+    setLocation("/dev");
+  };
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -79,6 +87,15 @@ export default function Onboarding() {
 
   const handleSubmit = async () => {
     hapticTap("MEDIUM");
+    if (isPreview) {
+      hapticNotify("SUCCESS");
+      toast({
+        title: "Preview only",
+        description: "Nothing was saved.",
+      });
+      setLocation("/dev");
+      return;
+    }
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
     try {
@@ -537,6 +554,33 @@ export default function Onboarding() {
 
   return (
     <div className="app-page-v2 min-h-screen pt-6 pb-8 px-4" data-testid="onboarding-container">
+      {isPreview && (
+        <div
+          className="mx-auto mb-3 flex items-center gap-2 px-3 py-2"
+          data-testid="banner-preview-mode"
+          style={{
+            maxWidth: 380,
+            background: "#fff7d6",
+            border: "1.5px solid #d4a72c",
+            color: "#7a5a14",
+            borderRadius: 12,
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          <Eye size={14} />
+          <span className="flex-1">Preview mode — nothing will be saved</span>
+          <button
+            type="button"
+            onClick={exitPreview}
+            data-testid="button-exit-preview"
+            aria-label="Exit preview"
+            style={{ display: "flex", alignItems: "center" }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       <div className="mx-auto" style={{ maxWidth: 380 }}>
         <Progress
           value={(step / TOTAL_STEPS) * 100}

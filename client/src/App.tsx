@@ -242,6 +242,10 @@ function AuthenticatedApp() {
     enabled: !!(profile as any)?.onboardingComplete,
   });
 
+  const { data: devCheck } = useQuery<{ isDev: boolean }>({
+    queryKey: ["/api/dev/check"],
+  });
+
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallLockApp, setPaywallLockApp] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
@@ -442,6 +446,15 @@ function AuthenticatedApp() {
         </div>
       </div>
     );
+  }
+
+  const isOnboardingPreview =
+    location === "/onboarding" &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("preview") === "1";
+
+  if (isOnboardingPreview && devCheck?.isDev) {
+    return <Onboarding />;
   }
 
   if (!profile || !(profile as any).onboardingComplete) {
