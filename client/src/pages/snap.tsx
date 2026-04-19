@@ -149,9 +149,9 @@ function PointerLine({ position }: { position: "top-left" | "top-right" | "botto
 
   return (
     <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
-      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke="white" strokeWidth="1" fill="none" strokeLinejoin="round" />
-      <circle cx={circleX} cy={circleY} r={r} fill="white" />
-      <circle cx={fieldX} cy={fieldY} r={r} fill="white" />
+      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke="hsl(30 25% 75%)" strokeWidth="1" fill="none" strokeLinejoin="round" />
+      <circle cx={circleX} cy={circleY} r={r} fill="hsl(30 25% 75%)" />
+      <circle cx={fieldX} cy={fieldY} r={r} fill="hsl(30 25% 75%)" />
     </svg>
   );
 }
@@ -604,8 +604,8 @@ export default function Snap() {
           <div className="relative px-1">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-name" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
-                  <UtensilsCrossed className="w-3 h-3" />
+                <Label htmlFor="snap-name" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
+                  <UtensilsCrossed className="w-3 h-3" strokeWidth={2.5} />
                   {t("snap.field_name")}
                 </Label>
                 <textarea
@@ -620,9 +620,9 @@ export default function Snap() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-portion" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
+                <Label htmlFor="snap-portion" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_portion")}
-                  <Scale className="w-3 h-3" />
+                  <Scale className="w-3 h-3" strokeWidth={2.5} />
                 </Label>
                 <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1" data-testid="input-snap-portion">
                   {[
@@ -675,8 +675,8 @@ export default function Snap() {
 
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-sauces" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
-                  <Droplets className="w-3 h-3" />
+                <Label htmlFor="snap-sauces" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
+                  <Droplets className="w-3 h-3" strokeWidth={2.5} />
                   {t("snap.field_sauces")}
                 </Label>
                 {labelResult?.comboSource === "database" && labelResult?.sauceOptions?.length && !sauceManual ? (
@@ -733,9 +733,9 @@ export default function Snap() {
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-extras" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
+                <Label htmlFor="snap-extras" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_extras")}
-                  <Cherry className="w-3 h-3" />
+                  <Cherry className="w-3 h-3" strokeWidth={2.5} />
                 </Label>
                 {labelResult?.comboSource === "database" && labelResult?.toppingOptions?.length && !toppingManual ? (
                   <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-extras">
