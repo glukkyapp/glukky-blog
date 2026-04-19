@@ -21,7 +21,6 @@ import {
 } from "@/components/onboarding-ui";
 import {
   HelloIllustration,
-  WelcomeIllustration,
   PostMealIllustration,
   DinnerTableIllustration,
   SleepIllustration,
@@ -38,6 +37,7 @@ import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
 import bedImg from "@assets/generated-image_(5)_1776592900103.png";
 import sleepBgImg from "@assets/generated-image_(6)_1776594011160.png";
 import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
+import welcomeImg from "@assets/generated-image_(13)_1776599161992.png";
 
 const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
@@ -223,10 +223,32 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-social-proof"
-            visual={<WelcomeIllustration />}
             title={t("onboarding.social_proof_title")}
             footer={cardFooter}
           >
+            <div
+              style={{
+                marginLeft: -22,
+                marginRight: -22,
+                marginTop: -22,
+                marginBottom: 8,
+                overflow: "hidden",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+              }}
+            >
+              <img
+                src={welcomeImg}
+                alt="Six people waving from green phone screens"
+                draggable={false}
+                data-testid="img-welcome"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                }}
+              />
+            </div>
             <p className="text-center text-sm" data-testid="text-social-proof" style={{ color: GREEN_DARK }}>
               {t("onboarding.social_proof_message")}
             </p>
