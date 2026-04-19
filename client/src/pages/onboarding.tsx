@@ -33,6 +33,8 @@ import {
   StruggleIcons,
   HealthIcons,
 } from "@/components/onboarding-illustrations";
+import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
+import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
 
 const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
@@ -430,6 +432,7 @@ export default function Onboarding() {
             />
             <DarkInsetTile
               icon={<Clock size={20} style={{ color: "#cfe9b3" }} />}
+              image={nightShiftImg}
               label={t("onboarding.q3_night_shifts")}
               selected={sleepPattern === "night_shifts"}
               onClick={() => setSleepPattern("night_shifts")}
@@ -437,6 +440,7 @@ export default function Onboarding() {
             />
             <DarkInsetTile
               icon={<Moon size={20} style={{ color: "#cfe9b3" }} />}
+              image={irregularImg}
               label={t("onboarding.q3_irregular")}
               selected={sleepPattern === "irregular"}
               onClick={() => setSleepPattern("irregular")}

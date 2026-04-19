@@ -270,6 +270,7 @@ export function PairedTile({
 
 export function DarkInsetTile({
   icon,
+  image,
   label,
   value,
   selected,
@@ -277,12 +278,14 @@ export function DarkInsetTile({
   testId,
 }: {
   icon: ReactNode;
+  image?: string;
   label: string;
   value?: string;
   selected: boolean;
   onClick: () => void;
   testId?: string;
 }) {
+  const hasImage = Boolean(image);
   return (
     <button
       type="button"
@@ -294,9 +297,17 @@ export function DarkInsetTile({
         background: selected ? LIME : GREEN_DEEP_2,
         color: selected ? GREEN_DARK : "#e8f3df",
         border: `1.5px solid ${selected ? LIME : "rgba(255,255,255,0.06)"}`,
+        position: hasImage ? "relative" : undefined,
+        overflow: hasImage ? "hidden" : undefined,
+        minHeight: hasImage ? 96 : undefined,
       }}
     >
-      <span className="font-semibold text-sm flex-1 text-left">{label}</span>
+      <span
+        className="font-semibold text-sm flex-1 text-left"
+        style={hasImage ? { position: "relative", zIndex: 1, paddingRight: "48%" } : undefined}
+      >
+        {label}
+      </span>
       {value && (
         <span
           className="px-3 py-1 text-sm font-bold flex items-center gap-1.5"
@@ -310,7 +321,25 @@ export function DarkInsetTile({
           {selected && <Check className="w-3.5 h-3.5" />}
         </span>
       )}
-      <span className="shrink-0">{icon}</span>
+      {hasImage ? (
+        <img
+          src={image}
+          alt=""
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: "45%",
+            height: "100%",
+            objectFit: "cover",
+            pointerEvents: "none",
+          }}
+        />
+      ) : (
+        <span className="shrink-0">{icon}</span>
+      )}
     </button>
   );
 }
