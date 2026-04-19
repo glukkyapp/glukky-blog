@@ -28,6 +28,8 @@ import portionsImg from "@assets/generated-image_(12)_1776596420576.png";
 import prediabetesImg from "@assets/generated-image_(14)_1776598029735.png";
 import diabetesImg from "@assets/generated-image_(15)_1776598029736.png";
 import noButHealthImg from "@assets/generated-image_(16)_1776598029736.png";
+import couchImg from "@assets/generated-image_(19)_1776605605132.png";
+import walkImg from "@assets/generated-image_(20)_1776605612073.png";
 
 const GREEN = "#214B36";
 const LIME = "#d0f38f";
@@ -101,33 +103,49 @@ export function WelcomeIllustration() {
 }
 
 export function PostMealIllustration({ choice }: { choice?: string }) {
+  const restSelected = choice === "sit_rest";
+  const walkSelected = choice === "walk_10" || choice === "walk_longer";
   return (
     <div className="w-full grid grid-cols-2 gap-2" style={{ height: 170 }}>
       <div
-        className="flex flex-col items-center justify-end p-2"
+        className="overflow-hidden"
         style={{
-          background: choice === "sit_rest" ? LIME : "#e9f5d4",
+          background: "#c5e8e9",
           borderRadius: 16,
-          border: choice === "sit_rest" ? `2px solid ${GREEN}` : "none",
+          border: restSelected ? `2px solid ${GREEN}` : "2px solid transparent",
         }}
       >
-        <Coffee className="mb-1" style={{ color: GREEN }} size={36} />
-        <div
-          className="w-full"
-          style={{ height: 28, background: GREEN, borderRadius: 8 }}
+        <img
+          src={couchImg}
+          alt="Person resting on a couch after a meal"
+          draggable={false}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
         />
-        <span className="text-[11px] font-semibold mt-1" style={{ color: GREEN }}>Rest</span>
       </div>
       <div
-        className="flex flex-col items-center justify-end p-2"
+        className="overflow-hidden"
         style={{
-          background: (choice === "walk_10" || choice === "walk_longer") ? LIME : "#e9f5d4",
+          background: "#c5e8e9",
           borderRadius: 16,
-          border: (choice === "walk_10" || choice === "walk_longer") ? `2px solid ${GREEN}` : "none",
+          border: walkSelected ? `2px solid ${GREEN}` : "2px solid transparent",
         }}
       >
-        <Footprints className="mb-1" style={{ color: GREEN }} size={36} />
-        <span className="text-[11px] font-semibold" style={{ color: GREEN }}>Walk</span>
+        <img
+          src={walkImg}
+          alt="Person walking outdoors after a meal"
+          draggable={false}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
       </div>
     </div>
   );
