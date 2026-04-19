@@ -271,7 +271,7 @@ export default function Onboarding() {
                 marginLeft: -22,
                 marginRight: -22,
                 marginTop: -22,
-                marginBottom: 8,
+                marginBottom: 21,
                 overflow: "hidden",
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
