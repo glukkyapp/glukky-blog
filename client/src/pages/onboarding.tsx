@@ -488,7 +488,7 @@ export default function Onboarding() {
             testId="card-step-4"
             title={t("onboarding.q4_title")}
             footer={cardFooter}
-            background="#fdfbee"
+            background="#f6f7eb"
           >
             <div
               style={{
