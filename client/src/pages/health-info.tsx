@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import booksBg from "@assets/cyucyu_light_bulb_next_to_a_pile_of_books_indicating_knowledg__1775312483622.png";
-import lightbulbHeadingIcon from "@assets/c565e2f6-a128-46a9-97e4-ab05be6bf8a8-1_1776610920220.png";
+import lightbulbHeadingIcon from "@assets/Untitled_design_(5)_1776612070625.png";
 import imgYogurt from "@assets/cropped_circle_image_(1)_1775372471299.png";
 import imgJuice from "@assets/cropped_circle_image_(5)_1775372471299.png";
 import imgSteam from "@assets/cropped_circle_image_(4)_1775372471300.png";
@@ -256,7 +256,7 @@ export default function HealthInfo() {
         data-testid="hero-health-info"
       >
         <div className="flex items-center gap-3 px-5">
-          <img src={lightbulbHeadingIcon} alt="" className="w-9 h-9 shrink-0" data-testid="img-health-info-heading-icon" />
+          <img src={lightbulbHeadingIcon} alt="" className="w-14 h-14 shrink-0" data-testid="img-health-info-heading-icon" />
           <h1
             className="text-[26px] font-bold uppercase tracking-wide text-left"
             data-testid="text-health-info-heading"

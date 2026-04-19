@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Images, Loader2, RotateCcw, ChevronRight, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
-import cameraHeadingIcon from "@assets/30269976-964d-443b-bc4b-3140d5d4bff5-1_1776610920220.png";
+import cameraHeadingIcon from "@assets/Untitled_design_(8)_1776612365907.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
@@ -502,7 +502,7 @@ export default function Snap() {
   return (
     <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
       <div className="flex items-center gap-3">
-        <img src={cameraHeadingIcon} alt="" className="w-9 h-9 shrink-0" data-testid="img-snap-heading-icon" />
+        <img src={cameraHeadingIcon} alt="" className="w-14 h-14 shrink-0" data-testid="img-snap-heading-icon" />
         <h1
           className="text-[26px] font-bold uppercase tracking-wide text-left"
           data-testid="text-snap-heading"
