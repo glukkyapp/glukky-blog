@@ -204,7 +204,6 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-name"
-            visual={<HelloIllustration />}
             title={t("onboarding.name_title")}
             footer={cardFooter}
           >
