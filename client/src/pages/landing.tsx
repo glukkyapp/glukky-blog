@@ -136,7 +136,8 @@ export default function Landing() {
   if (step === "lang") {
     return (
       <div
-        className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6 bg-background"
+        className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6"
+        style={{ backgroundColor: "#fdfbee" }}
         data-testid="landing-lang-screen"
       >
         <div className="flex flex-col items-center gap-3">
