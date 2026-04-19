@@ -36,6 +36,7 @@ import {
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
 import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
 import bedImg from "@assets/generated-image_(5)_1776592900103.png";
+import sleepBgImg from "@assets/generated-image_(6)_1776594011160.png";
 
 const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
@@ -391,31 +392,51 @@ export default function Onboarding() {
             variant="dark"
             footer={cardFooter}
           >
-            <div className="flex items-center gap-3" style={{ marginBottom: 4 }}>
+            <div
+              style={{
+                position: "relative",
+                marginLeft: -22,
+                marginRight: -22,
+                marginTop: -22,
+                marginBottom: 16,
+                height: 130,
+                overflow: "hidden",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                backgroundImage: `url(${sleepBgImg})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
               <div
-                className="flex items-center justify-center shrink-0"
                 style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 18,
-                  background: "rgba(255,255,255,0.04)",
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: "62%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingLeft: 16,
+                  paddingRight: 16,
                 }}
               >
-                <SleepIllustration />
+                <h2
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontWeight: 700,
+                    fontSize: 26,
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1.2,
+                    color: "#fff",
+                    textAlign: "center",
+                    textShadow: "0 1px 4px rgba(0,0,0,0.45)",
+                  }}
+                >
+                  {t("onboarding.q3_title")}
+                </h2>
               </div>
-              <h2
-                className="flex-1 text-left"
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontWeight: 700,
-                  fontSize: 24,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                  color: "#fff",
-                }}
-              >
-                {t("onboarding.q3_title")}
-              </h2>
             </div>
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
