@@ -86,14 +86,14 @@ textarea,
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
 
-  --fs-xs: 16px;
-  --fs-sm: 20px;
-  --fs-base: 24px;
-  --fs-lg: 28px;
-  --fs-xl: 32px;
-  --fs-2xl: 36px;
-  --fs-3xl: 42px;
-  --fs-4xl: 48px;
+  --fs-xs: 18px;
+  --fs-sm: 24px;
+  --fs-base: 30px;
+  --fs-lg: 36px;
+  --fs-xl: 42px;
+  --fs-2xl: 48px;
+  --fs-3xl: 54px;
+  --fs-4xl: 63px;
   --radius: .5rem;
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.04);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.06);
