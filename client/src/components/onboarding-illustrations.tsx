@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
 import mealTimeImg from "@assets/Untitled_design_(3)_1776590588282.png";
+import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
 
 const GREEN = "#214B36";
 const LIME = "#d0f38f";
@@ -165,50 +166,14 @@ export function SleepIllustration() {
 }
 
 export function EatingOutIllustration() {
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
-  const highlighted = new Set([1, 4]);
   return (
-    <div className="w-full flex flex-col items-center justify-center gap-2" style={{ height: 170 }}>
-      <div
-        className="px-3 py-2"
-        style={{
-          background: "#fff",
-          borderRadius: 14,
-          border: `1.5px solid ${GREEN}`,
-          minWidth: 220,
-        }}
-      >
-        <div
-          className="text-center text-[10px] font-bold uppercase mb-1"
-          style={{ color: GREEN }}
-        >
-          This week
-        </div>
-        <div className="flex items-center justify-between gap-1">
-          {days.map((d, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center justify-center"
-              style={{
-                width: 24,
-                height: 28,
-                borderRadius: 6,
-                background: highlighted.has(i) ? LIME : "transparent",
-                color: GREEN,
-                fontSize: 10,
-                fontWeight: 700,
-                border: highlighted.has(i) ? `1px solid ${GREEN}` : "1px solid rgba(33,75,54,0.15)",
-              }}
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: GREEN }}>
-        <Sparkles size={14} /> pick your usual frequency
-      </div>
-    </div>
+    <img
+      src={eatingOutImg}
+      alt="Illustration of a small storefront with a green awning and paper takeaway bags"
+      draggable={false}
+      className="block w-full h-auto -mx-3 rounded-t-[22px]"
+      style={{ maxWidth: "none", width: "calc(100% + 24px)" }}
+    />
   );
 }
 
