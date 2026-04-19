@@ -226,6 +226,7 @@ export default function Onboarding() {
             testId="card-step-social-proof"
             title={t("onboarding.social_proof_title")}
             footer={cardFooter}
+            background="#f8f9eb"
           >
             <div
               style={{
