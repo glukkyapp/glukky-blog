@@ -304,7 +304,7 @@ export function DarkInsetTile({
     >
       <span
         className="font-semibold text-sm flex-1 text-left"
-        style={hasImage ? { position: "relative", zIndex: 1, paddingRight: "48%" } : undefined}
+        style={hasImage ? { position: "relative", zIndex: 1, paddingRight: 104 } : undefined}
       >
         {label}
       </span>
@@ -331,9 +331,10 @@ export function DarkInsetTile({
             top: 0,
             right: 0,
             bottom: 0,
-            width: "45%",
+            aspectRatio: "1 / 1",
             height: "100%",
-            objectFit: "cover",
+            width: "auto",
+            objectFit: "contain",
             pointerEvents: "none",
           }}
         />
