@@ -30,7 +30,7 @@ import {
   EmailIllustration,
   GoalIllustration,
   TransitionIllustration,
-  StruggleIcons,
+  StruggleImages,
   HealthIcons,
 } from "@/components/onboarding-illustrations";
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
@@ -521,7 +521,8 @@ export default function Onboarding() {
             {struggles.map((item) => (
               <RowOption
                 key={item.value}
-                icon={StruggleIcons[item.value as keyof typeof StruggleIcons]}
+                image={StruggleImages[item.value]}
+                imageAlt={String(item.label)}
                 label={item.label}
                 selected={selectedStruggles.includes(item.value)}
                 onClick={() => toggleStruggle(item.value)}

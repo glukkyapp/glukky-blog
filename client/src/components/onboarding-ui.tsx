@@ -121,42 +121,63 @@ export function PillOption({
 
 export function RowOption({
   icon,
+  image,
+  imageAlt,
   label,
   selected,
   onClick,
   testId,
 }: {
-  icon: ReactNode;
+  icon?: ReactNode;
+  image?: string;
+  imageAlt?: string;
   label: ReactNode;
   selected: boolean;
   onClick: () => void;
   testId?: string;
 }) {
+  const ROW_RADIUS = 18;
+  const THUMB_SIZE = 56;
   return (
     <button
       type="button"
       data-testid={testId}
       onClick={() => { hapticTap("SOFT"); onClick(); }}
-      className="w-full flex items-center gap-3 px-3 py-2.5 transition-all"
+      className={`w-full flex items-center gap-3 pr-3 transition-all overflow-hidden ${image ? "py-0 pl-0" : "py-2.5 pl-3"}`}
       style={{
-        borderRadius: 18,
+        borderRadius: ROW_RADIUS,
         background: selected ? LIME : CARD_LIGHT,
         border: `1.5px solid ${selected ? GREEN_DARK : "rgba(33,75,54,0.15)"}`,
         color: GREEN_DARK,
+        minHeight: image ? THUMB_SIZE : undefined,
       }}
     >
-      <div
-        className="shrink-0 flex items-center justify-center"
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: "#fff",
-          border: "1px solid rgba(33,75,54,0.10)",
-        }}
-      >
-        {icon}
-      </div>
+      {image ? (
+        <img
+          src={image}
+          alt={imageAlt ?? ""}
+          className="shrink-0 block object-cover"
+          style={{
+            width: THUMB_SIZE,
+            height: THUMB_SIZE,
+            borderTopLeftRadius: ROW_RADIUS - 1.5,
+            borderBottomLeftRadius: ROW_RADIUS - 1.5,
+          }}
+        />
+      ) : (
+        <div
+          className="shrink-0 flex items-center justify-center"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "#fff",
+            border: "1px solid rgba(33,75,54,0.10)",
+          }}
+        >
+          {icon}
+        </div>
+      )}
       <span className="flex-1 text-left text-sm font-medium">{label}</span>
       <span
         className="shrink-0 flex items-center justify-center"
