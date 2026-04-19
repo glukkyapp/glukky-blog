@@ -2589,13 +2589,12 @@ export default function WeeklyPlanner() {
 
   const plannerHero = (
     <>
-      <div
-        className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
-        style={{ width: "calc(100% + 2rem)" }}
-        data-testid="hero-planner"
+      <h1
+        className="text-[26px] font-bold uppercase tracking-wide text-left"
+        data-testid="text-planner-heading"
       >
-        <img src={calendarBg} alt="" className="w-full h-auto block" />
-      </div>
+        {t("planner.heading")}
+      </h1>
       <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-planner-subtitle">
         {t("planner.subtitle")}
       </p>

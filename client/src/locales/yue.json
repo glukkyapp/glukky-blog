@@ -214,6 +214,7 @@
     "snacks": "零食"
   },
   "roadmap": {
+    "heading": "進度",
     "title": "每週進度",
     "subtitle": "睇下你每個禮拜進步咗幾多。",
     "walk_card_title": "飯後散步",
@@ -296,6 +297,7 @@
     }
   },
   "planner": {
+    "heading": "計劃",
     "subtitle": "計劃你嘅一週，一步一步嚟。",
     "week_report": "第{{week}}週報告",
     "physical": "體能",
@@ -759,6 +761,7 @@
     }
   },
   "snap": {
+    "heading": "食物快拍",
     "title": "食物快拍",
     "subtitle": "影低你食緊啲咩，獲得度身訂造飲食建議！",
     "take_photo": "影相 / 上傳",
@@ -812,6 +815,7 @@
     "s3_body": "根據你每週嘅狀況，Glukky 會貼心調整你嘅計劃。"
   },
   "health_info": {
+    "heading": "健康資訊",
     "title": "健康資訊",
     "subtitle": "唔記得飲食貼士都唔使擔心——你隨時可以返嚟睇返。",
     "diet_advice_heading": "飲食建議",

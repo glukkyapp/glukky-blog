@@ -254,7 +254,12 @@ export default function HealthInfo() {
         className="relative w-full overflow-hidden mb-[-5px] rounded-b-3xl"
         data-testid="hero-health-info"
       >
-        <img src={booksBg} alt="" className="w-full h-auto block" />
+        <h1
+          className="text-[26px] font-bold uppercase tracking-wide text-left px-5"
+          data-testid="text-health-info-heading"
+        >
+          {t("health_info.heading")}
+        </h1>
       </div>
 
       <p

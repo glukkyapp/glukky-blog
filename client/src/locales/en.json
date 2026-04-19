@@ -214,6 +214,7 @@
     "snacks": "Snacking"
   },
   "roadmap": {
+    "heading": "Progress",
     "title": "Your Weekly Progress",
     "subtitle": "See how far you've come each week.",
     "walk_card_title": "Post-meal Walk",
@@ -292,6 +293,7 @@
     }
   },
   "planner": {
+    "heading": "Planner",
     "subtitle": "Plan your week, one small step at a time.",
     "week_report": "Week {{week}} Report",
     "physical": "Physical",
@@ -755,6 +757,7 @@
     }
   },
   "snap": {
+    "heading": "Foodsnap",
     "title": "Food Snap",
     "subtitle": "Take a photo of your meal for personalised diet advice.",
     "take_photo": "Take Photo / Upload",
@@ -808,6 +811,7 @@
     "s3_body": "Based on how you're doing each week, Glukky quietly adjusts your plan."
   },
   "health_info": {
+    "heading": "Health Info",
     "title": "Health Info",
     "subtitle": "Don't worry if you forgot the diet tips — you can always come back here.",
     "diet_advice_heading": "Diet Advice",

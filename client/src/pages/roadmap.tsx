@@ -447,17 +447,12 @@ export default function RoadmapPage() {
   return (
     <ContentFade>
     <div className="app-page-v2 max-w-sm mx-auto px-4 pb-24 space-y-4">
-      <div
-        className="relative w-full overflow-hidden mb-[-5px] -mx-4 rounded-b-3xl"
-        style={{ width: "calc(100% + 2rem)" }}
-        data-testid="hero-roadmap"
+      <h1
+        className="text-[26px] font-bold uppercase tracking-wide text-left"
+        data-testid="text-roadmap-heading"
       >
-        <img
-          src={mountainBg}
-          alt=""
-          className="w-full h-auto block"
-        />
-      </div>
+        {t("roadmap.heading")}
+      </h1>
 
       <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-roadmap-subtitle">
         {t("roadmap.subtitle")}

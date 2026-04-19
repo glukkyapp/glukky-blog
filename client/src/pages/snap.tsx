@@ -500,13 +500,12 @@ export default function Snap() {
 
   return (
     <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full pb-28">
-      <div
-        className="relative w-full overflow-hidden mb-[-5px] -mx-5 rounded-b-3xl"
-        style={{ width: "calc(100% + 2.5rem)" }}
-        data-testid="hero-snap"
+      <h1
+        className="text-[26px] font-bold uppercase tracking-wide text-left"
+        data-testid="text-snap-heading"
       >
-        <img src={phoneBg} alt="" className="w-full h-auto block" />
-      </div>
+        {t("snap.heading")}
+      </h1>
       <p className="text-sm text-muted-foreground text-center">
         {t("snap.subtitle")}
       </p>
