@@ -446,7 +446,7 @@ export default function RoadmapPage() {
 
   return (
     <ContentFade>
-    <div className="app-page-v2 max-w-sm mx-auto px-4 pb-24 space-y-4">
+    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       <h1
         className="text-[26px] font-bold uppercase tracking-wide text-left"
         data-testid="text-roadmap-heading"

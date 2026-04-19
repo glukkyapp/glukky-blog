@@ -249,7 +249,7 @@ export default function HealthInfo() {
   }
 
   return (
-    <div className="app-page-v2 max-w-sm mx-auto pb-32" data-testid="page-health-info">
+    <div className="app-page-v2 max-w-sm mx-auto pt-6 pb-32" data-testid="page-health-info">
       <div
         className="relative w-full overflow-hidden mb-[-5px] rounded-b-3xl"
         data-testid="hero-health-info"

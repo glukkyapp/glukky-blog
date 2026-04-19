@@ -499,7 +499,7 @@ export default function Snap() {
   const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
 
   return (
-    <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 gap-5 max-w-sm mx-auto w-full pb-28">
+    <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
       <h1
         className="text-[26px] font-bold uppercase tracking-wide text-left"
         data-testid="text-snap-heading"
