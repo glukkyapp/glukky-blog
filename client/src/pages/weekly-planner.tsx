@@ -1514,7 +1514,7 @@ export default function WeeklyPlanner() {
                           key={i}
                           onClick={() => { if (!inactive) { setStandingTapDay(isSelected ? null : i); } }}
                           disabled={inactive}
-                          className={`px-1 py-2 rounded-sm text-center text-xs sm:text-sm font-medium leading-tight whitespace-nowrap overflow-hidden transition-colors ${
+                          className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                             inactive
                               ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                               : isSelected
@@ -1594,7 +1594,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && handleToggleWalkDay(i)}
                   disabled={inactive}
-                  className={`px-1 py-2 rounded-sm text-center text-xs sm:text-sm font-medium leading-tight whitespace-nowrap overflow-hidden transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : walkDays.includes(i)
@@ -1741,7 +1741,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && toggleDay(i, eatOutDays, setEatOutDays)}
                   disabled={inactive}
-                  className={`px-1 py-2 rounded-sm text-center text-xs sm:text-sm font-medium leading-tight whitespace-nowrap overflow-hidden transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : eatOutDays.includes(i)
@@ -1830,7 +1830,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && toggleDay(i, lateDinnerDays, setLateDinnerDays)}
                   disabled={inactive}
-                  className={`px-1 py-2 rounded-sm text-center text-xs sm:text-sm font-medium leading-tight whitespace-nowrap overflow-hidden transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : lateDinnerDays.includes(i)

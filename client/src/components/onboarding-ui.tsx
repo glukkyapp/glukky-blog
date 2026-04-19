@@ -4,7 +4,7 @@ import { hapticTap } from "@/lib/haptics";
 
 const GREEN_DARK = "#214B36";
 const GREEN_DEEP = "#1f4a35";
-const GREEN_DEEP_2 = "#295e4e";
+const GREEN_DEEP_2 = "#163a28";
 const LIME = "#d0f38f";
 const LIME_SOFT = "#eef9d7";
 const CARD_LIGHT = "#fbfbf3";
