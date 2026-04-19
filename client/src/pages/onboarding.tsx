@@ -295,7 +295,6 @@ export default function Onboarding() {
           icon: React.ReactNode,
           smallLabel: string,
           bigLabel: string,
-          caption: string,
           onClick: () => void,
           testId: string,
         ) => (
@@ -303,11 +302,15 @@ export default function Onboarding() {
             type="button"
             onClick={() => { hapticTap("SOFT"); onClick(); }}
             data-testid={testId}
-            className="flex-1 flex flex-col items-center gap-3 py-3 px-2 transition-all"
+            className="flex-1 flex flex-col items-center gap-3 transition-all"
             style={{
               background: selected ? "#efe6d4" : "transparent",
               borderRadius: 16,
               color: selected ? "#7a5a2c" : GREEN_DARK,
+              paddingTop: 12,
+              paddingBottom: 220,
+              paddingLeft: 8,
+              paddingRight: 8,
             }}
           >
             <div style={{ height: 40, display: "flex", alignItems: "center" }}>
@@ -335,7 +338,6 @@ export default function Onboarding() {
                 {bigLabel}
               </div>
             </div>
-            <div className="text-[12px] font-semibold">{caption}</div>
           </button>
         );
         return (
@@ -351,7 +353,6 @@ export default function Onboarding() {
                   <Sunset size={36} style={{ color: "#e0a458" }} />,
                   "Before",
                   "9 pm",
-                  t("onboarding.q2_before_9pm"),
                   () => setDinnerTime("before_9pm"),
                   "option-before-9pm",
                 )}
@@ -361,22 +362,17 @@ export default function Onboarding() {
                   <Moon size={32} style={{ color: "#5b7a8a" }} />,
                   "After",
                   "9 pm",
-                  t("onboarding.q2_after_9pm"),
                   () => setDinnerTime("after_9pm"),
                   "option-after-9pm",
                 )}
               </div>
               <div
-                className="relative"
                 style={{
-                  marginTop: -64,
-                  marginLeft: -22,
-                  marginRight: -22,
+                  position: "absolute",
+                  left: -22,
+                  right: -22,
+                  bottom: 0,
                   pointerEvents: "none",
-                  overflow: "hidden",
-                  borderBottomLeftRadius: 28,
-                  borderBottomRightRadius: 28,
-                  zIndex: 1,
                 }}
               >
                 <DinnerTableIllustration />
