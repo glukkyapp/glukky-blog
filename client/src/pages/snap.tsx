@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Images, Loader2, RotateCcw, ChevronRight, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
-import cameraHeadingIcon from "@assets/Untitled_design_(8)_1776612365907.png";
+import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";

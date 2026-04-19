@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
-import roadmapHeadingIcon from "@assets/Untitled_design_(4)_1776611995880.png";
+import roadmapHeadingIcon from "@assets/10ddeb7f-376b-4b2f-9a96-fbab94feff1a_removalai_preview_1776612805643.png";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";

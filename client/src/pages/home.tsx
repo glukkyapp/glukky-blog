@@ -12,7 +12,7 @@ import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-po
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, ChevronDown, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, type UserProfile } from "@shared/schema";
-import giftImg from "@assets/Untitled_design_(7)_1776612263059.png";
+import giftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_preview_1776612834467.png";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 

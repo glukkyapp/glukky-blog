@@ -30,7 +30,7 @@ function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => strin
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { motion, AnimatePresence } from "framer-motion";
 import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_progress_arrow_in__1775311745838.png";
-import calendarHeadingIcon from "@assets/Untitled_design_(6)_1776612166967.png";
+import calendarHeadingIcon from "@assets/938a212f-9f09-4432-b49a-cf6f61738040_removalai_preview_1776612699943.png";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";

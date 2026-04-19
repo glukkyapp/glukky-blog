@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import booksBg from "@assets/cyucyu_light_bulb_next_to_a_pile_of_books_indicating_knowledg__1775312483622.png";
-import lightbulbHeadingIcon from "@assets/Untitled_design_(5)_1776612070625.png";
+import lightbulbHeadingIcon from "@assets/8bfac294-0484-4fd9-a8c1-6746d370b307_removalai_preview_1776612765809.png";
 import imgYogurt from "@assets/cropped_circle_image_(1)_1775372471299.png";
 import imgJuice from "@assets/cropped_circle_image_(5)_1775372471299.png";
 import imgSteam from "@assets/cropped_circle_image_(4)_1775372471300.png";
