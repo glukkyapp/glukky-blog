@@ -20,6 +20,7 @@ import {
   awardStruggleGraduationCoin,
 } from "./achievements";
 import { canUseFeature, getGateStatus } from "./gate";
+import { ensureCompPremium } from "./comp-emails";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
@@ -146,6 +147,8 @@ export async function registerRoutes(
         profile = await storage.createProfile({ userId, ...profileData });
       }
 
+      profile = await ensureCompPremium(userId, profile);
+
       res.json(profile);
     } catch (error: any) {
       console.error("Error creating profile:", error);
@@ -156,8 +159,9 @@ export async function registerRoutes(
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
+      let profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+      profile = await ensureCompPremium(userId, profile);
       res.json(profile);
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -2781,7 +2785,9 @@ No explanation, just JSON.`,
   app.get("/api/gate-status", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
+      let profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      profile = await ensureCompPremium(userId, profile);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
       res.json(getGateStatus(profile));
     } catch (error: any) {
