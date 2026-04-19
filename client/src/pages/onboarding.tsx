@@ -499,10 +499,8 @@ export default function Onboarding() {
                 height: "auto",
                 marginLeft: -22,
                 marginRight: -22,
-                marginTop: -22,
-                marginBottom: 4,
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
+                marginTop: 0,
+                marginBottom: 8,
               }}
             />
             <div className="grid grid-cols-2 gap-2">
