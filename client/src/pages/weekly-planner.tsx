@@ -30,6 +30,7 @@ function translateDietTipDesc(tip: string, t: (key: string, opts?: any) => strin
 import { MonthlyReportContent, type MonthlyReportData } from "./monthly-report";
 import { motion, AnimatePresence } from "framer-motion";
 import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_progress_arrow_in__1775311745838.png";
+import calendarHeadingIcon from "@assets/4fbca9bb-56f1-442e-b68f-e9d35979791f-1_1776610920220.png";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
@@ -2589,12 +2590,15 @@ export default function WeeklyPlanner() {
 
   const plannerHero = (
     <>
-      <h1
-        className="text-[26px] font-bold uppercase tracking-wide text-left"
-        data-testid="text-planner-heading"
-      >
-        {t("planner.heading")}
-      </h1>
+      <div className="flex items-center gap-3">
+        <img src={calendarHeadingIcon} alt="" className="w-9 h-9 shrink-0" data-testid="img-planner-heading-icon" />
+        <h1
+          className="text-[26px] font-bold uppercase tracking-wide text-left"
+          data-testid="text-planner-heading"
+        >
+          {t("planner.heading")}
+        </h1>
+      </div>
       <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-planner-subtitle">
         {t("planner.subtitle")}
       </p>

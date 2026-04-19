@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import mountainBg from "@assets/cyucyu_a_stylized_mountain_peak_with_a_path_or_steps_leading___1775312483622.png";
+import roadmapHeadingIcon from "@assets/generated-image_(3)-1_1776611157114.png";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
@@ -447,12 +448,15 @@ export default function RoadmapPage() {
   return (
     <ContentFade>
     <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
-      <h1
-        className="text-[26px] font-bold uppercase tracking-wide text-left"
-        data-testid="text-roadmap-heading"
-      >
-        {t("roadmap.heading")}
-      </h1>
+      <div className="flex items-center gap-3">
+        <img src={roadmapHeadingIcon} alt="" className="w-9 h-9 shrink-0" data-testid="img-roadmap-heading-icon" />
+        <h1
+          className="text-[26px] font-bold uppercase tracking-wide text-left"
+          data-testid="text-roadmap-heading"
+        >
+          {t("roadmap.heading")}
+        </h1>
+      </div>
 
       <p className="text-sm text-muted-foreground text-center px-1" data-testid="text-roadmap-subtitle">
         {t("roadmap.subtitle")}
