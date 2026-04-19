@@ -394,6 +394,7 @@ export default function Onboarding() {
           >
             <div
               style={{
+                position: "relative",
                 marginLeft: -22,
                 marginRight: -22,
                 marginTop: -22,
@@ -417,21 +418,29 @@ export default function Onboarding() {
                   objectPosition: "center center",
                 }}
               />
+              <h2
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "55%",
+                  margin: 0,
+                  fontFamily: "'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: 24,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
+                  color: "#fff",
+                  textAlign: "center",
+                  textShadow:
+                    "0 2px 6px rgba(0,0,0,0.65), 0 0 12px rgba(0,0,0,0.45)",
+                  pointerEvents: "none",
+                }}
+              >
+                {t("onboarding.q3_title")}
+              </h2>
             </div>
-            <h2
-              className="text-center"
-              style={{
-                fontFamily: "'Playfair Display', serif",
-                fontWeight: 700,
-                fontSize: 26,
-                letterSpacing: "-0.02em",
-                lineHeight: 1.2,
-                color: "#fff",
-                marginBottom: 4,
-              }}
-            >
-              {t("onboarding.q3_title")}
-            </h2>
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
               image={bedImg}
