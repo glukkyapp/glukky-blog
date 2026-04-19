@@ -1,21 +1,44 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Sparkles } from "lucide-react";
+import { Bed, Moon, Clock } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
+import {
+  OnboardingCard,
+  PillOption,
+  RowOption,
+  IconTileOption,
+  PairedTile,
+  DarkInsetTile,
+} from "@/components/onboarding-ui";
+import {
+  HelloIllustration,
+  WelcomeIllustration,
+  PostMealIllustration,
+  DinnerIllustration,
+  SleepIllustration,
+  EatingOutIllustration,
+  StrugglesIllustration,
+  HealthIllustration,
+  ReferralIllustration,
+  EmailIllustration,
+  GoalIllustration,
+  TransitionIllustration,
+  StruggleIcons,
+  HealthIcons,
+} from "@/components/onboarding-illustrations";
 
 const TOTAL_STEPS = 12;
+const GREEN_DARK = "#214B36";
 
 export default function Onboarding() {
   const { t } = useTranslation();
@@ -61,7 +84,6 @@ export default function Onboarding() {
     hapticTap("MEDIUM");
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
-    const struggles = selectedStruggles;
     try {
       await apiRequest("POST", "/api/profile", {
         walksPerWeek,
@@ -69,7 +91,7 @@ export default function Onboarding() {
         dinnerTime,
         sleepPattern,
         eatingOutFrequency,
-        struggles,
+        struggles: selectedStruggles,
         notificationEmail,
         preferredLanguage: i18n.language || "en",
         name: userName.trim() || null,
@@ -93,7 +115,6 @@ export default function Onboarding() {
   };
 
   const toggleStruggle = (value: string) => {
-    hapticTap("SOFT");
     setSelectedStruggles((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
@@ -117,47 +138,38 @@ export default function Onboarding() {
     { value: "snacks", label: t("struggle.snacks") },
   ];
 
-  const renderRadioOption = (
-    value: string,
-    label: string,
-    selected: string,
-    onSelect: (v: string) => void,
-    testId: string
-  ) => (
-    <button
-      key={value}
-      type="button"
-      data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onSelect(value); }}
-      className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
-        selected === value
-          ? "bg-[#d0f38f] border-[#214B36] text-[#214B36] font-medium"
-          : "border-border text-muted-foreground"
-      }`}
+  const ctaButton = step < TOTAL_STEPS ? (
+    <Button
+      onClick={handleNext}
+      disabled={isNextDisabled()}
+      className="btn-pop w-full"
+      style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
+      data-testid="button-next"
     >
-      {label}
-    </button>
+      {t("onboarding.next")}
+    </Button>
+  ) : (
+    <Button
+      onClick={handleSubmit}
+      disabled={submitting}
+      className="btn-pop w-full"
+      style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
+      data-testid="button-get-started"
+    >
+      {submitting ? t("onboarding.saving") : t("onboarding.get_started")}
+    </Button>
   );
 
-  return (
-    <div className="app-page-v2 max-w-sm mx-auto px-4 pt-8 min-h-screen" data-testid="onboarding-container">
-      <Progress
-        value={(step / TOTAL_STEPS) * 100}
-        className="mb-6 h-2"
-        data-testid="progress-bar"
-      />
-      <p className="text-sm text-muted-foreground mb-4" data-testid="text-step-indicator">
-        {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
-      </p>
-
-      <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
-
-      {step === 1 && (
-        <Card data-testid="card-step-name">
-          <CardHeader>
-            <CardTitle className="text-[26px] font-bold" style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-0.02em" }}>{t("onboarding.name_title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
+          <OnboardingCard
+            testId="card-step-name"
+            visual={<HelloIllustration />}
+            title={t("onboarding.name_title")}
+            footer={ctaButton}
+          >
             <Label htmlFor="user-name" className="sr-only">{t("onboarding.name_placeholder")}</Label>
             <Input
               id="user-name"
@@ -166,176 +178,263 @@ export default function Onboarding() {
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               data-testid="input-name"
+              style={{ borderRadius: 999, height: 48, background: "#fff" }}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <div className="flex flex-col items-center text-center py-8" data-testid="card-step-social-proof">
-          <h2 className="text-[26px] font-bold uppercase tracking-wide mb-4" data-testid="text-welcome-title">
-            {t("onboarding.social_proof_title")}
-          </h2>
-          <Sparkles className="w-10 h-10 text-primary mb-4" data-testid="icon-welcome" />
-          <p className="text-muted-foreground text-base" data-testid="text-social-proof">
-            {t("onboarding.social_proof_message")}
-          </p>
-        </div>
-      )}
-
-      {step === 3 && (
-        <Card data-testid="card-step-why">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.why_title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </OnboardingCard>
+        );
+      case 2:
+        return (
+          <OnboardingCard
+            testId="card-step-social-proof"
+            visual={<WelcomeIllustration />}
+            title={t("onboarding.social_proof_title")}
+            footer={ctaButton}
+          >
+            <p className="text-center text-sm" data-testid="text-social-proof" style={{ color: GREEN_DARK }}>
+              {t("onboarding.social_proof_message")}
+            </p>
+          </OnboardingCard>
+        );
+      case 3:
+        return (
+          <OnboardingCard
+            testId="card-step-why"
+            visual={<GoalIllustration />}
+            title={t("onboarding.why_title")}
+            footer={ctaButton}
+          >
             <Label htmlFor="user-goal" className="sr-only">{t("onboarding.why_placeholder")}</Label>
             <Textarea
               id="user-goal"
               placeholder={t("onboarding.why_placeholder")}
               value={userGoal}
               onChange={(e) => setUserGoal(e.target.value)}
-              className="min-h-[80px]"
+              className="min-h-[100px]"
               data-testid="input-goal"
+              style={{ borderRadius: 18, background: "#fff" }}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 4 && (
-        <Card data-testid="card-step-questions-intro">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.questions_intro_title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-base" data-testid="text-questions-intro">
+          </OnboardingCard>
+        );
+      case 4:
+        return (
+          <OnboardingCard
+            testId="card-step-questions-intro"
+            visual={<TransitionIllustration />}
+            title={t("onboarding.questions_intro_title")}
+            footer={ctaButton}
+          >
+            <p className="text-center text-sm" data-testid="text-questions-intro" style={{ color: GREEN_DARK }}>
               {t("onboarding.questions_intro_body")}
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 5 && (
-        <Card data-testid="card-step-1">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q1_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("sit_rest", t("onboarding.q1_sit_rest"), walkOption, setWalkOption, "option-sit-rest")}
-            {renderRadioOption("walk_10", t("onboarding.q1_walk_10"), walkOption, setWalkOption, "option-walk-10")}
-            {renderRadioOption("walk_longer", t("onboarding.q1_walk_longer"), walkOption, setWalkOption, "option-walk-longer")}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 6 && (
-        <Card data-testid="card-step-2">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q2_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("before_9pm", t("onboarding.q2_before_9pm"), dinnerTime, setDinnerTime, "option-before-9pm")}
-            {renderRadioOption("after_9pm", t("onboarding.q2_after_9pm"), dinnerTime, setDinnerTime, "option-after-9pm")}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 7 && (
-        <Card data-testid="card-step-3">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q3_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("regular_10_6", t("onboarding.q3_regular_10_6"), sleepPattern, setSleepPattern, "option-regular-10-6")}
-            {renderRadioOption("other_regular", t("onboarding.q3_other_regular"), sleepPattern, setSleepPattern, "option-other-regular")}
-            {renderRadioOption("night_shifts", t("onboarding.q3_night_shifts"), sleepPattern, setSleepPattern, "option-night-shifts")}
-            {renderRadioOption("irregular", t("onboarding.q3_irregular"), sleepPattern, setSleepPattern, "option-irregular")}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 8 && (
-        <Card data-testid="card-step-4">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q4_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("0", t("onboarding.q4_rarely"), eatingOutFrequency, setEatingOutFrequency, "option-rarely")}
-            {renderRadioOption("1-2", t("onboarding.q4_1_2"), eatingOutFrequency, setEatingOutFrequency, "option-1-2")}
-            {renderRadioOption("3-4", t("onboarding.q4_3_4"), eatingOutFrequency, setEatingOutFrequency, "option-3-4")}
-            {renderRadioOption("5+", t("onboarding.q4_5_plus"), eatingOutFrequency, setEatingOutFrequency, "option-5-plus")}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 9 && (
-        <Card data-testid="card-step-5">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q5_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          </OnboardingCard>
+        );
+      case 5:
+        return (
+          <OnboardingCard
+            testId="card-step-1"
+            visual={<PostMealIllustration choice={walkOption} />}
+            title={t("onboarding.q1_title")}
+            footer={ctaButton}
+          >
+            <PillOption
+              label={t("onboarding.q1_sit_rest")}
+              selected={walkOption === "sit_rest"}
+              onClick={() => setWalkOption("sit_rest")}
+              testId="option-sit-rest"
+            />
+            <PillOption
+              label={t("onboarding.q1_walk_10")}
+              selected={walkOption === "walk_10"}
+              onClick={() => setWalkOption("walk_10")}
+              testId="option-walk-10"
+            />
+            <PillOption
+              label={t("onboarding.q1_walk_longer")}
+              selected={walkOption === "walk_longer"}
+              onClick={() => setWalkOption("walk_longer")}
+              testId="option-walk-longer"
+            />
+          </OnboardingCard>
+        );
+      case 6:
+        return (
+          <OnboardingCard
+            testId="card-step-2"
+            visual={<DinnerIllustration />}
+            title={t("onboarding.q2_title")}
+            footer={ctaButton}
+          >
+            <div className="flex gap-3">
+              <PairedTile
+                topLabel="Before"
+                bigLabel="< 9 pm"
+                bottomLabel={t("onboarding.q2_before_9pm")}
+                selected={dinnerTime === "before_9pm"}
+                onClick={() => setDinnerTime("before_9pm")}
+                testId="option-before-9pm"
+              />
+              <PairedTile
+                topLabel="After"
+                bigLabel="9 pm +"
+                bottomLabel={t("onboarding.q2_after_9pm")}
+                selected={dinnerTime === "after_9pm"}
+                onClick={() => setDinnerTime("after_9pm")}
+                testId="option-after-9pm"
+              />
+            </div>
+          </OnboardingCard>
+        );
+      case 7:
+        return (
+          <OnboardingCard
+            testId="card-step-3"
+            variant="dark"
+            visual={<SleepIllustration />}
+            title={t("onboarding.q3_title")}
+            footer={ctaButton}
+          >
+            <DarkInsetTile
+              icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
+              label={t("onboarding.q3_regular_10_6")}
+              value="10pm"
+              selected={sleepPattern === "regular_10_6"}
+              onClick={() => setSleepPattern("regular_10_6")}
+              testId="option-regular-10-6"
+            />
+            <DarkInsetTile
+              icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
+              label={t("onboarding.q3_other_regular")}
+              selected={sleepPattern === "other_regular"}
+              onClick={() => setSleepPattern("other_regular")}
+              testId="option-other-regular"
+            />
+            <DarkInsetTile
+              icon={<Clock size={20} style={{ color: "#cfe9b3" }} />}
+              label={t("onboarding.q3_night_shifts")}
+              selected={sleepPattern === "night_shifts"}
+              onClick={() => setSleepPattern("night_shifts")}
+              testId="option-night-shifts"
+            />
+            <DarkInsetTile
+              icon={<Moon size={20} style={{ color: "#cfe9b3" }} />}
+              label={t("onboarding.q3_irregular")}
+              selected={sleepPattern === "irregular"}
+              onClick={() => setSleepPattern("irregular")}
+              testId="option-irregular"
+            />
+          </OnboardingCard>
+        );
+      case 8:
+        return (
+          <OnboardingCard
+            testId="card-step-4"
+            visual={<EatingOutIllustration />}
+            title={t("onboarding.q4_title")}
+            footer={ctaButton}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <PillOption label={t("onboarding.q4_rarely")} selected={eatingOutFrequency === "0"} onClick={() => setEatingOutFrequency("0")} testId="option-rarely" />
+              <PillOption label={t("onboarding.q4_1_2")} selected={eatingOutFrequency === "1-2"} onClick={() => setEatingOutFrequency("1-2")} testId="option-1-2" />
+              <PillOption label={t("onboarding.q4_3_4")} selected={eatingOutFrequency === "3-4"} onClick={() => setEatingOutFrequency("3-4")} testId="option-3-4" />
+              <PillOption label={t("onboarding.q4_5_plus")} selected={eatingOutFrequency === "5+"} onClick={() => setEatingOutFrequency("5+")} testId="option-5-plus" />
+            </div>
+          </OnboardingCard>
+        );
+      case 9:
+        return (
+          <OnboardingCard
+            testId="card-step-5"
+            visual={<StrugglesIllustration />}
+            title={t("onboarding.q5_title")}
+            footer={ctaButton}
+          >
             {struggles.map((item) => (
-              <label
+              <RowOption
                 key={item.value}
-                className="flex items-center gap-3 cursor-pointer"
-                data-testid={`checkbox-label-${item.value}`}
-              >
-                <Checkbox
-                  checked={selectedStruggles.includes(item.value)}
-                  onCheckedChange={() => toggleStruggle(item.value)}
-                  data-testid={`checkbox-${item.value}`}
-                />
-                <span className="text-sm">{item.label}</span>
-              </label>
+                icon={StruggleIcons[item.value as keyof typeof StruggleIcons]}
+                label={item.label}
+                selected={selectedStruggles.includes(item.value)}
+                onClick={() => toggleStruggle(item.value)}
+                testId={`checkbox-${item.value}`}
+              />
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 10 && (
-        <Card data-testid="card-step-health">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q6_health_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("diabetes", t("onboarding.q6_diabetes"), healthCondition, setHealthCondition, "option-diabetes")}
-            {renderRadioOption("prediabetes", t("onboarding.q6_prediabetes"), healthCondition, setHealthCondition, "option-prediabetes")}
-            {renderRadioOption("no_but_health", t("onboarding.q6_no_but_health"), healthCondition, setHealthCondition, "option-no-but-health")}
-            {renderRadioOption("prefer_not_tell", t("onboarding.q6_prefer_not_tell"), healthCondition, setHealthCondition, "option-prefer-not-tell")}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 11 && (
-        <Card data-testid="card-step-referral">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q7_referral_title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {renderRadioOption("facebook", t("onboarding.q7_facebook"), referralSource, setReferralSource, "option-facebook")}
-            {renderRadioOption("instagram", t("onboarding.q7_instagram"), referralSource, setReferralSource, "option-instagram")}
-            {renderRadioOption("friends_relatives", t("onboarding.q7_friends_relatives"), referralSource, setReferralSource, "option-friends-relatives")}
-            {renderRadioOption("others", t("onboarding.q7_others"), referralSource, setReferralSource, "option-others")}
+          </OnboardingCard>
+        );
+      case 10:
+        return (
+          <OnboardingCard
+            testId="card-step-health"
+            visual={<HealthIllustration />}
+            title={t("onboarding.q6_health_title")}
+            footer={ctaButton}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <IconTileOption
+                icon={HealthIcons.diabetes}
+                label={t("onboarding.q6_diabetes")}
+                selected={healthCondition === "diabetes"}
+                onClick={() => setHealthCondition("diabetes")}
+                testId="option-diabetes"
+              />
+              <IconTileOption
+                icon={HealthIcons.prediabetes}
+                label={t("onboarding.q6_prediabetes")}
+                selected={healthCondition === "prediabetes"}
+                onClick={() => setHealthCondition("prediabetes")}
+                testId="option-prediabetes"
+              />
+              <IconTileOption
+                icon={HealthIcons.no_but_health}
+                label={t("onboarding.q6_no_but_health")}
+                selected={healthCondition === "no_but_health"}
+                onClick={() => setHealthCondition("no_but_health")}
+                testId="option-no-but-health"
+              />
+              <IconTileOption
+                icon={HealthIcons.prefer_not_tell}
+                label={t("onboarding.q6_prefer_not_tell")}
+                selected={healthCondition === "prefer_not_tell"}
+                onClick={() => setHealthCondition("prefer_not_tell")}
+                testId="option-prefer-not-tell"
+              />
+            </div>
+          </OnboardingCard>
+        );
+      case 11:
+        return (
+          <OnboardingCard
+            testId="card-step-referral"
+            visual={<ReferralIllustration />}
+            title={t("onboarding.q7_referral_title")}
+            footer={ctaButton}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <PillOption label={t("onboarding.q7_facebook")} selected={referralSource === "facebook"} onClick={() => setReferralSource("facebook")} testId="option-facebook" />
+              <PillOption label={t("onboarding.q7_instagram")} selected={referralSource === "instagram"} onClick={() => setReferralSource("instagram")} testId="option-instagram" />
+              <PillOption label={t("onboarding.q7_friends_relatives")} selected={referralSource === "friends_relatives"} onClick={() => setReferralSource("friends_relatives")} testId="option-friends-relatives" />
+              <PillOption label={t("onboarding.q7_others")} selected={referralSource === "others"} onClick={() => setReferralSource("others")} testId="option-others" />
+            </div>
             {referralSource === "others" && (
               <Input
                 type="text"
                 placeholder={t("onboarding.q7_others_placeholder")}
                 value={referralOther}
                 onChange={(e) => setReferralOther(e.target.value)}
-                className="mt-2"
+                className="mt-1"
                 data-testid="input-referral-other"
+                style={{ borderRadius: 999, height: 44, background: "#fff" }}
               />
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 12 && (
-        <Card data-testid="card-step-email">
-          <CardHeader>
-            <CardTitle className="text-lg">{t("onboarding.q8_title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </OnboardingCard>
+        );
+      case 12:
+        return (
+          <OnboardingCard
+            testId="card-step-email"
+            visual={<EmailIllustration />}
+            title={t("onboarding.q8_title")}
+            footer={ctaButton}
+          >
             <Label htmlFor="email" className="sr-only">Email</Label>
             <Input
               id="email"
@@ -344,32 +443,44 @@ export default function Onboarding() {
               value={notificationEmail}
               onChange={(e) => setNotificationEmail(e.target.value)}
               data-testid="input-email"
+              style={{ borderRadius: 999, height: 48, background: "#fff" }}
             />
-          </CardContent>
-        </Card>
-      )}
+          </OnboardingCard>
+        );
+      default:
+        return null;
+    }
+  };
 
+  return (
+    <div className="app-page-v2 min-h-screen pt-6 pb-8 px-4" data-testid="onboarding-container">
+      <div className="mx-auto" style={{ maxWidth: 380 }}>
+        <Progress
+          value={(step / TOTAL_STEPS) * 100}
+          className="mb-3 h-2"
+          data-testid="progress-bar"
+        />
+        <p className="text-xs mb-4 text-center" style={{ color: GREEN_DARK, opacity: 0.7 }} data-testid="text-step-indicator">
+          {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
+        </p>
       </div>
 
-      <div className="flex justify-between gap-3 mt-6">
-        {step > 1 ? (
-          <Button variant="outline" onClick={handleBack} data-testid="button-back">
+      <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
+        {renderStep()}
+      </div>
+
+      {step > 1 && (
+        <div className="mx-auto mt-4 flex justify-center" style={{ maxWidth: 380 }}>
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            data-testid="button-back"
+            style={{ color: GREEN_DARK, borderRadius: 999 }}
+          >
             {t("onboarding.back")}
           </Button>
-        ) : (
-          <div />
-        )}
-
-        {step < TOTAL_STEPS ? (
-          <Button onClick={handleNext} disabled={isNextDisabled()} className="btn-pop" data-testid="button-next">
-            {t("onboarding.next")}
-          </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={submitting} className="btn-pop" data-testid="button-get-started">
-            {submitting ? t("onboarding.saving") : t("onboarding.get_started")}
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
