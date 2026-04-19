@@ -599,7 +599,7 @@ export default function Snap() {
           )}
 
           <div className="relative px-1">
-            <div className="flex flex-col gap-3 mb-3">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="snap-name" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
                   <UtensilsCrossed className="w-3 h-3" />
@@ -617,11 +617,11 @@ export default function Snap() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-portion" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1">
-                  <Scale className="w-3 h-3" />
+                <Label htmlFor="snap-portion" className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-1 justify-end">
                   {t("snap.field_portion")}
+                  <Scale className="w-3 h-3" />
                 </Label>
-                <div className="flex gap-1.5 items-start pt-1" data-testid="input-snap-portion">
+                <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1" data-testid="input-snap-portion">
                   {[
                     { key: "small", label: t("snap.portion_small") },
                     { key: "medium", label: t("snap.portion_medium") },
