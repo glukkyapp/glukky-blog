@@ -20,6 +20,7 @@ export function OnboardingCard({
   variant = "light",
   testId,
   scrollable = false,
+  background,
 }: {
   visual?: ReactNode;
   title?: ReactNode;
@@ -28,6 +29,7 @@ export function OnboardingCard({
   variant?: Variant;
   testId?: string;
   scrollable?: boolean;
+  background?: string;
 }) {
   const isDark = variant === "dark";
   return (
@@ -37,7 +39,7 @@ export function OnboardingCard({
       style={{
         maxWidth: 380,
         borderRadius: 28,
-        background: isDark ? GREEN_DEEP : CARD_LIGHT,
+        background: background ?? (isDark ? GREEN_DEEP : CARD_LIGHT),
         color: isDark ? "#fff" : GREEN_DARK,
         boxShadow: "0 8px 24px rgba(33,75,54,0.10)",
         padding: 22,
