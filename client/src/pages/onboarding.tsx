@@ -593,7 +593,7 @@ export default function Onboarding() {
             title={t("onboarding.q6_health_title")}
             footer={cardFooter}
           >
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 auto-rows-fr">
               <IconTileOption
                 image={HealthIcons.diabetes.image}
                 label={t("onboarding.q6_diabetes")}
