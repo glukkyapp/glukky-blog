@@ -280,9 +280,9 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-questions-intro"
-            visual={<TransitionIllustration />}
             title={t("onboarding.questions_intro_title")}
             footer={cardFooter}
+            minHeight="auto"
           >
             <p className="text-center text-sm" data-testid="text-questions-intro" style={{ color: GREEN_DARK }}>
               {t("onboarding.questions_intro_body")}
