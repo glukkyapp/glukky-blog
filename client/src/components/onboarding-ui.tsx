@@ -199,17 +199,20 @@ export function RowOption({
 
 export function IconTileOption({
   icon,
+  image,
   label,
   selected,
   onClick,
   testId,
 }: {
-  icon: ReactNode;
+  icon?: ReactNode;
+  image?: string;
   label: ReactNode;
   selected: boolean;
   onClick: () => void;
   testId?: string;
 }) {
+  const hasVisual = Boolean(icon || image);
   return (
     <button
       type="button"
@@ -224,17 +227,33 @@ export function IconTileOption({
         minHeight: 110,
       }}
     >
-      <div
-        className="flex items-center justify-center"
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 999,
-          background: "#fff",
-        }}
-      >
-        {icon}
-      </div>
+      {hasVisual && (
+        image ? (
+          <img
+            src={image}
+            alt=""
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 999,
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 999,
+              background: "#fff",
+            }}
+          >
+            {icon}
+          </div>
+        )
+      )}
       <span className="text-xs font-semibold text-center leading-tight">{label}</span>
     </button>
   );

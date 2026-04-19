@@ -547,28 +547,27 @@ export default function Onboarding() {
           >
             <div className="grid grid-cols-2 gap-2">
               <IconTileOption
-                icon={HealthIcons.diabetes}
+                image={HealthIcons.diabetes.image}
                 label={t("onboarding.q6_diabetes")}
                 selected={healthCondition === "diabetes"}
                 onClick={() => setHealthCondition("diabetes")}
                 testId="option-diabetes"
               />
               <IconTileOption
-                icon={HealthIcons.prediabetes}
+                image={HealthIcons.prediabetes.image}
                 label={t("onboarding.q6_prediabetes")}
                 selected={healthCondition === "prediabetes"}
                 onClick={() => setHealthCondition("prediabetes")}
                 testId="option-prediabetes"
               />
               <IconTileOption
-                icon={HealthIcons.no_but_health}
+                image={HealthIcons.no_but_health.image}
                 label={t("onboarding.q6_no_but_health")}
                 selected={healthCondition === "no_but_health"}
                 onClick={() => setHealthCondition("no_but_health")}
                 testId="option-no-but-health"
               />
               <IconTileOption
-                icon={HealthIcons.prefer_not_tell}
                 label={t("onboarding.q6_prefer_not_tell")}
                 selected={healthCondition === "prefer_not_tell"}
                 onClick={() => setHealthCondition("prefer_not_tell")}
