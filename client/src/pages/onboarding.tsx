@@ -38,6 +38,7 @@ import bedImg from "@assets/generated-image_(5)_1776592900103.png";
 import sleepBgImg from "@assets/generated-image_(6)_1776594011160.png";
 import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
 import welcomeImg from "@assets/generated-image_(13)_1776599161992.png";
+import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 
 const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
@@ -260,10 +261,34 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-why"
-            visual={<GoalIllustration />}
             title={t("onboarding.why_title")}
             footer={cardFooter}
+            background="#e7f6df"
+            minHeight="auto"
           >
+            <div
+              style={{
+                marginLeft: -22,
+                marginRight: -22,
+                marginTop: -22,
+                marginBottom: 8,
+                overflow: "hidden",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+              }}
+            >
+              <img
+                src={whyImg}
+                alt="Smiling man giving a thumbs up surrounded by family, heart, and mirror illustrations"
+                draggable={false}
+                data-testid="img-why"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                }}
+              />
+            </div>
             <Label htmlFor="user-goal" className="sr-only">{t("onboarding.why_placeholder")}</Label>
             <Textarea
               id="user-goal"
