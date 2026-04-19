@@ -35,6 +35,7 @@ import {
 } from "@/components/onboarding-illustrations";
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
 import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
+import bedImg from "@assets/generated-image_(5)_1776592900103.png";
 
 const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
@@ -418,6 +419,7 @@ export default function Onboarding() {
             </div>
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
+              image={bedImg}
               label={t("onboarding.q3_regular_10_6")}
               selected={sleepPattern === "regular_10_6"}
               onClick={() => setSleepPattern("regular_10_6")}
@@ -425,6 +427,7 @@ export default function Onboarding() {
             />
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
+              image={bedImg}
               label={t("onboarding.q3_other_regular")}
               selected={sleepPattern === "other_regular"}
               onClick={() => setSleepPattern("other_regular")}
