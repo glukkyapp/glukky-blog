@@ -1514,7 +1514,7 @@ export default function WeeklyPlanner() {
                           key={i}
                           onClick={() => { if (!inactive) { setStandingTapDay(isSelected ? null : i); } }}
                           disabled={inactive}
-                          className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                          className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                             inactive
                               ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                               : isSelected
@@ -1594,7 +1594,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && handleToggleWalkDay(i)}
                   disabled={inactive}
-                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : walkDays.includes(i)
@@ -1741,7 +1741,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && toggleDay(i, eatOutDays, setEatOutDays)}
                   disabled={inactive}
-                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : eatOutDays.includes(i)
@@ -1830,7 +1830,7 @@ export default function WeeklyPlanner() {
                   key={i}
                   onClick={() => !inactive && toggleDay(i, lateDinnerDays, setLateDinnerDays)}
                   disabled={inactive}
-                  className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                  className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                     inactive
                       ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                       : lateDinnerDays.includes(i)
@@ -1909,7 +1909,7 @@ export default function WeeklyPlanner() {
                       key={i}
                       onClick={() => { if (!inactive) { setStandingTapDay(selected ? null : i); } }}
                       disabled={inactive}
-                      className={`p-3 rounded-lg text-center text-sm font-medium transition-colors ${
+                      className={`p-2 rounded-md text-center text-sm font-medium transition-colors ${
                         inactive
                           ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
                           : selected
@@ -2719,24 +2719,6 @@ export default function WeeklyPlanner() {
     <>
     <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
       {plannerHero}
-
-      <p className="text-base font-semibold text-foreground" data-testid="text-greeting">
-        {profile?.name
-          ? t("home.greeting_with_name", { name: profile.name })
-          : t("home.greeting_no_name")}
-      </p>
-
-      {profile?.goal && (
-        <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2" data-testid="text-goal-reminder">
-          <p className="text-sm text-primary/80">
-            {(() => {
-              const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
-              const parts = full.split("{{GOAL}}");
-              return <>{parts[0]}<strong>{profile.goal}</strong>{parts[1]}</>;
-            })()}
-          </p>
-        </div>
-      )}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
