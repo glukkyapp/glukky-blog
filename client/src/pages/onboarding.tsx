@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Bed, Moon, Clock } from "lucide-react";
+import { Bed, Moon, Clock, Sunset, Check } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import {
@@ -17,18 +17,15 @@ import {
   PillOption,
   RowOption,
   IconTileOption,
-  PairedTile,
   DarkInsetTile,
 } from "@/components/onboarding-ui";
 import {
   HelloIllustration,
   WelcomeIllustration,
   PostMealIllustration,
-  DinnerIllustration,
+  DinnerTableIllustration,
   SleepIllustration,
   EatingOutIllustration,
-  StrugglesIllustration,
-  HealthIllustration,
   ReferralIllustration,
   EmailIllustration,
   GoalIllustration,
@@ -138,6 +135,18 @@ export default function Onboarding() {
     { value: "snacks", label: t("struggle.snacks") },
   ];
 
+  const backButton = step > 1 ? (
+    <Button
+      variant="ghost"
+      onClick={handleBack}
+      data-testid="button-back"
+      className="w-full"
+      style={{ color: "inherit", borderRadius: 999, height: 40, opacity: 0.85 }}
+    >
+      {t("onboarding.back")}
+    </Button>
+  ) : null;
+
   const ctaButton = step < TOTAL_STEPS ? (
     <Button
       onClick={handleNext}
@@ -160,6 +169,13 @@ export default function Onboarding() {
     </Button>
   );
 
+  const cardFooter = (
+    <div className="flex flex-col gap-1">
+      {ctaButton}
+      {backButton}
+    </div>
+  );
+
   const renderStep = () => {
     switch (step) {
       case 1:
@@ -168,7 +184,7 @@ export default function Onboarding() {
             testId="card-step-name"
             visual={<HelloIllustration />}
             title={t("onboarding.name_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <Label htmlFor="user-name" className="sr-only">{t("onboarding.name_placeholder")}</Label>
             <Input
@@ -188,7 +204,7 @@ export default function Onboarding() {
             testId="card-step-social-proof"
             visual={<WelcomeIllustration />}
             title={t("onboarding.social_proof_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <p className="text-center text-sm" data-testid="text-social-proof" style={{ color: GREEN_DARK }}>
               {t("onboarding.social_proof_message")}
@@ -201,7 +217,7 @@ export default function Onboarding() {
             testId="card-step-why"
             visual={<GoalIllustration />}
             title={t("onboarding.why_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <Label htmlFor="user-goal" className="sr-only">{t("onboarding.why_placeholder")}</Label>
             <Textarea
@@ -221,7 +237,7 @@ export default function Onboarding() {
             testId="card-step-questions-intro"
             visual={<TransitionIllustration />}
             title={t("onboarding.questions_intro_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <p className="text-center text-sm" data-testid="text-questions-intro" style={{ color: GREEN_DARK }}>
               {t("onboarding.questions_intro_body")}
@@ -234,7 +250,7 @@ export default function Onboarding() {
             testId="card-step-1"
             visual={<PostMealIllustration choice={walkOption} />}
             title={t("onboarding.q1_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <PillOption
               label={t("onboarding.q1_sit_rest")}
@@ -256,47 +272,116 @@ export default function Onboarding() {
             />
           </OnboardingCard>
         );
-      case 6:
+      case 6: {
+        const renderDinnerTile = (
+          selected: boolean,
+          icon: React.ReactNode,
+          smallLabel: string,
+          bigLabel: string,
+          caption: string,
+          onClick: () => void,
+          testId: string,
+        ) => (
+          <button
+            type="button"
+            onClick={() => { hapticTap("SOFT"); onClick(); }}
+            data-testid={testId}
+            className="flex-1 flex flex-col items-center gap-3 py-3 px-2 transition-all"
+            style={{
+              background: selected ? "#efe6d4" : "transparent",
+              borderRadius: 16,
+              color: selected ? "#7a5a2c" : GREEN_DARK,
+            }}
+          >
+            <div style={{ height: 40, display: "flex", alignItems: "center" }}>
+              {selected ? <Check size={32} style={{ color: "#7a5a2c" }} /> : icon}
+            </div>
+            <div
+              className="rounded-xl px-4 py-2 text-center"
+              style={{
+                background: selected ? "rgba(255,255,255,0.6)" : "#fff",
+                border: `1.5px solid ${selected ? "#c9b48a" : GREEN_DARK}`,
+                minWidth: 110,
+                color: selected ? "#7a5a2c" : GREEN_DARK,
+              }}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{smallLabel}</div>
+              <div className="text-xl font-bold leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>{bigLabel}</div>
+            </div>
+            <div className="text-[12px] font-semibold">{caption}</div>
+          </button>
+        );
         return (
           <OnboardingCard
             testId="card-step-2"
-            visual={<DinnerIllustration />}
             title={t("onboarding.q2_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
-            <div className="flex gap-3">
-              <PairedTile
-                topLabel="Before"
-                bigLabel="< 9 pm"
-                bottomLabel={t("onboarding.q2_before_9pm")}
-                selected={dinnerTime === "before_9pm"}
-                onClick={() => setDinnerTime("before_9pm")}
-                testId="option-before-9pm"
-              />
-              <PairedTile
-                topLabel="After"
-                bigLabel="9 pm +"
-                bottomLabel={t("onboarding.q2_after_9pm")}
-                selected={dinnerTime === "after_9pm"}
-                onClick={() => setDinnerTime("after_9pm")}
-                testId="option-after-9pm"
-              />
+            <div className="relative">
+              <div className="flex items-stretch">
+                {renderDinnerTile(
+                  dinnerTime === "before_9pm",
+                  <Sunset size={36} style={{ color: "#e0a458" }} />,
+                  "Before",
+                  "8:45 pm",
+                  t("onboarding.q2_before_9pm"),
+                  () => setDinnerTime("before_9pm"),
+                  "option-before-9pm",
+                )}
+                <div style={{ width: 1, background: "rgba(33,75,54,0.18)", margin: "12px 0" }} />
+                {renderDinnerTile(
+                  dinnerTime === "after_9pm",
+                  <Moon size={32} style={{ color: "#5b7a8a" }} />,
+                  "After",
+                  "9:15 pm",
+                  t("onboarding.q2_after_9pm"),
+                  () => setDinnerTime("after_9pm"),
+                  "option-after-9pm",
+                )}
+              </div>
+              <div className="flex justify-center" style={{ marginTop: -16 }}>
+                <DinnerTableIllustration />
+              </div>
             </div>
           </OnboardingCard>
         );
+      }
       case 7:
         return (
           <OnboardingCard
             testId="card-step-3"
             variant="dark"
-            visual={<SleepIllustration />}
-            title={t("onboarding.q3_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
+            <div className="flex items-center gap-3" style={{ marginBottom: 4 }}>
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 18,
+                  background: "rgba(255,255,255,0.04)",
+                }}
+              >
+                <SleepIllustration />
+              </div>
+              <h2
+                className="flex-1 text-left"
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: 24,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
+                  color: "#fff",
+                }}
+              >
+                {t("onboarding.q3_title")}
+              </h2>
+            </div>
             <DarkInsetTile
               icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
               label={t("onboarding.q3_regular_10_6")}
-              value="10pm"
               selected={sleepPattern === "regular_10_6"}
               onClick={() => setSleepPattern("regular_10_6")}
               testId="option-regular-10-6"
@@ -330,7 +415,7 @@ export default function Onboarding() {
             testId="card-step-4"
             visual={<EatingOutIllustration />}
             title={t("onboarding.q4_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <div className="grid grid-cols-2 gap-2">
               <PillOption label={t("onboarding.q4_rarely")} selected={eatingOutFrequency === "0"} onClick={() => setEatingOutFrequency("0")} testId="option-rarely" />
@@ -344,9 +429,8 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-5"
-            visual={<StrugglesIllustration />}
             title={t("onboarding.q5_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             {struggles.map((item) => (
               <RowOption
@@ -364,9 +448,8 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-health"
-            visual={<HealthIllustration />}
             title={t("onboarding.q6_health_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <div className="grid grid-cols-2 gap-2">
               <IconTileOption
@@ -406,7 +489,7 @@ export default function Onboarding() {
             testId="card-step-referral"
             visual={<ReferralIllustration />}
             title={t("onboarding.q7_referral_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <div className="grid grid-cols-2 gap-2">
               <PillOption label={t("onboarding.q7_facebook")} selected={referralSource === "facebook"} onClick={() => setReferralSource("facebook")} testId="option-facebook" />
@@ -433,7 +516,7 @@ export default function Onboarding() {
             testId="card-step-email"
             visual={<EmailIllustration />}
             title={t("onboarding.q8_title")}
-            footer={ctaButton}
+            footer={cardFooter}
           >
             <Label htmlFor="email" className="sr-only">Email</Label>
             <Input
@@ -468,19 +551,6 @@ export default function Onboarding() {
       <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
         {renderStep()}
       </div>
-
-      {step > 1 && (
-        <div className="mx-auto mt-4 flex justify-center" style={{ maxWidth: 380 }}>
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            data-testid="button-back"
-            style={{ color: GREEN_DARK, borderRadius: 999 }}
-          >
-            {t("onboarding.back")}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
