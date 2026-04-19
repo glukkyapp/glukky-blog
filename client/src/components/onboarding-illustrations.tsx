@@ -18,16 +18,14 @@ import {
   Salad,
   Drumstick,
   GlassWater,
-  Flame,
-  Wine,
 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
+import mealTimeImg from "@assets/Screenshot_2026-04-19_at_10.53.15_1776567215467.png";
 
 const GREEN = "#214B36";
 const LIME = "#d0f38f";
 const LEAF = "#7cc26b";
 const SOFT = "#b8e489";
-const LIME_PALE = "#eef8d6";
 
 export function HelloIllustration() {
   return (
@@ -146,28 +144,12 @@ export function DinnerIllustration() {
 
 export function DinnerTableIllustration() {
   return (
-    <div className="w-full flex flex-col items-center" style={{ height: 110 }}>
-      <div className="flex items-end gap-1.5 mb-1" style={{ marginBottom: -2 }}>
-        <Flame size={14} style={{ color: "#d97757" }} />
-        <Flame size={18} style={{ color: "#d97757" }} />
-        <Flame size={14} style={{ color: "#d97757" }} />
-      </div>
-      <div className="w-full flex items-center justify-center gap-4 mt-1">
-        <Wine size={30} style={{ color: GREEN }} />
-        <div
-          className="rounded-full flex items-center justify-center"
-          style={{ width: 60, height: 60, background: "#fff", border: `2.5px solid ${GREEN}` }}
-        >
-          <div
-            className="rounded-full"
-            style={{ width: 36, height: 36, background: LIME_PALE }}
-          />
-        </div>
-        <Wine size={30} style={{ color: GREEN }} />
-      </div>
-      <div
-        className="w-full"
-        style={{ height: 10, background: GREEN, marginTop: 4, borderRadius: 4 }}
+    <div className="w-full" data-testid="img-meal-time">
+      <img
+        src={mealTimeImg}
+        alt=""
+        className="block w-full h-auto select-none pointer-events-none"
+        draggable={false}
       />
     </div>
   );

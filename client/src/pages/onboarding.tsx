@@ -356,7 +356,7 @@ export default function Onboarding() {
                   "option-after-9pm",
                 )}
               </div>
-              <div className="flex justify-center" style={{ marginTop: -16 }}>
+              <div className="relative" style={{ marginTop: -28, pointerEvents: "none" }}>
                 <DinnerTableIllustration />
               </div>
             </div>
