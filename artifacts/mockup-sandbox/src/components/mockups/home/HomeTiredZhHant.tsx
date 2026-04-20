@@ -124,10 +124,10 @@ export default function HomeTiredZhHant() {
       `}</style>
       <div className="px-6 pt-7 pb-28 space-y-4 h-full overflow-y-auto">
         {/* Header */}
-        <div className="space-y-0.5">
+        <div>
           <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>星期三</h1>
-          <div className="flex items-center justify-between gap-3 -mt-2">
-            <p className="pf text-[50px] font-bold leading-none flex-1 min-w-0" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，Olivia！</p>
+          <div className="flex items-center justify-between gap-3 mt-2">
+            <p className="pf text-[42px] font-bold leading-none flex-1 min-w-0 whitespace-nowrap" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，Olivia！</p>
             <img src={`${import.meta.env.BASE_URL}images/gift-prod.png`} alt="" className="w-16 h-16 shrink-0" />
           </div>
         </div>
@@ -148,21 +148,12 @@ export default function HomeTiredZhHant() {
             <span>— 4月2日（三）</span>
           </div>
 
-          {/* Hydration callout (1.5x) */}
+          {/* Hydration callout */}
           <div className="rounded-lg p-3 flex items-start gap-2 bg-blue-50">
             <Droplets className="w-5 h-5 mt-0.5 shrink-0" style={{ color: "#3B82F6" }} />
-            <div className="flex-1">
-              <p className="text-[20px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
-                明天的步行已減至 5 分鐘，記得多喝水、好好休息！
-              </p>
-              <button className="text-[16px] mt-1 font-medium" style={{ color: "#2563EB" }}>知道了</button>
-            </div>
-          </div>
-
-          {/* All checked-in */}
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: "#EAF7E2" }}>
-            <CheckCircle2 className="w-5 h-5" style={{ color: COLORS.greenDeep }} />
-            <span className="text-[13px] font-medium" style={{ color: COLORS.greenDeep }}>今天的簽到已完成</span>
+            <p className="flex-1 text-[17px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
+              明天的步行已減至 5 分鐘，記得多喝水、好好休息！
+            </p>
           </div>
 
           <div className="space-y-1">

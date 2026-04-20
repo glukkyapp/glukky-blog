@@ -148,21 +148,12 @@ export default function HomeTired() {
             <span>— Wed, 2 Apr</span>
           </div>
 
-          {/* Hydration callout (1.5x) */}
+          {/* Hydration callout */}
           <div className="rounded-lg p-3 flex items-start gap-2 bg-blue-50">
             <Droplets className="w-5 h-5 mt-0.5 shrink-0" style={{ color: "#3B82F6" }} />
-            <div className="flex-1">
-              <p className="text-[20px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
-                We've reduced tomorrow's walk to 5 min. Stay hydrated and rest well!
-              </p>
-              <button className="text-[16px] mt-1 font-medium" style={{ color: "#2563EB" }}>Got it</button>
-            </div>
-          </div>
-
-          {/* All checked-in */}
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: "#EAF7E2" }}>
-            <CheckCircle2 className="w-5 h-5" style={{ color: COLORS.greenDeep }} />
-            <span className="text-[13px] font-medium" style={{ color: COLORS.greenDeep }}>Today's check-in complete</span>
+            <p className="flex-1 text-[17px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
+              We've reduced tomorrow's walk to 5 min. Stay hydrated and rest well!
+            </p>
           </div>
 
           <div className="space-y-1">
