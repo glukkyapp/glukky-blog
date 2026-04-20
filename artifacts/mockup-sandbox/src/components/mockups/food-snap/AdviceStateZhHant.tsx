@@ -52,7 +52,7 @@ export default function AdviceStateZhHant() {
         </button>
 
         <div className="self-center text-[11px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
-          今天剩餘 2 / 6 次建議
+          今天剩餘 2 / 2 次建議
         </div>
 
         <button className="w-full text-[13px] flex items-center justify-center gap-1" style={{ color: COLORS.muted }}>
