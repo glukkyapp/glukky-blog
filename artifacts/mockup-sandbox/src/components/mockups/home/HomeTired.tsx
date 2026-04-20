@@ -66,7 +66,7 @@ export default function HomeTired() {
           </div>
           <div className="flex items-center justify-between gap-3">
             <p className="text-[44px] font-bold leading-none" style={{ color: COLORS.ink }}>Hi, Olivia 👋</p>
-            <img src="/images/gift.png" alt="" className="w-14 h-14 shrink-0" />
+            <img src={`${import.meta.env.BASE_URL}images/gift.png`} alt="" className="w-14 h-14 shrink-0" />
           </div>
         </div>
 

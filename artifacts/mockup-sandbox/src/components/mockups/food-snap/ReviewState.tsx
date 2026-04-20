@@ -84,7 +84,7 @@ export default function ReviewState() {
 
           <div className="relative mx-4 my-1" style={{ overflow: "visible" }}>
             <Pointer pos="tl" /><Pointer pos="tr" /><Pointer pos="bl" /><Pointer pos="br" />
-            <img src="/images/wonton-noodle-soup.png" alt="" className="w-full rounded-2xl object-cover max-h-56" />
+            <img src={`${import.meta.env.BASE_URL}images/wonton-noodle-soup.png`} alt="" className="w-full rounded-2xl object-cover max-h-56" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-3">

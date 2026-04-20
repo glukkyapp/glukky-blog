@@ -63,7 +63,7 @@ export default function DietTipDetail() {
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="pt-6 pb-32 h-full overflow-y-auto">
         <div className="flex items-center gap-3 px-5">
-          <img src="/images/lightbulb-heading.png" alt="" className="w-14 h-14 shrink-0" />
+          <img src={`${import.meta.env.BASE_URL}images/lightbulb-heading.png`} alt="" className="w-14 h-14 shrink-0" />
           <h1 className="text-[24px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>Health Info</h1>
         </div>
 
@@ -74,9 +74,9 @@ export default function DietTipDetail() {
         <div className="px-5">
           <h2 className="text-[18px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>Diet Advice</h2>
           <div className="flex gap-[18px] py-2 pl-1">
-            <Tip src="/images/tip-juice.png" label="Dilute juice 1:1 with water" />
-            <Tip src="/images/tip-yogurt.png" label="Swap dessert for yogurt + berries" />
-            <Tip src="/images/tip-steam.png" label="Steam your food first, then sear briefly" selected />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="Dilute juice 1:1 with water" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="Swap dessert for yogurt + berries" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-steam.png`} label="Steam your food first, then sear briefly" selected />
           </div>
 
           <div className="mt-4 px-1">

@@ -25,10 +25,7 @@ export default function AdviceStateZhHant() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <img src="/images/lightbulb-heading.png" alt="" className="w-12 h-12 shrink-0" />
-          <h1 className="text-[22px] font-bold" style={{ color: COLORS.ink }}>你的飲食建議</h1>
-        </div>
+        <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>飲食建議</p>
 
         <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
           <Section icon="🩸" label="血糖影響">
