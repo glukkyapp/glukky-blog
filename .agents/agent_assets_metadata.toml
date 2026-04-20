@@ -6,6 +6,12 @@ uri = "file://artifacts/mockup-sandbox/public/images/wonton-noodle-soup.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "q5hUwOTbgm34d9WQpbAHR"
+uri = "file://artifacts/mockup-sandbox/public/images/tip-steam.png"
+type = "image"
+title = "steam food tip illustration"
+
 [[outputs]]
 id = "mpNz07bO-Fx7Ki1u0o_bh"
 uri = "file://glukky-source.tar.gz"
