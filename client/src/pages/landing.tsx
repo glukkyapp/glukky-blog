@@ -187,36 +187,41 @@ export default function Landing() {
 
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.72) 100%)" }}
+          style={{ background: "linear-gradient(to bottom, transparent 78%, rgba(0,0,0,0.72) 100%)" }}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-14 flex flex-col gap-5 max-w-sm mx-auto">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-3xl font-bold text-white leading-tight whitespace-pre-line">
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[33dvh] overflow-hidden">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[0.7rem] font-bold text-white leading-tight whitespace-pre-line">
               {slide.headline}
             </h2>
-            <p className="text-base text-white/80 leading-relaxed">
+            <p className="text-[0.5rem] text-white/85 leading-snug">
               {slide.body}
             </p>
           </div>
 
-          <div className="flex justify-center items-center gap-1.5" data-testid="slide-dots">
+          <div className="flex justify-center items-center gap-2" data-testid="slide-dots">
             {slides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
                 data-testid={`slide-dot-${i}`}
-                className={`rounded-full transition-all ${
-                  i === slideIndex ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/40"
-                }`}
-              />
+                aria-label={`Slide ${i + 1}`}
+                className="flex items-center justify-center w-5 h-5 -m-1.5"
+              >
+                <span
+                  className={`block rounded-full transition-all ${
+                    i === slideIndex ? "w-1.5 h-0.5 bg-white" : "w-0.5 h-0.5 bg-white/40"
+                  }`}
+                />
+              </button>
             ))}
           </div>
 
           <div className="flex justify-center">
             <Button
               onClick={handleSlideNext}
-              className="rounded-full px-10 py-3 text-white text-base font-semibold btn-pop"
+              className="rounded-full px-3 py-1 h-auto min-h-0 text-white text-[0.5rem] font-semibold btn-pop"
               style={{ backgroundColor: "#127843", borderColor: "#127843" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
             >
