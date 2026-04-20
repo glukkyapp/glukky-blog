@@ -1,4 +1,4 @@
-import { Footprints, UtensilsCrossed, TrendingUp, Battery, Check, X, CheckCircle2, Home, Camera, CalendarDays, Soup, Activity, Droplets, type LucideIcon } from "lucide-react";
+import { Footprints, UtensilsCrossed, TrendingUp, Battery, Check, X, CheckCircle2, Home, Camera, CalendarDays, Soup, Lightbulb, Droplets, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 const COLORS = {
@@ -54,14 +54,19 @@ function Row({ icon: Icon, label, value, valueColor = COLORS.ink, badge }: { ico
 
 type CalCellState = "done" | "missed" | "scheduled" | "future" | "inactive";
 
+const MUTED_BG = "hsl(240 4.8% 95.9%)";
+const MUTED_BG_SOFT = "hsla(240,4.8%,95.9%,0.5)";
+
 function WalkCell({ state, dur }: { state: CalCellState; dur?: number }) {
-  if (state === "inactive") return <div className="rounded bg-black/5 h-7" />;
+  if (state === "inactive") return <div className="rounded h-7" style={{ backgroundColor: MUTED_BG_SOFT }} />;
   const cls =
-    state === "done" ? "bg-green-100 text-green-600 h-10" :
-    state === "missed" ? "bg-red-50 text-red-400 h-10" :
-    state === "scheduled" ? "bg-black/5 h-10" : "bg-black/5 h-7";
+    state === "done" ? "bg-green-100 h-10" :
+    state === "missed" ? "bg-red-50 h-10" :
+    state === "scheduled" ? "h-10" : "h-7";
+  const bg = state === "scheduled" || state === "future" ? MUTED_BG : undefined;
+  const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : COLORS.muted;
   return (
-    <div className={`rounded flex flex-col items-center justify-center ${cls}`} style={{ color: state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : COLORS.muted }}>
+    <div className={`rounded flex flex-col items-center justify-center ${cls}`} style={{ color, backgroundColor: bg }}>
       {state === "done" ? <Check className="w-3 h-3" /> :
        state === "missed" ? <X className="w-3 h-3" /> :
        state === "scheduled" ? <Footprints className="w-3 h-3" /> : null}
@@ -74,16 +79,16 @@ function WalkCell({ state, dur }: { state: CalCellState; dur?: number }) {
 
 function DinnerCell({ state }: { state: "done" | "missed" | "scheduled" | "tactic" | "none" }) {
   const cls =
-    state === "done" ? "bg-green-100 text-green-600" :
-    state === "missed" ? "bg-red-50 text-red-400" :
-    state === "tactic" ? "bg-amber-50 text-amber-600" :
-    state === "scheduled" ? "bg-black/5" : "bg-black/5";
+    state === "done" ? "bg-green-100" :
+    state === "missed" ? "bg-red-50" :
+    state === "tactic" ? "bg-amber-50" : "";
+  const bg = state === "scheduled" || state === "none" ? MUTED_BG : undefined;
   const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : state === "tactic" ? "#D97706" : COLORS.muted;
   return (
-    <div className={`h-7 rounded flex items-center justify-center ${cls}`} style={{ color }}>
+    <div className={`h-7 rounded flex items-center justify-center ${cls}`} style={{ color, backgroundColor: bg }}>
       {state === "done" ? <Check className="w-3 h-3" /> :
        state === "missed" ? <X className="w-3 h-3" /> :
-       state === "tactic" ? <Soup className="w-3 h-3" /> :
+       state === "tactic" ? <Lightbulb className="w-3 h-3" /> :
        state === "scheduled" ? <Soup className="w-3 h-3" /> : null}
     </div>
   );
@@ -120,7 +125,7 @@ export default function HomeTired() {
       <div className="px-6 pt-7 pb-28 space-y-4 h-full overflow-y-auto">
         {/* Header */}
         <div className="space-y-0.5">
-          <h1 className="pf text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>Wednesday</h1>
+          <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>Wednesday</h1>
           <div className="flex items-center justify-between gap-3 -mt-1">
             <p className="pf text-[50px] font-bold leading-none flex-1 min-w-0" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>Hi, Olivia!</p>
             <img src={`${import.meta.env.BASE_URL}images/gift-prod.png`} alt="" className="w-16 h-16 shrink-0" />
@@ -201,6 +206,7 @@ export default function HomeTired() {
             <div className="flex items-center gap-1"><X className="w-3 h-3" style={{ color: "#F87171" }} /> Missed</div>
             <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
             <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
+            <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" style={{ color: "#D97706" }} /> Tactic set</div>
           </div>
         </div>
       </div>
