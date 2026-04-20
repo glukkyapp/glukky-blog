@@ -1,4 +1,5 @@
-import { Footprints, TrendingUp, Check, Loader, Lock } from "lucide-react";
+import { Footprints, TrendingUp } from "lucide-react";
+import type { ReactNode } from "react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -13,7 +14,7 @@ const COLORS = {
   blue: "#1E5E8A",
 };
 
-function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: string; value: React.ReactNode; valueColor?: string; last?: boolean }) {
+function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: string; value: ReactNode; valueColor?: string; last?: boolean }) {
   return (
     <div
       className="flex items-center justify-between py-2"
@@ -71,22 +72,9 @@ export default function MonthlyDeepDiveZhHant() {
             <p className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>飲食進度</p>
           </div>
           <div className="flex flex-col">
-            <StatRow
-              label="油膩 / 煎炸食物"
-              value={<span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" style={{ color: COLORS.primary }} />已掌握（第3週）</span>}
-              valueColor={COLORS.primary}
-            />
-            <StatRow
-              label="糖分管理"
-              value={<span className="flex items-center gap-1"><Loader className="w-3.5 h-3.5" style={{ color: COLORS.amber }} />進行中</span>}
-              valueColor={COLORS.amber}
-            />
-            <StatRow
-              label="晚餐管理"
-              value={<span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" style={{ color: COLORS.muted }} />即將開始</span>}
-              valueColor={COLORS.muted}
-              last
-            />
+            <StatRow label="油膩 / 煎炸食物" value="✓ 已掌握（第3週）" valueColor={COLORS.primary} />
+            <StatRow label="糖分管理" value="🔄 進行中" valueColor={COLORS.amber} />
+            <StatRow label="晚餐管理" value="🔒 即將開始" valueColor={COLORS.muted} last />
           </div>
 
           <div className="pt-2">

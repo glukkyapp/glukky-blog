@@ -35,10 +35,10 @@ export default function AdviceState() {
             Wonton noodle soup has a high glycaemic load.
           </Section>
           <Section icon="💡" label="Instant Advice" hairline>
-            Order a side of blanched choi sum first and eat it before the noodles. Halve the soy sauce, skip the chili oil's sweet base, and leave a third of the noodles in the bowl. Sip slowly so you finish over 20 minutes — your spike will be much gentler.
+            Order a side of blanched choi sum or vegetables to add fibre, which slows glucose absorption. Finish the veggies first. Use only half the soy sauce packet to reduce sodium intake — high sodium can raise blood pressure, a concern that compounds with blood sugar spikes.
           </Section>
           <Section icon="🔄" label="Next Time" hairline>
-            Ask for a smaller noodle portion or swap thin egg noodles for bean thread vermicelli. Add extra greens (gai lan, choi sum) and request the wontons steamed instead of boiled in a starchy broth.
+            Try reducing the portion of noodles next time. If that's tricky, swap the alkaline noodles for bean thread vermicelli — they have a lower glycaemic index and won't spike your blood sugar as sharply.
           </Section>
         </div>
 

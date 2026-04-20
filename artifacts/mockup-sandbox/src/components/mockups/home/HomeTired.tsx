@@ -1,4 +1,5 @@
-import { Target, Footprints, UtensilsCrossed, TrendingUp, Battery, Check, X, CheckCircle2, Home, Camera, CalendarDays, Lightbulb, User } from "lucide-react";
+import { Target, Footprints, UtensilsCrossed, TrendingUp, Battery, Check, CheckCircle2, Home, Camera, CalendarDays, Lightbulb, User, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -11,7 +12,7 @@ const COLORS = {
 };
 
 function NavBar() {
-  const items: { Icon: any; label: string; active?: boolean }[] = [
+  const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
     { Icon: Home, label: "Home", active: true },
     { Icon: TrendingUp, label: "Roadmap" },
     { Icon: Camera, label: "Snap" },
@@ -42,7 +43,7 @@ function NavBar() {
   );
 }
 
-function Row({ icon: Icon, label, value, valueColor = COLORS.ink, badge }: { icon: any; label: string; value: string; valueColor?: string; badge?: React.ReactNode }) {
+function Row({ icon: Icon, label, value, valueColor = COLORS.ink, badge }: { icon: LucideIcon; label: string; value: string; valueColor?: string; badge?: ReactNode }) {
   return (
     <div className="flex items-center gap-2 py-1">
       <Icon className="w-4 h-4" style={{ color: COLORS.green }} />
@@ -75,7 +76,7 @@ export default function HomeTired() {
           style={{ backgroundColor: COLORS.card, boxShadow: "0 2px 8px rgba(44,72,56,0.06)" }}
         >
           <p className="text-[14px] leading-snug" style={{ color: COLORS.ink }}>
-            Remember your goal — to have <strong>better skin</strong>! Keep it up!
+            Remember your goal — to have better skin! Keep it up!
           </p>
         </div>
 

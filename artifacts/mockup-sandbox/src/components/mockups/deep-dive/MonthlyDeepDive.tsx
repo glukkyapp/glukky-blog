@@ -1,4 +1,5 @@
-import { Footprints, TrendingUp, Check, Loader, Lock } from "lucide-react";
+import { Footprints, TrendingUp } from "lucide-react";
+import type { ReactNode } from "react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -13,7 +14,7 @@ const COLORS = {
   blue: "#1E5E8A",
 };
 
-function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: string; value: React.ReactNode; valueColor?: string; last?: boolean }) {
+function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: string; value: ReactNode; valueColor?: string; last?: boolean }) {
   return (
     <div
       className="flex items-center justify-between py-2"
@@ -75,22 +76,9 @@ export default function MonthlyDeepDive() {
             <p className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>Diet Progress</p>
           </div>
           <div className="flex flex-col">
-            <StatRow
-              label="Oily / Fried Food"
-              value={<span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" style={{ color: COLORS.primary }} />Mastered (Week 3)</span>}
-              valueColor={COLORS.primary}
-            />
-            <StatRow
-              label="Sugary Food &amp; Drink"
-              value={<span className="flex items-center gap-1"><Loader className="w-3.5 h-3.5" style={{ color: COLORS.amber }} />In progress</span>}
-              valueColor={COLORS.amber}
-            />
-            <StatRow
-              label="Late Dinner"
-              value={<span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" style={{ color: COLORS.muted }} />Coming soon</span>}
-              valueColor={COLORS.muted}
-              last
-            />
+            <StatRow label="Oily / Fried Food" value="✓ Mastered (Week 3)" valueColor={COLORS.primary} />
+            <StatRow label="Sugary Food &amp; Drink" value="🔄 In progress" valueColor={COLORS.amber} />
+            <StatRow label="Late Dinner" value="🔒 Coming soon" valueColor={COLORS.muted} last />
           </div>
 
           <div className="pt-2">

@@ -1,4 +1,4 @@
-import { Home, TrendingUp, Camera, CalendarDays, Lightbulb, User } from "lucide-react";
+import { Home, TrendingUp, Camera, CalendarDays, Lightbulb, User, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -8,7 +8,7 @@ const COLORS = {
 };
 
 function NavBar() {
-  const items: { Icon: any; label: string; active?: boolean }[] = [
+  const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
     { Icon: Home, label: "Home" },
     { Icon: TrendingUp, label: "Roadmap" },
     { Icon: Camera, label: "Snap" },

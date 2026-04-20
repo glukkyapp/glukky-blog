@@ -1,4 +1,4 @@
-import { UtensilsCrossed, Scale, Droplets, Cherry, RotateCw } from "lucide-react";
+import { UtensilsCrossed, Scale, Droplets, Cherry, RotateCw, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -22,7 +22,7 @@ function Pointer({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
   return <span style={style} />;
 }
 
-function Field({ icon: Icon, label, value, alignRight }: { icon: any; label: string; value: string; alignRight?: boolean }) {
+function Field({ icon: Icon, label, value, alignRight }: { icon: LucideIcon; label: string; value: string; alignRight?: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <div className={`flex items-center gap-1 text-[11px] font-bold tracking-wide ${alignRight ? "justify-end" : ""}`} style={{ color: COLORS.ink }}>
@@ -88,8 +88,8 @@ export default function ReviewState() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-3">
-            <Field icon={Droplets} label="Sauces" value="Soy sauce, chili oil" />
-            <Field icon={Cherry} label="Toppings" value="Extra wontons" alignRight />
+            <Field icon={Droplets} label="Sauces / Condiments" value="Soy sauce, chili oil" />
+            <Field icon={Cherry} label="Extras / Toppings" value="Extra wontons" alignRight />
           </div>
         </div>
 
