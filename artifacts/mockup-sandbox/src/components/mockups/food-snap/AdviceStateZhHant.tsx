@@ -25,7 +25,7 @@ export default function AdviceStateZhHant() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-3">
           <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
           <h1 className="text-[26px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>食物快拍</h1>
         </div>

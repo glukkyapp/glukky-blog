@@ -25,7 +25,7 @@ export default function AdviceState() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-3">
           <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
           <h1 className="text-[26px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>Foodsnap</h1>
         </div>
@@ -52,7 +52,7 @@ export default function AdviceState() {
         </button>
 
         <div className="self-center text-[11px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
-          2 of 6 advice left today
+          2 of 2 advice left today
         </div>
 
         <button className="w-full text-[13px] flex items-center justify-center gap-1" style={{ color: COLORS.muted }}>

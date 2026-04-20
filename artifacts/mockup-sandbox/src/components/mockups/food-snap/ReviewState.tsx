@@ -44,7 +44,7 @@ export default function ReviewState() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-3">
           <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
           <h1 className="text-[26px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>Foodsnap</h1>
         </div>
@@ -94,12 +94,12 @@ export default function ReviewState() {
 
           <div className="grid grid-cols-2 gap-3 mt-3">
             <Field icon={Droplets} label="Sauces / Condiments" value="Soy sauce, chili oil" />
-            <Field icon={Cherry} label="Extras / Toppings" value="Extra wontons" alignRight />
+            <Field icon={Cherry} label="Extras / Toppings" value="Choi sum" alignRight />
           </div>
         </div>
 
         <div className="self-center text-[11px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
-          2 of 3 photo analyses left today
+          2 of 2 photo analyses left today
         </div>
 
         <div className="flex flex-col gap-2 pt-1">
