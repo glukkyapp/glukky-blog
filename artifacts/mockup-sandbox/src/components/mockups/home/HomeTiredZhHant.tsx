@@ -1,4 +1,4 @@
-import { Target, Footprints, UtensilsCrossed, TrendingUp, Battery, Check, CheckCircle2, Home, Camera, CalendarDays, Lightbulb, User, type LucideIcon } from "lucide-react";
+import { Footprints, UtensilsCrossed, TrendingUp, Battery, Check, X, CheckCircle2, Home, Camera, CalendarDays, Soup, Droplets, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 const COLORS = {
@@ -8,7 +8,7 @@ const COLORS = {
   card: "#fbfbf3",
   green: "#5F9D7A",
   greenDeep: "#2F6B43",
-  greenChip: "#d0f38f",
+  bubble: "#eef9d7",
 };
 
 function NavBar() {
@@ -17,8 +17,6 @@ function NavBar() {
     { Icon: TrendingUp, label: "進度" },
     { Icon: Camera, label: "快拍" },
     { Icon: CalendarDays, label: "計劃" },
-    { Icon: Lightbulb, label: "資訊" },
-    { Icon: User, label: "個人" },
   ];
   return (
     <nav
@@ -36,7 +34,7 @@ function NavBar() {
       {items.map(({ Icon, label, active }) => (
         <div key={label} className="flex-1 flex flex-col items-center justify-center" style={{ color: "#0D5E4F" }}>
           <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-          {active && <span className="text-[10px] font-medium leading-tight mt-0.5">{label}</span>}
+          {active && <span className="text-[11px] font-medium leading-tight mt-0.5">{label}</span>}
         </div>
       ))}
     </nav>
@@ -54,43 +52,110 @@ function Row({ icon: Icon, label, value, valueColor = COLORS.ink, badge }: { ico
   );
 }
 
-export default function HomeTiredZhHant() {
+type CalCellState = "done" | "missed" | "scheduled" | "future" | "inactive";
+
+function WalkCell({ state, dur }: { state: CalCellState; dur?: number }) {
+  if (state === "inactive") return <div className="rounded bg-black/5 h-7" />;
+  const cls =
+    state === "done" ? "bg-green-100 h-10" :
+    state === "missed" ? "bg-red-50 h-10" :
+    state === "scheduled" ? "bg-black/5 h-10" : "bg-black/5 h-7";
+  const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : COLORS.muted;
   return (
-    <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div className="px-6 pt-7 pb-28 space-y-5 h-full overflow-y-auto">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Target className="w-4 h-4" style={{ color: COLORS.green }} />
-            <span className="text-[12px] uppercase tracking-wider font-semibold" style={{ color: COLORS.muted }}>第3週 · 星期三</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[44px] font-bold leading-none" style={{ color: COLORS.ink }}>你好，Olivia 👋</p>
-            <img src={`${import.meta.env.BASE_URL}images/gift.png`} alt="" className="w-14 h-14 shrink-0" />
+    <div className={`rounded flex flex-col items-center justify-center ${cls}`} style={{ color }}>
+      {state === "done" ? <Check className="w-3 h-3" /> :
+       state === "missed" ? <X className="w-3 h-3" /> :
+       state === "scheduled" ? <Footprints className="w-3 h-3" /> : null}
+      {dur != null && (state === "done" || state === "missed" || state === "scheduled") && (
+        <span className="text-[10px] leading-none mt-0.5">{dur} 分</span>
+      )}
+    </div>
+  );
+}
+
+function DinnerCell({ state }: { state: "done" | "missed" | "scheduled" | "tactic" | "none" }) {
+  const cls =
+    state === "done" ? "bg-green-100" :
+    state === "missed" ? "bg-red-50" :
+    state === "tactic" ? "bg-amber-50" :
+    state === "scheduled" ? "bg-black/5" : "bg-black/5";
+  const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : state === "tactic" ? "#D97706" : COLORS.muted;
+  return (
+    <div className={`h-7 rounded flex items-center justify-center ${cls}`} style={{ color }}>
+      {state === "done" ? <Check className="w-3 h-3" /> :
+       state === "missed" ? <X className="w-3 h-3" /> :
+       state === "tactic" ? <Soup className="w-3 h-3" /> :
+       state === "scheduled" ? <Soup className="w-3 h-3" /> : null}
+    </div>
+  );
+}
+
+export default function HomeTiredZhHant() {
+  const days = ["一", "二", "三", "四", "五", "六", "日"];
+  const walk: { state: CalCellState; dur?: number }[] = [
+    { state: "done", dur: 10 },
+    { state: "done", dur: 10 },
+    { state: "done", dur: 10 },
+    { state: "scheduled", dur: 5 },
+    { state: "future" },
+    { state: "future" },
+    { state: "future" },
+  ];
+  const dinner: { state: "done" | "missed" | "scheduled" | "tactic" | "none" }[] = [
+    { state: "none" },
+    { state: "tactic" },
+    { state: "done" },
+    { state: "scheduled" },
+    { state: "none" },
+    { state: "none" },
+    { state: "none" },
+  ];
+
+  return (
+    <div className="app-page-v2 relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <style>{`
+        .goal-bubble { position: relative; background: ${COLORS.bubble}; border-radius: 20px; padding: 16px 18px; }
+        .goal-bubble::after { content: ""; position: absolute; left: 28px; bottom: -9px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid ${COLORS.bubble}; filter: drop-shadow(0 2px 1px rgba(44,72,56,0.05)); }
+        .pf { font-family: 'Playfair Display', serif; }
+      `}</style>
+      <div className="px-6 pt-7 pb-28 space-y-4 h-full overflow-y-auto">
+        {/* Header */}
+        <div className="space-y-0.5">
+          <h1 className="pf text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>星期三</h1>
+          <div className="flex items-center justify-between gap-3 -mt-1">
+            <p className="pf text-[50px] font-bold leading-none flex-1 min-w-0" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，Olivia！</p>
+            <img src={`${import.meta.env.BASE_URL}images/gift-prod.png`} alt="" className="w-16 h-16 shrink-0" />
           </div>
         </div>
 
-        <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 2px 8px rgba(44,72,56,0.06)" }}>
-          <p className="text-[14px] leading-snug" style={{ color: COLORS.ink }}>
-            記住你的目標——擁有更好的皮膚！繼續加油！
-          </p>
+        {/* Goal speech bubble */}
+        <div style={{ marginBottom: -6 }}>
+          <div className="goal-bubble">
+            <p className="text-[18px] leading-snug" style={{ color: COLORS.ink }}>
+              記住你的目標——擁有<strong style={{ color: COLORS.ink }}>更好的皮膚</strong>！繼續加油！
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-3xl p-5 space-y-3" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
-          <div className="flex items-center gap-2 text-[12px] uppercase tracking-wider" style={{ color: COLORS.muted }}>
-            <span className="font-semibold" style={{ color: COLORS.ink }}>今天</span>
+        {/* TODAY card */}
+        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+          <div className="flex items-center gap-2 text-[14px]" style={{ color: COLORS.muted, letterSpacing: "0.05em" }}>
+            <span className="font-semibold text-[21px]" style={{ color: COLORS.ink }}>今天</span>
             <span>— 4月2日（三）</span>
           </div>
 
-          <div className="rounded-xl p-3 flex items-start gap-2" style={{ backgroundColor: "#E6F1FA" }}>
-            <span className="text-base">💧</span>
+          {/* Hydration callout (1.5x) */}
+          <div className="rounded-lg p-3 flex items-start gap-2 bg-blue-50">
+            <Droplets className="w-5 h-5 mt-0.5 shrink-0" style={{ color: "#3B82F6" }} />
             <div className="flex-1">
-              <p className="text-[13px] font-medium" style={{ color: "#1E5E8A" }}>
-                明天的步行已減至5分鐘，記得多喝水、好好休息！
+              <p className="text-[20px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
+                明天的步行已減至 5 分鐘，記得多喝水、好好休息！
               </p>
-              <button className="text-[11px] mt-1 underline" style={{ color: "#1E5E8A" }}>知道了</button>
+              <button className="text-[16px] mt-1 font-medium" style={{ color: "#2563EB" }}>知道了</button>
             </div>
           </div>
 
+          {/* All checked-in */}
           <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: "#EAF7E2" }}>
             <CheckCircle2 className="w-5 h-5" style={{ color: COLORS.greenDeep }} />
             <span className="text-[13px] font-medium" style={{ color: COLORS.greenDeep }}>今天的簽到已完成</span>
@@ -104,32 +169,39 @@ export default function HomeTiredZhHant() {
           </div>
         </div>
 
-        <div className="rounded-3xl p-5 space-y-3" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        {/* Weekly Calendar */}
+        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
           <div className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4" style={{ color: COLORS.green }} />
             <span className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>每週日曆</span>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {["一", "二", "三", "四", "五", "六", "日"].map((d, i) => (
-              <div key={d} className="text-[11px]" style={{ color: i === 2 ? COLORS.ink : COLORS.muted, fontWeight: i === 2 ? 700 : 400 }}>{d}</div>
-            ))}
-            {["10m ✓", "10m ✓", "10m ✓", "5m", "—", "—", "—"].map((v, i) => (
-              <div
-                key={i}
-                className="text-[11px] py-1.5 rounded-lg"
-                style={{
-                  backgroundColor: i < 3 ? COLORS.greenChip : i === 3 ? "#FFF1D6" : "transparent",
-                  color: i < 3 ? COLORS.greenDeep : i === 3 ? "#B7791F" : COLORS.muted,
-                  fontWeight: 600,
-                }}
-              >
-                {v}
-              </div>
+
+          {/* Day header row */}
+          <div className="grid gap-1 text-center text-xs" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
+            <div />
+            {days.map((d, i) => (
+              <div key={d} style={{ color: i === 2 ? COLORS.ink : COLORS.muted, fontWeight: i === 2 ? 700 : 500 }}>{d}</div>
             ))}
           </div>
-          <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "#FBE8DA" }}>
-            <UtensilsCrossed className="w-3.5 h-3.5" style={{ color: "#C45A2B" }} />
-            <span className="text-[11px] font-medium" style={{ color: "#7A3413" }}>週二 · 晚餐管理 ✓ 纖維</span>
+
+          {/* Walk row */}
+          <div className="grid gap-1 text-center text-xs items-center" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
+            <div className="text-[12px] font-medium text-right pr-1" style={{ color: COLORS.muted }}>散步</div>
+            {walk.map((d, i) => <WalkCell key={i} state={d.state} dur={d.dur} />)}
+          </div>
+
+          {/* Late Dinner row */}
+          <div className="grid gap-1 text-center text-xs items-center" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
+            <div className="text-[12px] font-medium text-right pr-1 leading-tight" style={{ color: COLORS.muted }}>晚餐</div>
+            {dinner.map((d, i) => <DinnerCell key={i} state={d.state} />)}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-3 pt-2 text-[12px] flex-wrap" style={{ color: COLORS.muted }}>
+            <div className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: "#16A34A" }} /> 已完成</div>
+            <div className="flex items-center gap-1"><X className="w-3 h-3" style={{ color: "#F87171" }} /> 未做</div>
+            <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> 散步</div>
+            <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> 晚餐</div>
           </div>
         </div>
       </div>
