@@ -1,215 +1,93 @@
-import { Camera, Calendar, Lightbulb, User } from "lucide-react";
+import { Home, TrendingUp, Camera, CalendarDays, Lightbulb, User } from "lucide-react";
 
-export function DietTipDetail() {
-  const bg = "hsl(23 36% 93%)";
-  const primary = "#127843";
-  const muted = "hsl(168 10% 45%)";
-  const fg = "hsl(168 30% 12%)";
+const COLORS = {
+  bg: "#fdfbee",
+  ink: "#214B36",
+  muted: "#6E8477",
+  primary: "#2F6B43",
+};
 
-  const tips = [
-    { src: "/__mockup/images/tip-juice.png",  bg: "linear-gradient(135deg, #bae6fd 0%, #67e8f9 100%)", label: "Choose sugar-free drink / Dilute juice 1:1 with water" },
-    { src: "/__mockup/images/tip-yogurt.png", bg: "linear-gradient(135deg, #fbcfe8 0%, #fda4af 100%)", label: "Swap dessert for plain yogurt + berries" },
-    { src: "/__mockup/images/tip-steam.png",  bg: "linear-gradient(135deg, #fed7aa 0%, #fcd34d 100%)", label: "Steam your food first, then sear briefly" },
+function NavBar() {
+  const items: { Icon: any; label: string; active?: boolean }[] = [
+    { Icon: Home, label: "Home" },
+    { Icon: TrendingUp, label: "Roadmap" },
+    { Icon: Camera, label: "Snap" },
+    { Icon: CalendarDays, label: "Plan" },
+    { Icon: Lightbulb, label: "Health Info", active: true },
+    { Icon: User, label: "Profile" },
   ];
-  const selectedIdx = 2;
-
   return (
-    <div
+    <nav
+      className="absolute left-1/2 -translate-x-1/2 flex items-center px-2"
       style={{
-        width: 390,
-        minHeight: 844,
-        backgroundColor: bg,
-        fontFamily: "'Karla', 'Inter', sans-serif",
-        color: fg,
-        position: "relative",
-        overflowX: "hidden",
-        overflowY: "auto",
+        bottom: 16,
+        width: "calc(100% - 32px)",
+        maxWidth: 360,
+        height: 58,
+        backgroundColor: "rgba(187,222,214,0.85)",
+        borderRadius: 160,
+        boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
       }}
     >
-      <div style={{ maxWidth: 384, margin: "0 auto", padding: "24px 0 128px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px" }}>
-          <img
-            src="/__mockup/images/lightbulb-heading.png"
-            alt=""
-            style={{ width: 56, height: 56, flexShrink: 0 }}
-          />
-          <h1
-            style={{
-              fontSize: 26,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              margin: 0,
-            }}
-          >
-            HEALTH INFO
-          </h1>
+      {items.map(({ Icon, label, active }) => (
+        <div key={label} className="flex-1 flex flex-col items-center justify-center" style={{ color: "#0D5E4F" }}>
+          <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+          {active && <span className="text-[10px] font-medium leading-tight mt-0.5">{label}</span>}
         </div>
+      ))}
+    </nav>
+  );
+}
 
-        <p
-          style={{
-            fontSize: 14,
-            color: muted,
-            textAlign: "center",
-            marginTop: 12,
-            marginBottom: 24,
-            padding: "0 20px",
-            lineHeight: 1.5,
-          }}
-        >
-          Don't worry if you forgot the diet tips — you can always come back here.
-        </p>
-
-        <section style={{ padding: "0 20px" }}>
-          <h2
-            style={{
-              fontSize: 21,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              marginBottom: 16,
-              margin: "0 0 16px",
-            }}
-          >
-            DIET ADVICE
-          </h2>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 18,
-              overflowX: "auto",
-              padding: "16px 4px 16px 4px",
-              scrollbarWidth: "none",
-            }}
-          >
-            {tips.map((tip, i) => {
-              const selected = i === selectedIdx;
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 8,
-                    flexShrink: 0,
-                    width: 100,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: "50%",
-                      overflow: "hidden",
-                      background: tip.bg,
-                      transform: selected ? "scale(1.05)" : "none",
-                      boxShadow: selected
-                        ? `0 0 0 2px white, 0 0 0 4px ${primary}`
-                        : "none",
-                      transition: "all 200ms",
-                    }}
-                  >
-                    <img
-                      src={tip.src}
-                      alt={tip.label}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      textAlign: "center",
-                      lineHeight: 1.25,
-                      maxWidth: 100,
-                      color: selected ? fg : muted,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {tip.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ marginTop: 16, padding: "0 4px" }}>
-            <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
-              Steam your food first, then sear briefly
-            </p>
-            <p style={{ fontSize: 16, color: muted, lineHeight: 1.6 }}>
-              Deep-frying adds significant fat calories, which over time
-              contributes to weight gain — a key driver of insulin resistance.
-              Steaming first cooks the food through without excess oil, so only
-              a brief sear is needed for texture.
-            </p>
-          </div>
-        </section>
-      </div>
-
-      <nav
-        style={{
-          position: "fixed",
-          bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "calc(100% - 32px)",
-          maxWidth: 358,
-          height: 58,
-          backgroundColor: "rgba(187,222,214,0.85)",
-          borderRadius: 160,
-          boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-around",
-          padding: "0 8px",
-        }}
+function Tip({ src, label, selected }: { src: string; label: string; selected?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2 shrink-0" style={{ width: 100 }}>
+      <div
+        className={`w-[100px] h-[100px] rounded-full overflow-hidden transition-all ${selected ? "ring-2 ring-offset-2 scale-105" : ""}`}
+        style={selected ? { boxShadow: `0 0 0 2px ${COLORS.primary}, 0 0 0 4px ${COLORS.bg}` } : undefined}
       >
-        <NavTab Icon={Camera} active={false} />
-        <NavTab Icon={Calendar} active={false} />
-        <NavTab Icon={Lightbulb} active label="Health Info" />
-        <NavTab Icon={User} active={false} />
-      </nav>
+        <img src={src} alt={label} className="w-full h-full object-cover" />
+      </div>
+      <span
+        className={`text-[11px] font-medium text-center leading-tight max-w-[100px] ${selected ? "" : "opacity-70"}`}
+        style={{ color: selected ? COLORS.ink : COLORS.muted }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
-function NavTab({
-  Icon,
-  active,
-  label,
-}: {
-  Icon: typeof Camera;
-  active: boolean;
-  label?: string;
-}) {
-  const color = "#0D5E4F";
+export default function DietTipDetail() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        color,
-        flex: 1,
-      }}
-    >
-      <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-      {active && label && (
-        <span style={{ fontSize: 12, fontWeight: 500, color, marginTop: 2, lineHeight: 1.1 }}>
-          {label}
-        </span>
-      )}
+    <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div className="pt-6 pb-32 h-full overflow-y-auto">
+        <div className="flex items-center gap-3 px-5">
+          <img src="/images/lightbulb-heading.png" alt="" className="w-14 h-14 shrink-0" />
+          <h1 className="text-[24px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>Health Info</h1>
+        </div>
+
+        <p className="text-[13px] text-center mt-3 mb-6 px-5" style={{ color: COLORS.muted }}>
+          Don't worry if you forgot the diet tips — you can always come back here.
+        </p>
+
+        <div className="px-5">
+          <h2 className="text-[18px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>Diet Advice</h2>
+          <div className="flex gap-[18px] py-2 pl-1">
+            <Tip src="/images/tip-juice.png" label="Dilute juice 1:1 with water" />
+            <Tip src="/images/tip-yogurt.png" label="Swap dessert for yogurt + berries" />
+            <Tip src="/images/tip-steam.png" label="Steam your food first, then sear briefly" selected />
+          </div>
+
+          <div className="mt-4 px-1">
+            <p className="font-bold text-[15px] mb-2" style={{ color: COLORS.ink }}>Steam your food first, then sear briefly</p>
+            <p className="text-[13px] leading-relaxed" style={{ color: COLORS.muted }}>
+              Deep-frying coats your food in oil and pushes the glycaemic load higher. By steaming first — fish, chicken, even root vegetables — you lock in moisture and keep the carbs gentle on your blood sugar. Finish with a 30-second sear in a dry pan or under the grill for that crispy edge, without the oil.
+            </p>
+          </div>
+        </div>
+      </div>
+      <NavBar />
     </div>
   );
 }

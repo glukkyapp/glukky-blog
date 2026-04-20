@@ -833,7 +833,8 @@ export default function Snap() {
             <Button
               onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
               disabled={!form.name.trim() || disambigQueue.length > 0}
-              className="w-full btn-pop"
+              className="w-full btn-pop h-14 text-base font-semibold rounded-2xl shadow-md text-white hover:brightness-105"
+              style={{ backgroundColor: "#F08A3E" }}
               data-testid="button-snap-get-advice"
             >
               {t("snap.get_advice")}

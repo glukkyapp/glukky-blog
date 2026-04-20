@@ -1,115 +1,111 @@
-import "../food-snap/_group.css";
-import { Footprints, Check, TrendingUp, Lock } from "lucide-react";
+import { Footprints, TrendingUp, Check, Loader, Lock } from "lucide-react";
 
-export function MonthlyDeepDiveZhHant() {
+const COLORS = {
+  bg: "#fdfbee",
+  ink: "#214B36",
+  muted: "#6E8477",
+  card: "#fff",
+  hairline: "#EAE5D5",
+  primary: "#2F6B43",
+  green: "#5F9D7A",
+  greenChip: "#d0f38f",
+  amber: "#B7791F",
+  blue: "#1E5E8A",
+};
+
+function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: string; value: React.ReactNode; valueColor?: string; last?: boolean }) {
   return (
     <div
-      style={{
-        width: 390,
-        minHeight: 844,
-        fontFamily: "'Karla', 'Inter', sans-serif",
-      }}
-      className="bg-background text-foreground overflow-x-hidden overflow-y-auto"
+      className="flex items-center justify-between py-2"
+      style={{ borderBottom: last ? "none" : `1px solid ${COLORS.hairline}` }}
     >
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-24 space-y-4">
-        <div className="flex items-center gap-2">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(152 73% 17%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
-          </svg>
-          <span className="text-lg font-bold">四月深度回顧</span>
-        </div>
-        <p className="text-sm text-muted-foreground -mt-2">4月1日 – 4月30日</p>
-
-        <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
-          <p className="text-sm font-semibold text-primary">
-            🎉 你完成了第一個月——做得好，Olivia！
-          </p>
-          <p className="text-sm text-muted-foreground">
-            獎勵目標：「新護膚面膜套裝 🎁」
-          </p>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl shadow-sm">
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                <Footprints className="w-4 h-4 text-primary" />
-              </div>
-              <p className="text-sm font-semibold">步行</p>
-            </div>
-
-            <div className="flex flex-col">
-              <StatRow label="完成步行總數" value="14 / 17" />
-              <StatRow label="總活動分鐘" value="155 分鐘" />
-              <StatRow label="最長連續" value="連續5天" />
-              <StatRow label="疲倦日數" value="3" />
-              <StatRow label="減量步行次數" value="2" last />
-            </div>
-
-            <p className="text-sm text-primary italic">
-              「你即使疲倦也堅持了，這比速度更重要。」
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl shadow-sm">
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-primary" />
-              </div>
-              <p className="text-sm font-semibold">飲食進度</p>
-            </div>
-
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground">油炸食物</span>
-                <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 已掌握（第3週）
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground">甜食及飲料</span>
-                <span className="text-sm font-semibold text-amber-600 flex items-center gap-1">
-                  🔄 進行中
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-muted-foreground">遲吃晚餐</span>
-                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5" /> 即將開始
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-semibold">本月完成貼士</span>
-                <span className="text-xs font-bold text-primary">18 / 24 (75%)</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-primary" style={{ width: "75%" }} />
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
-              <p className="text-xs font-medium text-muted-foreground mb-0.5">目前貼士</p>
-              <p className="text-sm text-primary font-medium">
-                「選擇無糖飲品/果汁加1:1清水稀釋」
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <span className="text-[13px]" style={{ color: COLORS.muted }}>{label}</span>
+      <span className="text-[13px] font-semibold" style={{ color: valueColor }}>{value}</span>
     </div>
   );
 }
 
-function StatRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+export default function MonthlyDeepDiveZhHant() {
   return (
-    <div className={`flex items-center justify-between py-2 ${last ? "" : "border-b border-border"}`}>
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
+    <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div className="px-5 pt-7 pb-8 h-full overflow-y-auto space-y-4">
+        <div className="flex items-center gap-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+          </svg>
+          <h1 className="text-[24px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>四月深度回顧</h1>
+        </div>
+        <p className="text-[12px] -mt-2" style={{ color: COLORS.muted }}>4月1日 – 4月30日</p>
+
+        <div className="rounded-2xl p-4 space-y-1" style={{ backgroundColor: "#FFF1D6" }}>
+          <p className="text-[14px] font-semibold" style={{ color: "#7A4F00" }}>🎉 你完成了第一個月——做得太棒了，Olivia！</p>
+          <p className="text-[12px]" style={{ color: "#7A4F00" }}>
+            豬豬儲蓄罐獎勵目標：<strong>「一套全新護膚面膜 🎁」</strong>
+          </p>
+        </div>
+
+        <div className="rounded-2xl p-4 space-y-2" style={{ backgroundColor: COLORS.card, boxShadow: "0 2px 10px rgba(44,72,56,0.06)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.greenChip }}>
+              <Footprints className="w-4 h-4" style={{ color: COLORS.primary }} />
+            </div>
+            <p className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>步行</p>
+          </div>
+          <div className="flex flex-col">
+            <StatRow label="完成散步次數" value="14/17" />
+            <StatRow label="總活動時間" value="155 分鐘" />
+            <StatRow label="最長連續紀錄" value="連續5天" valueColor={COLORS.primary} />
+            <StatRow label="疲倦日數" value="3" valueColor={COLORS.amber} />
+            <StatRow label="已縮減散步次數" value="2" valueColor={COLORS.blue} last />
+          </div>
+          <p className="text-[12px] italic mt-1" style={{ color: COLORS.primary }}>
+            「你即使疲倦也堅持了，這比速度更重要。」
+          </p>
+        </div>
+
+        <div className="rounded-2xl p-4 space-y-2" style={{ backgroundColor: COLORS.card, boxShadow: "0 2px 10px rgba(44,72,56,0.06)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.greenChip }}>
+              <TrendingUp className="w-4 h-4" style={{ color: COLORS.primary }} />
+            </div>
+            <p className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>飲食進度</p>
+          </div>
+          <div className="flex flex-col">
+            <StatRow
+              label="油膩 / 煎炸食物"
+              value={<span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" style={{ color: COLORS.primary }} />已掌握（第3週）</span>}
+              valueColor={COLORS.primary}
+            />
+            <StatRow
+              label="糖分管理"
+              value={<span className="flex items-center gap-1"><Loader className="w-3.5 h-3.5" style={{ color: COLORS.amber }} />進行中</span>}
+              valueColor={COLORS.amber}
+            />
+            <StatRow
+              label="晚餐管理"
+              value={<span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" style={{ color: COLORS.muted }} />即將開始</span>}
+              valueColor={COLORS.muted}
+              last
+            />
+          </div>
+
+          <div className="pt-2">
+            <div className="flex items-center justify-between text-[12px] mb-1" style={{ color: COLORS.muted }}>
+              <span>本月完成貼士</span>
+              <span className="font-semibold" style={{ color: COLORS.ink }}>18/24 (75%)</span>
+            </div>
+            <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#EFEAD8" }}>
+              <div className="h-full" style={{ width: "75%", backgroundColor: COLORS.primary }} />
+            </div>
+          </div>
+
+          <div className="rounded-xl px-3 py-2 mt-2" style={{ backgroundColor: "#F1F4ED" }}>
+            <p className="text-[11px]" style={{ color: COLORS.muted }}>
+              目前貼士：<span style={{ color: COLORS.ink, fontWeight: 600 }}>「選擇無糖飲品/果汁加1:1清水稀釋」</span>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

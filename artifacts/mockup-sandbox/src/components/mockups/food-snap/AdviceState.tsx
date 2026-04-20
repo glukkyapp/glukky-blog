@@ -1,123 +1,62 @@
-import "./_group.css";
-import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 
-export function AdviceState() {
+const COLORS = {
+  bg: "#fdfbee",
+  ink: "#214B36",
+  muted: "#6E8477",
+  card: "#fbfbf3",
+  primary: "#2F6B43",
+  hairline: "#E6E1D4",
+};
+
+function Section({ icon, label, children, hairline }: { icon: string; label: string; children: React.ReactNode; hairline?: boolean }) {
   return (
-    <div
-      style={{
-        width: 390,
-        minHeight: 844,
-        backgroundColor: "hsl(23 36% 93%)",
-        fontFamily: "'Karla', 'Inter', sans-serif",
-        color: "hsl(168 30% 12%)",
-        overflow: "hidden",
-      }}
-    >
-      <div className="flex flex-col px-5 gap-5 w-full pb-28">
-        <div
-          className="relative w-full overflow-hidden mb-[-5px] -mx-5 rounded-b-3xl"
-          style={{ width: "calc(100% + 2.5rem)" }}
-        >
-          <img
-            src="/__mockup/images/phone-food-hero.png"
-            alt=""
-            className="w-full h-auto block"
-          />
+    <div className="px-5 py-4" style={hairline ? { borderTop: `1px solid ${COLORS.hairline}` } : undefined}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-base">{icon}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.muted }}>{label}</span>
+      </div>
+      <div className="text-[13px] leading-relaxed" style={{ color: COLORS.ink }}>{children}</div>
+    </div>
+  );
+}
+
+export default function AdviceState() {
+  return (
+    <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <img src="/images/lightbulb-heading.png" alt="" className="w-12 h-12 shrink-0" />
+          <h1 className="text-[22px] font-bold" style={{ color: COLORS.ink }}>Your diet advice</h1>
         </div>
 
-        <p
-          className="text-center"
-          style={{ fontSize: 14, color: "hsl(168 10% 45%)" }}
-        >
-          Take a photo of your meal for personalised diet advice.
-        </p>
-
-        <div className="flex flex-col gap-4">
-          <p style={{ fontSize: 14, fontWeight: 600 }}>Your diet advice</p>
-
-          <div
-            className="flex flex-col gap-4"
-            style={{
-              borderRadius: 16,
-              border: "1px solid hsl(160 15% 85%)",
-              backgroundColor: "white",
-              padding: 20,
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                🩸 Sugar Impact
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                Wonton noodle soup has a high glycaemic load.
-              </p>
-            </div>
-
-            <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                💡 Instant Advice
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                Order a side of blanched choi sum or vegetables to add fibre,
-                which slows glucose absorption. Finish the veggies first. Use only half the soy sauce packet
-                to reduce sodium intake — high sodium can raise blood pressure, a
-                concern that compounds with blood sugar spikes.
-              </p>
-            </div>
-
-            <hr style={{ border: "none", borderTop: "1px solid hsl(160 15% 90%)" }} />
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#0369a1", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                🔄 Next Time
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.7 }}>
-                Try reducing the portion of noodles next time. If that's
-                tricky, swap the alkaline noodles for bean thread vermicelli — they
-                have a lower glycaemic index and won't spike your blood sugar as
-                sharply.
-              </p>
-            </div>
-
-            <Button
-              className="w-full mt-1"
-              style={{
-                backgroundColor: "#127843",
-                color: "white",
-                fontSize: 14,
-              }}
-            >
-              Done
-            </Button>
-          </div>
-
-          <div className="flex justify-center">
-            <span
-              style={{
-                fontSize: 11,
-                color: "hsl(168 10% 45%)",
-                backgroundColor: "hsl(150 15% 92%)",
-                borderRadius: 999,
-                padding: "4px 12px",
-                fontWeight: 500,
-              }}
-            >
-              2 of 6 advice uses left today
-            </span>
-          </div>
-
-          <Button
-            variant="ghost"
-            className="w-full gap-1.5"
-            style={{ color: "hsl(168 10% 45%)", fontSize: 14 }}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Try a different photo
-          </Button>
+        <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+          <Section icon="🩸" label="Sugar Impact">
+            Wonton noodle soup has a high glycaemic load.
+          </Section>
+          <Section icon="💡" label="Instant Advice" hairline>
+            Order a side of blanched choi sum first and eat it before the noodles. Halve the soy sauce, skip the chili oil's sweet base, and leave a third of the noodles in the bowl. Sip slowly so you finish over 20 minutes — your spike will be much gentler.
+          </Section>
+          <Section icon="🔄" label="Next Time" hairline>
+            Ask for a smaller noodle portion or swap thin egg noodles for bean thread vermicelli. Add extra greens (gai lan, choi sum) and request the wontons steamed instead of boiled in a starchy broth.
+          </Section>
         </div>
+
+        <button
+          className="w-full h-12 rounded-2xl text-[14px] font-semibold text-white"
+          style={{ backgroundColor: COLORS.primary }}
+        >
+          Done
+        </button>
+
+        <div className="self-center text-[11px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
+          2 of 6 advice left today
+        </div>
+
+        <button className="w-full text-[13px] flex items-center justify-center gap-1" style={{ color: COLORS.muted }}>
+          <RotateCw className="w-3.5 h-3.5" />
+          Try a different photo
+        </button>
       </div>
     </div>
   );
