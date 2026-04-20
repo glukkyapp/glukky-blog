@@ -1,4 +1,4 @@
-import { UtensilsCrossed, Scale, Droplets, Cherry, RotateCw, type LucideIcon } from "lucide-react";
+import { UtensilsCrossed, Scale, Droplets, Cherry, RotateCw, Camera, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -42,7 +42,12 @@ function Field({ icon: Icon, label, value, alignRight }: { icon: LucideIcon; lab
 export default function ReviewStateZhHant() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div className="px-6 pt-8 pb-8 h-full overflow-y-auto flex flex-col gap-4">
+      <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
+        <div className="flex items-center justify-center gap-3">
+          <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
+          <h1 className="text-[26px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>食物快拍</h1>
+        </div>
+        <p className="text-[13px] text-center" style={{ color: COLORS.muted }}>拍下你的餐點，獲得個人化飲食建議！</p>
         <div>
           <p className="text-[15px] font-semibold" style={{ color: COLORS.ink }}>確認你照片中的食物</p>
           <p className="text-[12px] mt-0.5" style={{ color: COLORS.muted }}>點選任何欄位即可編輯。</p>

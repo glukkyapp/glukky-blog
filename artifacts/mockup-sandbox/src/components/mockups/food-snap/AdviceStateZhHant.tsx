@@ -1,4 +1,4 @@
-import { RotateCw } from "lucide-react";
+import { RotateCw, Camera } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -25,7 +25,12 @@ export default function AdviceStateZhHant() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div className="px-6 pt-7 pb-8 h-full overflow-y-auto flex flex-col gap-4">
-        <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>飲食建議</p>
+        <div className="flex items-center justify-center gap-3">
+          <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
+          <h1 className="text-[26px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>食物快拍</h1>
+        </div>
+        <p className="text-[13px] text-center" style={{ color: COLORS.muted }}>拍下你的餐點，獲得個人化飲食建議！</p>
+        <h2 className="text-[18px] font-bold mt-1" style={{ color: COLORS.ink }}>你的飲食建議</h2>
 
         <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
           <Section icon="🩸" label="血糖影響">
