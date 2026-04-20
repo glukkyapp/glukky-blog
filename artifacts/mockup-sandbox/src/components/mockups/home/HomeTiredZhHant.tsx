@@ -5,7 +5,7 @@ const COLORS = {
   bg: "#fdfbee",
   ink: "#214B36",
   muted: "#6E8477",
-  card: "#fbfbf3",
+  card: "#fdfbee",
   green: "#5F9D7A",
   greenDeep: "#2F6B43",
   bubble: "#eef9d7",
@@ -126,7 +126,7 @@ export default function HomeTiredZhHant() {
         {/* Header */}
         <div className="space-y-0.5">
           <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>星期三</h1>
-          <div className="flex items-center justify-between gap-3 -mt-1">
+          <div className="flex items-center justify-between gap-3 -mt-2">
             <p className="pf text-[50px] font-bold leading-none flex-1 min-w-0" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，Olivia！</p>
             <img src={`${import.meta.env.BASE_URL}images/gift-prod.png`} alt="" className="w-16 h-16 shrink-0" />
           </div>
