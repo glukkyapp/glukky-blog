@@ -74,15 +74,15 @@ export default function DietTipDetail() {
         <div className="px-5">
           <h2 className="text-[18px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>Diet Advice</h2>
           <div className="flex gap-[18px] py-2 pl-1">
-            <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="Dilute juice 1:1 with water" />
-            <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="Swap dessert for yogurt + berries" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="Choose sugar-free drink / Dilute juice 1:1 with water" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="Swap dessert for plain yogurt + berries" />
             <Tip src={`${import.meta.env.BASE_URL}images/tip-steam.png`} label="Steam your food first, then sear briefly" selected />
           </div>
 
           <div className="mt-4 px-1">
             <p className="font-bold text-[15px] mb-2" style={{ color: COLORS.ink }}>Steam your food first, then sear briefly</p>
             <p className="text-[13px] leading-relaxed" style={{ color: COLORS.muted }}>
-              Deep-frying coats your food in oil and pushes the glycaemic load higher. By steaming first — fish, chicken, even root vegetables — you lock in moisture and keep the carbs gentle on your blood sugar. Finish with a 30-second sear in a dry pan or under the grill for that crispy edge, without the oil.
+              Deep-frying adds significant fat calories, which over time contributes to weight gain — a key driver of insulin resistance. Steaming first cooks the food through without excess oil, so only a brief sear is needed for texture.
             </p>
           </div>
         </div>

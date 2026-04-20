@@ -74,15 +74,15 @@ export default function DietTipDetailZhHant() {
         <div className="px-5">
           <h2 className="text-[18px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>飲食建議</h2>
           <div className="flex gap-[18px] py-2 pl-1">
-            <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="果汁加1:1清水稀釋" />
-            <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="以原味乳酪加莓果取代甜品" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="選擇無糖飲品/果汁加1:1清水稀釋" />
+            <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="以無糖乳酪加漿果代替甜品" />
             <Tip src={`${import.meta.env.BASE_URL}images/tip-steam.png`} label="先蒸後略煎" selected />
           </div>
 
           <div className="mt-4 px-1">
             <p className="font-bold text-[15px] mb-2" style={{ color: COLORS.ink }}>先蒸後略煎</p>
             <p className="text-[13px] leading-relaxed" style={{ color: COLORS.muted }}>
-              油炸會讓食物吸滿油，升糖指數也會大幅上升。先用蒸的方式處理魚、雞肉甚至根莖類蔬菜，可以鎖住水份，讓碳水化合物對血糖更溫和。最後在乾鍋或焗爐下用 30 秒略煎或略燒，就能享受脆口的外層，但又不需要那層厚厚的油。
+              油炸食物含大量脂肪熱量，長期下來會導致體重增加——這是胰島素失效的主要成因。先蒸熟食物，之後只需短暫煎香，無需大量用油。
             </p>
           </div>
         </div>
