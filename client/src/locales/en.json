@@ -585,7 +585,9 @@
       "cancel": "Cancel",
       "confirm": "I understand and I still want to delete my account",
       "toast_success": "Account deleted",
-      "toast_error": "Failed to delete account"
+      "toast_error": "Failed to delete account",
+      "fallback_label": "Cannot delete? Click this",
+      "fallback_link_text": "Submit a deletion request"
     },
     "language": "Language",
     "font_size": "Font Size",

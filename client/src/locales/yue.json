@@ -589,7 +589,9 @@
       "cancel": "取消",
       "confirm": "我明白，但係仍然要刪除我個帳戶",
       "toast_success": "帳戶已刪除",
-      "toast_error": "刪除帳戶失敗"
+      "toast_error": "刪除帳戶失敗",
+      "fallback_label": "刪除唔到？㩒呢度",
+      "fallback_link_text": "提交刪除帳戶申請"
     },
     "language": "語言",
     "font_size": "字體大小",

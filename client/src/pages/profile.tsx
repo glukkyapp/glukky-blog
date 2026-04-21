@@ -624,6 +624,19 @@ export default function ProfilePage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <div className="mt-3 text-center text-xs text-muted-foreground">
+          <p>{t("profile.delete_account.fallback_label")}</p>
+          <a
+            href="https://support-url-generator.com/account-deletion/0_5Am9FfYJ7e"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-primary hover:text-primary/80"
+            data-testid="link-delete-account-fallback"
+          >
+            {t("profile.delete_account.fallback_link_text")}
+          </a>
+        </div>
       </div>
     </div>
   );
