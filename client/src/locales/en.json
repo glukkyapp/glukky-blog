@@ -957,6 +957,8 @@
     "headline_with_price": "At just {{price}}/month, enjoy these premium features:",
     "headline_no_price": "Enjoy these premium features:",
     "cup_of_coffee": "Costs less than a cup of coffee!",
-    "legal_disclosure": "By subscribing, you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>. Auto-renews monthly. Cancel anytime in App Store settings."
+    "legal_disclosure": "By subscribing, you agree to our {{terms}} and {{privacy}}. Auto-renews monthly. Cancel anytime in App Store settings.",
+    "legal_terms_link": "Terms of Use",
+    "legal_privacy_link": "Privacy Policy"
   }
 }
