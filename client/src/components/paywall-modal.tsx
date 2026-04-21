@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -220,58 +220,29 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               className="text-xs text-muted-foreground text-center mt-6 leading-relaxed"
               data-testid="text-paywall-legal"
             >
-              {(() => {
-                const TERMS_TOKEN = "__GLUKKY_TERMS__";
-                const PRIVACY_TOKEN = "__GLUKKY_PRIVACY__";
-                const raw = t("paywall.legal_disclosure", {
-                  terms: TERMS_TOKEN,
-                  privacy: PRIVACY_TOKEN,
-                });
-                const nodes: React.ReactNode[] = [];
-                let rest = raw;
-                let idx = 0;
-                while (rest.length > 0) {
-                  const tIdx = rest.indexOf(TERMS_TOKEN);
-                  const pIdx = rest.indexOf(PRIVACY_TOKEN);
-                  const next =
-                    tIdx === -1 ? pIdx : pIdx === -1 ? tIdx : Math.min(tIdx, pIdx);
-                  if (next === -1) {
-                    nodes.push(rest);
-                    break;
-                  }
-                  if (next > 0) nodes.push(rest.slice(0, next));
-                  if (next === tIdx) {
-                    nodes.push(
-                      <a
-                        key={`t-${idx++}`}
-                        href={TERMS_URL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline"
-                        data-testid="link-paywall-terms"
-                      >
-                        {t("paywall.legal_terms_link")}
-                      </a>,
-                    );
-                    rest = rest.slice(next + TERMS_TOKEN.length);
-                  } else {
-                    nodes.push(
-                      <a
-                        key={`p-${idx++}`}
-                        href={PRIVACY_URL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline"
-                        data-testid="link-paywall-privacy"
-                      >
-                        {t("paywall.legal_privacy_link")}
-                      </a>,
-                    );
-                    rest = rest.slice(next + PRIVACY_TOKEN.length);
-                  }
-                }
-                return nodes;
-              })()}
+              <Trans
+                i18nKey="paywall.legal_disclosure"
+                components={{
+                  terms: (
+                    <a
+                      href={TERMS_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                      data-testid="link-paywall-terms"
+                    />
+                  ),
+                  privacy: (
+                    <a
+                      href={PRIVACY_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                      data-testid="link-paywall-privacy"
+                    />
+                  ),
+                }}
+              />
             </p>
           </div>
         </motion.div>

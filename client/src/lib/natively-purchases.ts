@@ -125,20 +125,8 @@ export function getMonthlyPriceString(): Promise<string | null> {
       if (typeof purchases.getOfferings !== "function") {
         return resolve(null);
       }
-      let settled = false;
-      const done = (val: string | null) => {
-        if (settled) return;
-        settled = true;
-        resolve(val);
-      };
-      setTimeout(() => done(null), 5000);
       purchases.getOfferings((result) => {
-        try {
-          const price = result?.current?.monthly?.product?.priceString || null;
-          done(price);
-        } catch {
-          done(null);
-        }
+        resolve(result?.current?.monthly?.product?.priceString ?? null);
       });
     } catch {
       resolve(null);
