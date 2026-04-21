@@ -4,6 +4,7 @@ import type { UserProfile } from "@shared/schema";
 
 export const COMP_EMAILS = new Set<string>([
   "cynthiayuyu@hotmail.com",
+  "glukkyreviewer@glukky.app",
 ]);
 
 export function isCompEmail(email?: string | null): boolean {
