@@ -110,6 +110,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/auth/delete-account", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deleteUserCompletely(userId);
+      console.log(`[auth/delete-account] User ${userId} deleted self`, deleted);
+      req.session.destroy((err: any) => {
+        if (err) {
+          console.error("Session destroy error after account deletion:", err);
+          return res.status(500).json({ message: "Account deleted but session cleanup failed" });
+        }
+        res.clearCookie("connect.sid");
+        return res.json({ success: true, deleted });
+      });
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ message: error?.message || "Failed to delete account" });
+    }
+  });
+
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
