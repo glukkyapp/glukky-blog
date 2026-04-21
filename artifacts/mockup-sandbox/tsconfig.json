@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*", "mockupPreviewPlugin.ts", "vite.config.ts"],
+  "include": ["src/**/*", "mockupPreviewPlugin.ts", "vite.config.ts", "../../client/src/**/*", "../../shared/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "target": "es2022",
@@ -14,7 +14,12 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/lib/haptics": ["../../client/src/lib/haptics"],
+      "@/lib/natively-purchases": ["../../client/src/lib/natively-purchases"],
+      "@/*": ["./src/*"],
+      "@client/*": ["../../client/src/*"],
+      "@assets/*": ["../../attached_assets/*"],
+      "@shared/*": ["../../shared/*"]
     }
   }
 }

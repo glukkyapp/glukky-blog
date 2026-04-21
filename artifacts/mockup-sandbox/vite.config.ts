@@ -46,9 +46,20 @@ export default defineConfig({
       : []),
   ],
   resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
-    },
+    dedupe: ["react", "react-dom", "react-i18next", "i18next", "framer-motion", "lucide-react"],
+    alias: [
+      { find: /^react$/, replacement: path.resolve(import.meta.dirname, "node_modules/react") },
+      { find: /^react-dom$/, replacement: path.resolve(import.meta.dirname, "node_modules/react-dom") },
+      { find: /^react-dom\/client$/, replacement: path.resolve(import.meta.dirname, "node_modules/react-dom/client") },
+      { find: /^react\/jsx-runtime$/, replacement: path.resolve(import.meta.dirname, "node_modules/react/jsx-runtime") },
+      { find: /^react\/jsx-dev-runtime$/, replacement: path.resolve(import.meta.dirname, "node_modules/react/jsx-dev-runtime") },
+      { find: "@client", replacement: path.resolve(import.meta.dirname, "../../client/src") },
+      { find: "@assets", replacement: path.resolve(import.meta.dirname, "../../attached_assets") },
+      { find: "@shared", replacement: path.resolve(import.meta.dirname, "../../shared") },
+      { find: "@/lib/haptics", replacement: path.resolve(import.meta.dirname, "../../client/src/lib/haptics") },
+      { find: "@/lib/natively-purchases", replacement: path.resolve(import.meta.dirname, "../../client/src/lib/natively-purchases") },
+      { find: "@", replacement: path.resolve(import.meta.dirname, "src") },
+    ],
   },
   root: path.resolve(import.meta.dirname),
   build: {
