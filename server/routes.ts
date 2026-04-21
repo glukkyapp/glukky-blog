@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
+import { db } from "./db";
+import { userProfiles } from "@shared/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { sendPushNotification } from "./onesignal";
@@ -461,6 +464,13 @@ export async function registerRoutes(
       if (!playerId || typeof playerId !== "string") {
         return res.status(400).json({ message: "playerId is required" });
       }
+      await db
+        .update(userProfiles)
+        .set({ onesignalPlayerId: null })
+        .where(and(
+          eq(userProfiles.onesignalPlayerId, playerId),
+          sql`${userProfiles.userId} != ${userId}`,
+        ));
       const profile = await storage.updateProfile(userId, { onesignalPlayerId: playerId });
       if (!profile) return res.status(404).json({ message: "Profile not found" });
       res.json({ success: true });

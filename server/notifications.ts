@@ -34,24 +34,8 @@ function markTypeScheduled(dateStr: string, type: NotificationType): void {
   fs.writeFileSync(DEDUP_FILE, JSON.stringify({ date: dateStr, types: Array.from(existing) }), "utf-8");
 }
 
-function buildSendAfter(targetHourUtc: number): string {
-  const now = new Date();
-  const target = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    targetHourUtc,
-    0,
-    0,
-  ));
-  if (target.getTime() <= now.getTime()) {
-    target.setUTCDate(target.getUTCDate() + 1);
-  }
-  const y = target.getUTCFullYear();
-  const m = String(target.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(target.getUTCDate()).padStart(2, "0");
-  const h = String(target.getUTCHours()).padStart(2, "0");
-  return `${y}-${m}-${d} ${h}:00:00 GMT-0000`;
+function formatTimeOfDay(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
 }
 
 async function getRegisteredUsers() {
@@ -102,7 +86,7 @@ async function scheduleLateDinnerReminder(): Promise<boolean> {
     message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
     deepLink: "/",
     playerIds,
-    send_after: buildSendAfter(14),
+    delivery_time_of_day: formatTimeOfDay(14),
     delayed_option: "timezone",
   });
 }
@@ -160,7 +144,7 @@ async function scheduleReengagementReminder(): Promise<boolean> {
     message: "Your plan is waiting — even a small step counts.",
     deepLink: "/",
     playerIds: eligiblePlayerIds,
-    send_after: buildSendAfter(18),
+    delivery_time_of_day: formatTimeOfDay(18),
     delayed_option: "timezone",
   });
 }
@@ -183,7 +167,7 @@ async function scheduleSundayPlanningReminder(): Promise<boolean> {
     message: "Your weekly review is ready! Check your progress and plan next week.",
     deepLink: "/plan",
     playerIds,
-    send_after: buildSendAfter(22),
+    delivery_time_of_day: formatTimeOfDay(22),
     delayed_option: "timezone",
   });
 }
@@ -206,7 +190,7 @@ async function scheduleDailyCheckInReminder(): Promise<boolean> {
     message: "Your daily check-in is open — tap to log your day!",
     deepLink: "/",
     playerIds,
-    send_after: buildSendAfter(22),
+    delivery_time_of_day: formatTimeOfDay(22),
     delayed_option: "timezone",
   });
 }

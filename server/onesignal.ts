@@ -11,6 +11,7 @@ interface NotificationPayload {
   deepLink: string;
   playerIds: string[];
   send_after?: string;
+  delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
 }
 
@@ -23,6 +24,7 @@ interface OneSignalRequestBody {
   url: string;
   data: { deepLink: string };
   send_after?: string;
+  delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
 }
 
@@ -32,16 +34,22 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     return false;
   }
 
-  if (payload.playerIds.length === 0) {
+  const uniquePlayerIds = Array.from(new Set(payload.playerIds));
+
+  if (uniquePlayerIds.length === 0) {
     log("No player IDs to send to, skipping", "onesignal");
     return false;
+  }
+
+  if (uniquePlayerIds.length !== payload.playerIds.length) {
+    log(`Deduplicated player IDs: ${payload.playerIds.length} -> ${uniquePlayerIds.length}`, "onesignal");
   }
 
   const batchSize = 2000;
   let totalSuccess = true;
 
-  for (let i = 0; i < payload.playerIds.length; i += batchSize) {
-    const batch = payload.playerIds.slice(i, i + batchSize);
+  for (let i = 0; i < uniquePlayerIds.length; i += batchSize) {
+    const batch = uniquePlayerIds.slice(i, i + batchSize);
 
     const body: OneSignalRequestBody = {
       app_id: ONESIGNAL_APP_ID,
@@ -56,11 +64,18 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     if (payload.send_after) {
       body.send_after = payload.send_after;
     }
+    if (payload.delivery_time_of_day) {
+      body.delivery_time_of_day = payload.delivery_time_of_day;
+    }
     if (payload.delayed_option) {
       body.delayed_option = payload.delayed_option;
     }
 
-    log(`Sending notification to ${batch.length} subscription(s): ${JSON.stringify(batch)}${payload.send_after ? ` (send_after: ${payload.send_after}, delayed_option: ${payload.delayed_option})` : ""}`, "onesignal");
+    const scheduleInfo: string[] = [];
+    if (payload.send_after) scheduleInfo.push(`send_after: ${payload.send_after}`);
+    if (payload.delivery_time_of_day) scheduleInfo.push(`delivery_time_of_day: ${payload.delivery_time_of_day}`);
+    if (payload.delayed_option) scheduleInfo.push(`delayed_option: ${payload.delayed_option}`);
+    log(`Sending notification to ${batch.length} subscription(s): ${JSON.stringify(batch)}${scheduleInfo.length > 0 ? ` (${scheduleInfo.join(", ")})` : ""}`, "onesignal");
 
     try {
       const response = await fetch(ONESIGNAL_API_URL, {
