@@ -35,6 +35,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    setPrice(null);
     getMonthlyPriceString().then((p) => {
       if (!cancelled) setPrice(p);
     });
