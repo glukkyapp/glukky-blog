@@ -609,7 +609,8 @@ export default function ProfilePage() {
                     });
                     if (!res.ok) throw new Error("Failed");
                     toast({ title: t("profile.delete_account.toast_success") });
-                    window.location.href = "/";
+                    queryClient.clear();
+                    setLocation("/");
                   } catch {
                     toast({
                       title: t("profile.delete_account.toast_error"),
