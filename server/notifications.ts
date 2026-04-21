@@ -35,7 +35,9 @@ function markTypeScheduled(dateStr: string, type: NotificationType): void {
 }
 
 function formatTimeOfDay(hour: number): string {
-  return `${String(hour).padStart(2, "0")}:00`;
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:00${period}`;
 }
 
 async function getRegisteredUsers() {
