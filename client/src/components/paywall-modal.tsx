@@ -230,9 +230,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                       rel="noreferrer"
                       className="underline"
                       data-testid="link-paywall-terms"
-                    >
-                      {t("paywall.legal_terms_link")}
-                    </a>
+                    />
                   ),
                   privacy: (
                     <a
@@ -241,9 +239,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                       rel="noreferrer"
                       className="underline"
                       data-testid="link-paywall-privacy"
-                    >
-                      {t("paywall.legal_privacy_link")}
-                    </a>
+                    />
                   ),
                 }}
               />
