@@ -15,10 +15,30 @@ export interface RestoreResult {
   error?: string;
 }
 
+interface OfferingProduct {
+  priceString?: string;
+  price?: number;
+  currencyCode?: string;
+}
+
+interface OfferingPackage {
+  product?: OfferingProduct;
+}
+
+interface OfferingsResult {
+  current?: {
+    monthly?: OfferingPackage;
+    annual?: OfferingPackage;
+    availablePackages?: OfferingPackage[];
+  };
+  error?: string;
+}
+
 interface NativelyPurchasesInstance {
   purchasePackage(packageId: string, callback: (result: { error?: string; cancelled?: boolean; customerInfo?: CustomerInfo }) => void): void;
   restorePurchases(callback: (result: { error?: string; customerInfo?: CustomerInfo }) => void): void;
   getCustomerInfo(callback: (result: CustomerInfo | null) => void): void;
+  getOfferings?(callback: (result: OfferingsResult | null) => void): void;
 }
 
 interface NativelyPurchasesConstructor {
@@ -88,6 +108,37 @@ export function getCustomerInfo(): Promise<CustomerInfo | null> {
       const purchases = new window.NativelyPurchases();
       purchases.getCustomerInfo((result) => {
         resolve(result || null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export function getMonthlyPriceString(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) {
+      return resolve(null);
+    }
+    try {
+      const purchases = new window.NativelyPurchases();
+      if (typeof purchases.getOfferings !== "function") {
+        return resolve(null);
+      }
+      let settled = false;
+      const done = (val: string | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(val);
+      };
+      setTimeout(() => done(null), 5000);
+      purchases.getOfferings((result) => {
+        try {
+          const price = result?.current?.monthly?.product?.priceString || null;
+          done(price);
+        } catch {
+          done(null);
+        }
       });
     } catch {
       resolve(null);

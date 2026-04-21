@@ -12,6 +12,12 @@ uri = "file://artifacts/mockup-sandbox/public/images/tip-steam.png"
 type = "image"
 title = "steam food tip illustration"
 
+[[generated]]
+id = "Hx-nRis42pRrDqycXH76F"
+uri = "file://attached_assets/generated_images/laurel-wreath-gold.png"
+type = "image"
+title = "golden laurel branch"
+
 [[outputs]]
 id = "mpNz07bO-Fx7Ki1u0o_bh"
 uri = "file://glukky-source.tar.gz"

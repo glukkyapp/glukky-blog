@@ -956,6 +956,13 @@
     "error_purchase": "購買失敗，請再試吓。",
     "error_restore": "搵唔到有效嘅訂閱。",
     "restored_success": "訂閱已恢復！",
-    "maybe_later": "遲啲先啦"
+    "maybe_later": "遲啲先啦",
+    "headline_title": "即刻解鎖全部功能",
+    "headline_with_price": "每月只需 {{price}}，即可享受以下進階功能：",
+    "headline_no_price": "享受以下進階功能：",
+    "cup_of_coffee": "平過一杯咖啡！",
+    "legal_disclosure": "訂閱即代表你同意我哋嘅{{terms}}同{{privacy}}。每月自動續訂，隨時可以喺 App Store 設定中取消。",
+    "legal_terms_link": "使用條款",
+    "legal_privacy_link": "私隱政策"
   }
 }
