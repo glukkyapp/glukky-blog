@@ -190,12 +190,12 @@ export default function Landing() {
           style={{ background: "linear-gradient(to bottom, transparent 78%, rgba(0,0,0,0.72) 100%)" }}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[33dvh] overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[45dvh] overflow-hidden">
           <div className="flex flex-col gap-1">
-            <h2 className="text-[0.7rem] font-bold text-white leading-tight whitespace-pre-line">
+            <h2 className="text-[1.05rem] font-bold text-white leading-tight whitespace-pre-line">
               {slide.headline}
             </h2>
-            <p className="text-[0.5rem] text-white/85 leading-snug">
+            <p className="text-[0.75rem] text-white/85 leading-snug">
               {slide.body}
             </p>
           </div>
