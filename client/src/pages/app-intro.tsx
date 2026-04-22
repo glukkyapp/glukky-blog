@@ -116,6 +116,15 @@ export default function AppIntro() {
         </AnimatePresence>
       </div>
 
+      {isLastPage && (
+        <p
+          className="text-xs text-muted-foreground text-center mt-3 px-2"
+          data-testid="text-intro-disclaimer"
+        >
+          {t("intro.disclaimer")}
+        </p>
+      )}
+
       <div className="flex items-center gap-2 mt-6 mb-4">
         {pages.map((_, idx) => (
           <button

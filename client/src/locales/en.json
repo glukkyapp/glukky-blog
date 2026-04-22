@@ -936,7 +936,8 @@
     "master": "Master diet skills step by step",
     "wellbeing": "Achieve better sugar control, health and wellbeing",
     "button": "Let's go",
-    "next": "Next"
+    "next": "Next",
+    "disclaimer": "Glukky uses AI to provide personalised lifestyle coaching. This is not a substitute for professional medical advice."
   },
   "paywall": {
     "title": "Upgrade to Glukky Premium",
