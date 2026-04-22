@@ -190,12 +190,12 @@ export default function Landing() {
           style={{ background: "linear-gradient(to bottom, transparent 78%, rgba(0,0,0,0.72) 100%)" }}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[45dvh] overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[70dvh] overflow-hidden">
           <div className="flex flex-col gap-1">
-            <h2 className="text-[1.05rem] font-bold text-white leading-tight whitespace-pre-line">
+            <h2 className="text-[2.625rem] font-bold text-white leading-tight whitespace-pre-line">
               {slide.headline}
             </h2>
-            <p className="text-[0.75rem] text-white/85 leading-snug">
+            <p className="text-[1.875rem] text-white/85 leading-snug">
               {slide.body}
             </p>
           </div>
@@ -221,7 +221,7 @@ export default function Landing() {
           <div className="flex justify-center">
             <Button
               onClick={handleSlideNext}
-              className="rounded-full px-3 py-1 h-auto min-h-0 text-white text-[0.5rem] font-semibold btn-pop"
+              className="rounded-full px-8 py-3 h-auto min-h-0 text-white text-[1.25rem] font-semibold btn-pop"
               style={{ backgroundColor: "#127843", borderColor: "#127843" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
             >
