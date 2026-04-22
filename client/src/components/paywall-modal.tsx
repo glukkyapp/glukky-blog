@@ -115,7 +115,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
           className="fixed inset-0 z-[100] bg-popover text-popover-foreground overflow-y-auto"
           data-testid="paywall-modal"
         >
-          <div className="min-h-full flex flex-col items-center px-6 pb-10 max-w-md mx-auto">
+          <div className="min-h-full w-full flex flex-col items-center px-6 pb-10 max-w-md mx-auto">
             <img
               src={heroImg}
               alt=""
@@ -145,7 +145,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 width: "calc(100% + 3rem)",
               }}
             >
-            <div className="flex items-center justify-center gap-3 w-full pt-[84px]">
+            <div className="flex items-center justify-center gap-3 w-full pt-[95px]">
               <img
                 src={laurelImg}
                 alt=""
