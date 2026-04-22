@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 
 const URL =
-  "http://localhost:23637/__mockup/preview/paywall/PaywallScreen";
+  "http://localhost:23636/__mockup/preview/paywall/PaywallScreen";
 const OUT = "attached_assets/screenshots/paywall_en.png";
 
 const browser = await chromium.launch({

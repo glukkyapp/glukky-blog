@@ -121,10 +121,10 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               alt=""
               data-testid="paywall-hero-image"
               aria-hidden="true"
-              className="w-[calc(100%+3rem)] object-cover -mx-6 mb-6 pointer-events-none select-none"
+              className="w-[calc(100%_+_3rem)] object-cover -mx-6 mb-6 pointer-events-none select-none"
               style={{
                 aspectRatio: "16 / 9",
-                opacity: 0.5,
+                opacity: 0.8,
                 WebkitMaskImage:
                   "radial-gradient(ellipse 95% 80% at 50% 35%, #000 45%, rgba(0,0,0,0.6) 70%, transparent 100%)",
                 maskImage:
