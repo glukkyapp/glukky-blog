@@ -1,0 +1,83 @@
+1. Fix purchasePackage() in client/src/lib/natively-purchases.ts
+Current bug: it returns success: true whenever there is no error and no explicit cancelled, even if the purchase sheet was dismissed and there is no active premium entitlement.
+
+Required change:
+
+In the purchase callback, treat the purchase as successful only if:
+
+result.customerInfo exists, and
+
+isPremiumFromCustomerInfo(result.customerInfo) returns true
+
+Desired logic:
+
+ts
+purchases.purchasePackage(packageId, (result) => {
+  const customerInfo = result?.customerInfo || null;
+  const hasPremium = isPremiumFromCustomerInfo(customerInfo);
+
+  if (result?.error) {
+    resolve({ success: false, error: result.error });
+  } else if (result?.cancelled) {
+    resolve({ success: false, error: "cancelled" });
+  } else if (customerInfo && hasPremium) {
+    resolve({ success: true, customerInfo });
+  } else {
+    resolve({ success: false, error: "cancelled" });
+  }
+});
+2. Fix handlePurchase() in client/src/components/paywall-modal.tsx
+Current bug: it upgrades the user based on result.success alone. That is unsafe.
+
+Required change:
+
+Change the success branch to match the restore flow:
+
+ts
+if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
+  await apiRequest("POST", "/api/update-premium-status", { isPremium: true });
+  onPremiumUnlocked?.();
+  onClose();
+} else if (result.error !== "cancelled") {
+  setError("Purchase failed. Please try again.");
+}
+Stronger version
+If you want the safest wording for your agent, send this:
+
+Fix the purchase-unlock bug by making active entitlement the only source of truth. In client/src/lib/natively-purchases.ts, update purchasePackage() so it returns success: true only when result.customerInfo exists and isPremiumFromCustomerInfo(result.customerInfo) is true. If there is no error but also no active entitlement, treat it as cancelled/failed, not success. In client/src/components/paywall-modal.tsx, update handlePurchase() so it only POSTs premium unlock when result.success && isPremiumFromCustomerInfo(result.customerInfo || null) is true, exactly like restore flow. Do not unlock premium based on callback success alone.
+
+Also tell them this
+Add a short comment in the code:
+
+ts
+// Never unlock premium from purchase callback alone.
+// Only unlock when RevenueCat customerInfo shows an active premium entitlement.
+That helps prevent future regressions.
+
+Optional but recommended hardening
+If you want better defense beyond this immediate fix:
+
+Do not trust raw isPremium: true from the client forever.
+
+Prefer backend premium updates driven by verified RevenueCat entitlement state.
+
+Re-fetch or invalidate customer info after purchase if needed when SDK state is stale. RevenueCat community discussions mention cache refresh can matter in some flows.
+
+SQL cleanup
+If that tester account was accidentally upgraded, your cleanup query is reasonable:
+
+sql
+UPDATE profiles
+SET is_premium = false
+WHERE user_id IN (
+  SELECT id FROM users WHERE email = 'yellowwmeowwww@gmail.com'
+)
+AND is_premium = true;
+But first run:
+
+sql
+SELECT users.email, profiles.is_premium
+FROM profiles
+JOIN users ON users.id = profiles.user_id
+WHERE users.email = 'yellowwmeowwww@gmail.com';
+so you confirm the current state before changing it.
