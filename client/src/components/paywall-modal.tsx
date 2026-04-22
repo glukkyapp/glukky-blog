@@ -12,6 +12,7 @@ import {
   getMonthlyPriceString,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
+import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
 
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 const PRIVACY_URL = "https://support-url-generator.com/privacy/jjw2eCXTIxWb";
@@ -114,15 +115,22 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
           className="fixed inset-0 z-[100] bg-popover text-popover-foreground overflow-y-auto"
           data-testid="paywall-modal"
         >
-          <div className="min-h-full flex flex-col items-center px-6 pt-10 pb-10 max-w-md mx-auto">
-            <div
-              className="w-full rounded-2xl bg-muted/40 border border-dashed border-border flex items-center justify-center mb-6"
-              style={{ aspectRatio: "16 / 9" }}
-              data-testid="paywall-hero-image-slot"
+          <div className="min-h-full flex flex-col items-center px-6 pb-10 max-w-md mx-auto">
+            <img
+              src={heroImg}
+              alt=""
+              data-testid="paywall-hero-image"
               aria-hidden="true"
-            >
-              <span className="text-xs text-muted-foreground">Image</span>
-            </div>
+              className="w-screen max-w-md object-cover -mx-6 -mt-0 mb-6 pointer-events-none select-none"
+              style={{
+                aspectRatio: "16 / 9",
+                opacity: 0.5,
+                WebkitMaskImage:
+                  "radial-gradient(ellipse 95% 80% at 50% 35%, #000 45%, rgba(0,0,0,0.6) 70%, transparent 100%)",
+                maskImage:
+                  "radial-gradient(ellipse 95% 80% at 50% 35%, #000 45%, rgba(0,0,0,0.6) 70%, transparent 100%)",
+              }}
+            />
 
             <div className="flex items-center justify-center gap-3 w-full">
               <img
