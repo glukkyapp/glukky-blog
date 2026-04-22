@@ -609,8 +609,9 @@ export default function ProfilePage() {
                     });
                     if (!res.ok) throw new Error("Failed");
                     toast({ title: t("profile.delete_account.toast_success") });
-                    queryClient.clear();
-                    setLocation("/");
+                    setTimeout(() => {
+                      window.location.assign("/");
+                    }, 150);
                   } catch {
                     toast({
                       title: t("profile.delete_account.toast_error"),
