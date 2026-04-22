@@ -113,6 +113,35 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/set-premium", async (req, res) => {
+    try {
+      const adminSecret = process.env.ADMIN_WIPE_SECRET;
+      if (!adminSecret) {
+        return res.status(503).json({ message: "Admin set-premium not configured" });
+      }
+      const provided = req.header("x-admin-secret");
+      if (provided !== adminSecret) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const schema = z.object({ email: z.string().email(), isPremium: z.boolean() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+      const email = parsed.data.email.toLowerCase();
+      const user = await authStorage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found", email });
+      }
+      const updated = await storage.updateProfile(user.id, { isPremium: parsed.data.isPremium });
+      console.log(`[admin/set-premium] ${email} (id=${user.id}) -> isPremium=${parsed.data.isPremium}`);
+      res.json({ ok: true, email, userId: user.id, isPremium: updated?.isPremium ?? null });
+    } catch (error: any) {
+      console.error("Error setting premium:", error);
+      res.status(500).json({ message: error?.message || "Failed to set premium" });
+    }
+  });
+
   app.post("/api/auth/delete-account", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

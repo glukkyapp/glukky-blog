@@ -23,6 +23,8 @@ interface OfferingProduct {
 
 interface OfferingPackage {
   product?: OfferingProduct;
+  identifier?: string;
+  packageType?: string;
 }
 
 interface OfferingsResult {
@@ -30,7 +32,7 @@ interface OfferingsResult {
     monthly?: OfferingPackage;
     annual?: OfferingPackage;
     availablePackages?: OfferingPackage[];
-  };
+  } | null;
   error?: string;
 }
 
@@ -67,10 +69,19 @@ export function purchasePackage(packageId: string): Promise<PurchaseResult> {
     try {
       const purchases = new window.NativelyPurchases();
       purchases.purchasePackage(packageId, (result) => {
-        if (result?.error || result?.cancelled) {
-          resolve({ success: false, error: result?.error || "cancelled" });
+        // Never unlock premium from purchase callback alone.
+        // Only unlock when RevenueCat customerInfo shows an active premium entitlement.
+        const customerInfo = result?.customerInfo || null;
+        const hasPremium = isPremiumFromCustomerInfo(customerInfo);
+
+        if (result?.error) {
+          resolve({ success: false, error: result.error });
+        } else if (result?.cancelled) {
+          resolve({ success: false, error: "cancelled" });
+        } else if (customerInfo && hasPremium) {
+          resolve({ success: true, customerInfo });
         } else {
-          resolve({ success: true, customerInfo: result?.customerInfo || undefined });
+          resolve({ success: false, error: "cancelled" });
         }
       });
     } catch (e: unknown) {
@@ -126,7 +137,22 @@ export function getMonthlyPriceString(): Promise<string | null> {
         return resolve(null);
       }
       purchases.getOfferings((result) => {
-        resolve(result?.current?.monthly?.product?.priceString ?? null);
+        const current = result?.current;
+        if (!current) return resolve(null);
+
+        const direct = current.monthly?.product?.priceString;
+        if (direct) return resolve(direct);
+
+        const packages = current.availablePackages || [];
+        const monthlyPkg = packages.find(
+          (p) => p?.identifier === "$rc_monthly" || p?.packageType === "MONTHLY",
+        );
+        if (monthlyPkg?.product?.priceString) {
+          return resolve(monthlyPkg.product.priceString);
+        }
+
+        const firstPriced = packages.find((p) => !!p?.product?.priceString);
+        resolve(firstPriced?.product?.priceString ?? null);
       });
     } catch {
       resolve(null);

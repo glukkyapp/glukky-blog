@@ -52,7 +52,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     hapticTap("MEDIUM");
 
     const result = await purchasePackage("$rc_monthly");
-    if (result.success) {
+    // Never unlock premium from purchase callback alone.
+    // Only unlock when RevenueCat customerInfo shows an active premium entitlement.
+    if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
       hapticNotify("SUCCESS");
       try {
         await fetch("/api/update-premium-status", {
