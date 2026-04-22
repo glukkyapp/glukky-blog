@@ -125,6 +125,10 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               style={{
                 aspectRatio: "16 / 9",
                 opacity: 0.8,
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)",
               }}
             />
 
@@ -133,15 +137,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               style={{
                 background: "hsl(var(--popover))",
                 WebkitMaskImage:
-                  "linear-gradient(to bottom, transparent 0px, transparent 20px, #000 140px)",
+                  "linear-gradient(to bottom, transparent 0px, transparent 40px, #000 110px)",
                 maskImage:
-                  "linear-gradient(to bottom, transparent 0px, transparent 20px, #000 140px)",
+                  "linear-gradient(to bottom, transparent 0px, transparent 40px, #000 110px)",
                 marginLeft: "-1.5rem",
                 marginRight: "-1.5rem",
                 width: "calc(100% + 3rem)",
               }}
             >
-            <div className="flex items-center justify-center gap-3 w-full pt-12">
+            <div className="flex items-center justify-center gap-3 w-full pt-[140px]">
               <img
                 src={laurelImg}
                 alt=""
@@ -173,7 +177,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               {headline}
             </p>
 
-            <div className="w-full flex flex-col gap-3 text-left text-base mt-[26px]">
+            <div className="w-full flex flex-col gap-[7px] text-left text-base mt-[26px]">
               {["feature_plans", "feature_snap", "feature_roadmap", "feature_insights"].map((key) => (
                 <div key={key} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
