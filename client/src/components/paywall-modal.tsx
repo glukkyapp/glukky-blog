@@ -129,13 +129,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             />
 
             <div
-              className="w-full flex flex-col items-center mt-[-40px] relative z-10 px-6"
+              className="w-full flex flex-col items-center mt-[-120px] relative z-10 px-6"
               style={{
                 background: "hsl(var(--popover))",
                 WebkitMaskImage:
-                  "linear-gradient(to bottom, transparent 0px, #000 56px)",
+                  "linear-gradient(to bottom, transparent 0px, transparent 20px, #000 140px)",
                 maskImage:
-                  "linear-gradient(to bottom, transparent 0px, #000 56px)",
+                  "linear-gradient(to bottom, transparent 0px, transparent 20px, #000 140px)",
                 marginLeft: "-1.5rem",
                 marginRight: "-1.5rem",
                 width: "calc(100% + 3rem)",
@@ -167,13 +167,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-base text-foreground/90 text-center mt-[36px]"
+              className="text-sm text-foreground/90 text-center mt-[18px]"
               data-testid="text-paywall-headline"
             >
               {headline}
             </p>
 
-            <div className="w-full flex flex-col gap-3 text-left text-sm mt-8">
+            <div className="w-full flex flex-col gap-3 text-left text-base mt-[26px]">
               {["feature_plans", "feature_snap", "feature_roadmap", "feature_insights"].map((key) => (
                 <div key={key} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -183,7 +183,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-sm font-medium text-primary text-center mt-[48px]"
+              className="text-base font-medium text-foreground text-center mt-[38px]"
               data-testid="text-paywall-cup-of-coffee"
             >
               {t("paywall.cup_of_coffee")}
@@ -196,9 +196,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             )}
 
             {isNative ? (
-              <div className="w-full flex flex-col gap-3 mt-6">
+              <div className="w-full flex flex-col gap-2 mt-6">
                 <Button
-                  className="w-full h-12 text-base gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+                  className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
                   disabled={purchasing || restoring}
                   data-testid="button-paywall-subscribe"
@@ -218,7 +218,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 {!lockApp && (
                   <button
                     onClick={handleMaybeLater}
-                    className="text-sm text-muted-foreground underline mt-1"
+                    className="text-xs text-muted-foreground underline"
                     data-testid="button-paywall-maybe-later"
                   >
                     {t("paywall.maybe_later")}
@@ -226,7 +226,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 )}
               </div>
             ) : (
-              <div className="w-full flex flex-col gap-3 mt-6">
+              <div className="w-full flex flex-col gap-2 mt-6">
                 <div className="w-full rounded-xl bg-muted/50 border border-border px-4 py-3">
                   <p className="text-sm text-muted-foreground text-center" data-testid="text-paywall-native-hint">
                     {t("paywall.open_in_app")}
@@ -235,7 +235,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 {!lockApp && (
                   <button
                     onClick={handleMaybeLater}
-                    className="text-sm text-muted-foreground underline"
+                    className="text-xs text-muted-foreground underline"
                     data-testid="button-paywall-maybe-later"
                   >
                     {t("paywall.maybe_later")}
