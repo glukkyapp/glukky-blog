@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { hapticNotify } from "@/lib/haptics";
-import { isNativelyAvailable, restorePurchases, isPremiumFromCustomerInfo } from "@/lib/natively-purchases";
+import { isNativelyAvailable, restorePurchases } from "@/lib/natively-purchases";
 import { Crown, RotateCcw } from "lucide-react";
 
 interface ProfileData {
@@ -520,18 +520,40 @@ export default function ProfilePage() {
             onClick={async () => {
               hapticNotify("SUCCESS");
               const result = await restorePurchases();
-              if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
-                await fetch("/api/update-premium-status", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({ isPremium: true }),
-                });
+              // Server is source of truth — verify with RevenueCat regardless
+              // of what the device reports. This handles "no active sub",
+              // expired sub, and account-switch cases correctly.
+              let verified = false;
+              if (result.success) {
+                try {
+                  const resp = await fetch("/api/refresh-premium-status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({}),
+                  });
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
+                  }
+                } catch {}
+              }
+              if (verified) {
                 queryClient.refetchQueries({ queryKey: ["/api/profile"] });
                 queryClient.refetchQueries({ queryKey: ["/api/gate-status"] });
                 hapticNotify("SUCCESS");
+                toast({
+                  title: t("paywall.restore_success_title", { defaultValue: "Subscription restored" }),
+                });
               } else {
                 hapticNotify("ERROR");
+                toast({
+                  title: t("paywall.restore_none_title", { defaultValue: "No active subscription found" }),
+                  description: t("paywall.restore_none_desc", {
+                    defaultValue: "We couldn't find an active Glukky subscription on this Apple ID.",
+                  }),
+                  variant: "destructive",
+                });
               }
             }}
           >

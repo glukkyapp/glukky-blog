@@ -33,6 +33,25 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
   const isNative = isNativelyAvailable();
 
+  // Ask the server to verify entitlement with RevenueCat and update
+  // is_premium accordingly. Returns true only when the server's verified
+  // result is premium. Never trust the client's own opinion here.
+  const refreshPremiumOnServer = async (): Promise<boolean> => {
+    try {
+      const resp = await fetch("/api/refresh-premium-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!resp.ok) return false;
+      const data = await resp.json();
+      return Boolean(data?.verifiedPremium ?? data?.isPremium);
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -52,19 +71,17 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     hapticTap("MEDIUM");
 
     const result = await purchasePackage("$rc_monthly");
-    // Never unlock premium from purchase callback alone.
-    // Only unlock when RevenueCat customerInfo shows an active premium entitlement.
+    // Client never decides premium. After a successful purchase we ask the
+    // server to refresh, and the server verifies entitlement with RevenueCat.
     if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
-      hapticNotify("SUCCESS");
-      try {
-        await fetch("/api/update-premium-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ isPremium: true }),
-        });
-      } catch {}
-      onPurchaseSuccess();
+      const verified = await refreshPremiumOnServer();
+      if (verified) {
+        hapticNotify("SUCCESS");
+        onPurchaseSuccess();
+      } else {
+        hapticNotify("ERROR");
+        setError(t("paywall.error_purchase"));
+      }
     } else if (result.error !== "cancelled") {
       hapticNotify("ERROR");
       setError(t("paywall.error_purchase"));
@@ -79,18 +96,20 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     hapticTap("LIGHT");
 
     const result = await restorePurchases();
-    if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
-      hapticNotify("SUCCESS");
-      try {
-        await fetch("/api/update-premium-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ isPremium: true }),
-        });
-      } catch {}
-      onPurchaseSuccess();
+    // Don't trust customerInfo from the device for unlock decisions; let the
+    // server verify with RevenueCat. We only use the device result to skip
+    // the round-trip when it clearly shows nothing was restored.
+    if (result.success) {
+      const verified = await refreshPremiumOnServer();
+      if (verified) {
+        hapticNotify("SUCCESS");
+        onPurchaseSuccess();
+      } else {
+        hapticNotify("ERROR");
+        setError(t("paywall.error_restore"));
+      }
     } else {
+      hapticNotify("ERROR");
       setError(t("paywall.error_restore"));
     }
     setRestoring(false);

@@ -29,7 +29,6 @@ import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
-import { getCustomerInfo, isPremiumFromCustomerInfo, isNativelyAvailable } from "@/lib/natively-purchases";
 import { preloadAllImages } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 
@@ -247,27 +246,40 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     if (!(profile as any)?.onboardingComplete) return;
-    if (!isNativelyAvailable()) return;
 
-    const syncPremium = async () => {
+    // Ask the server to verify premium with RevenueCat. The server is the
+    // only source of truth — it may flip is_premium true OR false based on
+    // the verified entitlement (handles expired subs, account switches,
+    // etc.). We never send a client-side premium flag.
+    const refreshPremium = async () => {
       try {
-        const info = await getCustomerInfo();
-        const premium = isPremiumFromCustomerInfo(info);
-        if (premium && !(profile as any)?.isPremium) {
-          await fetch("/api/update-premium-status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ isPremium: true }),
-          });
+        const resp = await fetch("/api/refresh-premium-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({}),
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
+        if (verified !== Boolean((profile as any)?.isPremium)) {
           refetchGate();
           queryClient.refetchQueries({ queryKey: ["/api/profile"] });
         }
       } catch (e) {
-        console.warn("[purchases] sync error:", e);
+        console.warn("[premium] refresh error:", e);
       }
     };
-    syncPremium();
+
+    // On boot.
+    refreshPremium();
+
+    // On app foreground (catches expired subs without a tap).
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshPremium();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [(profile as any)?.onboardingComplete, (profile as any)?.userId]);
 
   useBounceScroll();

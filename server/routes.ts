@@ -23,7 +23,8 @@ import {
   awardStruggleGraduationCoin,
 } from "./achievements";
 import { canUseFeature, getGateStatus } from "./gate";
-import { ensureCompPremium } from "./comp-emails";
+import { ensureCompPremium, isCompUserId } from "./comp-emails";
+import { verifyEntitlement, invalidateEntitlementCache } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
@@ -2852,22 +2853,56 @@ No explanation, just JSON.`,
     }
   });
 
-  app.post("/api/update-premium-status", isAuthenticated, async (req: any, res) => {
+  // Refresh premium status. The backend is the only source of truth.
+  // Any client-supplied `isPremium` value in the body is IGNORED — the
+  // server asks RevenueCat directly via verifyEntitlement() and writes
+  // the verified result (true OR false) to profiles.is_premium.
+  // Comp-list users always remain premium regardless of RC.
+  const refreshPremiumHandler = async (req: any, res: any) => {
     try {
       const userId = req.user.claims.sub;
-      const { isPremium } = req.body;
-      if (typeof isPremium !== "boolean") {
-        return res.status(400).json({ message: "isPremium boolean is required" });
+      const existing = await storage.getProfile(userId);
+      if (!existing) return res.status(404).json({ message: "Profile not found" });
+
+      // Comp users (e.g. App Store reviewer, internal accounts) are always premium.
+      const isComp = await isCompUserId(userId);
+      let verifiedPremium: boolean;
+      let source: string;
+      if (isComp) {
+        verifiedPremium = true;
+        source = "comp";
+      } else {
+        // Force a fresh check (no stale 30s cache) so user-initiated
+        // refresh always reflects the latest RC state.
+        invalidateEntitlementCache(userId);
+        const result = await verifyEntitlement(userId);
+        verifiedPremium = result.hasPremium;
+        source = result.source;
       }
-      await storage.updateProfile(userId, { isPremium });
-      const profile = await storage.getProfile(userId);
-      if (!profile) return res.status(404).json({ message: "Profile not found" });
-      res.json(getGateStatus(profile));
+
+      let profile = existing;
+      if (existing.isPremium !== verifiedPremium) {
+        const updated = await storage.updateProfile(userId, { isPremium: verifiedPremium });
+        if (updated) profile = updated;
+      }
+
+      console.log(
+        `[premium/refresh] user=${userId} verified=${verifiedPremium} source=${source} stored=${profile.isPremium}`,
+      );
+
+      res.json({
+        ...getGateStatus(profile),
+        verifiedPremium,
+        verificationSource: source,
+      });
     } catch (error: any) {
-      console.error("Error updating premium status:", error);
-      res.status(500).json({ message: "Failed to update premium status" });
+      console.error("Error refreshing premium status:", error);
+      res.status(500).json({ message: "Failed to refresh premium status" });
     }
-  });
+  };
+
+  app.post("/api/update-premium-status", isAuthenticated, refreshPremiumHandler);
+  app.post("/api/refresh-premium-status", isAuthenticated, refreshPremiumHandler);
 
   return httpServer;
 }
