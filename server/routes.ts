@@ -2872,9 +2872,12 @@ No explanation, just JSON.`,
         verifiedPremium = true;
         source = "comp";
       } else {
-        // Force a fresh check (no stale 30s cache) so user-initiated
-        // refresh always reflects the latest RC state.
-        invalidateEntitlementCache(userId);
+        // Honor the 30s cache for routine refreshes (boot, foreground,
+        // homepage gate checks). Only force-bypass when the caller asks
+        // for it (e.g. user-initiated restore-purchases tap).
+        if (req.body?.force === true) {
+          invalidateEntitlementCache(userId);
+        }
         const result = await verifyEntitlement(userId);
         verifiedPremium = result.hasPremium;
         source = result.source;

@@ -36,13 +36,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   // Ask the server to verify entitlement with RevenueCat and update
   // is_premium accordingly. Returns true only when the server's verified
   // result is premium. Never trust the client's own opinion here.
+  // force:true bypasses the server's 30s cache because this is the
+  // user-initiated post-purchase / post-restore path.
   const refreshPremiumOnServer = async (): Promise<boolean> => {
     try {
       const resp = await fetch("/api/refresh-premium-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
+        body: JSON.stringify({ force: true }),
       });
       if (!resp.ok) return false;
       const data = await resp.json();

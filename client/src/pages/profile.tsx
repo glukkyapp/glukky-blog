@@ -530,7 +530,7 @@ export default function ProfilePage() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
-                    body: JSON.stringify({}),
+                    body: JSON.stringify({ force: true }),
                   });
                   if (resp.ok) {
                     const data = await resp.json();
