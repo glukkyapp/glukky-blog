@@ -121,18 +121,27 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               alt=""
               data-testid="paywall-hero-image"
               aria-hidden="true"
-              className="w-[140%] max-w-none object-cover ml-[-20%] mb-6 pointer-events-none select-none"
+              className="w-[140%] max-w-none object-cover ml-[-20%] pointer-events-none select-none"
               style={{
                 aspectRatio: "16 / 9",
                 opacity: 0.8,
-                WebkitMaskImage:
-                  "radial-gradient(ellipse 95% 80% at 50% 35%, #000 45%, rgba(0,0,0,0.6) 70%, transparent 100%)",
-                maskImage:
-                  "radial-gradient(ellipse 95% 80% at 50% 35%, #000 45%, rgba(0,0,0,0.6) 70%, transparent 100%)",
               }}
             />
 
-            <div className="flex items-center justify-center gap-3 w-full">
+            <div
+              className="w-full flex flex-col items-center mt-[-40px] relative z-10 px-6"
+              style={{
+                background: "hsl(var(--popover))",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, transparent 0px, #000 56px)",
+                maskImage:
+                  "linear-gradient(to bottom, transparent 0px, #000 56px)",
+                marginLeft: "-1.5rem",
+                marginRight: "-1.5rem",
+                width: "calc(100% + 3rem)",
+              }}
+            >
+            <div className="flex items-center justify-center gap-3 w-full pt-12">
               <img
                 src={laurelImg}
                 alt=""
@@ -158,23 +167,23 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-base text-foreground/90 text-center mt-[72px]"
+              className="text-base text-foreground/90 text-center mt-[36px]"
               data-testid="text-paywall-headline"
             >
               {headline}
             </p>
 
-            <div className="w-full flex flex-col gap-3 text-left text-sm mt-12">
+            <div className="w-full flex flex-col gap-3 text-left text-sm mt-8">
               {["feature_plans", "feature_snap", "feature_roadmap", "feature_insights"].map((key) => (
                 <div key={key} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                  <span>{t(`paywall.${key}`)}</span>
+                  <span className="font-semibold">{t(`paywall.${key}`)}</span>
                 </div>
               ))}
             </div>
 
             <p
-              className="text-sm font-medium text-primary text-center mt-[96px]"
+              className="text-sm font-medium text-primary text-center mt-[48px]"
               data-testid="text-paywall-cup-of-coffee"
             >
               {t("paywall.cup_of_coffee")}
@@ -189,7 +198,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             {isNative ? (
               <div className="w-full flex flex-col gap-3 mt-6">
                 <Button
-                  className="w-full h-12 text-base gap-2"
+                  className="w-full h-12 text-base gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
                   disabled={purchasing || restoring}
                   data-testid="button-paywall-subscribe"
@@ -263,6 +272,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 }}
               />
             </p>
+            </div>
           </div>
         </motion.div>
       )}
