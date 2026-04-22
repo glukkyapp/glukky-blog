@@ -3,12 +3,12 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/deep-dive/MonthlyDeepDive.tsx": () => import("../components/mockups/deep-dive/MonthlyDeepDive.tsx"),
   "./components/mockups/deep-dive/MonthlyDeepDiveZhHant.tsx": () => import("../components/mockups/deep-dive/MonthlyDeepDiveZhHant.tsx"),
+  "./components/mockups/health-info/DietTipDetail.tsx": () => import("../components/mockups/health-info/DietTipDetail.tsx"),
+  "./components/mockups/health-info/DietTipDetailZhHant.tsx": () => import("../components/mockups/health-info/DietTipDetailZhHant.tsx"),
   "./components/mockups/food-snap/AdviceState.tsx": () => import("../components/mockups/food-snap/AdviceState.tsx"),
   "./components/mockups/food-snap/AdviceStateZhHant.tsx": () => import("../components/mockups/food-snap/AdviceStateZhHant.tsx"),
   "./components/mockups/food-snap/ReviewState.tsx": () => import("../components/mockups/food-snap/ReviewState.tsx"),
   "./components/mockups/food-snap/ReviewStateZhHant.tsx": () => import("../components/mockups/food-snap/ReviewStateZhHant.tsx"),
-  "./components/mockups/health-info/DietTipDetail.tsx": () => import("../components/mockups/health-info/DietTipDetail.tsx"),
-  "./components/mockups/health-info/DietTipDetailZhHant.tsx": () => import("../components/mockups/health-info/DietTipDetailZhHant.tsx"),
   "./components/mockups/home/HomeTired.tsx": () => import("../components/mockups/home/HomeTired.tsx"),
   "./components/mockups/home/HomeTiredZhHant.tsx": () => import("../components/mockups/home/HomeTiredZhHant.tsx"),
   "./components/mockups/paywall/PaywallScreen.tsx": () => import("../components/mockups/paywall/PaywallScreen.tsx")

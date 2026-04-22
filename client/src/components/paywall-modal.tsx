@@ -111,10 +111,19 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 280 }}
-          className="fixed inset-0 z-[100] bg-background overflow-y-auto"
+          className="fixed inset-0 z-[100] bg-popover text-popover-foreground overflow-y-auto"
           data-testid="paywall-modal"
         >
           <div className="min-h-full flex flex-col items-center px-6 pt-10 pb-10 max-w-md mx-auto">
+            <div
+              className="w-full rounded-2xl bg-muted/40 border border-dashed border-border flex items-center justify-center mb-6"
+              style={{ aspectRatio: "16 / 9" }}
+              data-testid="paywall-hero-image-slot"
+              aria-hidden="true"
+            >
+              <span className="text-xs text-muted-foreground">Image</span>
+            </div>
+
             <div className="flex items-center justify-center gap-3 w-full">
               <img
                 src={laurelImg}
@@ -125,6 +134,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               />
               <h1
                 className="text-2xl font-bold text-center leading-tight"
+                style={{ fontFamily: "'Playfair Display', serif" }}
                 data-testid="text-paywall-title"
               >
                 {t("paywall.headline_title")}
@@ -140,7 +150,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-base text-foreground/90 text-center mt-6"
+              className="text-base text-foreground/90 text-center mt-[72px]"
               data-testid="text-paywall-headline"
             >
               {headline}
@@ -156,7 +166,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-sm font-medium text-primary text-center mt-5"
+              className="text-sm font-medium text-primary text-center mt-[60px]"
               data-testid="text-paywall-cup-of-coffee"
             >
               {t("paywall.cup_of_coffee")}
@@ -229,7 +239,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                       href={TERMS_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="underline"
+                      className="text-primary underline font-medium hover:text-primary/80"
                       data-testid="link-paywall-terms"
                     />
                   ),
@@ -238,7 +248,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                       href={PRIVACY_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="underline"
+                      className="text-primary underline font-medium hover:text-primary/80"
                       data-testid="link-paywall-privacy"
                     />
                   ),
