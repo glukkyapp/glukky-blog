@@ -121,7 +121,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               alt=""
               data-testid="paywall-hero-image"
               aria-hidden="true"
-              className="w-screen max-w-md object-cover -mx-6 -mt-0 mb-6 pointer-events-none select-none"
+              className="w-[calc(100%+3rem)] object-cover -mx-6 mb-6 pointer-events-none select-none"
               style={{
                 aspectRatio: "16 / 9",
                 opacity: 0.5,
