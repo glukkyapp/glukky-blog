@@ -29,7 +29,7 @@ function StatRow({ label, value, valueColor = COLORS.ink, last }: { label: strin
 export default function MonthlyDeepDive() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div className="px-5 pt-7 pb-8 h-full overflow-y-auto space-y-4">
+      <div className="px-5 pt-14 pb-2 h-full overflow-hidden space-y-4">
         {/* Heading */}
         <div className="flex items-center gap-2">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

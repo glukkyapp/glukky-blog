@@ -122,7 +122,7 @@ export default function HomeTired() {
         .goal-bubble::after { content: ""; position: absolute; left: 28px; bottom: -9px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid ${COLORS.bubble}; filter: drop-shadow(0 2px 1px rgba(44,72,56,0.05)); }
         .pf { font-family: 'Playfair Display', serif; }
       `}</style>
-      <div className="px-6 pt-7 pb-28 space-y-4 h-full overflow-hidden">
+      <div className="px-6 pt-14 pb-20 space-y-4 h-full overflow-hidden">
         {/* Header */}
         <div className="space-y-0.5">
           <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>Wednesday</h1>

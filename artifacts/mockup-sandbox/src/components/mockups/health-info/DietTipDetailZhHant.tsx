@@ -59,7 +59,7 @@ function Tip({ src, label, selected }: { src: string; label: string; selected?: 
 export default function DietTipDetailZhHant() {
   return (
     <div className="relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div className="pt-6 pb-32 h-full overflow-y-auto">
+      <div className="pt-12 pb-24 h-full overflow-hidden">
         <div className="flex items-center gap-3 px-5">
           <img src={`${import.meta.env.BASE_URL}images/lightbulb-heading.png`} alt="" className="w-14 h-14 shrink-0" />
           <h1 className="text-[24px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>健康資訊</h1>
