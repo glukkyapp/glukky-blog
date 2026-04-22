@@ -145,7 +145,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 width: "calc(100% + 3rem)",
               }}
             >
-            <div className="flex items-center justify-center gap-3 w-full pt-[140px]">
+            <div className="flex items-center justify-center gap-3 w-full pt-[84px]">
               <img
                 src={laurelImg}
                 alt=""
