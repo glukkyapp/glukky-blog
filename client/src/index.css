@@ -48,8 +48,8 @@ textarea,
   --background: 23 36% 93%;
   --foreground: 168 30% 12%;
   --border: 160 15% 85%;
-  --card: 0 0% 100%;
-  --card-foreground: 168 30% 12%;
+  --card: 52 79% 96%;
+  --card-foreground: 168 45% 8%;
   --card-border: 160 15% 88%;
   --sidebar: 150 18% 94%;
   --sidebar-foreground: 168 30% 15%;
@@ -59,8 +59,8 @@ textarea,
   --sidebar-accent: 150 20% 90%;
   --sidebar-accent-foreground: 168 30% 15%;
   --sidebar-ring: 166 48% 35%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 168 30% 12%;
+  --popover: 52 79% 96%;
+  --popover-foreground: 168 45% 8%;
   --popover-border: 160 15% 85%;
   --primary: 166 48% 35%;
   --primary-foreground: 0 0% 100%;

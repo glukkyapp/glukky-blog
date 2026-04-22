@@ -235,7 +235,7 @@ export default function Landing() {
 
   return (
     <div
-      className="flex flex-col min-h-screen px-6 pt-8 pb-8"
+      className="flex flex-col min-h-screen px-6 pt-3 pb-3"
       style={{ backgroundColor: "#fdfbee" }}
       data-testid="landing-auth-screen"
     >
@@ -253,7 +253,7 @@ export default function Landing() {
         </p>
       </div>
 
-      <div className="flex w-full rounded-xl overflow-hidden border mb-6" data-testid="auth-tabs">
+      <div className="flex w-full rounded-xl overflow-hidden border mb-4" data-testid="auth-tabs">
         <button
           type="button"
           onClick={() => switchTab("login")}
@@ -346,7 +346,7 @@ export default function Landing() {
           setIsChangingLang(true);
           setStep("lang");
         }}
-        className="mt-auto pt-8 text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
+        className="mt-auto pt-4 text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
         data-testid="button-change-language"
       >
         {t("landing.change_language")}
