@@ -400,7 +400,9 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
 
 export default function ProfilePage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery<ProfileData>({
     queryKey: ["/api/profile"],
@@ -556,44 +558,43 @@ export default function ProfilePage() {
       </div>
 
       <div className="pt-2 pb-6">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-              data-testid="button-delete-account"
-            >
-              <Trash2 className="w-4 h-4" />
-              {t("profile.delete_account.button")}
-            </Button>
-          </AlertDialogTrigger>
+        <Button
+          variant="outline"
+          className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+          data-testid="button-delete-account"
+          onClick={() => setDeleteDialogOpen(true)}
+        >
+          <Trash2 className="w-4 h-4" />
+          {t("profile.delete_account.button")}
+        </Button>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent data-testid="dialog-delete-account" className="max-h-[85vh] overflow-y-auto">
             <AlertDialogHeader>
               <AlertDialogTitle data-testid="text-delete-account-title">
                 {t("profile.delete_account.title")}
               </AlertDialogTitle>
-              <AlertDialogDescription asChild>
-                <div className="space-y-3 text-sm text-muted-foreground">
-                  <p data-testid="text-delete-account-intro">{t("profile.delete_account.intro")}</p>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {t("profile.delete_account.wiped_heading")}
-                    </p>
-                    <ul className="list-disc pl-5 mt-1 space-y-1">
-                      <li>{t("profile.delete_account.wiped_profile")}</li>
-                      <li>{t("profile.delete_account.wiped_plans")}</li>
-                      <li>{t("profile.delete_account.wiped_reports")}</li>
-                      <li>{t("profile.delete_account.wiped_piggy")}</li>
-                      <li>{t("profile.delete_account.wiped_history")}</li>
-                      <li>{t("profile.delete_account.wiped_push")}</li>
-                    </ul>
-                  </div>
-                  <p>{t("profile.delete_account.subscription_warning")}</p>
-                  <p>{t("profile.delete_account.no_restore")}</p>
-                  <p>{t("profile.delete_account.timing")}</p>
-                </div>
+              <AlertDialogDescription data-testid="text-delete-account-intro">
+                {t("profile.delete_account.intro")}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div>
+                <p className="font-medium text-foreground">
+                  {t("profile.delete_account.wiped_heading")}
+                </p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>{t("profile.delete_account.wiped_profile")}</li>
+                  <li>{t("profile.delete_account.wiped_plans")}</li>
+                  <li>{t("profile.delete_account.wiped_reports")}</li>
+                  <li>{t("profile.delete_account.wiped_piggy")}</li>
+                  <li>{t("profile.delete_account.wiped_history")}</li>
+                  <li>{t("profile.delete_account.wiped_push")}</li>
+                </ul>
+              </div>
+              <p>{t("profile.delete_account.subscription_warning")}</p>
+              <p>{t("profile.delete_account.no_restore")}</p>
+              <p>{t("profile.delete_account.timing")}</p>
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel data-testid="button-delete-account-cancel">
                 {t("profile.delete_account.cancel")}
