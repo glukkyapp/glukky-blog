@@ -389,3 +389,30 @@ html.font-small {
 .app-page-v2 .bg-muted\/30 { background-color: #F5F2EC !important; }
 .app-page-v2 .bg-green-100 { background-color: #d0f38f !important; color: #2F6B43 !important; }
 .app-page-v2 .text-green-600 { color: #2F6B43 !important; }
+/* === Popup / modal / sheet surfaces use the cream app background === */
+/* Targets Radix Dialog, AlertDialog, Sheet, and Vaul Drawer content. They */
+/* render in a portal outside .app-page-v2, so we match by ARIA role. */
+[role="dialog"],
+[role="alertdialog"] {
+  background-color: #fdfbee !important;
+}
+/* Inner surfaces inside popups: nudge off-white tokens to a slightly */
+/* off-cream tone so cards / inputs / fills still read against #fdfbee. */
+[role="dialog"] .bg-card,
+[role="dialog"] .bg-background,
+[role="dialog"] .bg-popover,
+[role="dialog"] .bg-white,
+[role="alertdialog"] .bg-card,
+[role="alertdialog"] .bg-background,
+[role="alertdialog"] .bg-popover,
+[role="alertdialog"] .bg-white {
+  background-color: #fbfbf3 !important;
+}
+[role="dialog"] .bg-muted\/50,
+[role="alertdialog"] .bg-muted\/50 {
+  background-color: #F1F4ED !important;
+}
+[role="dialog"] .bg-muted\/30,
+[role="alertdialog"] .bg-muted\/30 {
+  background-color: #F5F2EC !important;
+}

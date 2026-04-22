@@ -112,7 +112,8 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 280 }}
-          className="fixed inset-0 z-[100] bg-popover text-popover-foreground overflow-y-auto"
+          className="fixed inset-0 z-[100] text-popover-foreground overflow-y-auto"
+          style={{ backgroundColor: "#fdfbee" }}
           data-testid="paywall-modal"
         >
           <div className="min-h-full w-full flex flex-col items-center px-6 pb-10 max-w-md mx-auto">
@@ -135,7 +136,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             <div
               className="w-full flex flex-col items-center mt-[-120px] relative z-10 px-6"
               style={{
-                background: "hsl(var(--popover))",
+                background: "#fdfbee",
                 WebkitMaskImage:
                   "linear-gradient(to bottom, transparent 0px, transparent 40px, #000 110px)",
                 maskImage:
