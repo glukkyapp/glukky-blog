@@ -233,7 +233,7 @@ export default function Onboarding() {
               style={{
                 marginLeft: -22,
                 marginRight: -22,
-                marginTop: -22,
+                marginTop: 8,
                 marginBottom: 8,
                 overflow: "hidden",
                 borderTopLeftRadius: 28,
@@ -270,7 +270,7 @@ export default function Onboarding() {
               style={{
                 marginLeft: -22,
                 marginRight: -22,
-                marginTop: -22,
+                marginTop: 8,
                 marginBottom: 21,
                 overflow: "hidden",
                 borderTopLeftRadius: 28,
