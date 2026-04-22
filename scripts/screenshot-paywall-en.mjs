@@ -8,7 +8,7 @@ const browser = await chromium.launch({
   executablePath: process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE,
 });
 const ctx = await browser.newContext({
-  viewport: { width: 390, height: 844 },
+  viewport: { width: 428, height: 926 },
   deviceScaleFactor: 3,
 });
 const page = await ctx.newPage();
