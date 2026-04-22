@@ -121,3 +121,137 @@ export function invalidateEntitlementCache(appUserId?: string): void {
   if (appUserId) cache.delete(appUserId);
   else cache.clear();
 }
+
+// ---------------------------------------------------------------------------
+// Webhook event handling
+// ---------------------------------------------------------------------------
+
+// Events that should immediately revoke premium access.
+const REVOKE_EVENT_TYPES = new Set([
+  "EXPIRATION",
+  "BILLING_ISSUE",
+  "REFUND",
+  "SUBSCRIPTION_PAUSED",
+]);
+
+// Events that should grant / re-affirm premium access.
+const GRANT_EVENT_TYPES = new Set([
+  "INITIAL_PURCHASE",
+  "RENEWAL",
+  "PRODUCT_CHANGE",
+  "UNCANCELLATION",
+  "TEMPORARY_ENTITLEMENT_GRANT",
+]);
+
+export type WebhookOutcome =
+  | "revoked"
+  | "granted"
+  | "cancellation_revoked"
+  | "cancellation_kept"
+  | "ignored"
+  | "no_user";
+
+export interface RevenueCatWebhookEvent {
+  type?: string;
+  app_user_id?: string;
+  original_app_user_id?: string;
+  aliases?: string[];
+  expiration_at_ms?: number | null;
+  grace_period_expiration_at_ms?: number | null;
+}
+
+export interface RevenueCatWebhookBody {
+  event?: RevenueCatWebhookEvent;
+  api_version?: string;
+}
+
+export function collectCandidateUserIds(event: RevenueCatWebhookEvent): string[] {
+  const ids = new Set<string>();
+  const push = (v?: string | null) => {
+    if (typeof v === "string" && v.trim()) ids.add(v.trim());
+  };
+  push(event.app_user_id);
+  push(event.original_app_user_id);
+  for (const a of event.aliases || []) push(a);
+  return Array.from(ids);
+}
+
+function cancellationShouldRevoke(event: RevenueCatWebhookEvent): boolean {
+  // CANCELLATION fires when auto-renew is turned off OR when the user
+  // is fully revoked (refund / dev revocation). Only revoke if access
+  // has actually ended — i.e. expiry (and any grace period) is in the past.
+  const now = Date.now();
+  const grace = event.grace_period_expiration_at_ms;
+  if (typeof grace === "number" && grace > now) return false;
+  const exp = event.expiration_at_ms;
+  if (typeof exp === "number" && exp <= now) return true;
+  // No expiry info → leave it to the next verifyEntitlement call (don't revoke).
+  return false;
+}
+
+export interface ApplyEventDeps {
+  setPremium: (userId: string, value: boolean) => Promise<boolean>;
+  reverify?: (userId: string) => Promise<boolean>;
+}
+
+export async function applyWebhookEvent(
+  event: RevenueCatWebhookEvent,
+  deps: ApplyEventDeps,
+): Promise<{ outcome: WebhookOutcome; userId?: string; type?: string }> {
+  const type = (event.type || "").toUpperCase();
+  const candidates = collectCandidateUserIds(event);
+
+  if (!type) return { outcome: "ignored" };
+
+  // Decide intent.
+  let intent: "grant" | "revoke" | "ignore" = "ignore";
+  if (REVOKE_EVENT_TYPES.has(type)) {
+    intent = "revoke";
+  } else if (GRANT_EVENT_TYPES.has(type)) {
+    intent = "grant";
+  } else if (type === "CANCELLATION") {
+    intent = cancellationShouldRevoke(event) ? "revoke" : "ignore";
+  }
+
+  if (intent === "ignore") {
+    return {
+      outcome: type === "CANCELLATION" ? "cancellation_kept" : "ignored",
+      type,
+    };
+  }
+
+  // Find the first candidate that maps to a known user.
+  for (const userId of candidates) {
+    invalidateEntitlementCache(userId);
+
+    if (intent === "revoke") {
+      const ok = await deps.setPremium(userId, false);
+      if (ok) {
+        return {
+          outcome: type === "CANCELLATION" ? "cancellation_revoked" : "revoked",
+          userId,
+          type,
+        };
+      }
+      continue;
+    }
+
+    // grant — re-verify with RC if possible to avoid trusting a spoofed body.
+    // Fail closed: if reverify throws we do NOT auto-grant; behave like the
+    // verifier returning false so a stale/spoofed event can't unlock premium.
+    let verified: boolean;
+    if (deps.reverify) {
+      try {
+        verified = await deps.reverify(userId);
+      } catch {
+        verified = false;
+      }
+    } else {
+      verified = true;
+    }
+    const ok = await deps.setPremium(userId, verified);
+    if (ok) return { outcome: "granted", userId, type };
+  }
+
+  return { outcome: "no_user", type };
+}

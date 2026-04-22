@@ -24,7 +24,12 @@ import {
 } from "./achievements";
 import { canUseFeature, getGateStatus } from "./gate";
 import { ensureCompPremium, isCompUserId } from "./comp-emails";
-import { verifyEntitlement, invalidateEntitlementCache } from "./revenuecat";
+import {
+  verifyEntitlement,
+  invalidateEntitlementCache,
+  applyWebhookEvent,
+  type RevenueCatWebhookBody,
+} from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
@@ -2906,6 +2911,58 @@ No explanation, just JSON.`,
 
   app.post("/api/update-premium-status", isAuthenticated, refreshPremiumHandler);
   app.post("/api/refresh-premium-status", isAuthenticated, refreshPremiumHandler);
+
+  // RevenueCat → server webhook. Configured in the RC dashboard with a shared
+  // secret in the Authorization header so we can flip is_premium the moment
+  // RC observes a billing/refund/expiration event, even if the user never
+  // re-opens the app.
+  app.post("/api/revenuecat/webhook", async (req, res) => {
+    try {
+      const expected = process.env.REVENUECAT_WEBHOOK_AUTH_HEADER;
+      if (!expected) {
+        console.warn("[revenuecat/webhook] REVENUECAT_WEBHOOK_AUTH_HEADER not set; rejecting.");
+        return res.status(503).json({ message: "Webhook not configured" });
+      }
+      const provided = req.header("authorization") || req.header("Authorization");
+      if (provided !== expected) {
+        console.warn("[revenuecat/webhook] auth header mismatch");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const body = (req.body || {}) as RevenueCatWebhookBody;
+      const event = body.event;
+      if (!event || typeof event !== "object") {
+        return res.status(200).json({ ok: true, outcome: "ignored", reason: "no_event" });
+      }
+
+      const result = await applyWebhookEvent(event, {
+        setPremium: async (userId, value) => {
+          const existing = await storage.getProfile(userId);
+          if (!existing) return false;
+          if (existing.isPremium === value) return true;
+          const updated = await storage.updateProfile(userId, { isPremium: value });
+          return !!updated;
+        },
+        reverify: async (userId) => {
+          invalidateEntitlementCache(userId);
+          const r = await verifyEntitlement(userId);
+          return r.hasPremium;
+        },
+      });
+
+      console.log(
+        `[revenuecat/webhook] type=${result.type ?? event.type ?? "?"} outcome=${result.outcome}` +
+          (result.userId ? ` user=${result.userId}` : ""),
+      );
+
+      return res.status(200).json({ ok: true, ...result });
+    } catch (error: any) {
+      console.error("[revenuecat/webhook] error:", error?.message || error);
+      // Return 500 so RevenueCat retries the delivery. Transient DB / network
+      // issues should not silently drop entitlement-changing events.
+      return res.status(500).json({ ok: false, error: "internal_error" });
+    }
+  });
 
   return httpServer;
 }
