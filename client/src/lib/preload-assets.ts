@@ -19,6 +19,7 @@ import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
+import cubeGif from "@assets/1775145092706x746350477677953000_cyucyu_httpss.mj.rund0RUe8hVs_1776915386428.gif";
 
 // Stage 2 — onboarding question illustrations
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
@@ -71,7 +72,7 @@ import dietTip9 from "@assets/cropped_circle_image_(9)_1775374577700.png";
 import dietTip10 from "@assets/cropped_circle_image_(10)_1775374584626.png";
 import dietTip11 from "@assets/cropped_circle_image_1775372471301.png";
 
-const STAGE_1: string[] = [glukkyLogo, slide1Img, slide2Img, slide3Img];
+const STAGE_1: string[] = [glukkyLogo, slide1Img, slide2Img, slide3Img, cubeGif];
 
 const STAGE_2: string[] = [
   nightShiftImg, irregularImg, bedImg, sleepBgImg, eatingOutImg,

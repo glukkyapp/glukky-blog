@@ -189,53 +189,6 @@ export default function Landing() {
         style={{ background: "#fdfbee", fontFamily: "'Inter', system-ui, sans-serif" }}
         data-testid="landing-slides-screen"
       >
-        {/* Status bar */}
-        <div
-          className="absolute left-0 right-0 flex items-center justify-between"
-          style={{
-            top: 14,
-            paddingLeft: 24,
-            paddingRight: 24,
-            zIndex: 4,
-            color: "white",
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: "0.02em",
-            pointerEvents: "none",
-          }}
-        >
-          <span>9:41</span>
-          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-            <span style={{ width: 16, height: 10, borderRadius: 2, background: "white", opacity: 0.95 }} />
-            <span style={{ width: 14, height: 10, borderRadius: 2, background: "white", opacity: 0.85 }} />
-            <span
-              style={{
-                width: 22,
-                height: 11,
-                borderRadius: 3,
-                border: "1px solid rgba(255,255,255,0.9)",
-                position: "relative",
-              }}
-            >
-              <span style={{ position: "absolute", inset: 1, background: "white", borderRadius: 1 }} />
-            </span>
-          </span>
-        </div>
-
-        {/* Notch / dynamic island */}
-        <div
-          className="absolute"
-          style={{
-            top: 11,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 112,
-            height: 26,
-            borderRadius: 999,
-            background: "#080808",
-            zIndex: 5,
-          }}
-        />
 
         {/* Hero image */}
         <div

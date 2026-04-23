@@ -599,11 +599,23 @@ function App() {
       <Router />
       <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
-        <CubeLoadingScreen
-          authReady={!authLoading}
-          preloadReady={stage1Ready}
-          onDismiss={() => setCubeDismissed(true)}
-        />
+        stage1Ready ? (
+          <CubeLoadingScreen
+            authReady={!authLoading}
+            preloadReady={stage1Ready}
+            onDismiss={() => setCubeDismissed(true)}
+          />
+        ) : (
+          <div
+            data-testid="cube-loading-placeholder"
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "#F3EAE5",
+              zIndex: 9999,
+            }}
+          />
+        )
       )}
     </TooltipProvider>
   );
