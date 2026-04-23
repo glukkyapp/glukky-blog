@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
-import { preloadStage4DietTipThumbnails } from "@/lib/preload-assets";
+import { preloadStage4DietTipThumbnails, getStage4Promise } from "@/lib/preload-assets";
+import { usePromiseLoading } from "@/components/global-loading-overlay";
 import lightbulbHeadingIcon from "@assets/8bfac294-0484-4fd9-a8c1-6746d370b307_removalai_preview_1776612765809.png";
 import imgYogurt from "@assets/cropped_circle_image_(1)_1775372471299.png";
 import imgJuice from "@assets/cropped_circle_image_(5)_1775372471299.png";
@@ -199,6 +200,12 @@ export default function HealthInfo() {
   useEffect(() => {
     preloadStage4DietTipThumbnails();
   }, []);
+
+  // If the diet-tip thumbnails are still loading when the user lands here
+  // (e.g. straight after a successful purchase on a slow network), the
+  // global loading overlay shows the cube animation past 2 s and clears
+  // automatically once caching finishes.
+  usePromiseLoading(getStage4Promise);
 
   const DIET_TIPS_CACHE_KEY = "cached_diet_tips";
 

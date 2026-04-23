@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { preloadStage3RestOfApp } from "@/lib/preload-assets";
+import { preloadStage3RestOfApp, getStage2Promise } from "@/lib/preload-assets";
+import { usePromiseLoading } from "@/components/global-loading-overlay";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -36,6 +37,8 @@ export default function AppIntro() {
   useEffect(() => {
     preloadStage3RestOfApp();
   }, []);
+
+  usePromiseLoading(getStage2Promise);
 
   const markSeen = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/profile/intro-seen"),

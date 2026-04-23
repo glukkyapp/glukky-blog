@@ -44,3 +44,26 @@ export function useGlobalLoading(loading: boolean) {
     return register();
   }, [loading, register]);
 }
+
+/**
+ * Register the global loading overlay against an external promise (e.g. a
+ * staged image preload). The cube overlay only appears if the promise stays
+ * pending past the LoadingOverlayProvider's 2 s delay; if it resolves sooner,
+ * nothing flashes.
+ */
+export function usePromiseLoading(promiseGetter: () => Promise<unknown>) {
+  const [pending, setPending] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    promiseGetter().finally(() => {
+      if (!cancelled) setPending(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useGlobalLoading(pending);
+}

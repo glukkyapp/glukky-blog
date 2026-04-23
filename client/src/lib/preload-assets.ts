@@ -100,18 +100,9 @@ function fireAll(srcs: string[]): void {
   }
 }
 
-let stage1Promise: Promise<void> | null = null;
-let didStage2 = false;
-let didStage3 = false;
-let didStage4 = false;
-
-export function preloadStage1Launch(): Promise<void> {
-  if (stage1Promise) return stage1Promise;
-  if (typeof window === "undefined") {
-    stage1Promise = Promise.resolve();
-    return stage1Promise;
-  }
-  const perImage = STAGE_1.map(
+function loadAllTracked(srcs: string[]): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const perImage = srcs.map(
     (src) =>
       new Promise<void>((resolve) => {
         const img = new Image();
@@ -120,7 +111,17 @@ export function preloadStage1Launch(): Promise<void> {
         img.src = src;
       }),
   );
-  stage1Promise = Promise.all(perImage).then(() => {});
+  return Promise.all(perImage).then(() => {});
+}
+
+let stage1Promise: Promise<void> | null = null;
+let stage2Promise: Promise<void> | null = null;
+let didStage3 = false;
+let stage4Promise: Promise<void> | null = null;
+
+export function preloadStage1Launch(): Promise<void> {
+  if (stage1Promise) return stage1Promise;
+  stage1Promise = loadAllTracked(STAGE_1);
   return stage1Promise;
 }
 
@@ -128,10 +129,14 @@ export function getStage1Promise(): Promise<void> {
   return stage1Promise ?? preloadStage1Launch();
 }
 
-export function preloadStage2Onboarding(): void {
-  if (didStage2) return;
-  didStage2 = true;
-  fireAll(STAGE_2);
+export function preloadStage2Onboarding(): Promise<void> {
+  if (stage2Promise) return stage2Promise;
+  stage2Promise = loadAllTracked(STAGE_2);
+  return stage2Promise;
+}
+
+export function getStage2Promise(): Promise<void> {
+  return stage2Promise ?? preloadStage2Onboarding();
 }
 
 export function preloadStage3RestOfApp(): void {
@@ -140,8 +145,12 @@ export function preloadStage3RestOfApp(): void {
   fireAll(STAGE_3);
 }
 
-export function preloadStage4DietTipThumbnails(): void {
-  if (didStage4) return;
-  didStage4 = true;
-  fireAll(STAGE_4);
+export function preloadStage4DietTipThumbnails(): Promise<void> {
+  if (stage4Promise) return stage4Promise;
+  stage4Promise = loadAllTracked(STAGE_4);
+  return stage4Promise;
+}
+
+export function getStage4Promise(): Promise<void> {
+  return stage4Promise ?? preloadStage4DietTipThumbnails();
 }

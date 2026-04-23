@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { preloadStage3RestOfApp } from "@/lib/preload-assets";
+import { preloadStage3RestOfApp, getStage2Promise } from "@/lib/preload-assets";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Bed, Moon, Clock, Sunset, Check, Eye, X } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
-import { useGlobalLoading } from "@/components/global-loading-overlay";
+import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
 import {
   OnboardingCard,
   PillOption,
@@ -48,6 +48,8 @@ export default function Onboarding() {
   useEffect(() => {
     preloadStage3RestOfApp();
   }, []);
+
+  usePromiseLoading(getStage2Promise);
 
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
