@@ -14,6 +14,7 @@ import {
   ensureIdentified,
   isIdentityReadyFor,
   subscribeIdentity,
+  getIdentityState,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -38,15 +39,20 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState<string | null>(null);
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(userId));
+  const [identityError, setIdentityError] = useState<string | null>(() => getIdentityState().lastResult?.error ?? null);
 
   const isNative = isNativelyAvailable();
+  const bridgeMissingLogIn = isNative && identityError === "no_login_method";
 
   // Keep an up-to-date view of "is RC identity established for the
   // current Replit user?" so we can gate the subscribe button on it
   // and never let a fast-tapping user record a purchase against the
   // anonymous app-user-id.
   useEffect(() => {
-    const update = () => setIdentityReady(isIdentityReadyFor(userId));
+    const update = () => {
+      setIdentityReady(isIdentityReadyFor(userId));
+      setIdentityError(getIdentityState().lastResult?.error ?? null);
+    };
     update();
     const unsubscribe = subscribeIdentity(update);
     if (open && userId) {
@@ -304,6 +310,17 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
             {isNative ? (
               <div className="w-full flex flex-col gap-2 mt-3">
+                {bridgeMissingLogIn && (
+                  <div
+                    className="rounded-lg border border-red-400 bg-red-50 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-300 leading-relaxed"
+                    data-testid="banner-paywall-no-login-method"
+                  >
+                    This build of the app cannot attach purchases to your
+                    account, so subscribing is temporarily disabled. A new
+                    app build will be released shortly — please try again
+                    after updating from TestFlight / the App Store.
+                  </div>
+                )}
                 <Button
                   className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}

@@ -80,6 +80,22 @@ Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/
 - Profile page: "Restore Purchases" button (only visible in native wrapper)
 - Dev panel: NativelyPurchases probe card
 
+## RevenueCat / Natively wrapper
+The iOS purchase flow ONLY works if the Natively-exported wrapper exposes RevenueCat's `Set Customer ID` capability. Without it, every purchase is recorded against an anonymous `$RCAnonymousID:…` record, the server's `verifyEntitlement(replitUserId)` returns 404 forever, and paying users get locked out of premium.
+
+**Required Natively bridge capabilities (RevenueCat plugin):**
+- `Set Customer ID` (a.k.a. `logIn`) — MUST be enabled. The web JS bridge must expose `new NativelyPurchases().logIn(appUserId, callback)`.
+- `Get Customer Info` — required to read current entitlements after purchase.
+- `Restore Purchases` — required for the paywall's Restore button.
+- `Get Offerings` — required for live price-string fetch.
+
+**Post-export sanity checklist (run on a real device after every Natively re-export):**
+1. Cold-launch the app, sign in, open `/dev` → "RevenueCat Diagnostics" card.
+2. Confirm: `Bridge present: YES`, `Bridge appUserId (current) == Replit user id`, `Bridge originalAppUserId == Replit user id`, `Match: ✅ YES`, `logIn ready: YES`.
+3. If the dev panel shows the red "Native bridge is missing the Set Customer ID capability" banner, the wrapper is broken — re-export it with `Set Customer ID` enabled. The paywall Subscribe button is intentionally disabled in this state to prevent silent loss of payments.
+4. Run a sandbox purchase. Within ~8s the server log should show `[revenuecat] verify hit user=<replitId> hasPremium=true entitlements=[premium@<future-date>]` and the paywall should auto-close.
+5. Sign out / sign back in on a previously-purchased sandbox account, tap Restore, confirm the entitlement re-attaches to the same Replit user id.
+
 ## Deployment notes
 - Production static-serve sends `Cache-Control: no-cache, must-revalidate` for `index.html` and `public, max-age=31536000, immutable` for `/assets/*` (see `server/static.ts`). Vite already fingerprints asset filenames, so a redeploy gets picked up on the next cold launch: WebView re-validates `index.html`, sees new bundle filenames, fetches new JS/CSS automatically.
 - If a paywall or copy change is not appearing on the iPhone after deploy, force-quit the app once and relaunch — the cold launch re-fetches `index.html` because of the no-cache header.

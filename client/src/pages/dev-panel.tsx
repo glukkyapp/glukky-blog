@@ -19,6 +19,7 @@ import {
   ensureIdentified,
   isIdentityReadyFor,
   subscribeIdentity,
+  getIdentityState,
   isNativelyAvailable,
   restorePurchases,
 } from "@/lib/natively-purchases";
@@ -1010,6 +1011,7 @@ function RevenueCatDiagnosticsCard() {
   const [bridgeOfferings, setBridgeOfferings] = useState<OfferingsSummary | null>(null);
   const [priceSource, setPriceSource] = useState<{ source: PriceSource; price: string | null } | null>(null);
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(replitUserId || undefined));
+  const [identityError, setIdentityError] = useState<string | null>(() => getIdentityState().lastResult?.error ?? null);
   const [serverProbe, setServerProbe] = useState<ServerProbeResp | null>(null);
   const [serverProbeError, setServerProbeError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<RefreshResp | null>(null);
@@ -1020,10 +1022,15 @@ function RevenueCatDiagnosticsCard() {
   const [recoveryAfter, setRecoveryAfter] = useState<RecoverySnapshot | null>(null);
 
   useEffect(() => {
-    const update = () => setIdentityReady(isIdentityReadyFor(replitUserId || undefined));
+    const update = () => {
+      setIdentityReady(isIdentityReadyFor(replitUserId || undefined));
+      setIdentityError(getIdentityState().lastResult?.error ?? null);
+    };
     update();
     return subscribeIdentity(update);
   }, [replitUserId]);
+
+  const bridgeMissingLogIn = bridgePresent && identityError === "no_login_method";
 
   const probeBridge = async () => {
     setReprobing(true);
@@ -1183,6 +1190,30 @@ function RevenueCatDiagnosticsCard() {
     <Card className="border-cyan-200 dark:border-cyan-900">
       <CardContent className="pt-4 space-y-3">
         <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">RevenueCat Diagnostics</p>
+
+        {bridgeMissingLogIn && (
+          <div
+            className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950 p-3 space-y-1"
+            data-testid="banner-rc-no-login-method"
+          >
+            <p className="text-xs font-bold text-red-700 dark:text-red-300">
+              ⛔ Native bridge is missing the Set Customer ID capability.
+            </p>
+            <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+              Every iOS purchase from this build is being recorded against an
+              anonymous <code>$RCAnonymousID:…</code> record, so the server can
+              never attach premium to your Replit user id. The Subscribe button
+              is intentionally disabled until this is fixed.
+            </p>
+            <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+              <strong>Fix:</strong> in Build Natively → RevenueCat plugin,
+              enable the <strong>Set Customer ID</strong> capability, re-export
+              the wrapper, ship a new TestFlight build, and cold-launch.
+              Re-check this card afterwards: <code>logIn ready</code> must
+              read <strong>YES</strong>.
+            </p>
+          </div>
+        )}
 
         {/* IDENTITY */}
         <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">

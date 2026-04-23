@@ -572,15 +572,17 @@ export function ensureIdentified(appUserId: string): Promise<LoginResult> {
 
   const promise = doLogIn(appUserId).then(async (res) => {
     if (currentLoginRef?.userId === appUserId) {
-      // We treat identity as "ready" when logIn succeeded, OR when the
-      // bridge clearly does not expose logIn at all (older Natively
-      // build) — in that case the user has no recovery path and we'd
-      // otherwise block the subscribe button forever. For real failure
-      // modes (timeout / runtime error) we keep ready=false so the
-      // gate stays closed and the user can retry from the dev panel
-      // or by reopening the paywall.
-      const treatAsReady = res.ok || res.error === "no_login_method";
-      currentLoginRef.ready = treatAsReady;
+      // Identity is "ready" ONLY when logIn actually succeeded.
+      // Previously we also treated `no_login_method` as ready so the
+      // subscribe button wasn't permanently blocked on older Natively
+      // builds — but per Build Natively's RevenueCat docs, a wrapper
+      // without `Set Customer ID` records every purchase against an
+      // anonymous `$RCAnonymousID:…` and the server's
+      // verifyEntitlement(replitUserId) will always 404. Allowing the
+      // button through in that state silently takes the user's money
+      // and locks them out. Keep the gate closed and let the dev
+      // panel / paywall surface the actionable cause.
+      currentLoginRef.ready = res.ok;
       currentLoginRef.result = res;
       notifyIdentity();
       // After the first successful logIn for this user on this device,
