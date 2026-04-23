@@ -50,6 +50,10 @@ export function useGlobalLoading(loading: boolean) {
  * staged image preload). The cube overlay only appears if the promise stays
  * pending past the LoadingOverlayProvider's 2 s delay; if it resolves sooner,
  * nothing flashes.
+ *
+ * Mount-only contract: `promiseGetter` is called exactly once on mount.
+ * Pass a stable, module-level function (e.g. `getStage2Promise`); do not
+ * pass an inline arrow that closes over changing state.
  */
 export function usePromiseLoading(promiseGetter: () => Promise<unknown>) {
   const [pending, setPending] = useState(true);
