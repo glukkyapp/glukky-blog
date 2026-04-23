@@ -542,10 +542,6 @@ function Router() {
 
 function App() {
   useEffect(() => {
-    preloadStage1Launch();
-  }, []);
-
-  useEffect(() => {
     const updateFontClass = (lang: string) => {
       if (lang === "zh-Hant" || lang === "yue") {
         document.documentElement.classList.add("lang-zh");

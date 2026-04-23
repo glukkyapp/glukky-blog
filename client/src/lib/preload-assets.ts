@@ -1,19 +1,18 @@
 // Staged image preloading. Only Stage 1 runs at app launch; later stages
-// fire when their consumers mount, so we don't burn the user's bandwidth
-// on images they may never see.
+// fire when their consumers mount, so we don't burn the user's
+// bandwidth on images they may never see.
 //
-// Stage 1 — launch screen + landing slides (~5 MB)
-// Stage 2 — 18 onboarding question illustrations (~17 MB), fired when
-//           the launch screen mounts so it overlaps with the user
+// Stage 1 — launch + landing slides, fires at App.tsx module load.
+// Stage 2 — 18 onboarding question illustrations, fires from the
+//           landing/launch surface so it overlaps with the user
 //           reading + signing in.
-// Stage 3 — main-app chrome + paywall (~9 MB), fired when the user
-//           starts onboarding/intro so it's warm by the time they
-//           reach the home tabs.
-//
-// The 11 cropped_circle_*.png diet-tip thumbnails on the Health Info
-// page are NOT preloaded here anymore — they were compressed in
-// task #446 (now ~64 KB each) and just load on demand when that page
-// mounts.
+// Stage 3 — main-app chrome + paywall, fires from onboarding/intro
+//           on mount so it's warm by the time they reach home tabs.
+// Stage 4 — 11 diet-tip thumbnails on the Health Info page, fires
+//           when the paywall modal opens (so it warms in the
+//           background while the user reads + pays) and again as a
+//           fallback when /health-info mounts (covers comp/premium
+//           users who never see the paywall).
 
 // Stage 1 — launch + landing
 import launchLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
@@ -60,6 +59,19 @@ import pigImg3 from "@assets/IMG_0612_1773846070999.PNG";
 import pigImg4 from "@assets/IMG_0613_1773846070999.PNG";
 import pigImg5 from "@assets/IMG_0614_1773846070999.PNG";
 
+// Stage 4 — 11 diet-tip thumbnails (Health Info page)
+import dietTip1 from "@assets/cropped_circle_image_(1)_1775372471299.png";
+import dietTip2 from "@assets/cropped_circle_image_(2)_1775372471300.png";
+import dietTip3 from "@assets/cropped_circle_image_(3)_1775372471300.png";
+import dietTip4 from "@assets/cropped_circle_image_(4)_1775372471300.png";
+import dietTip5 from "@assets/cropped_circle_image_(5)_1775372471299.png";
+import dietTip6 from "@assets/cropped_circle_image_(6)_1775372471300.png";
+import dietTip7 from "@assets/cropped_circle_image_(7)_1775372471300.png";
+import dietTip8 from "@assets/cropped_circle_image_(8)_1775372471301.png";
+import dietTip9 from "@assets/cropped_circle_image_(9)_1775374577700.png";
+import dietTip10 from "@assets/cropped_circle_image_(10)_1775374584626.png";
+import dietTip11 from "@assets/cropped_circle_image_1775372471301.png";
+
 const STAGE_1: string[] = [launchLogo, glukkyLogo, slide1Img, slide2Img, slide3Img];
 
 const STAGE_2: string[] = [
@@ -76,6 +88,11 @@ const STAGE_3: string[] = [
   pigImg0, pigImg1, pigImg2, pigImg3, pigImg4, pigImg5,
 ];
 
+const STAGE_4: string[] = [
+  dietTip1, dietTip2, dietTip3, dietTip4, dietTip5, dietTip6,
+  dietTip7, dietTip8, dietTip9, dietTip10, dietTip11,
+];
+
 function fireAll(srcs: string[]): void {
   if (typeof window === "undefined") return;
   for (const src of srcs) {
@@ -87,6 +104,7 @@ function fireAll(srcs: string[]): void {
 let didStage1 = false;
 let didStage2 = false;
 let didStage3 = false;
+let didStage4 = false;
 
 export function preloadStage1Launch(): void {
   if (didStage1) return;
@@ -104,4 +122,10 @@ export function preloadStage3RestOfApp(): void {
   if (didStage3) return;
   didStage3 = true;
   fireAll(STAGE_3);
+}
+
+export function preloadStage4DietTipThumbnails(): void {
+  if (didStage4) return;
+  didStage4 = true;
+  fireAll(STAGE_4);
 }

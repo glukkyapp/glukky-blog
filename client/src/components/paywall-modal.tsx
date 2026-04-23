@@ -13,6 +13,7 @@ import {
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
+import { preloadStage4DietTipThumbnails } from "@/lib/preload-assets";
 
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 const PRIVACY_URL = "https://support-url-generator.com/privacy/jjw2eCXTIxWb";
@@ -32,6 +33,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   const [price, setPrice] = useState<string | null>(null);
 
   const isNative = isNativelyAvailable();
+
+  // When the paywall opens, start warming the Health Info diet-tip
+  // thumbnails in the background so they're cached by the time the
+  // user finishes paying and lands on /health-info.
+  useEffect(() => {
+    if (open) preloadStage4DietTipThumbnails();
+  }, [open]);
 
   // Ask the server to verify entitlement with RevenueCat and update
   // is_premium accordingly. Returns true only when the server's verified

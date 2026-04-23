@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { preloadStage2Onboarding } from "@/lib/preload-assets";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
@@ -29,6 +30,13 @@ function getInitialStep(): LandingStep {
 }
 
 export default function Landing() {
+  // Landing is the actual cold-launch surface for unauth'd users.
+  // Warm the onboarding-question illustrations now so they're cached
+  // by the time the user finishes signing in.
+  useEffect(() => {
+    preloadStage2Onboarding();
+  }, []);
+
   const { t } = useTranslation();
   const [step, setStep] = useState<LandingStep>(getInitialStep);
   const [slideIndex, setSlideIndex] = useState(0);
