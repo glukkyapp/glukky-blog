@@ -72,7 +72,7 @@ import dietTip9 from "@assets/cropped_circle_image_(9)_1775374577700.png";
 import dietTip10 from "@assets/cropped_circle_image_(10)_1775374584626.png";
 import dietTip11 from "@assets/cropped_circle_image_1775372471301.png";
 
-const STAGE_1: string[] = [launchLogo, glukkyLogo, slide1Img, slide2Img, slide3Img];
+const STAGE_1: string[] = [slide1Img, slide2Img, slide3Img];
 
 const STAGE_2: string[] = [
   nightShiftImg, irregularImg, bedImg, sleepBgImg, eatingOutImg,
@@ -82,6 +82,7 @@ const STAGE_2: string[] = [
 ];
 
 const STAGE_3: string[] = [
+  launchLogo, glukkyLogo,
   mountainBg, phoneBg, calendarBg,
   cameraHeadingIcon, roadmapHeadingIcon, lightbulbHeadingIcon, calendarHeadingIcon,
   homeGiftImg, laurelImg, paywallHeroImg,
