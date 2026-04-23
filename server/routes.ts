@@ -27,6 +27,8 @@ import { ensureCompPremium, isCompUserId } from "./comp-emails";
 import {
   verifyEntitlement,
   invalidateEntitlementCache,
+  probeSubscriber,
+  fetchServerOfferings,
   applyWebhookEvent,
   type RevenueCatWebhookBody,
 } from "./revenuecat";
@@ -1956,6 +1958,27 @@ export async function registerRoutes(
   // human can confirm the server can talk to RevenueCat at all.
   app.get("/api/dev/revenuecat-config", isAuthenticated, isDevUser, async (_req: any, res) => {
     res.json({ keyPresent: !!process.env.REVENUECAT_SECRET_API_KEY });
+  });
+
+  // End-to-end RevenueCat probe (auth + dev only). Returns:
+  //   - Sanitized RC subscriber payload for the current Replit user id
+  //     (entitlements, subscriptions, aliases, original_app_user_id,
+  //     management_url, http status, source).
+  //   - Offering + product identifiers visible to the server's RC key,
+  //     so the dev panel can render a SAME / DIFFERENT verdict against
+  //     the bridge's view (project-identity hint).
+  // Never returns the API key or any auth-bearing payload.
+  app.get("/api/dev/revenuecat-probe", isAuthenticated, isDevUser, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [subscriber, offerings] = await Promise.all([
+        probeSubscriber(userId),
+        fetchServerOfferings(userId),
+      ]);
+      res.json({ replitUserId: userId, subscriber, offerings });
+    } catch (error: any) {
+      res.status(500).json({ message: "probe failed", error: error?.message || "unknown" });
+    }
   });
 
   app.get("/api/dev/check", isAuthenticated, async (req: any, res) => {

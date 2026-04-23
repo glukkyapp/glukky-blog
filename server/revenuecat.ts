@@ -33,12 +33,16 @@ interface RcSubscriberEntitlement {
 interface RcSubscriberSubscription {
   expires_date?: string | null;
   unsubscribe_detected_at?: string | null;
+  store?: string;
+  period_type?: string;
 }
 
 interface RcSubscriberResponse {
   subscriber?: {
     entitlements?: Record<string, RcSubscriberEntitlement>;
     subscriptions?: Record<string, RcSubscriberSubscription>;
+    original_app_user_id?: string | null;
+    management_url?: string | null;
   };
 }
 
@@ -126,6 +130,25 @@ export async function verifyEntitlement(appUserId: string): Promise<VerifyResult
       return { hasPremium: false, source: "error_transient", transient: true };
     }
     const hasPremium = evaluatePayload(payload);
+    // One-line verifier log (RC hit, not cache) so sandbox debugging is
+    // legible from the workflow console without re-fetching.
+    try {
+      const ents = payload?.subscriber?.entitlements || {};
+      const subs = payload?.subscriber?.subscriptions || {};
+      const entSummary = Object.entries(ents).map(
+        ([k, v]) => `${k}@${v?.expires_date ?? "lifetime"}`,
+      );
+      const subSummary = Object.entries(subs).map(
+        ([k, v]) => `${k}@${v?.expires_date ?? "lifetime"}`,
+      );
+      console.log(
+        `[revenuecat] verify hit user=${appUserId} hasPremium=${hasPremium} ` +
+          `entitlements=[${entSummary.join(", ")}] subscriptions=[${subSummary.join(", ")}] ` +
+          `original_app_user_id=${payload?.subscriber?.original_app_user_id ?? "null"}`,
+      );
+    } catch {
+      // logging must never break verification
+    }
     cache.set(appUserId, { hasPremium, expiresAt: Date.now() + CACHE_TTL_MS });
     return { hasPremium, source: "revenuecat", transient: false };
   } catch (err: any) {
@@ -138,6 +161,233 @@ export async function verifyEntitlement(appUserId: string): Promise<VerifyResult
 export function invalidateEntitlementCache(appUserId?: string): void {
   if (appUserId) cache.delete(appUserId);
   else cache.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics: subscriber probe + server-side offerings list
+//
+// These power the dev-panel diagnostics card. The subscriber probe returns
+// a sanitized summary of what RC has on file under {appUserId}. The
+// offerings probe returns the offering + product identifiers visible to the
+// server's RC key, so the panel can render a SAME / DIFFERENT verdict
+// against the bridge's view (project-identity hint).
+// ---------------------------------------------------------------------------
+
+export interface ProbeEntitlement {
+  identifier: string;
+  expires_date: string | null;
+  product_identifier: string | null;
+}
+
+export interface ProbeSubscription {
+  product_id: string;
+  expires_date: string | null;
+  store: string | null;
+  period_type: string | null;
+  unsubscribe_detected_at: string | null;
+}
+
+export interface SubscriberProbeResult {
+  httpStatus: number;
+  source:
+    | "ok"
+    | "not_found"
+    | "no_key"
+    | "error_transient"
+    | "error";
+  hasPremium: boolean;
+  entitlements: ProbeEntitlement[];
+  subscriptions: ProbeSubscription[];
+  originalAppUserId: string | null;
+  managementUrl: string | null;
+  errorMessage?: string;
+}
+
+export async function probeSubscriber(appUserId: string): Promise<SubscriberProbeResult> {
+  const empty = {
+    entitlements: [] as ProbeEntitlement[],
+    subscriptions: [] as ProbeSubscription[],
+    originalAppUserId: null,
+    managementUrl: null,
+  };
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return { httpStatus: 0, source: "no_key", hasPremium: false, ...empty };
+  }
+  try {
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(appUserId)}`;
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+    });
+    if (resp.status === 404) {
+      return { httpStatus: 404, source: "not_found", hasPremium: false, ...empty };
+    }
+    if (resp.status === 429 || resp.status >= 500) {
+      return {
+        httpStatus: resp.status,
+        source: "error_transient",
+        hasPremium: false,
+        ...empty,
+        errorMessage: `HTTP ${resp.status}`,
+      };
+    }
+    if (!resp.ok) {
+      let bodyText = "";
+      try { bodyText = (await resp.text()).slice(0, 300); } catch {}
+      return {
+        httpStatus: resp.status,
+        source: "error",
+        hasPremium: false,
+        ...empty,
+        errorMessage: `HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
+      };
+    }
+    let payload: RcSubscriberResponse;
+    try {
+      payload = (await resp.json()) as RcSubscriberResponse;
+    } catch (err: any) {
+      return {
+        httpStatus: resp.status,
+        source: "error_transient",
+        hasPremium: false,
+        ...empty,
+        errorMessage: `parse: ${err?.message || "unknown"}`,
+      };
+    }
+    const sub = payload?.subscriber || {};
+    const entitlements: ProbeEntitlement[] = Object.entries(sub.entitlements || {}).map(
+      ([k, v]) => ({
+        identifier: k,
+        expires_date: v?.expires_date ?? null,
+        product_identifier: v?.product_identifier ?? null,
+      }),
+    );
+    const subscriptions: ProbeSubscription[] = Object.entries(sub.subscriptions || {}).map(
+      ([k, v]) => ({
+        product_id: k,
+        expires_date: v?.expires_date ?? null,
+        store: v?.store ?? null,
+        period_type: v?.period_type ?? null,
+        unsubscribe_detected_at: v?.unsubscribe_detected_at ?? null,
+      }),
+    );
+    return {
+      httpStatus: resp.status,
+      source: "ok",
+      hasPremium: evaluatePayload(payload),
+      entitlements,
+      subscriptions,
+      originalAppUserId: sub.original_app_user_id ?? null,
+      managementUrl: sub.management_url ?? null,
+    };
+  } catch (err: any) {
+    return {
+      httpStatus: 0,
+      source: "error_transient",
+      hasPremium: false,
+      ...empty,
+      errorMessage: err?.message || "network",
+    };
+  }
+}
+
+interface RcOfferingsResponse {
+  current_offering_id?: string | null;
+  offerings?: Array<{
+    identifier?: string;
+    description?: string;
+    packages?: Array<{
+      identifier?: string;
+      platform_product_identifier?: string;
+    }>;
+  }>;
+}
+
+export interface ServerOfferingsResult {
+  available: boolean;
+  reason?: string;
+  currentOfferingId: string | null;
+  offeringIdentifiers: string[];
+  productIdentifiers: string[];
+  httpStatus?: number;
+}
+
+export async function fetchServerOfferings(appUserId: string): Promise<ServerOfferingsResult> {
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return {
+      available: false,
+      reason: "no_key",
+      currentOfferingId: null,
+      offeringIdentifiers: [],
+      productIdentifiers: [],
+    };
+  }
+  try {
+    // RC v1: /subscribers/{app_user_id}/offerings — returns the project's
+    // offerings as visible to this API key for this user. Requires a
+    // platform header per RC docs.
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(appUserId)}/offerings`;
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+        "X-Platform": "ios",
+      },
+    });
+    if (!resp.ok) {
+      let bodyText = "";
+      try { bodyText = (await resp.text()).slice(0, 300); } catch {}
+      return {
+        available: false,
+        reason: `HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
+        currentOfferingId: null,
+        offeringIdentifiers: [],
+        productIdentifiers: [],
+        httpStatus: resp.status,
+      };
+    }
+    let payload: RcOfferingsResponse;
+    try {
+      payload = (await resp.json()) as RcOfferingsResponse;
+    } catch (err: any) {
+      return {
+        available: false,
+        reason: `parse: ${err?.message || "unknown"}`,
+        currentOfferingId: null,
+        offeringIdentifiers: [],
+        productIdentifiers: [],
+        httpStatus: resp.status,
+      };
+    }
+    const offeringIdentifiers: string[] = [];
+    const productIdentifiers = new Set<string>();
+    for (const o of payload?.offerings || []) {
+      if (o?.identifier) offeringIdentifiers.push(o.identifier);
+      for (const p of o?.packages || []) {
+        if (p?.platform_product_identifier) productIdentifiers.add(p.platform_product_identifier);
+      }
+    }
+    return {
+      available: true,
+      currentOfferingId: payload?.current_offering_id ?? null,
+      offeringIdentifiers,
+      productIdentifiers: Array.from(productIdentifiers).sort(),
+      httpStatus: resp.status,
+    };
+  } catch (err: any) {
+    return {
+      available: false,
+      reason: `network: ${err?.message || "unknown"}`,
+      currentOfferingId: null,
+      offeringIdentifiers: [],
+      productIdentifiers: [],
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------

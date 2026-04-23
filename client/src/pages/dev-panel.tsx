@@ -9,12 +9,18 @@ import { useLocation } from "wouter";
 import {
   getMonthlyPriceDetails,
   type NativelyPurchasesInstance,
+  type CustomerInfoDetail,
+  type OfferingsSummary,
+  type PriceSource,
   getCurrentAppUserId,
   getCustomerInfo,
+  getCustomerInfoDetail,
+  getOfferingsSummary,
   ensureIdentified,
   isIdentityReadyFor,
   subscribeIdentity,
   isNativelyAvailable,
+  restorePurchases,
 } from "@/lib/natively-purchases";
 
 const TIME_OPTIONS = [
@@ -948,6 +954,50 @@ interface RefreshResp {
   transient?: boolean;
 }
 
+interface ProbeEntitlementResp {
+  identifier: string;
+  expires_date: string | null;
+  product_identifier: string | null;
+}
+interface ProbeSubscriptionResp {
+  product_id: string;
+  expires_date: string | null;
+  store: string | null;
+  period_type: string | null;
+  unsubscribe_detected_at: string | null;
+}
+interface ServerProbeResp {
+  replitUserId?: string;
+  subscriber?: {
+    httpStatus: number;
+    source: string;
+    hasPremium: boolean;
+    entitlements: ProbeEntitlementResp[];
+    subscriptions: ProbeSubscriptionResp[];
+    originalAppUserId: string | null;
+    managementUrl: string | null;
+    errorMessage?: string;
+  };
+  offerings?: {
+    available: boolean;
+    reason?: string;
+    currentOfferingId: string | null;
+    offeringIdentifiers: string[];
+    productIdentifiers: string[];
+    httpStatus?: number;
+  };
+}
+
+interface RecoverySnapshot {
+  bridgeAppUserId: string | null;
+  bridgeOriginalAppUserId: string | null;
+  serverHttpStatus: number | null;
+  serverSource: string | null;
+  serverHasPremium: boolean | null;
+  activeSubs: string[];
+  activeEntitlements: string[];
+}
+
 function RevenueCatDiagnosticsCard() {
   const { data: authUser } = useQuery<AuthUserResp | null>({ queryKey: ["/api/auth/user"] });
   const { data: rcConfig } = useQuery<RcConfigResp>({ queryKey: ["/api/dev/revenuecat-config"] });
@@ -956,15 +1006,19 @@ function RevenueCatDiagnosticsCard() {
   const bridgePresent = isNativelyAvailable();
   const [bridgeAppUserId, setBridgeAppUserId] = useState<string | null>(null);
   const [bridgeAppUserIdProbed, setBridgeAppUserIdProbed] = useState(false);
+  const [bridgeDetail, setBridgeDetail] = useState<CustomerInfoDetail | null>(null);
+  const [bridgeOfferings, setBridgeOfferings] = useState<OfferingsSummary | null>(null);
+  const [priceSource, setPriceSource] = useState<{ source: PriceSource; price: string | null } | null>(null);
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(replitUserId || undefined));
-  const [activeEntitlements, setActiveEntitlements] = useState<string[] | null>(null);
-  const [activeSubs, setActiveSubs] = useState<string[] | null>(null);
+  const [serverProbe, setServerProbe] = useState<ServerProbeResp | null>(null);
+  const [serverProbeError, setServerProbeError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<RefreshResp | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reprobing, setReprobing] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryBefore, setRecoveryBefore] = useState<RecoverySnapshot | null>(null);
+  const [recoveryAfter, setRecoveryAfter] = useState<RecoverySnapshot | null>(null);
 
-  // Subscribe to identity readiness changes so the panel reflects the
-  // exact state used by the paywall's subscribe gate.
   useEffect(() => {
     const update = () => setIdentityReady(isIdentityReadyFor(replitUserId || undefined));
     update();
@@ -974,20 +1028,43 @@ function RevenueCatDiagnosticsCard() {
   const probeBridge = async () => {
     setReprobing(true);
     try {
-      const id = await getCurrentAppUserId();
+      const [id, detail, offerings, priceDetail] = await Promise.all([
+        getCurrentAppUserId(),
+        getCustomerInfoDetail(),
+        getOfferingsSummary(),
+        getMonthlyPriceDetails(),
+      ]);
       setBridgeAppUserId(id);
       setBridgeAppUserIdProbed(true);
-      const info = await getCustomerInfo();
-      const subs = info?.activeSubscriptions || [];
-      const ent = info?.entitlements?.active ? Object.keys(info.entitlements.active) : [];
-      setActiveSubs(subs);
-      setActiveEntitlements(ent);
+      setBridgeDetail(detail);
+      setBridgeOfferings(offerings);
+      setPriceSource({ source: priceDetail.source, price: priceDetail.priceString });
     } finally {
       setReprobing(false);
     }
   };
 
-  useEffect(() => { probeBridge(); }, []);
+  const probeServer = async () => {
+    setServerProbeError(null);
+    try {
+      const resp = await fetch("/api/dev/revenuecat-probe", { credentials: "include" });
+      if (!resp.ok) {
+        setServerProbeError(`HTTP ${resp.status}`);
+        setServerProbe(null);
+        return;
+      }
+      const data = (await resp.json()) as ServerProbeResp;
+      setServerProbe(data);
+    } catch (e: any) {
+      setServerProbeError(e?.message || "network");
+      setServerProbe(null);
+    }
+  };
+
+  useEffect(() => {
+    probeBridge();
+    probeServer();
+  }, []);
 
   const callRefresh = async () => {
     setRefreshing(true);
@@ -1000,6 +1077,8 @@ function RevenueCatDiagnosticsCard() {
       });
       const data = (await resp.json()) as RefreshResp;
       setLastRefresh(data);
+      // Re-probe both sides so the card reflects the post-refresh state.
+      await probeServer();
     } catch (e: any) {
       setLastRefresh({ verificationSource: `error: ${e?.message ?? "unknown"}` });
     } finally {
@@ -1011,16 +1090,103 @@ function RevenueCatDiagnosticsCard() {
     if (!replitUserId) return;
     await ensureIdentified(replitUserId);
     await probeBridge();
+    await probeServer();
+  };
+
+  const captureSnapshot = async (): Promise<RecoverySnapshot> => {
+    const [id, detail, probeResp] = await Promise.all([
+      getCurrentAppUserId(),
+      getCustomerInfoDetail(),
+      fetch("/api/dev/revenuecat-probe", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() as Promise<ServerProbeResp> : null))
+        .catch(() => null),
+    ]);
+    return {
+      bridgeAppUserId: id,
+      bridgeOriginalAppUserId: detail.originalAppUserId,
+      serverHttpStatus: probeResp?.subscriber?.httpStatus ?? null,
+      serverSource: probeResp?.subscriber?.source ?? null,
+      serverHasPremium: probeResp?.subscriber?.hasPremium ?? null,
+      activeSubs: detail.activeSubscriptions,
+      activeEntitlements: detail.activeEntitlementKeys,
+    };
+  };
+
+  // Client-assisted recovery: re-run logIn(replitUserId), restorePurchases,
+  // and force a server re-verify. Show before/after so the human can
+  // confirm the merge worked. We deliberately do NOT call any RC server
+  // alias REST endpoint — the public alias path is not guaranteed
+  // available on every plan, and silent server-side aliasing risks
+  // merging the wrong accounts in production. logIn is the SDK-blessed
+  // path and is what Apple/RC review.
+  const runRecovery = async () => {
+    if (!replitUserId) return;
+    setRecovering(true);
+    setRecoveryAfter(null);
+    try {
+      const before = await captureSnapshot();
+      setRecoveryBefore(before);
+      await ensureIdentified(replitUserId);
+      try { await restorePurchases(); } catch {}
+      await fetch("/api/refresh-premium-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ force: true }),
+      }).catch(() => null);
+      const after = await captureSnapshot();
+      setRecoveryAfter(after);
+      // Refresh the visible state too.
+      await probeBridge();
+      await probeServer();
+    } finally {
+      setRecovering(false);
+    }
   };
 
   const idMatch =
     bridgeAppUserId !== null && replitUserId !== null && bridgeAppUserId === replitUserId;
+  const recoveryDisabled = !replitUserId || recovering || (idMatch && (bridgeDetail?.originalAppUserId ?? null) === replitUserId);
+
+  // Project-identity hint: do bridge and server share any offering or
+  // product identifier? Empty intersection on a non-empty pair is the
+  // clearest signal that the bridge and server are looking at different
+  // RC projects.
+  const computeIdentityVerdict = (): { label: string; detail: string } => {
+    const b = bridgeOfferings;
+    const s = serverProbe?.offerings;
+    if (!b || !s) return { label: "(probing…)", detail: "" };
+    if (!b.available && !s.available) {
+      return { label: "(unknown)", detail: `bridge: ${b.reason ?? "n/a"}; server: ${s.reason ?? "n/a"}` };
+    }
+    if (!b.available) return { label: "(unknown)", detail: `bridge: ${b.reason ?? "n/a"}` };
+    if (!s.available) return { label: "(unknown)", detail: `server: ${s.reason ?? "n/a"}` };
+    const bSet = new Set([...b.offeringIdentifiers, ...b.productIdentifiers]);
+    const sSet = new Set([...s.offeringIdentifiers, ...s.productIdentifiers]);
+    if (bSet.size === 0 && sSet.size === 0) return { label: "(unknown)", detail: "both lists empty" };
+    let overlap = 0;
+    bSet.forEach((x) => { if (sSet.has(x)) overlap++; });
+    if (overlap > 0) return { label: "✅ SAME", detail: `${overlap} shared identifier(s)` };
+    return { label: "⛔ DIFFERENT", detail: "no shared offering or product identifier" };
+  };
+  const identityVerdict = computeIdentityVerdict();
+
+  const fmtList = (xs: string[]) => (xs.length === 0 ? "(none)" : xs.join(", "));
+  const fmtSnap = (s: RecoverySnapshot | null) =>
+    s
+      ? `appUserId=${s.bridgeAppUserId ?? "?"} | original=${s.bridgeOriginalAppUserId ?? "?"} | ` +
+        `server=${s.serverSource ?? "?"}(${s.serverHttpStatus ?? "?"}) hasPremium=${s.serverHasPremium ?? "?"} | ` +
+        `subs=[${fmtList(s.activeSubs)}] ents=[${fmtList(s.activeEntitlements)}]`
+      : "(none)";
 
   return (
     <Card className="border-cyan-200 dark:border-cyan-900">
       <CardContent className="pt-4 space-y-3">
         <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">RevenueCat Diagnostics</p>
+
+        {/* IDENTITY */}
         <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">Identity</p>
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-present">
             Bridge present: {bridgePresent ? "YES" : "NO (web preview)"}
           </p>
@@ -1028,42 +1194,165 @@ function RevenueCatDiagnosticsCard() {
             Replit user id: {replitUserId ?? "(not signed in)"}
           </p>
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-user-id">
-            RC app-user-id (bridge): {bridgeAppUserIdProbed
+            Bridge appUserId (current): {bridgeAppUserIdProbed
               ? (bridgeAppUserId ?? (bridgePresent ? "(bridge does not expose)" : "(no bridge)"))
               : "(probing…)"}
           </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-original-user-id">
+            Bridge originalAppUserId: {bridgeDetail
+              ? (bridgeDetail.originalAppUserId ?? (bridgeDetail.bridgePresent ? "(bridge does not expose)" : "(no bridge)"))
+              : "(probing…)"}
+          </p>
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-id-match">
-            Match: {bridgeAppUserId === null ? "(unknown)" : idMatch ? "✅ YES" : "⛔ NO"}
+            Match (current vs Replit): {bridgeAppUserId === null ? "(unknown)" : idMatch ? "✅ YES" : "⛔ NO"}
           </p>
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-identity-ready">
             logIn ready: {identityReady ? "YES" : "NO"}
           </p>
-          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-environment">
-            RC environment: (unknown — bridge does not expose sandbox/prod)
-          </p>
-          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-entitlements">
-            Active entitlements: {activeEntitlements === null ? "(probing…)" : activeEntitlements.length === 0 ? "none" : activeEntitlements.join(", ")}
-          </p>
-          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-subs">
-            Active subscriptions: {activeSubs === null ? "(probing…)" : activeSubs.length === 0 ? "none" : activeSubs.join(", ")}
-          </p>
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-key-present">
             Server RC API key: {rcConfig?.keyPresent === undefined ? "(loading…)" : rcConfig.keyPresent ? "✅ present" : "⛔ missing"}
           </p>
+        </div>
+
+        {/* BRIDGE STATE */}
+        <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">Bridge state (device)</p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-entitlements">
+            activeEntitlements: {bridgeDetail
+              ? fmtList(bridgeDetail.activeEntitlementKeys)
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-subs">
+            activeSubscriptions: {bridgeDetail
+              ? fmtList(bridgeDetail.activeSubscriptions)
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-latest-expiration">
+            latestExpirationDate: {bridgeDetail
+              ? (bridgeDetail.latestExpirationDate ?? "(none / not exposed)")
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-price-source">
+            Price-fetch source: {priceSource
+              ? `${priceSource.source} → ${priceSource.price === null ? "null" : JSON.stringify(priceSource.price)}`
+              : "(probing…)"}
+          </p>
+        </div>
+
+        {/* SERVER PROBE */}
+        <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">Server view (RevenueCat REST)</p>
+          {serverProbeError && (
+            <p className="text-xs font-mono select-text break-all text-destructive" data-testid="text-rc-server-probe-error">
+              probe error: {serverProbeError}
+            </p>
+          )}
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-status">
+            /subscribers/{"{me}"}: {serverProbe?.subscriber
+              ? `HTTP ${serverProbe.subscriber.httpStatus} (${serverProbe.subscriber.source}) hasPremium=${serverProbe.subscriber.hasPremium}`
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-original-user-id">
+            server original_app_user_id: {serverProbe?.subscriber
+              ? (serverProbe.subscriber.originalAppUserId ?? "(none)")
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-entitlements">
+            server entitlements: {serverProbe?.subscriber
+              ? (serverProbe.subscriber.entitlements.length === 0
+                  ? "(none)"
+                  : serverProbe.subscriber.entitlements
+                      .map((e) => `${e.identifier}@${e.expires_date ?? "lifetime"}${e.product_identifier ? ` (${e.product_identifier})` : ""}`)
+                      .join("; "))
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-subs">
+            server subscriptions: {serverProbe?.subscriber
+              ? (serverProbe.subscriber.subscriptions.length === 0
+                  ? "(none)"
+                  : serverProbe.subscriber.subscriptions
+                      .map((s) => `${s.product_id}@${s.expires_date ?? "lifetime"}${s.store ? ` [${s.store}]` : ""}${s.period_type ? ` (${s.period_type})` : ""}`)
+                      .join("; "))
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-management-url">
+            management_url: {serverProbe?.subscriber
+              ? (serverProbe.subscriber.managementUrl ?? "(none)")
+              : "(probing…)"}
+          </p>
+          {serverProbe?.subscriber?.errorMessage && (
+            <p className="text-xs font-mono select-text break-all text-destructive" data-testid="text-rc-server-error-message">
+              error: {serverProbe.subscriber.errorMessage}
+            </p>
+          )}
+        </div>
+
+        {/* PROJECT-IDENTITY HINT */}
+        <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+            Project-identity hint: <span data-testid="text-rc-project-identity-verdict">{identityVerdict.label}</span>
+          </p>
+          {identityVerdict.detail && (
+            <p className="text-xs font-mono select-text break-all opacity-80" data-testid="text-rc-project-identity-detail">
+              {identityVerdict.detail}
+            </p>
+          )}
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-offerings">
+            bridge offerings: {bridgeOfferings
+              ? (bridgeOfferings.available
+                  ? `[${fmtList(bridgeOfferings.offeringIdentifiers)}] current=${bridgeOfferings.currentOfferingIdentifier ?? "(none)"}`
+                  : `(unavailable: ${bridgeOfferings.reason ?? "n/a"})`)
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-products">
+            bridge products: {bridgeOfferings
+              ? (bridgeOfferings.available ? fmtList(bridgeOfferings.productIdentifiers) : "—")
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-offerings">
+            server offerings: {serverProbe?.offerings
+              ? (serverProbe.offerings.available
+                  ? `[${fmtList(serverProbe.offerings.offeringIdentifiers)}] current=${serverProbe.offerings.currentOfferingId ?? "(none)"}`
+                  : `(unavailable: ${serverProbe.offerings.reason ?? "n/a"})`)
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-products">
+            server products: {serverProbe?.offerings
+              ? (serverProbe.offerings.available ? fmtList(serverProbe.offerings.productIdentifiers) : "—")
+              : "(probing…)"}
+          </p>
+        </div>
+
+        {/* LAST REFRESH */}
+        <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
           <p className="text-xs font-mono select-text break-all" data-testid="text-rc-last-refresh">
             Last /refresh-premium-status: {lastRefresh
               ? `verifiedPremium=${String(lastRefresh.verifiedPremium ?? lastRefresh.isPremium)} source=${lastRefresh.verificationSource ?? "?"} transient=${String(lastRefresh.transient ?? false)}`
               : "(not called yet)"}
           </p>
         </div>
+
+        {/* RECOVERY SNAPSHOTS */}
+        {(recoveryBefore || recoveryAfter) && (
+          <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Recovery snapshot</p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-rc-recovery-before">
+              before: {fmtSnap(recoveryBefore)}
+            </p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-rc-recovery-after">
+              after:  {fmtSnap(recoveryAfter)}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           <Button
             className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
-            onClick={probeBridge}
+            onClick={() => { probeBridge(); probeServer(); }}
             disabled={reprobing}
             data-testid="button-rc-reprobe"
           >
-            {reprobing ? "Probing…" : "Re-probe bridge"}
+            {reprobing ? "Probing…" : "Re-probe (bridge + server)"}
           </Button>
           <Button
             className="w-full"
@@ -1082,6 +1371,14 @@ function RevenueCatDiagnosticsCard() {
             data-testid="button-rc-refresh"
           >
             {refreshing ? "Calling…" : "Call /refresh-premium-status (force)"}
+          </Button>
+          <Button
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={runRecovery}
+            disabled={recoveryDisabled}
+            data-testid="button-rc-link-bridge-id"
+          >
+            {recovering ? "Linking…" : "Link this device's RC ID to my account"}
           </Button>
         </div>
       </CardContent>

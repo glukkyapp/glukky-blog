@@ -1,6 +1,20 @@
 export interface CustomerInfo {
   activeSubscriptions?: string[];
   entitlements?: { active?: Record<string, unknown> };
+  originalAppUserId?: string | null;
+  // RC iOS SDK exposes both spellings depending on version.
+  original_app_user_id?: string | null;
+  latestExpirationDate?: string | null;
+  latest_expiration_date?: string | null;
+}
+
+export interface CustomerInfoDetail {
+  bridgePresent: boolean;
+  available: boolean;
+  originalAppUserId: string | null;
+  latestExpirationDate: string | null;
+  activeSubscriptions: string[];
+  activeEntitlementKeys: string[];
 }
 
 export interface PurchaseResult {
@@ -21,19 +35,40 @@ interface OfferingProduct {
   currencyCode?: string;
 }
 
+interface OfferingProductWithId extends OfferingProduct {
+  identifier?: string;
+}
+
 interface OfferingPackage {
-  product?: OfferingProduct;
+  product?: OfferingProductWithId;
   identifier?: string;
   packageType?: string;
 }
 
 interface OfferingsResult {
   current?: {
+    identifier?: string;
     monthly?: OfferingPackage;
     annual?: OfferingPackage;
     availablePackages?: OfferingPackage[];
   } | null;
+  all?: Record<
+    string,
+    {
+      identifier?: string;
+      availablePackages?: OfferingPackage[];
+    }
+  >;
   error?: string;
+}
+
+export interface OfferingsSummary {
+  bridgePresent: boolean;
+  available: boolean;
+  reason?: string;
+  currentOfferingIdentifier: string | null;
+  offeringIdentifiers: string[];
+  productIdentifiers: string[];
 }
 
 export interface NativelyPurchasesInstance {
@@ -146,6 +181,125 @@ export function restorePurchases(): Promise<RestoreResult> {
       });
     } catch (e: unknown) {
       resolve({ success: false, error: e instanceof Error ? e.message : "unknown" });
+    }
+  });
+}
+
+export function getCustomerInfoDetail(): Promise<CustomerInfoDetail> {
+  return new Promise((resolve) => {
+    const empty: CustomerInfoDetail = {
+      bridgePresent: hasNativelyPurchases(),
+      available: false,
+      originalAppUserId: null,
+      latestExpirationDate: null,
+      activeSubscriptions: [],
+      activeEntitlementKeys: [],
+    };
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) return resolve(empty);
+    let purchases: NativelyPurchasesInstance;
+    try {
+      purchases = new window.NativelyPurchases();
+    } catch {
+      return resolve(empty);
+    }
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(empty);
+    }, 5000);
+    try {
+      purchases.getCustomerInfo((info) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!info) return resolve(empty);
+        const orig = info.originalAppUserId ?? info.original_app_user_id ?? null;
+        const exp = info.latestExpirationDate ?? info.latest_expiration_date ?? null;
+        resolve({
+          bridgePresent: true,
+          available: true,
+          originalAppUserId: typeof orig === "string" && orig.length > 0 ? orig : null,
+          latestExpirationDate: typeof exp === "string" && exp.length > 0 ? exp : null,
+          activeSubscriptions: Array.isArray(info.activeSubscriptions) ? info.activeSubscriptions : [],
+          activeEntitlementKeys: info.entitlements?.active ? Object.keys(info.entitlements.active) : [],
+        });
+      });
+    } catch {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(empty);
+    }
+  });
+}
+
+export function getOfferingsSummary(): Promise<OfferingsSummary> {
+  return new Promise((resolve) => {
+    const empty = (reason?: string): OfferingsSummary => ({
+      bridgePresent: hasNativelyPurchases(),
+      available: false,
+      reason,
+      currentOfferingIdentifier: null,
+      offeringIdentifiers: [],
+      productIdentifiers: [],
+    });
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) return resolve(empty("no-bridge"));
+    let purchases: NativelyPurchasesInstance;
+    try {
+      purchases = new window.NativelyPurchases();
+    } catch (e: unknown) {
+      return resolve(empty(`error: ${e instanceof Error ? e.message : "unknown"}`));
+    }
+    if (typeof purchases.getOfferings !== "function") return resolve(empty("no-getOfferings"));
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(empty("timeout"));
+    }, 6000);
+    try {
+      purchases.getOfferings((result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!result) return resolve(empty("null-result"));
+        if (result.error) return resolve(empty(`error: ${result.error}`));
+        const offeringIdentifiers = new Set<string>();
+        const productIdentifiers = new Set<string>();
+        const collect = (pkgs?: OfferingPackage[]) => {
+          for (const p of pkgs || []) {
+            const pid = p?.product?.identifier;
+            if (typeof pid === "string" && pid.length > 0) productIdentifiers.add(pid);
+          }
+        };
+        const cur = result.current;
+        if (cur?.identifier) offeringIdentifiers.add(cur.identifier);
+        if (cur) {
+          collect(cur.availablePackages);
+          if (cur.monthly) collect([cur.monthly]);
+          if (cur.annual) collect([cur.annual]);
+        }
+        if (result.all) {
+          for (const [k, v] of Object.entries(result.all)) {
+            if (v?.identifier) offeringIdentifiers.add(v.identifier);
+            else if (k) offeringIdentifiers.add(k);
+            collect(v?.availablePackages);
+          }
+        }
+        resolve({
+          bridgePresent: true,
+          available: true,
+          currentOfferingIdentifier: cur?.identifier ?? null,
+          offeringIdentifiers: Array.from(offeringIdentifiers).sort(),
+          productIdentifiers: Array.from(productIdentifiers).sort(),
+        });
+      });
+    } catch (e: unknown) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(empty(`error: ${e instanceof Error ? e.message : "unknown"}`));
     }
   });
 }

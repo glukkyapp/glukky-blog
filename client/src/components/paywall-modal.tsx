@@ -70,6 +70,12 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   // distinguish a hard "not premium" from a transient verifier failure.
   // force:true bypasses the server's 30s cache because this is the
   // user-initiated post-purchase / post-restore path.
+  // Tracks the verifier source (e.g. "not_found", "error_transient",
+  // "revenuecat") from the most recent /refresh-premium-status response,
+  // so we can attribute a "purchase failed" / "restore failed" message
+  // to a named cause instead of an opaque toast.
+  const lastVerifySourceRef = { current: null as string | null };
+
   const refreshPremiumOnServer = async (): Promise<{ verified: boolean; transient: boolean }> => {
     try {
       const resp = await fetch("/api/refresh-premium-status", {
@@ -78,15 +84,25 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         credentials: "include",
         body: JSON.stringify({ force: true }),
       });
-      if (!resp.ok) return { verified: false, transient: true };
+      if (!resp.ok) {
+        lastVerifySourceRef.current = `http_${resp.status}`;
+        return { verified: false, transient: true };
+      }
       const data = await resp.json();
+      lastVerifySourceRef.current = (data?.verificationSource as string) ?? null;
       return {
         verified: Boolean(data?.verifiedPremium ?? data?.isPremium),
         transient: Boolean(data?.transient),
       };
-    } catch {
+    } catch (e: any) {
+      lastVerifySourceRef.current = `network: ${e?.message ?? "unknown"}`;
       return { verified: false, transient: true };
     }
+  };
+
+  const withVerifierSource = (msg: string): string => {
+    const src = lastVerifySourceRef.current;
+    return src ? `${msg} (verifier: ${src})` : msg;
   };
 
   // Poll the server's verifier a few times to cover the typical
@@ -143,11 +159,12 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         onPurchaseSuccess();
       } else {
         hapticNotify("ERROR");
-        setError(t("paywall.error_purchase"));
+        setError(withVerifierSource(t("paywall.error_purchase")));
       }
     } else if (result.error !== "cancelled") {
       hapticNotify("ERROR");
-      setError(t("paywall.error_purchase"));
+      const base = t("paywall.error_purchase");
+      setError(result.error ? `${base} (bridge: ${result.error})` : base);
     }
     setPurchasing(false);
   };
@@ -169,11 +186,12 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         onPurchaseSuccess();
       } else {
         hapticNotify("ERROR");
-        setError(t("paywall.error_restore"));
+        setError(withVerifierSource(t("paywall.error_restore")));
       }
     } else {
       hapticNotify("ERROR");
-      setError(t("paywall.error_restore"));
+      const base = t("paywall.error_restore");
+      setError(result.error ? `${base} (bridge: ${result.error})` : base);
     }
     setRestoring(false);
   };
