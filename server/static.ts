@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Response } from "express";
 import fs from "fs";
 import path from "path";
 
@@ -10,10 +10,26 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      etag: true,
+      lastModified: true,
+      setHeaders: (res: Response, filePath: string) => {
+        const rel = path.relative(distPath, filePath).split(path.sep).join("/");
+        if (rel === "index.html") {
+          res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (rel.startsWith("assets/")) {
+          res.setHeader(
+            "Cache-Control",
+            "public, max-age=31536000, immutable",
+          );
+        }
+      },
+    }),
+  );
 
-  // fall through to index.html if the file doesn't exist
   app.use("/{*path}", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

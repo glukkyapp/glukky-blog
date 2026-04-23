@@ -80,6 +80,10 @@ Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/
 - Profile page: "Restore Purchases" button (only visible in native wrapper)
 - Dev panel: NativelyPurchases probe card
 
+## Deployment notes
+- Production static-serve sends `Cache-Control: no-cache, must-revalidate` for `index.html` and `public, max-age=31536000, immutable` for `/assets/*` (see `server/static.ts`). Vite already fingerprints asset filenames, so a redeploy gets picked up on the next cold launch: WebView re-validates `index.html`, sees new bundle filenames, fetches new JS/CSS automatically.
+- If a paywall or copy change is not appearing on the iPhone after deploy, force-quit the app once and relaunch — the cold launch re-fetches `index.html` because of the no-cache header.
+
 ## External Dependencies
 - **PostgreSQL:** Primary database for all application data.
 - **Drizzle ORM:** Used for interacting with the PostgreSQL database.
