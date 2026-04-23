@@ -6,6 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Clock, Calendar, Database, ChevronLeft, Trash2, Eye } from "lucide-react";
 import { useLocation } from "wouter";
+import {
+  getMonthlyPriceDetails,
+  type NativelyPurchasesInstance,
+} from "@/lib/natively-purchases";
 
 const TIME_OPTIONS = [
   { label: "Real time", value: null },
@@ -353,6 +357,8 @@ export default function DevPanel() {
 
       <OneSignalDebugCard />
 
+      <BuildInfoCard />
+
       <NativelyPurchasesProbeCard />
 
       <Card className="border-blue-200 dark:border-blue-900">
@@ -445,6 +451,35 @@ export default function DevPanel() {
   );
 }
 
+function BuildInfoCard() {
+  const { data, isLoading } = useQuery<{ sha: string | null; startedAt: string; nodeEnv: string | null }>({
+    queryKey: ["/api/build-info"],
+  });
+  return (
+    <Card className="border-slate-200 dark:border-slate-800">
+      <CardContent className="pt-4 space-y-2">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Running Build</p>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">Loading…</p>
+        ) : (
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid="text-build-sha">
+              sha: {data?.sha ?? "(none)"}
+            </p>
+            <p className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid="text-build-started">
+              server started: {data?.startedAt ?? "?"}
+            </p>
+            <p className="text-xs font-mono select-text break-all" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid="text-build-env">
+              NODE_ENV: {data?.nodeEnv ?? "?"}
+            </p>
+          </div>
+        )}
+        <p className="text-[10px] text-muted-foreground">If sha changes after a TestFlight update but the bug repeats, the webview is using a stale cached bundle.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function NativelyPurchasesProbeCard() {
   const [status, setStatus] = useState<string[]>([]);
   const [probing, setProbing] = useState(false);
@@ -458,35 +493,64 @@ function NativelyPurchasesProbeCard() {
 
     if (!hasClass || !window.NativelyPurchases) {
       lines.push("⛔ NativelyPurchases not found (not in mobile wrapper or RevenueCat not configured)");
-      setStatus(lines);
-      setProbing(false);
-      return;
+    } else {
+      let p: NativelyPurchasesInstance | null = null;
+      try {
+        p = new window.NativelyPurchases();
+        lines.push("✅ NativelyPurchases instantiated");
+
+        const proto = Object.getOwnPropertyNames(Object.getPrototypeOf(p)).filter((k: string) => k !== "constructor");
+        lines.push(`Methods: ${proto.join(", ") || "none"}`);
+        lines.push(`getOfferings present: ${typeof p.getOfferings === "function" ? "YES" : "NO"}`);
+
+        try {
+          const info = await new Promise<Record<string, unknown> | null>((resolve) => {
+            const timeout = setTimeout(() => resolve({ _timeout: true }), 8000);
+            p!.getCustomerInfo((res) => { clearTimeout(timeout); resolve(res as Record<string, unknown> | null); });
+          });
+          lines.push(`getCustomerInfo: ${JSON.stringify(info)?.slice(0, 200)}`);
+          const subs = (info as Record<string, unknown>)?.activeSubscriptions as string[] || [];
+          const entActive = ((info as Record<string, unknown>)?.entitlements as Record<string, unknown>)?.active as Record<string, unknown> | undefined;
+          const ent = entActive ? Object.keys(entActive) : [];
+          lines.push(`Active subs: ${subs.length > 0 ? subs.join(", ") : "none"}`);
+          lines.push(`Active entitlements: ${ent.length > 0 ? ent.join(", ") : "none"}`);
+          lines.push(subs.length > 0 || ent.length > 0 ? "✅ PREMIUM" : "⛔ NOT PREMIUM");
+        } catch (e: unknown) {
+          lines.push(`⛔ getCustomerInfo error: ${e instanceof Error ? e.message : "unknown"}`);
+        }
+      } catch (e: unknown) {
+        lines.push(`⛔ Instantiation error: ${e instanceof Error ? e.message : "unknown"}`);
+      }
     }
 
+    // ----- Pricing probe -----
+    lines.push("— Pricing —");
     try {
-      const p = new window.NativelyPurchases();
-      lines.push("✅ NativelyPurchases instantiated");
-
-      const proto = Object.getOwnPropertyNames(Object.getPrototypeOf(p)).filter((k: string) => k !== "constructor");
-      lines.push(`Methods: ${proto.join(", ") || "none"}`);
-
-      try {
-        const info = await new Promise<Record<string, unknown> | null>((resolve) => {
-          const timeout = setTimeout(() => resolve({ _timeout: true }), 8000);
-          p.getCustomerInfo((res) => { clearTimeout(timeout); resolve(res as Record<string, unknown> | null); });
-        });
-        lines.push(`getCustomerInfo: ${JSON.stringify(info)?.slice(0, 200)}`);
-        const subs = (info as Record<string, unknown>)?.activeSubscriptions as string[] || [];
-        const entActive = ((info as Record<string, unknown>)?.entitlements as Record<string, unknown>)?.active as Record<string, unknown> | undefined;
-        const ent = entActive ? Object.keys(entActive) : [];
-        lines.push(`Active subs: ${subs.length > 0 ? subs.join(", ") : "none"}`);
-        lines.push(`Active entitlements: ${ent.length > 0 ? ent.join(", ") : "none"}`);
-        lines.push(subs.length > 0 || ent.length > 0 ? "✅ PREMIUM" : "⛔ NOT PREMIUM");
-      } catch (e: unknown) {
-        lines.push(`⛔ getCustomerInfo error: ${e instanceof Error ? e.message : "unknown"}`);
+      const result = await getMonthlyPriceDetails();
+      lines.push(`source: ${result.source}`);
+      lines.push(`priceString: ${result.priceString === null ? "null" : JSON.stringify(result.priceString)}`);
+      lines.push(`duration: ${result.durationMs}ms`);
+      if (result.errorMessage) {
+        lines.push(`error: ${result.errorMessage}`);
+      }
+      if (result.rawOfferings !== undefined) {
+        const cur = result.rawOfferings?.current ?? null;
+        const monthlyDirect = cur?.monthly?.product?.priceString;
+        const pkgs = cur?.availablePackages || [];
+        lines.push(`current: ${cur ? "present" : "null"}`);
+        lines.push(`current.monthly.priceString: ${monthlyDirect === undefined ? "(missing)" : JSON.stringify(monthlyDirect)}`);
+        lines.push(`availablePackages: ${pkgs.length}`);
+        for (const pkg of pkgs.slice(0, 6)) {
+          const id = pkg?.identifier ?? "?";
+          const type = pkg?.packageType ?? "?";
+          const ps = pkg?.product?.priceString;
+          lines.push(`  • [${type}] ${id} → ${ps === undefined ? "(no priceString)" : JSON.stringify(ps)}`);
+        }
+        const raw = JSON.stringify(result.rawOfferings);
+        lines.push(`raw: ${raw.length > 240 ? raw.slice(0, 240) + "…" : raw}`);
       }
     } catch (e: unknown) {
-      lines.push(`⛔ Instantiation error: ${e instanceof Error ? e.message : "unknown"}`);
+      lines.push(`⛔ price probe error: ${e instanceof Error ? e.message : "unknown"}`);
     }
 
     setStatus(lines);

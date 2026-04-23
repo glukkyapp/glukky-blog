@@ -69,6 +69,8 @@ Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/
 - Constructor-style: `new NativelyPurchases().purchasePackage("$rc_monthly", callback)`
 - Auto-sync on app load via `getCustomerInfo()` → POST to `/api/update-premium-status`
 - Non-native fallback: "Please open this app on your iPhone to subscribe."
+- `getMonthlyPriceDetails()` / `getMonthlyPriceString()`: 8s-bounded RevenueCat price fetch. Always resolves; tagged `[paywall-price]` warnings on every null path (no-bridge, no-getOfferings, timeout, no-current, no-monthly-package, empty-string). No hardcoded fallback price — paywall headline drops the price line when null.
+- `/api/build-info`: returns running build sha (from REPLIT_DEPLOYMENT_ID / GITHUB_SHA / etc), startedAt, NODE_ENV. Surfaced on dev panel to detect stale cached webview bundles.
 
 **Frontend:**
 - `PaywallModal` (`client/src/components/paywall-modal.tsx`) — bottom sheet with subscribe/restore buttons

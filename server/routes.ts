@@ -85,10 +85,35 @@ function computeFocusPanel(
   return null;
 }
 
+// Build identifier surfaced via /api/build-info so a stale cached webview
+// bundle can be ruled out at a glance from the dev panel. Read once at
+// process start from existing platform env (no edits to package.json /
+// vite.config.ts). Falls back gracefully when nothing is available.
+const BUILD_INFO = (() => {
+  const sha =
+    process.env.REPLIT_DEPLOYMENT_ID ||
+    process.env.REPL_DEPLOYMENT_ID ||
+    process.env.GITHUB_SHA ||
+    process.env.GIT_COMMIT_SHA ||
+    process.env.COMMIT_SHA ||
+    process.env.SOURCE_COMMIT ||
+    null;
+  return {
+    sha: sha ? String(sha).slice(0, 12) : null,
+    startedAt: new Date().toISOString(),
+    nodeEnv: process.env.NODE_ENV ?? null,
+  };
+})();
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.get("/api/build-info", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json(BUILD_INFO);
+  });
 
   app.post("/api/admin/wipe-user", async (req, res) => {
     try {
