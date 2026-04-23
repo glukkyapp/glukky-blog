@@ -1951,6 +1951,13 @@ export async function registerRoutes(
     }
   });
 
+  // Read-only diagnostic: does the server have an RC API key configured?
+  // We never return the value — the dev panel only needs presence so the
+  // human can confirm the server can talk to RevenueCat at all.
+  app.get("/api/dev/revenuecat-config", isAuthenticated, isDevUser, async (_req: any, res) => {
+    res.json({ keyPresent: !!process.env.REVENUECAT_SECRET_API_KEY });
+  });
+
   app.get("/api/dev/check", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
@@ -2898,6 +2905,7 @@ No explanation, just JSON.`,
       const isComp = await isCompUserId(userId);
       let verifiedPremium: boolean;
       let source: string;
+      let transient = false;
       if (isComp) {
         verifiedPremium = true;
         source = "comp";
@@ -2911,6 +2919,7 @@ No explanation, just JSON.`,
         const result = await verifyEntitlement(userId);
         verifiedPremium = result.hasPremium;
         source = result.source;
+        transient = result.transient;
       }
 
       let profile = existing;
@@ -2927,6 +2936,7 @@ No explanation, just JSON.`,
         ...getGateStatus(profile),
         verifiedPremium,
         verificationSource: source,
+        transient,
       });
     } catch (error: any) {
       console.error("Error refreshing premium status:", error);

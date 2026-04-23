@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
+import { ensureIdentified } from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
@@ -245,6 +246,16 @@ function AuthenticatedApp() {
       setTimeout(action, 100);
     }
   }, [refetchGate]);
+
+  useEffect(() => {
+    // Identify the user to RevenueCat as soon as we know their Replit
+    // user id. Without this, every purchase on iOS is recorded against
+    // an anonymous "$RCAnonymousID:…" record and the server's
+    // verifyEntitlement(replitUserId) always 404s. Safe + idempotent
+    // when the bridge is missing (web preview).
+    const userId = (profile as any)?.userId;
+    if (userId) ensureIdentified(userId);
+  }, [(profile as any)?.userId]);
 
   useEffect(() => {
     if (!(profile as any)?.onboardingComplete) return;

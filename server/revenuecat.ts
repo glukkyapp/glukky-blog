@@ -69,21 +69,25 @@ function evaluatePayload(payload: RcSubscriberResponse): boolean {
 
 export interface VerifyResult {
   hasPremium: boolean;
-  source: "cache" | "revenuecat" | "no_key" | "error";
+  source: "cache" | "revenuecat" | "not_found" | "no_key" | "error_transient" | "error";
+  // True when the underlying verifier failed in a way that may resolve
+  // on retry (5xx, 429, network/parse). False when the answer is
+  // authoritative (200 from RC, 404 from RC, comp user, no key).
+  transient: boolean;
 }
 
 export async function verifyEntitlement(appUserId: string): Promise<VerifyResult> {
-  if (!appUserId) return { hasPremium: false, source: "error" };
+  if (!appUserId) return { hasPremium: false, source: "error", transient: false };
 
   const cached = cache.get(appUserId);
   if (cached && cached.expiresAt > Date.now()) {
-    return { hasPremium: cached.hasPremium, source: "cache" };
+    return { hasPremium: cached.hasPremium, source: "cache", transient: false };
   }
 
   const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
   if (!apiKey) {
     warnMissingKeyOnce();
-    return { hasPremium: false, source: "no_key" };
+    return { hasPremium: false, source: "no_key", transient: false };
   }
 
   try {
@@ -97,23 +101,37 @@ export async function verifyEntitlement(appUserId: string): Promise<VerifyResult
     });
 
     if (resp.status === 404) {
-      // Subscriber unknown to RC = definitely not premium.
+      // Subscriber unknown to RC = definitely not premium. Authoritative.
       cache.set(appUserId, { hasPremium: false, expiresAt: Date.now() + CACHE_TTL_MS });
-      return { hasPremium: false, source: "revenuecat" };
+      return { hasPremium: false, source: "not_found", transient: false };
+    }
+
+    if (resp.status === 429 || resp.status >= 500) {
+      // Rate-limited or RC-side outage — caller should retry.
+      console.warn(`[revenuecat] verify transient HTTP ${resp.status} for ${appUserId}`);
+      return { hasPremium: false, source: "error_transient", transient: true };
     }
 
     if (!resp.ok) {
+      // Other 4xx (auth, bad request, etc.) — not retryable from our side.
       console.warn(`[revenuecat] verify failed for ${appUserId}: HTTP ${resp.status}`);
-      return { hasPremium: false, source: "error" };
+      return { hasPremium: false, source: "error", transient: false };
     }
 
-    const payload = (await resp.json()) as RcSubscriberResponse;
+    let payload: RcSubscriberResponse;
+    try {
+      payload = (await resp.json()) as RcSubscriberResponse;
+    } catch (err: any) {
+      console.warn(`[revenuecat] verify parse error for ${appUserId}:`, err?.message || err);
+      return { hasPremium: false, source: "error_transient", transient: true };
+    }
     const hasPremium = evaluatePayload(payload);
     cache.set(appUserId, { hasPremium, expiresAt: Date.now() + CACHE_TTL_MS });
-    return { hasPremium, source: "revenuecat" };
+    return { hasPremium, source: "revenuecat", transient: false };
   } catch (err: any) {
+    // Network-level failure (fetch threw) — retryable.
     console.warn(`[revenuecat] verify error for ${appUserId}:`, err?.message || err);
-    return { hasPremium: false, source: "error" };
+    return { hasPremium: false, source: "error_transient", transient: true };
   }
 }
 

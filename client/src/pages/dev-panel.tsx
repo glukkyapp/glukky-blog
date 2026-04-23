@@ -9,6 +9,12 @@ import { useLocation } from "wouter";
 import {
   getMonthlyPriceDetails,
   type NativelyPurchasesInstance,
+  getCurrentAppUserId,
+  getCustomerInfo,
+  ensureIdentified,
+  isIdentityReadyFor,
+  subscribeIdentity,
+  isNativelyAvailable,
 } from "@/lib/natively-purchases";
 
 const TIME_OPTIONS = [
@@ -358,6 +364,8 @@ export default function DevPanel() {
       <OneSignalDebugCard />
 
       <BuildInfoCard />
+
+      <RevenueCatDiagnosticsCard />
 
       <NativelyPurchasesProbeCard />
 
@@ -926,6 +934,156 @@ function OneSignalDebugCard() {
         >
           {probing ? "Probing..." : "Re-probe OneSignal"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface AuthUserResp { id?: string; email?: string }
+interface RcConfigResp { keyPresent?: boolean }
+interface RefreshResp {
+  verifiedPremium?: boolean;
+  isPremium?: boolean;
+  verificationSource?: string;
+  transient?: boolean;
+}
+
+function RevenueCatDiagnosticsCard() {
+  const { data: authUser } = useQuery<AuthUserResp | null>({ queryKey: ["/api/auth/user"] });
+  const { data: rcConfig } = useQuery<RcConfigResp>({ queryKey: ["/api/dev/revenuecat-config"] });
+
+  const replitUserId = authUser?.id ?? null;
+  const bridgePresent = isNativelyAvailable();
+  const [bridgeAppUserId, setBridgeAppUserId] = useState<string | null>(null);
+  const [bridgeAppUserIdProbed, setBridgeAppUserIdProbed] = useState(false);
+  const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(replitUserId || undefined));
+  const [activeEntitlements, setActiveEntitlements] = useState<string[] | null>(null);
+  const [activeSubs, setActiveSubs] = useState<string[] | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<RefreshResp | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reprobing, setReprobing] = useState(false);
+
+  // Subscribe to identity readiness changes so the panel reflects the
+  // exact state used by the paywall's subscribe gate.
+  useEffect(() => {
+    const update = () => setIdentityReady(isIdentityReadyFor(replitUserId || undefined));
+    update();
+    return subscribeIdentity(update);
+  }, [replitUserId]);
+
+  const probeBridge = async () => {
+    setReprobing(true);
+    try {
+      const id = await getCurrentAppUserId();
+      setBridgeAppUserId(id);
+      setBridgeAppUserIdProbed(true);
+      const info = await getCustomerInfo();
+      const subs = info?.activeSubscriptions || [];
+      const ent = info?.entitlements?.active ? Object.keys(info.entitlements.active) : [];
+      setActiveSubs(subs);
+      setActiveEntitlements(ent);
+    } finally {
+      setReprobing(false);
+    }
+  };
+
+  useEffect(() => { probeBridge(); }, []);
+
+  const callRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const resp = await fetch("/api/refresh-premium-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ force: true }),
+      });
+      const data = (await resp.json()) as RefreshResp;
+      setLastRefresh(data);
+    } catch (e: any) {
+      setLastRefresh({ verificationSource: `error: ${e?.message ?? "unknown"}` });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const triggerLogIn = async () => {
+    if (!replitUserId) return;
+    await ensureIdentified(replitUserId);
+    await probeBridge();
+  };
+
+  const idMatch =
+    bridgeAppUserId !== null && replitUserId !== null && bridgeAppUserId === replitUserId;
+
+  return (
+    <Card className="border-cyan-200 dark:border-cyan-900">
+      <CardContent className="pt-4 space-y-3">
+        <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">RevenueCat Diagnostics</p>
+        <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-present">
+            Bridge present: {bridgePresent ? "YES" : "NO (web preview)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-replit-user-id">
+            Replit user id: {replitUserId ?? "(not signed in)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-bridge-user-id">
+            RC app-user-id (bridge): {bridgeAppUserIdProbed
+              ? (bridgeAppUserId ?? (bridgePresent ? "(bridge does not expose)" : "(no bridge)"))
+              : "(probing…)"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-id-match">
+            Match: {bridgeAppUserId === null ? "(unknown)" : idMatch ? "✅ YES" : "⛔ NO"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-identity-ready">
+            logIn ready: {identityReady ? "YES" : "NO"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-environment">
+            RC environment: (unknown — bridge does not expose sandbox/prod)
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-entitlements">
+            Active entitlements: {activeEntitlements === null ? "(probing…)" : activeEntitlements.length === 0 ? "none" : activeEntitlements.join(", ")}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-active-subs">
+            Active subscriptions: {activeSubs === null ? "(probing…)" : activeSubs.length === 0 ? "none" : activeSubs.join(", ")}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-server-key-present">
+            Server RC API key: {rcConfig?.keyPresent === undefined ? "(loading…)" : rcConfig.keyPresent ? "✅ present" : "⛔ missing"}
+          </p>
+          <p className="text-xs font-mono select-text break-all" data-testid="text-rc-last-refresh">
+            Last /refresh-premium-status: {lastRefresh
+              ? `verifiedPremium=${String(lastRefresh.verifiedPremium ?? lastRefresh.isPremium)} source=${lastRefresh.verificationSource ?? "?"} transient=${String(lastRefresh.transient ?? false)}`
+              : "(not called yet)"}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
+            onClick={probeBridge}
+            disabled={reprobing}
+            data-testid="button-rc-reprobe"
+          >
+            {reprobing ? "Probing…" : "Re-probe bridge"}
+          </Button>
+          <Button
+            className="w-full"
+            variant="outline"
+            onClick={triggerLogIn}
+            disabled={!replitUserId}
+            data-testid="button-rc-login"
+          >
+            Force RC logIn
+          </Button>
+          <Button
+            className="w-full"
+            variant="outline"
+            onClick={callRefresh}
+            disabled={refreshing}
+            data-testid="button-rc-refresh"
+          >
+            {refreshing ? "Calling…" : "Call /refresh-premium-status (force)"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

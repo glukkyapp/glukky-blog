@@ -41,6 +41,9 @@ export interface NativelyPurchasesInstance {
   restorePurchases(callback: (result: { error?: string; customerInfo?: CustomerInfo }) => void): void;
   getCustomerInfo(callback: (result: CustomerInfo | null) => void): void;
   getOfferings?(callback: (result: OfferingsResult | null) => void): void;
+  logIn?(appUserId: string, callback: (result: { customerInfo?: CustomerInfo; created?: boolean; error?: string }) => void): void;
+  getAppUserID?(callback: (id: string | null) => void): void;
+  getAppUserId?(callback: (id: string | null) => void): void;
 }
 
 export type PriceSource =
@@ -108,7 +111,17 @@ export function purchasePackage(packageId: string): Promise<PurchaseResult> {
         } else if (customerInfo && hasPremium) {
           resolve({ success: true, customerInfo });
         } else {
-          resolve({ success: false, error: "cancelled" });
+          // Apple confirmed (no error, no cancel) but customerInfo
+          // doesn't yet show the entitlement. This is the typical
+          // 2–5s Apple → StoreKit → RevenueCat propagation gap in
+          // sandbox. Surface it as a distinct result so the paywall
+          // can poll the server's verifier instead of silently
+          // collapsing into "cancelled".
+          resolve({
+            success: false,
+            error: "pending_verification",
+            customerInfo: customerInfo || undefined,
+          });
         }
       });
     } catch (e: unknown) {
@@ -295,4 +308,169 @@ export function isPremiumFromCustomerInfo(info: CustomerInfo | null): boolean {
   const active = info.entitlements?.active;
   if (active && Object.keys(active).length > 0) return true;
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Identity (logIn / getAppUserId)
+//
+// The iOS RevenueCat SDK records purchases against whatever app-user-id
+// it currently knows. If we never call logIn(replitUserId), every
+// purchase is attributed to an anonymous "$RCAnonymousID:…" record and
+// the server's verifyEntitlement(replitUserId) will always return 404.
+//
+// We track the most recent in-flight / completed logIn so the paywall
+// can gate the subscribe button on identity being ready for *this*
+// user. On the web (no bridge) identity is treated as ready so the
+// gate doesn't permanently block anything.
+// ---------------------------------------------------------------------------
+
+const RESTORED_ONCE_PREFIX = "rc_restored_once_";
+
+type LoginResult = { ok: boolean; error?: string };
+
+let currentLoginRef:
+  | { userId: string; promise: Promise<LoginResult>; ready: boolean; result?: LoginResult }
+  | null = null;
+const identityListeners = new Set<() => void>();
+
+function notifyIdentity() {
+  identityListeners.forEach((fn) => {
+    try { fn(); } catch {}
+  });
+}
+
+export function subscribeIdentity(fn: () => void): () => void {
+  identityListeners.add(fn);
+  return () => { identityListeners.delete(fn); };
+}
+
+export function isIdentityReadyFor(userId: string | undefined | null): boolean {
+  if (!userId) return false;
+  // No bridge → identity is a no-op. Treat as ready so callers don't
+  // permanently block on the web preview path.
+  if (!hasNativelyPurchases()) return true;
+  return currentLoginRef?.userId === userId && currentLoginRef.ready;
+}
+
+export interface IdentityState {
+  userId: string | null;
+  ready: boolean;
+  bridgePresent: boolean;
+  lastResult: LoginResult | null;
+}
+
+export function getIdentityState(): IdentityState {
+  return {
+    userId: currentLoginRef?.userId ?? null,
+    ready: !!currentLoginRef?.ready,
+    bridgePresent: hasNativelyPurchases(),
+    lastResult: currentLoginRef?.result ?? null,
+  };
+}
+
+function doLogIn(appUserId: string): Promise<LoginResult> {
+  return new Promise((resolve) => {
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) {
+      return resolve({ ok: false, error: "not_native" });
+    }
+    let purchases: NativelyPurchasesInstance;
+    try {
+      purchases = new window.NativelyPurchases();
+    } catch (e: unknown) {
+      return resolve({ ok: false, error: e instanceof Error ? e.message : "unknown" });
+    }
+    if (typeof purchases.logIn !== "function") {
+      console.warn("[revenuecat] NativelyPurchases.logIn not exposed by bridge");
+      return resolve({ ok: false, error: "no_login_method" });
+    }
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.warn("[revenuecat] logIn timed out");
+      resolve({ ok: false, error: "timeout" });
+    }, 8000);
+    try {
+      purchases.logIn(appUserId, (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (result?.error) {
+          console.warn("[revenuecat] logIn error:", result.error);
+          resolve({ ok: false, error: result.error });
+        } else {
+          resolve({ ok: true });
+        }
+      });
+    } catch (e: unknown) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ok: false, error: e instanceof Error ? e.message : "unknown" });
+    }
+  });
+}
+
+export function ensureIdentified(appUserId: string): Promise<LoginResult> {
+  if (!appUserId) return Promise.resolve({ ok: false, error: "no_user" });
+  if (!hasNativelyPurchases()) return Promise.resolve({ ok: true });
+  if (currentLoginRef?.userId === appUserId) return currentLoginRef.promise;
+
+  const promise = doLogIn(appUserId).then((res) => {
+    if (currentLoginRef?.userId === appUserId) {
+      currentLoginRef.ready = true;
+      currentLoginRef.result = res;
+      notifyIdentity();
+      // After the first successful logIn for this user on this device,
+      // fire one restorePurchases() so any pre-existing anonymous
+      // sandbox purchases get attached to the now-identified record.
+      if (res.ok) {
+        try {
+          const key = RESTORED_ONCE_PREFIX + appUserId;
+          if (typeof localStorage !== "undefined" && !localStorage.getItem(key)) {
+            localStorage.setItem(key, String(Date.now()));
+            restorePurchases().catch(() => {});
+          }
+        } catch {}
+      }
+    }
+    return res;
+  });
+
+  currentLoginRef = { userId: appUserId, promise, ready: false };
+  notifyIdentity();
+  return promise;
+}
+
+export function getCurrentAppUserId(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) return resolve(null);
+    let purchases: NativelyPurchasesInstance;
+    try {
+      purchases = new window.NativelyPurchases();
+    } catch {
+      return resolve(null);
+    }
+    const fn = purchases.getAppUserID || purchases.getAppUserId;
+    if (typeof fn !== "function") return resolve(null);
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(null);
+    }, 4000);
+    try {
+      fn.call(purchases, (id: string | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(typeof id === "string" && id.length > 0 ? id : null);
+      });
+    } catch {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(null);
+    }
+  });
 }

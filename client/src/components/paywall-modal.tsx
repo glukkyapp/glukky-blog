@@ -4,12 +4,16 @@ import { Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { useAuth } from "@/hooks/use-auth";
 import {
   isNativelyAvailable,
   purchasePackage,
   restorePurchases,
   isPremiumFromCustomerInfo,
   getMonthlyPriceString,
+  ensureIdentified,
+  isIdentityReadyFor,
+  subscribeIdentity,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -27,12 +31,32 @@ interface PaywallModalProps {
 
 export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp }: PaywallModalProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const userId = user?.id;
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState<string | null>(null);
+  const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(userId));
 
   const isNative = isNativelyAvailable();
+
+  // Keep an up-to-date view of "is RC identity established for the
+  // current Replit user?" so we can gate the subscribe button on it
+  // and never let a fast-tapping user record a purchase against the
+  // anonymous app-user-id.
+  useEffect(() => {
+    const update = () => setIdentityReady(isIdentityReadyFor(userId));
+    update();
+    const unsubscribe = subscribeIdentity(update);
+    if (open && userId) {
+      // Defensive: if the boot-time effect somehow didn't fire (e.g. the
+      // paywall is opened from an unauthenticated edge case), kick off
+      // logIn now so the user isn't permanently blocked.
+      ensureIdentified(userId);
+    }
+    return unsubscribe;
+  }, [userId, open]);
 
   // When the paywall opens, start warming the Health Info diet-tip
   // thumbnails in the background so they're cached by the time the
@@ -42,11 +66,11 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   }, [open]);
 
   // Ask the server to verify entitlement with RevenueCat and update
-  // is_premium accordingly. Returns true only when the server's verified
-  // result is premium. Never trust the client's own opinion here.
+  // is_premium accordingly. Returns the parsed result so callers can
+  // distinguish a hard "not premium" from a transient verifier failure.
   // force:true bypasses the server's 30s cache because this is the
   // user-initiated post-purchase / post-restore path.
-  const refreshPremiumOnServer = async (): Promise<boolean> => {
+  const refreshPremiumOnServer = async (): Promise<{ verified: boolean; transient: boolean }> => {
     try {
       const resp = await fetch("/api/refresh-premium-status", {
         method: "POST",
@@ -54,12 +78,36 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         credentials: "include",
         body: JSON.stringify({ force: true }),
       });
-      if (!resp.ok) return false;
+      if (!resp.ok) return { verified: false, transient: true };
       const data = await resp.json();
-      return Boolean(data?.verifiedPremium ?? data?.isPremium);
+      return {
+        verified: Boolean(data?.verifiedPremium ?? data?.isPremium),
+        transient: Boolean(data?.transient),
+      };
     } catch {
-      return false;
+      return { verified: false, transient: true };
     }
+  };
+
+  // Poll the server's verifier a few times to cover the typical
+  // 2–5s Apple → StoreKit → RevenueCat propagation gap in sandbox.
+  // Total budget ~8s. Stops early on a verified=true. Keeps polling
+  // through transient failures (5xx/429/network) so a one-off blip
+  // doesn't drop us into the error path.
+  const verifyWithRetry = async (): Promise<boolean> => {
+    const ATTEMPTS = 6;
+    const GAP_MS = 1300;
+    for (let i = 0; i < ATTEMPTS; i++) {
+      const { verified, transient } = await refreshPremiumOnServer();
+      if (verified) return true;
+      // Stop early only when the server gave an authoritative "no" AND
+      // we've already given Apple → RC at least one propagation window.
+      if (!transient && i >= 2) return false;
+      if (i < ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, GAP_MS));
+      }
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -76,6 +124,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
   const handlePurchase = async () => {
     if (!isNative) return;
+    if (!identityReady) return; // button is also disabled, but belt-and-suspenders
     setPurchasing(true);
     setError(null);
     hapticTap("MEDIUM");
@@ -83,8 +132,12 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     const result = await purchasePackage("$rc_monthly");
     // Client never decides premium. After a successful purchase we ask the
     // server to refresh, and the server verifies entitlement with RevenueCat.
-    if (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) {
-      const verified = await refreshPremiumOnServer();
+    const purchaseLooksDone =
+      (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
+      result.error === "pending_verification";
+
+    if (purchaseLooksDone) {
+      const verified = await verifyWithRetry();
       if (verified) {
         hapticNotify("SUCCESS");
         onPurchaseSuccess();
@@ -110,7 +163,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     // server verify with RevenueCat. We only use the device result to skip
     // the round-trip when it clearly shows nothing was restored.
     if (result.success) {
-      const verified = await refreshPremiumOnServer();
+      const verified = await verifyWithRetry();
       if (verified) {
         hapticNotify("SUCCESS");
         onPurchaseSuccess();
@@ -236,11 +289,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 <Button
                   className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
-                  disabled={purchasing || restoring}
+                  disabled={purchasing || restoring || !identityReady}
                   data-testid="button-paywall-subscribe"
                 >
                   <Sparkles className="w-5 h-5" />
-                  {purchasing ? t("paywall.processing") : t("paywall.subscribe_button")}
+                  {purchasing || !identityReady
+                    ? t("paywall.processing")
+                    : t("paywall.subscribe_button")}
                 </Button>
                 <Button
                   variant="outline"
