@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Onboarding Splash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #cfe3ef;
+      --surface: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #ff6b63;
+      --shadow: 0 12px 30px rgba(17, 24, 39, 0.16);
+      --radius-shell: 36px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Stage ── */
+    .stage {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    /* ── Three-phone gallery ── */
+    .gallery {
+      width: min(1180px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(18px, 4vw, 72px);
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: min(28vw, 250px);
+      min-width: 185px;
+      aspect-ratio: 250 / 510;
+      background: #0e0e0e;
+      border-radius: var(--radius-shell);
+      padding: 6px;
+      position: relative;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.12);
+      flex: 0 0 auto;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    .phone--center { transform: translateY(-22px) scale(1.05); }
+
+    /* ── Screen ── */
+    .phone__screen {
+      background: var(--surface);
+      border-radius: calc(var(--radius-shell) - 6px);
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Status bar ── */
+    .statusbar {
+      position: absolute;
+      top: 10px; left: 14px; right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 4;
+      color: white;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+    }
+
+    /* ── Dynamic island / notch ── */
+    .notch {
+      position: absolute;
+      top: 8px; left: 50%;
+      transform: translateX(-50%);
+      width: 72px; height: 16px;
+      border-radius: 999px;
+      background: #080808;
+      z-index: 5;
+    }
+
+    /* ── Hero image area ── */
+    .hero {
+      height: 46%;
+      position: relative;
+      border-bottom-left-radius: 22px;
+      border-bottom-right-radius: 22px;
+      overflow: hidden;
+    }
+
+    .hero img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Text content ── */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 20px 16px;
+    }
+
+    .copy { text-align: center; padding-top: 8px; }
+
+    .copy h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .copy p {
+      margin: 10px auto 0;
+      max-width: 22ch;
+      font-size: 8.5px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    /* ── Footer row: Skip | Dots | Next ── */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+    }
+
+    .skip {
+      border: 0; background: transparent;
+      color: var(--text);
+      font-size: 8.5px; padding: 0;
+      cursor: pointer;
+    }
+
+    .dots { display: flex; gap: 5px; }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
+    .dot.active { width: 16px; background: var(--accent); }
+
+    .next {
+      width: 22px; height: 22px;
+      border-radius: 999px; border: 0;
+      background: var(--accent);
+      color: white;
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(255,107,99,0.35);
+    }
+
+    /* ── Home indicator bar ── */
+    .home-indicator {
+      position: absolute;
+      left: 50%; bottom: 8px;
+      transform: translateX(-50%);
+      width: 72px; height: 3px;
+      border-radius: 999px;
+      background: #111; opacity: 0.9;
+    }
+
+    /* ── Bottom controls (arrange buttons) ── */
+    .controls {
+      position: fixed;
+      left: 50%; bottom: 18px;
+      transform: translateX(-50%);
+      display: flex; gap: 10px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(17,24,39,0.08);
+      padding: 10px 12px;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    .controls button {
+      border: 0; background: white; color: var(--text);
+      font-weight: 600; border-radius: 999px;
+      padding: 10px 14px; cursor: pointer; min-width: 44px;
+    }
+
+    .controls button.primary { background: var(--accent); color: white; }
+
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      .stage { padding: 24px 14px 100px; }
+      .gallery { gap: 18px; flex-wrap: wrap; }
+      .phone { width: min(42vw, 230px); }
+      .phone--center { transform: none; }
+      .controls { position: static; transform: none; margin: 20px auto 0; width: fit-content; }
+    }
+  </style>
+</head>
+<body>
+<main class="stage">
+  <section class="gallery" aria-label="Onboarding slides preview">
+
+    <!-- SLIDE 1 -->
+    <article class="phone" data-phone="0">
+      <div class="phone__screen">
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true">
+          <span>9:41</span>
+          <span>▪ ▪ ▪</span>
+        </div>
+        <div class="hero" style="background:#dceef8;">
+          <!-- Replace src with your own image URL -->
+          <img src="https://picsum.photos/seed/globe/800/1000"
+               alt="Illustration placeholder for slide 1"
+               width="800" height="1000" loading="lazy">
+        </div>
+        <div class="content">
+          <div class="copy">
+            <h2>Screen Title One</h2>
+            <p>Short supporting description goes here. Keep it to two or three lines.</p>
+          </div>
+          <div class="footer">
+            <button class="skip" type="button">Skip</button>
+            <div class="dots" aria-label="Step 1 of 3">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+            <button class="next" type="button" aria-label="Next">→</button>
+          </div>
+        </div>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </article>
+
+    <!-- SLIDE 2 (center / hero) -->
+    <article class="phone phone--center" data-phone="1">
+      <div class="phone__screen">
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true">
+          <span>9:41</span>
+          <span>▪ ▪ ▪</span>
+        </div>
+        <div class="hero" style="background:#2ea4df;">
+          <!-- Replace src with your own image URL -->
+          <img src="https://picsum.photos/seed/person/800/1000"
+               alt="Illustration placeholder for slide 2"
+               width="800" height="1000" loading="lazy">
+        </div>
+        <div class="content">
+          <div class="copy">
+            <h2>Screen Title Two</h2>
+            <p>Short supporting description goes here. Keep it to two or three lines.</p>
+          </div>
+          <div class="footer">
+            <button class="skip" type="button">Skip</button>
+            <div class="dots" aria-label="Step 2 of 3">
+              <span class="dot"></span>
+              <span class="dot active"></span>
+              <span class="dot"></span>
+            </div>
+            <button class="next" type="button" aria-label="Next">→</button>
+          </div>
+        </div>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </article>
+
+    <!-- SLIDE 3 -->
+    <article class="phone" data-phone="2">
+      <div class="phone__screen">
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true">
+          <span>9:41</span>
+          <span>▪ ▪ ▪</span>
+        </div>
+        <div class="hero" style="background:#d9edf8;">
+          <!-- Replace src with your own image URL -->
+          <img src="https://picsum.photos/seed/outdoor/800/1000"
+               alt="Illustration placeholder for slide 3"
+               width="800" height="1000" loading="lazy">
+        </div>
+        <div class="content">
+          <div class="copy">
+            <h2>Screen Title Three</h2>
+            <p>Short supporting description goes here. Keep it to two or three lines.</p>
+          </div>
+          <div class="footer">
+            <button class="skip" type="button">Skip</button>
+            <div class="dots" aria-label="Step 3 of 3">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot active"></span>
+            </div>
+            <button class="next" type="button" aria-label="Next">→</button>
+          </div>
+        </div>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- Arrange toggle buttons (remove in production) -->
+  <div class="controls" aria-label="Preview controls">
+    <button type="button" data-arrange="spread">Spread</button>
+    <button type="button" data-arrange="stack">Stack</button>
+    <button type="button" class="primary" data-arrange="center">Focus</button>
+  </div>
+</main>
+
+<script>
+  const gallery = document.querySelector('.gallery');
+  const phones = [...document.querySelectorAll('.phone')];
+  const controlBtns = [...document.querySelectorAll('[data-arrange]')];
+
+  function setArrangement(mode) {
+    const isWide = window.innerWidth > 860;
+    gallery.style.flexWrap = isWide ? 'nowrap' : 'wrap';
+
+    phones.forEach((phone, i) => {
+      phone.style.opacity = '1';
+      phone.style.transform = 'none';
+      phone.style.zIndex = '1';
+      phone.style.marginLeft = '0';
+
+      if (mode === 'spread' && isWide && i === 1) {
+        phone.style.transform = 'translateY(-22px) scale(1.05)';
+      }
+
+      if (mode === 'stack' && isWide) {
+        phone.style.marginLeft = i === 0 ? '0' : '-48px';
+        phone.style.transform = `translateY(${i * 6}px) scale(${1 - i * 0.02})`;
+        phone.style.zIndex = String(3 - i);
+      }
+
+      if (mode === 'center' && isWide) {
+        phone.style.opacity = i === 1 ? '1' : '0.8';
+        phone.style.transform = i === 1
+          ? 'translateY(-22px) scale(1.08)'
+          : 'translateY(12px) scale(0.96)';
+      }
+    });
+
+    controlBtns.forEach(btn =>
+      btn.classList.toggle('primary', btn.dataset.arrange === mode)
+    );
+  }
+
+  controlBtns.forEach(btn => {
+    btn.addEventListener('click', () => setArrangement(btn.dataset.arrange));
+  });
+
+  setArrangement('center');
+  window.addEventListener('resize', () => {
+    const active = document.querySelector('.controls .primary');
+    setArrangement(active?.dataset.arrange || 'center');
+  });
+</script>
+</body>
+</html>

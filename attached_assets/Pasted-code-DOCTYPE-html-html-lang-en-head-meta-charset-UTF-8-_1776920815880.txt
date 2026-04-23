@@ -1,0 +1,149 @@
+code = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Glukky Loading</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100dvh;
+      background: #F3EAE5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;
+      color: #0D2B1E;
+      padding: 2rem;
+    }
+
+    .logo-gif {
+      width: 20vw;
+      max-width: 120px;
+      min-width: 64px;
+      height: auto;
+      margin-bottom: 2.5rem;
+    }
+
+    .tip-box {
+      max-width: 300px;
+      width: 100%;
+      text-align: center;
+    }
+
+    #tip {
+      font-size: clamp(0.656rem, 2.625vw, 0.75rem);
+      line-height: 1.7;
+      color: #0D2B1E;
+      font-weight: 400;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #tip.zh {
+      font-family: \'LXGW WenKai TC\', serif;
+    }
+
+    #tip.hidden {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 0.875rem;
+      justify-content: center;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(13, 43, 30, 0.2);
+      transition: background 0.3s ease;
+    }
+
+    .dot.active {
+      background: #0D2B1E;
+    }
+  </style>
+</head>
+<body>
+
+  <img class="logo-gif" src="./assets/glukky-animation.gif" alt="Glukky"
+       onerror="this.style.display=\'none\'" />
+
+  <div class="tip-box">
+    <p id="tip"></p>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <script>
+    const tipsEnglish = [
+      "Blood sugar swings can affect your mood and energy throughout the day.",
+      "Keeping glucose stable helps your skin stay firm and clear.",
+      "Your heart, eyes, kidneys, and brain — blood sugar affects them all.",
+      "It\'s not just sweets — almost all foods raise your blood glucose after eating. What matters is how much and how fast.",
+    ];
+
+    const tipsChinese = [
+      "血糖波動會影響你一天的情緒和精力。",
+      "保持血糖穩定，有助皮膚緊緻透亮。",
+      "心臟、眼睛、腎臟、大腦——血糖能影響你全身。",
+      "不只是甜食——幾乎所有食物都會令血糖上升。重要的是多少與速度。",
+    ];
+
+    function detectLanguage() {
+      if (window.glukkyLang) return window.glukkyLang;
+      const lang = navigator.language || navigator.userLanguage || \'en\';
+      return (lang.startsWith(\'zh\') || lang.startsWith(\'yue\')) ? \'zh\' : \'en\';
+    }
+
+    const lang = detectLanguage();
+    const tips = lang === \'zh\' ? tipsChinese : tipsEnglish;
+
+    const tipEl = document.getElementById(\'tip\');
+    const dotsEl = document.getElementById(\'dots\');
+
+    if (lang === \'zh\') tipEl.classList.add(\'zh\');
+
+    tips.forEach((_, idx) => {
+      const dot = document.createElement(\'div\');
+      dot.className = \'dot\' + (idx === 0 ? \' active\' : \'\');
+      dotsEl.appendChild(dot);
+    });
+
+    let i = 0;
+
+    function showNextTip() {
+      tipEl.classList.add(\'hidden\');
+      setTimeout(() => {
+        tipEl.innerText = tips[i % tips.length];
+        document.querySelectorAll(\'.dot\').forEach((d, idx) => {
+          d.classList.toggle(\'active\', idx === i % tips.length);
+        });
+        i++;
+        tipEl.classList.remove(\'hidden\');
+      }, 400);
+    }
+
+    showNextTip();
+    setInterval(showNextTip, 3500);
+  </script>
+
+</body>
+</html>'''
+
+with open('/home/user/glukky-loading-screen-v5.html', 'w', encoding='utf-8') as f:
+    f.write(code)
+
+print("Done")
