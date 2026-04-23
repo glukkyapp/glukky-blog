@@ -68,14 +68,18 @@ export default function CubeLoadingScreen({
 
   // Tip rotation: 3.5s interval, 0.4s fade, matches reference HTML.
   useEffect(() => {
+    let fadeTimeout: ReturnType<typeof setTimeout> | null = null;
     const interval = setInterval(() => {
       setHidden(true);
-      setTimeout(() => {
+      fadeTimeout = setTimeout(() => {
         setTipIndex((i) => (i + 1) % tips.length);
         setHidden(false);
       }, FADE_MS);
     }, TIP_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (fadeTimeout) clearTimeout(fadeTimeout);
+    };
   }, [tips.length]);
 
   // Minimum-duration gate.
