@@ -181,62 +181,193 @@ export default function Landing() {
 
   if (step === "slides") {
     const slide = slides[slideIndex];
+    const ACCENT = "#127843";
+    const HEADLINE = "#214B36";
     return (
       <div
-        className="relative h-dvh overflow-hidden"
+        className="relative h-dvh w-full overflow-hidden flex flex-col"
+        style={{ background: "#fdfbee", fontFamily: "'Inter', system-ui, sans-serif" }}
         data-testid="landing-slides-screen"
       >
-        <img
-          key={slideIndex}
-          src={slide.image}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-
+        {/* Status bar */}
         <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to bottom, transparent 78%, rgba(0,0,0,0.72) 100%)" }}
+          className="absolute left-0 right-0 flex items-center justify-between"
+          style={{
+            top: 14,
+            paddingLeft: 24,
+            paddingRight: 24,
+            zIndex: 4,
+            color: "white",
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            pointerEvents: "none",
+          }}
+        >
+          <span>9:41</span>
+          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+            <span style={{ width: 16, height: 10, borderRadius: 2, background: "white", opacity: 0.95 }} />
+            <span style={{ width: 14, height: 10, borderRadius: 2, background: "white", opacity: 0.85 }} />
+            <span
+              style={{
+                width: 22,
+                height: 11,
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.9)",
+                position: "relative",
+              }}
+            >
+              <span style={{ position: "absolute", inset: 1, background: "white", borderRadius: 1 }} />
+            </span>
+          </span>
+        </div>
+
+        {/* Notch / dynamic island */}
+        <div
+          className="absolute"
+          style={{
+            top: 11,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 112,
+            height: 26,
+            borderRadius: 999,
+            background: "#080808",
+            zIndex: 5,
+          }}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 flex flex-col gap-2 max-w-sm mx-auto max-h-[70dvh] overflow-hidden">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-[2.625rem] font-bold text-white leading-tight whitespace-pre-line">
+        {/* Hero image */}
+        <div
+          className="relative"
+          style={{
+            height: "46%",
+            borderBottomLeftRadius: 34,
+            borderBottomRightRadius: 34,
+            overflow: "hidden",
+          }}
+        >
+          <img
+            key={slideIndex}
+            src={slide.image}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        </div>
+
+        {/* Content */}
+        <div
+          className="flex-1 flex flex-col justify-between"
+          style={{ padding: "28px 30px 24px" }}
+        >
+          <div style={{ textAlign: "center", paddingTop: 16 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: HEADLINE,
+                lineHeight: 1.25,
+                whiteSpace: "pre-line",
+              }}
+              data-testid="text-slide-headline"
+            >
               {slide.headline}
             </h2>
-            <p className="text-[1.875rem] text-white/85 leading-snug">
+            <p
+              style={{
+                margin: "16px auto 0",
+                maxWidth: "26ch",
+                fontSize: 14,
+                lineHeight: 1.5,
+                color: "#6b7280",
+              }}
+              data-testid="text-slide-body"
+            >
               {slide.body}
             </p>
           </div>
 
-          <div className="flex justify-center items-center gap-2" data-testid="slide-dots">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
-                data-testid={`slide-dot-${i}`}
-                aria-label={`Slide ${i + 1}`}
-                className="flex items-center justify-center w-5 h-5 -m-1.5"
-              >
-                <span
-                  className={`block rounded-full transition-all ${
-                    i === slideIndex ? "w-1.5 h-0.5 bg-white" : "w-0.5 h-0.5 bg-white/40"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
+          {/* Footer: spacer · Dots · Next (no Skip — preload runs here) */}
+          <div className="flex items-center justify-between" style={{ paddingTop: 20 }}>
+            <span aria-hidden style={{ width: 36, height: 36 }} />
 
-          <div className="flex justify-center">
-            <Button
+            <div className="flex items-center" style={{ gap: 8 }} data-testid="slide-dots">
+              {slides.map((_, i) => {
+                const active = i === slideIndex;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
+                    data-testid={`slide-dot-${i}`}
+                    aria-label={`Slide ${i + 1}`}
+                    className="flex items-center justify-center"
+                    style={{
+                      padding: 6,
+                      margin: -6,
+                      background: "transparent",
+                      border: 0,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        width: active ? 26 : 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: active ? ACCENT : "#e5e7eb",
+                        transition: "width 0.25s ease, background 0.25s ease",
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
               onClick={handleSlideNext}
-              className="rounded-full px-8 py-3 h-auto min-h-0 text-white text-[1.25rem] font-semibold btn-pop"
-              style={{ backgroundColor: "#127843", borderColor: "#127843" }}
               data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
+              aria-label={slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
+              className="btn-pop"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 999,
+                border: 0,
+                background: ACCENT,
+                color: "white",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
+              }}
             >
-              {slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
-            </Button>
+              ›
+            </button>
           </div>
         </div>
+
+        {/* Home indicator */}
+        <div
+          className="absolute"
+          style={{
+            left: "50%",
+            bottom: 10,
+            transform: "translateX(-50%)",
+            width: 120,
+            height: 5,
+            borderRadius: 999,
+            background: "#111",
+            opacity: 0.9,
+          }}
+        />
       </div>
     );
   }
