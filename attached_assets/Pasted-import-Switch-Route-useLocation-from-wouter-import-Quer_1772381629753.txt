@@ -1,0 +1,137 @@
+import { Switch, Route, useLocation } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AnimatedPageWrapper } from "@/components/page-transition";
+import { GlobalLoadingBar } from "@/components/motion-primitives";
+import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
+import { LoadingProvider } from "@/contexts/loading-context";
+import Home from "@/pages/home";
+import Gallery from "@/pages/gallery";
+import Insights from "@/pages/insights";
+import ColoringCanvas from "@/pages/coloring-canvas";
+import Community from "@/pages/community";
+import FloatingNavBar from "@/components/floating-nav-bar";
+
+function Router() {
+  const [location] = useLocation();
+  const { showNavigation } = useNavigation();
+  const isDrawingPage = location === "/drawing" || location.startsWith("/drawing?");
+
+  return (
+    <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
+      <AnimatedPageWrapper>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/gallery" component={Gallery} />
+          <Route path="/insights" component={Insights} />
+          <Route path="/drawing" component={ColoringCanvas} />
+          <Route path="/community" component={Community} />
+        </Switch>
+      </AnimatedPageWrapper>
+      {!isDrawingPage && showNavigation && <FloatingNavBar />}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <LoadingProvider>
+          <NavigationProvider>
+            <GlobalLoadingBar />
+            <Toaster />
+            <Router />
+          </NavigationProvider>
+        </LoadingProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;  import { useLocation } from "wouter";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+
+const navItems = [
+  { key: "home",      label: "Home",      path: "/" },
+  { key: "gallery",   label: "Gallery",   path: "/gallery" },
+  { key: "insights",  label: "Insight",   path: "/insights" },
+  { key: "community", label: "Community", path: "/community" },
+];
+
+export default function FloatingNavBar() {
+  const [location, setLocation] = useLocation();
+  const [activePath, setActivePath] = useState(location || "/");
+
+  const isActive = (path: string) =>
+    path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
+
+  const handleNavClick = (path: string) => {
+    setActivePath(path);
+    setLocation(path);
+  };
+
+  return (
+    <nav className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
+      style={{ width: '457px', height: '80px', maxWidth: 'calc(100vw - 32px)' }}>
+      <div className="relative w-full h-full flex items-center justify-around"
+        style={{ backgroundColor: 'rgba(229, 212, 250, 0.8)', borderRadius: '160px', boxShadow: '0px 4px 10px rgba(0,0,0,0.25)' }}>
+        {navItems.map(({ key, label, path }) => {
+          const active = isActive(path);
+          return (
+            <button key={key} onClick={() => handleNavClick(path)}
+              className="relative z-10 flex flex-col items-center justify-center"
+              style={{ width: '114px', height: '100%', color: '#3910A1', background: 'transparent', border: 'none' }}>
+              {/* icon here */}
+              <motion.span animate={{ opacity: active ? 1 : 0, height: active ? 'auto' : 0 }}
+                transition={{ duration: 0.2 }} className="text-xs font-medium overflow-hidden"
+                style={{ color: '#3910A1' }}>
+                {label}
+              </motion.span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}  import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
+
+const slideVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir < 0 ? 300 : -300, opacity: 0 }),
+};
+
+const fadeVariants = {
+  enter: { opacity: 0, scale: 0.95 },
+  center: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 1.05 },
+};
+
+export function PageTransition({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const isCanvas = location.includes('/drawing/') || location.includes('/coloring/');
+  const variants = isCanvas ? fadeVariants : slideVariants;
+
+  return (
+    <motion.div key={location} custom={1} variants={variants}
+      initial="enter" animate="center" exit="exit"
+      transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+      className="w-full">
+      {children}
+    </motion.div>
+  );
+}
+
+export function AnimatedPageWrapper({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={location}>{children}</PageTransition>
+    </AnimatePresence>
+  );
+}

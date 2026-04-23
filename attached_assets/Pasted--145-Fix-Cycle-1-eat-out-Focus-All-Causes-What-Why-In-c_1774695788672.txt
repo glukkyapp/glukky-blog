@@ -1,0 +1,30 @@
+#145 - Fix Cycle 1 eat_out Focus — All Causes
+What & Why
+In cycle 1, when the user picks eat_out as one of their struggles (e.g. eat_out, portions, snacks) and schedules zero eat-out days, eat_out is still shown as the weekly focus.
+
+Root cause: STRUGGLE_PRIORITY in shared/schema.ts places eat_out at index 2 — before portions (index 3) and snacks (index 4). This means eat_out is always the highest-priority untried struggle for anyone who picked it. The intended behaviour is that eat_out is skipped when no eat-out days are scheduled and the next struggle (portions or snacks) becomes the focus instead. A guard !(s === "eat_out" && !hasEatOutDays) already exists in the backend's untried filter but is missing from two other places.
+
+Done looks like
+In cycle 1, if the user picks eat_out and schedules no eat-out days, the planner shows portions (or whichever non-eat_out struggle is next) as the focus — not eat_out.
+After the plan is saved, the home page focus matches what was shown in the planner.
+When eat-out days ARE scheduled, eat_out continues to be the focus as expected.
+Out of scope
+Cycle 2 and cycle 3 eat_out handling (separate logic).
+Any changes to mastery evaluation.
+Tasks
+Frontend fix — getEffectiveStruggle() cycle-1 untried missing gate (weekly-planner.tsx ~line 1757)
+
+The cycle-1 untried filter has no eat_out gate. Because eat_out is at index 2 in STRUGGLE_PRIORITY (before portions at 3, snacks at 4), the frontend always picks eat_out as the first untried struggle even when hasEatOutDays = false. The planner's diet-review step therefore displays eat_out as the focus. Fix: add && !(s === "eat_out" && !hasEatOutDays) to the untried filter in the cycle-1 branch — matching the existing backend guard.
+
+Frontend fix — getEffectiveStruggle() cycle-1 triedNotMastered missing gate (weekly-planner.tsx ~line 1758)
+
+The triedNotMastered filter in the same function also has no eat_out gate. If eat_out has been tried before (difficultStruggles / triedBeforeStruggles) and no eat-out days are scheduled, eat_out can still surface from triedNotMastered. Fix: add && !(s === "eat_out" && !hasEatOutDays) to that filter as well.
+
+Backend fix — cycle-1 triedNotMastered missing gate (routes.ts ~line 895)
+
+The backend's triedNotMastered filter (inside POST /api/plan/weekly) has the same gap: no eat_out guard. The existing untried guard (line 894) prevents eat_out from being selected as a fresh untried, but if eat_out is in difficultStruggles or triedBeforeStruggles and all other struggles are mastered, eat_out can be picked from triedNotMastered even with no eat-out days. Fix: add && !(s === "eat_out" && !hasEatOutDays) to triedNotMastered on line 895.
+
+Relevant files
+server/routes.ts:884-902
+client/src/pages/weekly-planner.tsx:1647-1765
+shared/schema.ts:157-163
