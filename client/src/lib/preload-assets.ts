@@ -15,7 +15,6 @@
 //           users who never see the paywall).
 
 // Stage 1 — launch + landing
-import launchLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
 import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
@@ -72,7 +71,7 @@ import dietTip9 from "@assets/cropped_circle_image_(9)_1775374577700.png";
 import dietTip10 from "@assets/cropped_circle_image_(10)_1775374584626.png";
 import dietTip11 from "@assets/cropped_circle_image_1775372471301.png";
 
-const STAGE_1: string[] = [slide1Img, slide2Img, slide3Img];
+const STAGE_1: string[] = [glukkyLogo, slide1Img, slide2Img, slide3Img];
 
 const STAGE_2: string[] = [
   nightShiftImg, irregularImg, bedImg, sleepBgImg, eatingOutImg,
@@ -82,7 +81,6 @@ const STAGE_2: string[] = [
 ];
 
 const STAGE_3: string[] = [
-  launchLogo, glukkyLogo,
   mountainBg, phoneBg, calendarBg,
   cameraHeadingIcon, roadmapHeadingIcon, lightbulbHeadingIcon, calendarHeadingIcon,
   homeGiftImg, laurelImg, paywallHeroImg,
