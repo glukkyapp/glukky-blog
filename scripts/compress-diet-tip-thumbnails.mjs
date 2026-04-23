@@ -5,7 +5,9 @@
 // them to a small max dimension and re-encodes as palette PNGs to
 // land each file under 200 KB and the total well under 2 MB.
 //
-// Tooling: `sharp` (devDependency). Usage:
+// Tooling: `sharp` (one-off — not committed as a project dependency).
+// Usage:
+//   npm install --no-save sharp
 //   node scripts/compress-diet-tip-thumbnails.mjs
 
 import sharp from "sharp";
