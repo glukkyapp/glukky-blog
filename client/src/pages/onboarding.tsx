@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { preloadStage3RestOfApp } from "@/lib/preload-assets";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -44,6 +45,10 @@ const TOTAL_STEPS = 12;
 const GREEN_DARK = "#214B36";
 
 export default function Onboarding() {
+  useEffect(() => {
+    preloadStage3RestOfApp();
+  }, []);
+
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();

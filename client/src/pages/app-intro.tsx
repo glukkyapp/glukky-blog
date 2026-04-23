@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { preloadStage3RestOfApp } from "@/lib/preload-assets";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -31,6 +32,10 @@ export default function AppIntro() {
   const { t } = useTranslation();
   const [page, setPage] = useState(0);
   const [direction, setDirection] = useState(1);
+
+  useEffect(() => {
+    preloadStage3RestOfApp();
+  }, []);
 
   const markSeen = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/profile/intro-seen"),

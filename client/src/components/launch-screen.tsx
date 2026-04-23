@@ -1,10 +1,16 @@
+import { useEffect } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-03-30_at_23.48.51_1774964683492.png";
+import { preloadStage2Onboarding } from "@/lib/preload-assets";
 
 interface LaunchScreenProps {
   visible: boolean;
 }
 
 export function LaunchScreen({ visible }: LaunchScreenProps) {
+  useEffect(() => {
+    preloadStage2Onboarding();
+  }, []);
+
   return (
     <div
       data-testid="launch-screen"

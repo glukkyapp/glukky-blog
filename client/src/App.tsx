@@ -29,10 +29,10 @@ import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
-import { preloadAllImages } from "@/lib/preload-assets";
+import { preloadStage1Launch } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 
-preloadAllImages();
+preloadStage1Launch();
 
 interface PiggyBankData {
   coins: number;
@@ -542,7 +542,7 @@ function Router() {
 
 function App() {
   useEffect(() => {
-    preloadAllImages();
+    preloadStage1Launch();
   }, []);
 
   useEffect(() => {
