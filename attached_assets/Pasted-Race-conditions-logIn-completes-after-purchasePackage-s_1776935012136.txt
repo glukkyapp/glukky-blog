@@ -1,0 +1,46 @@
+Race conditions
+logIn() completes after purchasePackage() starts — if the user taps subscribe the moment the app loads, logIn() may not have resolved yet, so the purchase still goes against the anonymous ID even with Fix 1 in place. The subscribe button or purchase flow must wait until logIn() fully resolves.
+
+refreshPremiumOnServer() fires before RevenueCat has processed the receipt — Apple confirms to StoreKit, StoreKit tells RC, RC updates the subscriber record. This chain can take 2–5 seconds. If your first server poll happens immediately, it will still see hasPremium=false even with the correct user ID.
+
+RevenueCat configuration issues
+Entitlement not attached to the product in RC dashboard — if the monthly product exists in RC but is not linked to a named entitlement (e.g. premium), customerInfo.entitlements.active will be empty even after a successful purchase. Your isPremiumFromCustomerInfo() check would return false.
+
+Wrong App User ID format or encoding — if the Replit user ID contains special characters (spaces, @, /) and is not URL-encoded consistently between client and server, RC may store it under a slightly different string and the server lookup still gets a 404.
+
+Multiple RC projects or wrong API key — if the iOS build is pointing at a different RC project or environment than the server secret key, purchases are recorded in one project but verified in another. Common when sandbox vs. production keys get mixed up.
+
+App state / session issues
+User is not authenticated when purchase happens — if the Replit auth session expires or fails silently, req.user.claims.sub on the server returns null or a stale ID, so the server queries RC with the wrong identity entirely.
+
+logIn() called with wrong ID — for example, calling logIn(email) instead of logIn(userId) while the server uses userId. A subtle mismatch that is invisible unless the dev panel shows both values side by side.
+
+Anonymous ID aliasing — if the user made a prior sandbox purchase as anonymous before logIn() was ever implemented, RC may have two separate subscriber records. The anonymous record has the purchase; the named record is empty. RC's alias merging may or may not have linked them, depending on whether logIn() was ever called on that device.
+
+Network / infrastructure issues
+RC REST API rate limiting — on rapid retries, RC may return 429 instead of 200, which your server may misinterpret as hasPremium=false.
+
+Server env var REVENUECAT_SECRET_API_KEY missing or wrong — your fail-closed logic would return hasPremium=false silently. If the key is wrong rather than missing, RC returns 401 which also looks like "not premium" unless explicitly handled.
+
+Server clock skew — if expires_date comparison uses server time and the server clock is significantly off, an active subscription may appear expired. Rare but possible.
+
+Paywall UI state
+onPurchaseSuccess() fires but paywall re-opens — if the parent component re-renders and resets gate status before the new is_premium=true propagates from the server response, the paywall can close and immediately reopen.
+
+Cached gate status not invalidated — if your frontend caches gate/premium status and does not invalidate it after the refresh endpoint responds, the UI may continue showing the paywall based on stale cached state.
+
+The most likely hidden culprit
+Beyond the anonymous ID fix, the one I would watch most carefully is entitlement not attached to the product in the RC dashboard. That would cause customerInfo.entitlements.active to be empty on every device regardless of whether logIn() is correct, and it would look identical to the propagation-delay scenario.
+
+What to add to the dev panel
+To catch all of the above quickly, I would also surface:
+
+RC environment (sandbox vs. production)
+
+Active entitlements list from customerInfo (empty or populated)
+
+RC project App ID being used
+
+Server-side RC API key presence (yes/no, never the value itself)
+
+Last refreshPremiumOnServer() response including verificationSource and raw hasPremium
