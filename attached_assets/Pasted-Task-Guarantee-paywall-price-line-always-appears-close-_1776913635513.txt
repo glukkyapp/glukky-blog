@@ -1,0 +1,101 @@
+Task: Guarantee paywall price line always appears — close silent failure paths and add diagnostics
+
+Background
+
+The paywall headline reverts to "Enjoy these premium features:" instead of "At just HK$28.00/month, enjoy these premium features:" repeatedly across TestFlight builds and Replit web preview. Every previous fix has been bypassed by a silent failure path in getMonthlyPriceString(). This task closes every silent failure, adds a locale fallback price so the price sentence is always present, and adds on-device diagnostics so this regression never requires code spelunking again.
+
+Done looks like
+
+The paywall headline always shows a price sentence — "At just HK$28.00/month, enjoy these premium features:" — in Replit web preview, in TestFlight sandbox, and in the production build.
+
+When RevenueCat returns a valid monthly priceString, it is used. This is the live-price path and always wins.
+
+When the live price is unavailable (no bridge, bridge timeout, bridge returns no current offering, priceString is empty or whitespace), the per-locale fallback price constant (HK$28.00) is substituted. The sentence still appears.
+
+headline_no_price ("Enjoy these premium features:") is only reachable if both the live price and the fallback constant are somehow blank. Under any normal build this should be unreachable.
+
+The dev panel NativelyPurchases probe shows exactly which step succeeded or failed: bridge present, method list, whether getOfferings exists, raw offerings payload (or the reason it was unavailable or timed out), the resolved priceString, and which source produced it (live-current-monthly / live-availablePackages-monthly / fallback-locale-{en|zh-Hant|yue} / fallback-no-bridge / fallback-timeout).
+
+The dev panel shows the running build identifier (commit short SHA from a build-time env var, or build timestamp) so stale cached bundles are immediately identifiable.
+
+Out of scope
+
+Changing pricing tiers or adding annual / lifetime packages.
+
+RevenueCat dashboard configuration changes.
+
+App Store screenshot changes.
+
+Steps
+
+1. Harden getMonthlyPriceString()
+
+Add an 8-second timeout matching the existing getCustomerInfo probe pattern. The Promise must always resolve; it must never hang.
+
+Normalize the result: trim whitespace, treat empty string and whitespace-only as null.
+
+Try price extraction in this order:
+
+result.current.monthly.product.priceString
+
+First package in result.current.availablePackages where identifier === "$rc_monthly" or packageType === "MONTHLY"
+
+If all paths return null or the callback never fires, resolve null.
+
+Log a single tagged warning per null-return path (no bridge, no getOfferings method, callback timed out, no current offering, no monthly package found, priceString empty) so future regressions appear in Safari Web Inspector or Natively logs without code changes.
+
+2. Add guaranteed per-locale fallback price
+
+Add a constant:
+
+ts
+const FALLBACK_PRICE: Record<string, string> = {
+  en: "HK$28.00",
+  "zh-Hant": "HK$28.00",
+  yue: "HK$28.00",
+};
+After getMonthlyPriceString() resolves, if the result is null or empty, use FALLBACK_PRICE[currentLocale] ?? "HK$28.00".
+
+The resolved price (live or fallback) is passed into headline_with_price via i18n interpolation.
+
+headline_no_price only renders if even the fallback constant is blank — this should never happen.
+
+3. Expand dev panel NativelyPurchases probe
+
+Add a dedicated pricing diagnostic section showing:
+
+Bridge present: yes / no
+
+Prototype methods list (so getOfferings existence is visible at a glance)
+
+If getOfferings exists: raw offerings payload including current, monthly, and availablePackages
+
+If getOfferings is missing or times out: "method missing" or "callback never fired" with timing
+
+Final resolved priceString and source label: live-current-monthly / live-availablePackages-monthly / fallback-locale-{lang} / fallback-no-bridge / fallback-timeout
+
+4. Surface build identifier
+
+Show in dev panel: commit short SHA from VITE_COMMIT_SHA build-time env var, or build timestamp as a fallback.
+
+This allows immediately ruling out stale cached bundles when the regression is reported again.
+
+5. Sanity-check locale strings
+
+Confirm paywall.headline_with_price in en.json, zh-Hant.json, and yue.json reads naturally with an interpolated price value.
+
+Confirm headline_no_price is only referenced in the else branch after both live price and fallback are exhausted.
+
+Acceptance test
+
+After implementation, manually verify in Replit web preview and TestFlight:
+
+Normal build with RevenueCat offerings available → headline shows live price from RevenueCat.
+
+No bridge (web preview) → headline shows fallback price HK$28.00, not headline_no_price.
+
+Bridge present but getOfferings times out → headline shows fallback price, dev panel shows "callback never fired."
+
+Dev panel shows correct source label for each case above.
+
+Dev panel shows current build identifier matching the deployed build.
