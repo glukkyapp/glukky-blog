@@ -254,8 +254,10 @@ export default function Onboarding() {
                 data-testid="img-welcome"
                 style={{
                   display: "block",
-                  width: "100%",
+                  width: "80%",
                   height: "auto",
+                  marginLeft: "auto",
+                  marginRight: "auto",
                 }}
               />
             </div>
@@ -291,8 +293,10 @@ export default function Onboarding() {
                 data-testid="img-why"
                 style={{
                   display: "block",
-                  width: "100%",
+                  width: "80%",
                   height: "auto",
+                  marginLeft: "auto",
+                  marginRight: "auto",
                 }}
               />
             </div>
@@ -560,8 +564,10 @@ export default function Onboarding() {
                 draggable={false}
                 style={{
                   display: "block",
-                  width: "100%",
+                  width: "80%",
                   height: "auto",
+                  marginLeft: "auto",
+                  marginRight: "auto",
                 }}
               />
             </div>

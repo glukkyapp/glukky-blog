@@ -262,7 +262,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               {headline}
             </p>
 
-            <div className="w-full flex flex-col gap-[7px] text-left text-base mt-[26px]">
+            <div className="w-full flex flex-col gap-[4px] text-left text-base mt-[26px]">
               {["feature_plans", "feature_snap", "feature_roadmap", "feature_insights"].map((key) => (
                 <div key={key} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -272,7 +272,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             </div>
 
             <p
-              className="text-base font-medium text-foreground text-center mt-[38px]"
+              className="text-base font-medium text-foreground text-center mt-[23px]"
               data-testid="text-paywall-cup-of-coffee"
             >
               {t("paywall.cup_of_coffee")}
@@ -285,7 +285,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
             )}
 
             {isNative ? (
-              <div className="w-full flex flex-col gap-2 mt-6">
+              <div className="w-full flex flex-col gap-2 mt-3">
                 <Button
                   className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
@@ -317,7 +317,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
                 )}
               </div>
             ) : (
-              <div className="w-full flex flex-col gap-2 mt-6">
+              <div className="w-full flex flex-col gap-2 mt-3">
                 <div className="w-full rounded-xl bg-muted/50 border border-border px-4 py-3">
                   <p className="text-sm text-muted-foreground text-center" data-testid="text-paywall-native-hint">
                     {t("paywall.open_in_app")}
