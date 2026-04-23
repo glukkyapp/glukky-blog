@@ -416,20 +416,33 @@ export function ensureIdentified(appUserId: string): Promise<LoginResult> {
   if (!hasNativelyPurchases()) return Promise.resolve({ ok: true });
   if (currentLoginRef?.userId === appUserId) return currentLoginRef.promise;
 
-  const promise = doLogIn(appUserId).then((res) => {
+  const promise = doLogIn(appUserId).then(async (res) => {
     if (currentLoginRef?.userId === appUserId) {
-      currentLoginRef.ready = true;
+      // We treat identity as "ready" when logIn succeeded, OR when the
+      // bridge clearly does not expose logIn at all (older Natively
+      // build) — in that case the user has no recovery path and we'd
+      // otherwise block the subscribe button forever. For real failure
+      // modes (timeout / runtime error) we keep ready=false so the
+      // gate stays closed and the user can retry from the dev panel
+      // or by reopening the paywall.
+      const treatAsReady = res.ok || res.error === "no_login_method";
+      currentLoginRef.ready = treatAsReady;
       currentLoginRef.result = res;
       notifyIdentity();
       // After the first successful logIn for this user on this device,
       // fire one restorePurchases() so any pre-existing anonymous
       // sandbox purchases get attached to the now-identified record.
+      // Only mark the "restored once" sentinel after restore actually
+      // succeeds, so a transient failure doesn't permanently disable
+      // automatic recovery on subsequent boots.
       if (res.ok) {
         try {
           const key = RESTORED_ONCE_PREFIX + appUserId;
           if (typeof localStorage !== "undefined" && !localStorage.getItem(key)) {
-            localStorage.setItem(key, String(Date.now()));
-            restorePurchases().catch(() => {});
+            const restoreRes = await restorePurchases().catch(() => null);
+            if (restoreRes && restoreRes.success) {
+              try { localStorage.setItem(key, String(Date.now())); } catch {}
+            }
           }
         } catch {}
       }
