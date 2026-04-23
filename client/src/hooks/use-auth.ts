@@ -1,9 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 interface AuthUser {
   id: string;
   email: string;
 }
+
+export const SESSION_HINT_KEY = "glukky_has_session";
 
 async function fetchUser(): Promise<AuthUser | null> {
   const response = await fetch("/api/auth/user", {
@@ -30,6 +33,18 @@ export function useAuth() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Keep the cold-launch session hint in sync with the verified auth
+  // state. The cube loading screen reads this hint synchronously at
+  // boot to decide whether to show.
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) {
+      localStorage.setItem(SESSION_HINT_KEY, "1");
+    } else {
+      localStorage.removeItem(SESSION_HINT_KEY);
+    }
+  }, [user, isLoading]);
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await fetch("/api/auth/logout", {
@@ -38,6 +53,7 @@ export function useAuth() {
       });
     },
     onSuccess: () => {
+      localStorage.removeItem(SESSION_HINT_KEY);
       queryClient.setQueryData(["/api/auth/user"], null);
     },
   });

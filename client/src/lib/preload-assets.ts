@@ -100,15 +100,32 @@ function fireAll(srcs: string[]): void {
   }
 }
 
-let didStage1 = false;
+let stage1Promise: Promise<void> | null = null;
 let didStage2 = false;
 let didStage3 = false;
 let didStage4 = false;
 
-export function preloadStage1Launch(): void {
-  if (didStage1) return;
-  didStage1 = true;
-  fireAll(STAGE_1);
+export function preloadStage1Launch(): Promise<void> {
+  if (stage1Promise) return stage1Promise;
+  if (typeof window === "undefined") {
+    stage1Promise = Promise.resolve();
+    return stage1Promise;
+  }
+  const perImage = STAGE_1.map(
+    (src) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = src;
+      }),
+  );
+  stage1Promise = Promise.all(perImage).then(() => {});
+  return stage1Promise;
+}
+
+export function getStage1Promise(): Promise<void> {
+  return stage1Promise ?? preloadStage1Launch();
 }
 
 export function preloadStage2Onboarding(): void {

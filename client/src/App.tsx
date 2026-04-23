@@ -29,8 +29,10 @@ import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
-import { preloadStage1Launch } from "@/lib/preload-assets";
+import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
+import CubeLoadingScreen from "@/components/cube-loading-screen";
+import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
 preloadStage1Launch();
 
@@ -541,6 +543,30 @@ function Router() {
 }
 
 function App() {
+  // Cube cold-launch overlay. Only shown when no session hint exists in
+  // localStorage at boot — i.e. the user is logged out. Captured once at
+  // mount so login mid-screen doesn't dismiss it early; logout doesn't
+  // re-trigger it (no remount). Three gates: Stage 1 preload done +
+  // auth check resolved + minimum 14s elapsed.
+  const [showCube] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(SESSION_HINT_KEY) == null;
+  });
+  const [cubeDismissed, setCubeDismissed] = useState(false);
+  const [stage1Ready, setStage1Ready] = useState(false);
+  const { isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!showCube) return;
+    let alive = true;
+    getStage1Promise().then(() => {
+      if (alive) setStage1Ready(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [showCube]);
+
   useEffect(() => {
     const updateFontClass = (lang: string) => {
       if (lang === "zh-Hant" || lang === "yue") {
@@ -561,6 +587,13 @@ function App() {
       <Toaster />
       <Router />
       <PiggyBankPreloader />
+      {showCube && !cubeDismissed && (
+        <CubeLoadingScreen
+          authReady={!authLoading}
+          preloadReady={stage1Ready}
+          onDismiss={() => setCubeDismissed(true)}
+        />
+      )}
     </TooltipProvider>
   );
 }
