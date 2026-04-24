@@ -328,20 +328,23 @@ export interface AliasResult {
     | "not_found"
     | "error_transient"
     | "error"
-    // RC alias merge succeeded but storage refused the
-    // (anonymous_id → replit_user_id) write because a different
-    // user already owns the row. Not transient — caller must not
-    // retry without resolving the conflict.
+    // First-writer-wins guard tripped: a different `replit_user_id`
+    // already owns this anonymous id in the `subscription_alias`
+    // table. Not transient — caller must not retry without
+    // resolving the conflict (e.g. user signs out / changes id).
     | "owner_mismatch"
-    // RC alias merge succeeded but the storage write failed
-    // transiently (DB hiccup, network error). Caller may retry.
+    // Initial persist write failed transiently (DB hiccup, etc).
+    // No RC call attempted. Caller may retry.
     | "persist_error"
-    // Storage persist succeeded but RC alias REST didn't (404 /
-    // transient / no key). The user is still considered aliased
-    // because `verifyEntitlementSelfHealing` will heal future
-    // verifies via the persisted (anon → replit) edge — this is
-    // the durable self-healing record, RC's alias REST is just
-    // a best-effort to keep RC's own subscriber graph clean.
+    // The row was persisted (or already existed) but is currently
+    // UNVERIFIED — RC's alias REST never confirmed the merge
+    // (transient RC failure, no API key, network error). We
+    // intentionally return `aliased: false` here because
+    // self-healing reads only verified rows; without RC
+    // confirmation the (anon → replit) edge is unproven and must
+    // NOT unlock entitlement. The unverified row is kept for
+    // diagnostics and will be promoted automatically on a future
+    // successful retry or on a matching RC webhook.
     | "ok_persist_only";
   transient: boolean;
   httpStatus?: number;
@@ -358,20 +361,20 @@ export interface AliasPersistOutcome {
 }
 
 export interface AliasPersistDeps {
-  // Called to record the (anonymous_id → replit_user_id) edge in
-  // the persistent `subscription_alias` table. Persistence is the
-  // AUTHORITATIVE server-side ownership record — RC's alias REST is
-  // attempted only AFTER a successful persist as a best-effort to
-  // keep RC's own subscriber graph clean. If RC alias fails
-  // transiently the caller is still considered "aliased" because
-  // `verifyEntitlementSelfHealing` will heal future verifies via
-  // the persisted mapping.
-  //
-  // The caller MUST report whether the row was actually stored.
-  // `owner_mismatch` is the first-writer-wins guard: a different
-  // authenticated user already claimed this anonymous id, so we
-  // refuse the write and don't touch RC.
+  // Persists the (anonymous_id → replit_user_id) edge as
+  // UNVERIFIED. This row is a first-writer-wins claim — it
+  // protects against later cross-account claims (the atomic
+  // upsert returns `owner_mismatch` for a different owner) but
+  // it does NOT yet grant entitlement. The row only becomes
+  // entitlement-bearing once `markVerified` flips `verified=true`,
+  // which only happens after RevenueCat confirms the alias merge
+  // (REST 2xx here, or a matching webhook event).
   remember?: (anonymousId: string, replitUserId: string) => Promise<AliasPersistOutcome>;
+  // Promotes an already-persisted (anon, replit) row to
+  // verified=true after RC alias REST confirms the merge. The
+  // storage layer's owner-equality guard ensures we never promote
+  // a row owned by a different user just because RC returned 2xx.
+  markVerified?: (anonymousId: string, replitUserId: string) => Promise<void>;
 }
 
 export async function aliasAnonymousAppUserId(
@@ -390,16 +393,18 @@ export async function aliasAnonymousAppUserId(
     return { aliased: false, source: "invalid_replit_user_id", transient: false };
   }
 
-  // STEP 1 — Persist the (anonymous_id → replit_user_id) edge FIRST.
+  // STEP 1 — Persist the (anonymous_id → replit_user_id) edge as
+  // UNVERIFIED.
   //
-  // The DB row is the AUTHORITATIVE server-side ownership record;
-  // RC's alias REST below is best-effort. The atomic upsert in the
-  // storage layer enforces first-writer-wins ownership, so a
-  // different authenticated user cannot later claim the same
-  // anonymous id (returns `owner_mismatch`). This is what makes
-  // `verifyEntitlementSelfHealing` work even when the RC alias
-  // merge never happens (transient RC outage, network blip, server
-  // restart between purchase and verify).
+  // Persisting first lets the atomic upsert serve as a
+  // first-writer-wins claim against cross-account hijack: a
+  // different `replit_user_id` calling alias for the same
+  // anonymous id later will see `owner_mismatch` and be rejected.
+  // The row is INSERTED with `verified=false` and is NOT yet
+  // entitlement-bearing — `verifyEntitlementSelfHealing` reads
+  // only verified rows. Verification is granted in STEP 2 below
+  // once RC alias REST returns 2xx (proof that RC merged the
+  // subscribers), or asynchronously by a matching webhook event.
   let persistOutcome: AliasPersistOutcome = { stored: true, reason: "ok_new" };
   if (persist?.remember) {
     try {
@@ -414,10 +419,10 @@ export async function aliasAnonymousAppUserId(
   }
 
   if (!persistOutcome.stored) {
-    // First-writer-wins guard or transient DB error. Don't even try
-    // RC — without our DB record the (anon → replit) edge isn't
-    // authoritatively owned by this user, so calling RC's alias REST
-    // would silently merge subscribers across users on RC's side.
+    // First-writer-wins guard or transient DB error. Don't try RC
+    // either — without our claim row, calling RC alias REST would
+    // silently merge subscribers across users on RC's side and we
+    // would have no local record of the conflict.
     console.warn(
       `[revenuecat] alias persist rejected anon=${anonymousId} replit=${replitUserId} reason=${persistOutcome.reason}`,
     );
@@ -429,24 +434,22 @@ export async function aliasAnonymousAppUserId(
     };
   }
 
-  // Persistence confirmed → cache the mapping and invalidate the
-  // entitlement cache for the Replit user so the next verify sees
-  // fresh state.
-  rememberAliasMapping(anonymousId, replitUserId);
-  invalidateEntitlementCache(replitUserId);
-
-  // STEP 2 — Best-effort RC alias REST. Failure here does NOT undo
-  // the persisted record: self-healing verify will still find the
-  // entitlement under the anonymous id and grant premium. We
-  // distinguish RC-merged from persist-only via the `source` field
-  // for diagnostics.
+  // STEP 2 — RC alias REST. RC's 2xx is the proof we need to
+  // promote the persisted row from `verified=false` to
+  // `verified=true`. Without this proof the row stays unverified
+  // and self-healing intentionally ignores it (return
+  // `aliased: false, source: "ok_persist_only"`). This is what
+  // closes the cross-account hijack vector: a leaked anon id can
+  // be CLAIMED (persisted as unverified) by a wrong user, but it
+  // cannot UNLOCK entitlement until RC actually agrees the merge
+  // is legitimate.
   const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
   if (!apiKey) {
     warnMissingKeyOnce();
     console.log(
-      `[revenuecat] alias persist-only (no api key) anon=${anonymousId} replit=${replitUserId} persist=${persistOutcome.reason}`,
+      `[revenuecat] alias unverified-persist (no api key) anon=${anonymousId} replit=${replitUserId} persist=${persistOutcome.reason}`,
     );
-    return { aliased: true, source: "ok_persist_only", transient: false };
+    return { aliased: false, source: "ok_persist_only", transient: false };
   }
 
   try {
@@ -462,39 +465,66 @@ export async function aliasAnonymousAppUserId(
     });
 
     if (resp.ok) {
+      // Promote the row to verified=true. The storage layer's
+      // owner-equality guard ensures we only promote rows that
+      // already belong to this user, so a stale RC 2xx for a
+      // re-purposed anon id can never wrongly verify a different
+      // owner's row.
+      if (persist?.markVerified) {
+        try {
+          await persist.markVerified(anonymousId, replitUserId);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // Don't fail the whole alias on a verification-update
+          // hiccup — RC has confirmed the merge, so the in-memory
+          // mapping is safe to use this request. The next webhook
+          // or successful retry will eventually flip verified=true
+          // in the DB.
+          console.warn(
+            `[revenuecat] alias markVerified failed anon=${anonymousId} replit=${replitUserId}: ${msg}`,
+          );
+        }
+      }
+      // RC merge is confirmed — seed the in-memory alias mapping
+      // and invalidate the entitlement cache so the next verify
+      // immediately sees fresh state.
+      rememberAliasMapping(anonymousId, replitUserId);
+      invalidateEntitlementCache(replitUserId);
       console.log(
         `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status} persist=${persistOutcome.reason}`,
       );
       return { aliased: true, source: "ok", transient: false, httpStatus: resp.status };
     }
 
-    // RC alias didn't merge. Persist record is still in place, so
-    // mark this as `ok_persist_only` (functionally aliased, RC just
-    // didn't sync). `transient` reflects whether the RC error
-    // looked retryable.
+    // RC alias didn't merge. Row stays UNVERIFIED — do NOT seed
+    // the in-memory mapping or invalidate the entitlement cache,
+    // because that would let unverified state leak into
+    // self-healing reads on this process. `aliased: false` is the
+    // honest answer: a future retry (or a matching webhook) is
+    // required before this user is unlocked via the anon id.
     let bodyText = "";
     try { bodyText = (await resp.text()).slice(0, 300); } catch { /* ignored */ }
     const isTransient = resp.status === 429 || resp.status >= 500;
     console.warn(
-      `[revenuecat] alias persist-only (RC ${resp.status}) anon=${anonymousId} replit=${replitUserId} body=${bodyText}`,
+      `[revenuecat] alias unverified-persist (RC ${resp.status}) anon=${anonymousId} replit=${replitUserId} body=${bodyText}`,
     );
     return {
-      aliased: true,
+      aliased: false,
       source: "ok_persist_only",
       transient: isTransient,
       httpStatus: resp.status,
       errorMessage: `RC HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
     };
   } catch (err: unknown) {
-    // Network-level failure — persistence still happened, so the
-    // user is functionally aliased and self-healing will work on
-    // the next verify.
+    // Network-level failure — same reasoning as the non-2xx
+    // branch above: row is persisted but unverified, so we return
+    // `aliased: false` rather than pretend the merge happened.
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[revenuecat] alias persist-only (RC network err) anon=${anonymousId} replit=${replitUserId}: ${msg}`,
+      `[revenuecat] alias unverified-persist (RC network err) anon=${anonymousId} replit=${replitUserId}: ${msg}`,
     );
     return {
-      aliased: true,
+      aliased: false,
       source: "ok_persist_only",
       transient: true,
       errorMessage: msg || "network",

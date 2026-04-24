@@ -82,11 +82,20 @@ export interface IStorage {
   saveFoodLabel(label: InsertFoodLabel): Promise<void>;
 
   // Anonymous-RC-subscriber → Replit-user mapping. Persisted backstop for the
-  // self-healing entitlement verifier.
+  // self-healing entitlement verifier. Records start as
+  // `verified=false` (optimistic, client-supplied anon id) and are
+  // promoted to `verified=true` once RevenueCat confirms the alias
+  // (REST 2xx, or matching webhook). Self-healing reads ONLY
+  // verified rows; unverified rows are kept for diagnostics.
   upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
+    opts?: { verified?: boolean },
   ): Promise<{ stored: boolean; reason: "ok_new" | "ok_same_owner" | "owner_mismatch" }>;
+  markSubscriptionAliasVerified(
+    anonymousAppUserId: string,
+    replitUserId: string,
+  ): Promise<{ updated: boolean }>;
   getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
   getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
 }
@@ -647,7 +656,9 @@ export class DatabaseStorage implements IStorage {
   async upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
+    opts?: { verified?: boolean },
   ): Promise<{ stored: boolean; reason: "ok_new" | "ok_same_owner" | "owner_mismatch" }> {
+    const verified = opts?.verified === true;
     // Snapshot ownership BEFORE the upsert so we can distinguish
     // "ok_new" from "ok_same_owner" in the returned reason. The
     // snapshot is advisory only — the atomic upsert below is the
@@ -657,11 +668,20 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptionAlias)
       .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
 
+    // For same-owner upserts we want to monotonically promote
+    // verified false→true (a successful RC alias confirms an
+    // earlier optimistic insert) but never demote true→false
+    // (a stale unverified-write must not unverify a row that has
+    // already been confirmed).
+    const setOnSameOwner = verified
+      ? { updatedAt: sql`now()`, verified: sql`true` }
+      : { updatedAt: sql`now()` };
+
     const written = await db.insert(subscriptionAlias)
-      .values({ anonymousAppUserId, replitUserId })
+      .values({ anonymousAppUserId, replitUserId, verified })
       .onConflictDoUpdate({
         target: subscriptionAlias.anonymousAppUserId,
-        set: { updatedAt: sql`now()` },
+        set: setOnSameOwner,
         // Race-safe ownership guard: the conflict-resolution UPDATE
         // only fires when the existing owner matches the requested
         // owner. A concurrent INSERT by a different owner cannot
@@ -690,18 +710,54 @@ export class DatabaseStorage implements IStorage {
     return { stored: false, reason: "owner_mismatch" };
   }
 
+  // Promotes an existing (anon, replit) row to verified=true after
+  // RevenueCat has confirmed the alias. The owner-equality guard is
+  // critical: it prevents promoting a row whose owner has been
+  // legitimately reassigned (or never existed) just because RC
+  // returned 2xx for a different user's call.
+  async markSubscriptionAliasVerified(
+    anonymousAppUserId: string,
+    replitUserId: string,
+  ): Promise<{ updated: boolean }> {
+    const updated = await db.update(subscriptionAlias)
+      .set({ verified: true, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId),
+          eq(subscriptionAlias.replitUserId, replitUserId),
+        ),
+      )
+      .returning({ anon: subscriptionAlias.anonymousAppUserId });
+    return { updated: updated.length > 0 };
+  }
+
   async getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]> {
+    // Self-healing entitlement reads MUST only return verified
+    // mappings. Unverified rows exist purely for diagnostics and
+    // could otherwise let a leaked anon id unlock the wrong user.
     const rows = await db.select({ anon: subscriptionAlias.anonymousAppUserId })
       .from(subscriptionAlias)
-      .where(eq(subscriptionAlias.replitUserId, replitUserId))
+      .where(
+        and(
+          eq(subscriptionAlias.replitUserId, replitUserId),
+          eq(subscriptionAlias.verified, true),
+        ),
+      )
       .orderBy(desc(subscriptionAlias.updatedAt));
     return rows.map((r) => r.anon);
   }
 
   async getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null> {
+    // Same constraint as getSubscriptionAliasIdsForUser: only
+    // verified rows count as ownership for entitlement purposes.
     const [row] = await db.select({ replitUserId: subscriptionAlias.replitUserId })
       .from(subscriptionAlias)
-      .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
+      .where(
+        and(
+          eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId),
+          eq(subscriptionAlias.verified, true),
+        ),
+      );
     return row?.replitUserId ?? null;
   }
 }
