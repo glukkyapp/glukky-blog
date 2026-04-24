@@ -80,12 +80,28 @@ export interface VerifyResult {
   transient: boolean;
 }
 
-export async function verifyEntitlement(appUserId: string): Promise<VerifyResult> {
+export async function verifyEntitlement(
+  appUserId: string,
+  options?: { bypassCache?: boolean },
+): Promise<VerifyResult> {
   if (!appUserId) return { hasPremium: false, source: "error", transient: false };
 
-  const cached = cache.get(appUserId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { hasPremium: cached.hasPremium, source: "cache", transient: false };
+  // `bypassCache` is the escape hatch for callers that want a live
+  // RC fetch even if our 30-s TTL would otherwise return a (possibly
+  // stale negative) cached result. Used by `verifyEntitlementSelfHealing`
+  // when probing alias ids during a forced refresh — without it the
+  // first failed probe would lock the alias as "false" for 30 s and
+  // defeat the unlock-within-~10s objective.
+  if (!options?.bypassCache) {
+    const cached = cache.get(appUserId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return { hasPremium: cached.hasPremium, source: "cache", transient: false };
+    }
+  } else {
+    // Drop any stale entry up-front so the caller can't accidentally
+    // race a parallel verify that would have re-populated the cache
+    // with the same stale value.
+    cache.delete(appUserId);
   }
 
   const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
@@ -198,7 +214,13 @@ export async function verifyEntitlementSelfHealing(
 
   let lastTransient = primary.transient;
   for (const anon of aliases) {
-    const r = await verifyEntitlement(anon);
+    // Bypass the 30-s entitlement cache for alias probes. Without
+    // this, the first failed probe (RC propagation lag right after
+    // a sandbox purchase) caches `false` and every retry inside the
+    // same purchase flow reads stale-false until the TTL expires —
+    // exactly the "purchase succeeded, app still locked" symptom
+    // self-healing is supposed to fix.
+    const r = await verifyEntitlement(anon, { bypassCache: true });
     if (r.hasPremium) {
       // Drop the negative cache for the Replit user so a subsequent direct
       // verify (e.g. from a /api/me call) returns true without going
