@@ -1,0 +1,57 @@
+What causes it
+Common triggers are:
+
+Paywall shown too fast after login — user buys before your app finishes posting the anonymous ID mapping to your backend.
+
+Async code not awaited — app starts purchase flow before the “save mapping” API call has succeeded.
+
+Wrapper/app lifecycle timing — the native wrapper initializes RevenueCat early, while auth or your JS bridge is not ready yet.
+
+Network/API failure — mapping request fails silently, times out, or is dropped, so purchase succeeds but backend never learns the anonymous ID.
+
+Flags to log
+I’d add a small set of debug badges/flags to every purchase attempt so you can tell where it broke. These flags should be attached to client logs, server logs, and ideally stored with each purchase attempt. The most useful ones are:
+
+auth_ready=true/false — whether Replit auth was fully loaded.
+
+replit_user_id_present=true/false — whether the account ID was known.
+
+rc_anonymous_id_present=true/false — whether the app had the current RC ID.
+
+mapping_post_started=true/false — whether client attempted to send anon → user to server.
+
+mapping_post_succeeded=true/false — whether server confirmed it saved the mapping.
+
+purchase_started_at and mapping_saved_at — to see if purchase began before mapping finished.
+
+restore_clicked=true/false — to separate restore issues from purchase issues.
+
+device_install_id — your own generated install/session ID, useful to distinguish devices even when user is the same.
+
+wrapper_platform=ios_webview/buildnatively — to spot wrapper-specific failures.
+
+Those flags make it much easier to classify the failure as auth timing, RC timing, backend mapping failure, or restore/user-flow issue.
+
+Failure badges
+A simple classification scheme could be:
+
+AUTH_NOT_READY — Replit user missing when purchase started.
+
+RC_ID_MISSING — no anonymous RC ID available when mapping attempted.
+
+MAPPING_NOT_SENT — client never called backend save-mapping endpoint.
+
+MAPPING_SAVE_FAILED — backend call failed or returned non-200.
+
+PURCHASE_BEFORE_MAPPING — purchase timestamp earlier than mapping saved timestamp.
+
+RESTORE_REQUIRED — new device/reinstall, so user needed manual restore.
+
+RC_ALIAS_DELAY — RevenueCat eventually links identities, but not immediately.
+
+WRAPPER_INIT_ORDER — wrapper initialized RevenueCat before auth bridge was ready.
+
+Best practical safeguard
+The safest practical guard is: do not enable the purchase button until all three are true — auth ready, Replit user ID present, and mapping save confirmed. That directly reduces the race condition where payment happens before your backend knows which anonymous ID belongs to which user.
+
+If you want, I can next help you design a minimal logging schema / Supabase table for these failure badges so when the next test fails, you can identify the exact layer in 1 minute.
