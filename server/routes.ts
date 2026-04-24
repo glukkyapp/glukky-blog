@@ -3323,24 +3323,21 @@ No explanation, just JSON.`,
         });
       }
 
-      // SECURITY: do NOT persist a (anon → replit) mapping before we
-      // have server-side proof that the anonymous id legitimately
-      // belongs to this user. A client could otherwise POST any
-      // observed `$RCAnonymousID:…` and steal another user's
-      // subscription on the next self-healing verify. We only persist
-      // on one of two trusted conditions:
-      //   (a) RC's `alias` REST call succeeds (RC merged the
-      //       subscribers — that IS the proof), OR
-      //   (b) RC `alias` failed BUT `verifyEntitlement(anon)` shows
-      //       a real entitlement on that anonymous id, proving Apple
-      //       actually charged for it. Falling back to (b) is the
-      //       "self-healing even when RC's alias merge never happens"
-      //       requirement, but with a real-money proof gate.
-      // Pre-flight ownership check (Task #486 security): if this
-      // anonymous id is already mapped to a DIFFERENT Replit user,
-      // refuse the entire endpoint. Returning early prevents an
-      // attacker who learned a victim's `$RCAnonymousID:…` from
-      // even attempting to bind it to their account.
+      // SECURITY: a (anon → replit) mapping is persisted ONLY when
+      // RevenueCat's own `alias` REST call succeeds. RC's server-side
+      // alias merge is the trust anchor — it verifies the call with
+      // the secret server key and merges subscribers atomically. We
+      // do NOT fall back to a "this anon id has a paid entitlement,
+      // therefore trust the requester" path: that lets a hostile
+      // client who somehow learned another user's unmapped
+      // `$RCAnonymousID:…` (shared device, leaked log, etc.) be the
+      // FIRST to claim it and steal the subscription on the next
+      // self-healing verify. First-claim risk is unacceptable here.
+      //
+      // Pre-flight ownership check (defence in depth on top of the
+      // storage-layer guard): if this anonymous id is already
+      // mapped to a DIFFERENT Replit user, refuse the entire
+      // endpoint with 409.
       const existingOwner = await storage.getReplitUserIdForAnonymous(anonymousAppUserId);
       if (existingOwner && existingOwner !== userId) {
         console.warn(
@@ -3354,36 +3351,17 @@ No explanation, just JSON.`,
         });
       }
 
+      // The `remember` callback inside aliasAnonymousAppUserId is
+      // only invoked on RC alias success — that is the single
+      // trusted persistence path.
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: async (anon, replit) => {
           await storage.upsertSubscriptionAlias(anon, replit);
         },
       });
 
-      let proofBackedPersist: "rc_alias" | "verify_proof" | "none" | "owner_mismatch" =
+      const proofBackedPersist: "rc_alias" | "none" =
         result.aliased ? "rc_alias" : "none";
-
-      if (!result.aliased) {
-        try {
-          const anonVerify = await verifyEntitlement(anonymousAppUserId);
-          if (anonVerify.hasPremium) {
-            const persisted = await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
-            if (persisted.stored) {
-              invalidateEntitlementCache(userId);
-              proofBackedPersist = "verify_proof";
-              console.log(
-                `[revenuecat/alias-anonymous] proof-backed persist anon=${anonymousAppUserId} replit=${userId} (RC alias failed, but anon has live entitlement)`,
-              );
-            } else {
-              proofBackedPersist = "owner_mismatch";
-            }
-          }
-        } catch (err: any) {
-          console.warn(
-            `[revenuecat/alias-anonymous] proof-verify failed anon=${anonymousAppUserId} replit=${userId}: ${err?.message || err}`,
-          );
-        }
-      }
 
       return res.status(200).json({ ...result, proofBackedPersist });
     } catch (error: any) {
