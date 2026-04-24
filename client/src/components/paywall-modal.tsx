@@ -303,7 +303,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         identityError: identityError ?? null,
         bridgeMissingLogIn,
         priceSource: snapshot?.source ?? null,
+        // Send the FULL structured probe object (server name:
+        // bridgeProbeBefore) so /api/diag/rc-state can render
+        // per-method outcome + returned value, not just a 240-char
+        // summary. Keep the legacy `bridgeProbe` summary too for
+        // back-compat with traces being read by older tooling.
         bridgeProbe: bridgeProbe.summary,
+        bridgeProbeBefore: bridgeProbe,
       },
       {
         clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
@@ -349,7 +355,10 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         captureMethod: capture.capturedBy ?? null,
         captureMethodSucceeded: capturedAnonId !== null,
         captureSequence: summarizeCaptureSequence(capture),
-        bridgeProbeAfter: bridgeProbeAfter.summary,
+        // Full structured probe — server stores per-method outcome
+        // and returned-value maps so /api/diag/rc-state can render
+        // them with full fidelity.
+        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       // Server-side alias: when the bridge has no logIn (or even when it
@@ -418,7 +427,8 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         aliasGranted: aliasGrantedFromServer,
         verifySource,
         bridgeProbe: bridgeProbe.summary,
-        bridgeProbeAfter: bridgeProbeAfter.summary,
+        bridgeProbeBefore: bridgeProbe,
+        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       if (verified) onPurchaseSuccess();
@@ -456,6 +466,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         priceSource: snapshot?.source ?? null,
         reason: "restore",
         bridgeProbe: bridgeProbe.summary,
+        bridgeProbeBefore: bridgeProbe,
       },
       {
         clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
@@ -492,7 +503,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         captureMethodSucceeded: capturedAnonId !== null,
         captureSequence: summarizeCaptureSequence(capture),
         restoreMissingMethod: result.error === "restore_not_supported",
-        bridgeProbeAfter: bridgeProbeAfter.summary,
+        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       const aliasInfo: CustomerInfo | null = capturedAnonId
@@ -558,7 +569,8 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         aliasGranted: aliasGrantedFromServer,
         verifySource,
         bridgeProbe: bridgeProbe.summary,
-        bridgeProbeAfter: bridgeProbeAfter.summary,
+        bridgeProbeBefore: bridgeProbe,
+        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       if (verified) onPurchaseSuccess();
