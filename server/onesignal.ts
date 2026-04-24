@@ -1,7 +1,7 @@
 import { log } from "./index";
 import { db } from "./db";
 import { userProfiles } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { isNotNull, inArray, sql } from "drizzle-orm";
 
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
@@ -104,12 +104,30 @@ function logReport(notificationId: string, label: string, report: OneSignalNotif
   }
 }
 
-// Schedule a single follow-up report fetch ~6s after send. OneSignal
-// often takes a few seconds to populate per-platform delivery stats;
-// for scheduled-by-timezone sends counters stay at 0 until each
-// recipient's local clock hits the trigger time, which is itself a
-// useful signal in the logs.
-function scheduleDeliveryReportLog(notificationId: string): void {
+// Counters look "unpopulated" when OneSignal has accepted the
+// notification but hasn't yet attributed any platform delivery to
+// it — typical for the first ~2–5 s after POST, and also the
+// expected steady state for a delivery_time_of_day send (counters
+// stay at 0 until each recipient's local clock hits the trigger).
+function reportLooksUnpopulated(r: OneSignalNotificationReport | null): boolean {
+  if (!r) return true;
+  const sum =
+    (r.recipients ?? 0) +
+    (r.successful ?? 0) +
+    (r.failed ?? 0) +
+    (r.errored ?? 0);
+  return sum === 0 && !r.platform_delivery_stats;
+}
+
+// Fetch the delivery report immediately, log it, and — only if the
+// counters look unpopulated — do exactly one follow-up fetch ~6s
+// later. We deliberately do not poll past that; for
+// delivery-time-of-day sends the report will keep reading 0 for a
+// long time and that's already useful information.
+async function logDeliveryReport(notificationId: string): Promise<void> {
+  const immediate = await fetchDeliveryReport(notificationId);
+  logReport(notificationId, "t+0", immediate);
+  if (!reportLooksUnpopulated(immediate)) return;
   setTimeout(() => {
     fetchDeliveryReport(notificationId).then((r) => logReport(notificationId, "t+6s", r));
   }, 6000);
@@ -186,9 +204,10 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
             log(`OneSignal reported errors: ${JSON.stringify(result.errors)}`, "onesignal");
             totalSuccess = false;
           }
-          // Schedule the follow-up delivery report fetch.
+          // Fetch the delivery report immediately, then once more if
+          // counters look unpopulated.
           if (typeof result.id === "string" && result.id.length > 0) {
-            scheduleDeliveryReportLog(result.id);
+            void logDeliveryReport(result.id);
           }
         } catch {}
       }
@@ -201,43 +220,52 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
   return totalSuccess;
 }
 
-// One-time safety-net cleanup: if the same OneSignal subscription id
-// appears in more than one user_profiles row (e.g. stale rows from
-// before the cross-user wipe was added to /api/onesignal/register),
-// keep only the row with the highest internal id (most recently
-// inserted) and null out the rest. Logs counts so a clean run is
-// also visible.
+// Schema invariant: user_profiles.user_id is UNIQUE and
+// user_profiles.onesignal_player_id is a single varchar — there is
+// no way for one user to hold more than one active player_id.
+// /api/onesignal/register already nulls the player_id from any other
+// user_profiles row that shares the new id, which keeps each id
+// associated with at most one user.
+//
+// This startup pass is a safety net for rows that pre-date that
+// cross-user wipe: if any onesignal_player_id still appears in more
+// than one row, keep only the row with the highest internal id
+// (most recently inserted) and null out the rest. The "no
+// duplicates" log line on a clean DB also serves as a positive
+// assertion of the one-active-subscription-per-user invariant.
 export async function cleanupDuplicatePlayerIds(): Promise<void> {
   try {
-    const dups = await db.execute<{ player_id: string; ids: number[] }>(sql`
-      SELECT onesignal_player_id AS player_id,
-             array_agg(id ORDER BY id DESC) AS ids
-      FROM user_profiles
-      WHERE onesignal_player_id IS NOT NULL
-      GROUP BY onesignal_player_id
-      HAVING COUNT(*) > 1
-    `);
-    const rows = (dups as any).rows as Array<{ player_id: string; ids: number[] }> | undefined;
-    if (!rows || rows.length === 0) {
-      log("Player-id cleanup: no duplicates", "onesignal");
+    const dups = await db
+      .select({
+        playerId: userProfiles.onesignalPlayerId,
+        ids: sql<number[]>`array_agg(${userProfiles.id} ORDER BY ${userProfiles.id} DESC)`,
+      })
+      .from(userProfiles)
+      .where(isNotNull(userProfiles.onesignalPlayerId))
+      .groupBy(userProfiles.onesignalPlayerId)
+      .having(sql`count(*) > 1`);
+
+    if (dups.length === 0) {
+      log("Player-id cleanup: no duplicates (one active subscription per user)", "onesignal");
       return;
     }
+
     let cleared = 0;
-    for (const r of rows) {
-      const stale = (r.ids || []).slice(1);
+    for (const row of dups) {
+      const ids = row.ids ?? [];
+      const stale = ids.slice(1);
       if (stale.length === 0) continue;
-      await db.execute(sql`
-        UPDATE user_profiles
-        SET onesignal_player_id = NULL
-        WHERE id = ANY(${stale})
-      `);
+      await db
+        .update(userProfiles)
+        .set({ onesignalPlayerId: null })
+        .where(inArray(userProfiles.id, stale));
       cleared += stale.length;
       log(
-        `Player-id cleanup: keeping id=${r.ids[0]} for ${r.player_id}, cleared ${stale.length} stale row(s) ${JSON.stringify(stale)}`,
+        `Player-id cleanup: keeping id=${ids[0]} for ${row.playerId}, cleared ${stale.length} stale row(s) ${JSON.stringify(stale)}`,
         "onesignal",
       );
     }
-    log(`Player-id cleanup: total cleared=${cleared} across ${rows.length} duplicate id(s)`, "onesignal");
+    log(`Player-id cleanup: total cleared=${cleared} across ${dups.length} duplicate id(s)`, "onesignal");
   } catch (e: any) {
     log(`Player-id cleanup failed: ${e?.message ?? e}`, "onesignal");
   }
