@@ -233,17 +233,34 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     if (input.verified) return "OK";
     if (input.cancelled) return "OTHER";
     if (input.identityBlocked) return "AUTH_NOT_READY";
+
+    // Order matters here: classify by the FURTHEST stage we got to.
+    // Earlier (less precise) categories like BRIDGE_MISSING_PURCHASE
+    // must NOT mask later, more specific failures (e.g. verify after a
+    // successful alias). Sequence:
+    //   1) verify-after-alias failure (we made it past alias)
+    //   2) alias POST failure (we made it past capture)
+    //   3) capture failure (we made it past the bridge call)
+    //   4) bridge / purchase-call failure (couldn't even start)
+    if (input.aliasOk && !input.verified) return "VERIFY_AFTER_MAPPING_FAILED";
+    if (input.aliasAttempted && !input.aliasOk) return "MAPPING_POST_FAILED";
+    if (input.capturedAnonId === null && !input.bridgePurchasePackageMissing && input.isNative) {
+      // Bridge was present and the purchase call ran, but we never
+      // captured an anonymous id. Don't blame the bridge — blame the
+      // capture path explicitly.
+      return "RC_ID_NEVER_OBTAINED";
+    }
     if (!input.isNative || input.bridgePurchasePackageMissing) return "BRIDGE_MISSING_PURCHASE";
     if (
       input.purchaseError &&
       input.purchaseError !== "pending_verification" &&
       input.purchaseError !== "cancelled"
     ) {
+      // Purchase call itself errored before we could capture / alias /
+      // verify. Genuine bridge / purchase-call failure.
       return "BRIDGE_MISSING_PURCHASE";
     }
     if (!input.capturedAnonId) return "RC_ID_NEVER_OBTAINED";
-    if (input.aliasAttempted && !input.aliasOk) return "MAPPING_POST_FAILED";
-    if (input.aliasOk && !input.verified) return "VERIFY_AFTER_MAPPING_FAILED";
     return "OTHER";
   };
 

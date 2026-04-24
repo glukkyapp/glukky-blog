@@ -683,9 +683,16 @@ export async function captureAnonymousIdSequence(
 }
 
 // Compact one-line summary of a capture sequence for the trace event,
-// e.g. "purchase_callback:null|getCustomerInfo:anon".
+// e.g. "purchase_callback:null|getCustomerInfo:anon". A generous cap is
+// kept (480 chars vs the original 120) so adding probe methods doesn't
+// silently drop tail attempts from forensic traces — the cap exists
+// only to bound DB row size, not to truncate diagnostic detail.
 export function summarizeCaptureSequence(result: AnonCaptureResult): string {
-  return result.attempts.map((a) => `${a.method}:${a.outcome}`).join("|").slice(0, 120);
+  const joined = result.attempts.map((a) => `${a.method}:${a.outcome}`).join("|");
+  if (joined.length <= 480) return joined;
+  // Mark the truncation explicitly so reviewers reading the trace know
+  // attempts past this point are missing from the summary.
+  return `${joined.slice(0, 472)}…[trunc]`;
 }
 
 // ---------------------------------------------------------------------------
