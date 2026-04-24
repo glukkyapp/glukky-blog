@@ -1,0 +1,155 @@
+Problem 1: yusycyn never gets a player ID stored (ROOT CAUSE)
+The core issue is a timing race: your app calls /api/onesignal/register before BuildNatively's bridge has finished initializing, so the player ID is empty when sent to your backend.
+
+Fix in client/src/App.tsx — replace your current player ID lookup with a retry loop:
+
+javascript
+async function getOneSignalPlayerIdWithRetry(maxAttempts = 5, delayMs = 2000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let playerId = null;
+    let source = "none";
+
+    // Path 1: BuildNatively NativelyNotifications
+    if (window.NativelyNotifications?.getPlayerId) {
+      playerId = await window.NativelyNotifications.getPlayerId();
+      source = "NativelyNotifications";
+    }
+    // Path 2: BuildNatively NativelyPush
+    else if (window.NativelyPush?.getPlayerId) {
+      playerId = await window.NativelyPush.getPlayerId();
+      source = "NativelyPush";
+    }
+    // Path 3: global OneSignal Web SDK
+    else if (window.OneSignal?.getUserId) {
+      playerId = await new Promise(res => window.OneSignal.getUserId(res));
+      source = "OneSignalWebSDK";
+    }
+
+    // Log every attempt (visible in browser console + sent to server)
+    console.log(`[OneSignal probe] attempt=${attempt} source=${source} playerId=${playerId || "empty"}`);
+
+    // Send probe to server regardless so you can see it in logs
+    await fetch("/api/dev/onesignal-bridge-probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attempt, source, hasId: !!playerId, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+    }).catch(() => {});  // don't block on this
+
+    if (playerId) {
+      return { playerId, source };
+    }
+
+    // Wait before retrying
+    await new Promise(res => setTimeout(res, delayMs));
+  }
+  return { playerId: null, source: "none" };
+}
+Then when calling register:
+
+javascript
+const { playerId, source } = await getOneSignalPlayerIdWithRetry();
+if (playerId) {
+  await fetch("/api/onesignal/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      playerId,
+      source,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    })
+  });
+}
+Problem 2: /api/onesignal/register not self-auditing
+Fix in server/routes.ts — add logging + timestamp when player ID is saved:
+
+javascript
+// In your POST /api/onesignal/register handler:
+const previous = user.onesignal_player_id || "none";
+console.log(`onesignal/register email=${user.email} player_id=${body.playerId} previous=${previous}`);
+
+await db.update(userProfiles)
+  .set({
+    onesignal_player_id: body.playerId,
+    onesignal_registered_at: new Date(),   // add this column
+    device_timezone: body.timezone || "UTC"
+  })
+  .where(eq(userProfiles.userId, userId));
+Add to shared/schema.ts:
+
+javascript
+onesignal_registered_at: timestamp("onesignal_registered_at"),
+device_timezone: text("device_timezone").default("UTC"),
+Problem 3: Scheduled sends silently rolling to tomorrow
+The scheduler runs too late in the day — by the time the server wakes, the local trigger time (e.g. 10 PM HKT) has already passed.
+
+Fix in each scheduler — split users into "still future today" vs "already passed":
+
+javascript
+const now = new Date();
+
+const futureUsers = [];
+const pastUsers = [];
+
+for (const user of registeredUsers) {
+  const tz = user.device_timezone || "UTC";
+  const localNow = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+  const [triggerHour, triggerMin] = [22, 0]; // 10 PM
+
+  const triggerToday = new Date(localNow);
+  triggerToday.setHours(triggerHour, triggerMin, 0, 0);
+
+  if (localNow < triggerToday) {
+    futureUsers.push(user); // send via scheduled timezone path
+  } else {
+    pastUsers.push(user);   // send immediately, don't roll to tomorrow
+  }
+}
+
+// Log both groups
+console.log(`daily_check_in: future=${futureUsers.length} past=${pastUsers.length} (immediate)`);
+
+// Send future group via timezone scheduling
+if (futureUsers.length > 0) {
+  await sendOneSignal({ playerIds: futureUsers.map(u => u.onesignal_player_id),
+    delivery_time_of_day: "10:00PM", delayed_option: "timezone" });
+}
+
+// Send past group immediately
+if (pastUsers.length > 0) {
+  await sendOneSignal({ playerIds: pastUsers.map(u => u.onesignal_player_id) });
+}
+Also move SCHEDULE_HOUR_UTC to 0 (midnight UTC = 8 AM HKT) so the daily pass always runs before any HK trigger time.
+
+Problem 4: Stale user ID comment + dev panel
+Fix stale comment in server/routes.ts:
+
+javascript
+// REMOVE or correct this:
+// yusycyn = 352049ea-0f08-4ca5-a980-62bef203e2a3  ← WRONG
+// Correct production ID: cee83e6f-0ae6-402d-a973-bc46c64a19b4
+Add to dev panel (client/src/pages/dev-panel.tsx) — a Push Registration card showing:
+
+text
+📱 Push Registration Status
+─────────────────────────────
+Email:          yusycyn@gmail.com
+Player ID:      [empty — NOT REGISTERED]  or  [abc123... 📋 copy]
+Registered at:  never  or  2026-04-24 22:01 HKT
+Timezone:       Asia/Hong_Kong
+Bridge source:  NativelyNotifications / none
+
+[Re-register OneSignal now]  ← button that re-runs the lookup flow
+The Re-register button calls getOneSignalPlayerIdWithRetry() again on demand and shows the result inline — no DB query needed to diagnose the next device.
+
+Priority order to fix today
+Retry loop in App.tsx → this directly fixes yusycyn not registering
+
+Add logging to /api/onesignal/register → confirms fix worked
+
+Add onesignal_registered_at + device_timezone to schema → needed for scheduler fix
+
+Fix scheduler split (future vs past users) → fixes missed sends
+
+Correct stale user ID comment → 30-second fix, prevents future confusion
+
+Dev panel card → makes all future diagnosis instan
