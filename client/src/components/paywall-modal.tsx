@@ -168,13 +168,17 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   const verifyWithRetry = async (
     traceId?: string,
     traceStartedAt?: number,
+    installIdForTrace?: string,
   ): Promise<{ verified: boolean; verifySource: string | null }> => {
     const ATTEMPTS = 6;
     const GAP_MS = 1300;
     for (let i = 0; i < ATTEMPTS; i++) {
       const { verified, transient } = await refreshPremiumOnServer();
       if (traceId && traceStartedAt != null) {
+        // Route through the same wrapper used elsewhere so installId
+        // is attached to the verify event too (Task #486 step 8).
         postPurchaseTrace(traceId, "verify", Date.now() - traceStartedAt, {
+          installId: installIdForTrace ?? null,
           attempt: i + 1,
           verifySource: lastVerifySourceRef.current ?? null,
           verifyHasPremium: verified,
@@ -369,7 +373,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
       let verifySource: string | null = null;
       if (purchaseLooksDone) {
-        const v = await verifyWithRetry(traceId, traceStart);
+        const v = await verifyWithRetry(traceId, traceStart, installId);
         verified = v.verified;
         verifySource = v.verifySource;
         // Mark "alias granted" only when the server's self-healing
@@ -513,7 +517,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       // bridge call itself failed — the server's self-healing verifier
       // can still grant via a previously persisted alias.
       let verifySource: string | null = null;
-      const v = await verifyWithRetry(traceId, traceStart);
+      const v = await verifyWithRetry(traceId, traceStart, installId);
       verified = v.verified;
       verifySource = v.verifySource;
       const aliasGrantedFromServer = verified && verifySource === "alias";

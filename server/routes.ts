@@ -3113,6 +3113,7 @@ No explanation, just JSON.`,
         "aliasGranted",
         "aliasTriedCount",
         "restoreMissingMethod",
+        "proofBackedPersist",
       ];
       for (const k of keys) {
         const v = rawData[k];
@@ -3120,6 +3121,55 @@ No explanation, just JSON.`,
         else if (typeof v === "number" && Number.isFinite(v)) data[k] = v;
         else if (typeof v === "boolean") data[k] = v;
         else if (v == null) data[k] = null;
+      }
+
+      // Structured probe payloads (Task #486 step 5/6). Stored as a
+      // shaped object so /api/diag/rc-state can render per-method
+      // outcomes AND returned values, not just a 120-char summary.
+      // Cap method count + per-value length so a buggy/malicious client
+      // can't blow the ring buffer. We accept BOTH the pre-purchase
+      // probe (`bridgeProbeBefore`) and the post-capture probe
+      // (`bridgeProbeAfter`) — the post-capture one is what the
+      // verdict badge derives from.
+      const PROBE_KEYS_MAX = 24;
+      const PROBE_VALUE_MAX = 200;
+      const ALLOWED_OUTCOMES = new Set(["missing", "null", "timeout", "value", "error"]);
+      const sanitiseProbe = (raw: unknown):
+        | { bridgePresent: boolean; methods: Record<string, string>; values: Record<string, string | null>; summary: string }
+        | null => {
+        if (!raw || typeof raw !== "object") return null;
+        const r = raw as Record<string, unknown>;
+        const methods: Record<string, string> = {};
+        const values: Record<string, string | null> = {};
+        const rawMethods = (r.methods ?? {}) as Record<string, unknown>;
+        const rawValues = (r.values ?? {}) as Record<string, unknown>;
+        let count = 0;
+        for (const [name, outcome] of Object.entries(rawMethods)) {
+          if (count >= PROBE_KEYS_MAX) break;
+          if (typeof name !== "string" || name.length > 64) continue;
+          const oStr = typeof outcome === "string" ? outcome : "error";
+          methods[name.slice(0, 64)] = ALLOWED_OUTCOMES.has(oStr) ? oStr : "error";
+          const valRaw = rawValues[name];
+          if (valRaw == null) {
+            values[name.slice(0, 64)] = null;
+          } else if (typeof valRaw === "string") {
+            values[name.slice(0, 64)] = valRaw.slice(0, PROBE_VALUE_MAX);
+          } else {
+            values[name.slice(0, 64)] = String(valRaw).slice(0, PROBE_VALUE_MAX);
+          }
+          count++;
+        }
+        const summary = typeof r.summary === "string" ? r.summary.slice(0, 240) : "";
+        return {
+          bridgePresent: Boolean(r.bridgePresent),
+          methods,
+          values,
+          summary,
+        };
+      };
+      for (const probeKey of ["bridgeProbeBefore", "bridgeProbeAfter"]) {
+        const cleaned = sanitiseProbe(rawData[probeKey]);
+        if (cleaned) data[probeKey] = cleaned;
       }
 
       const offeringIdentifiers = arrStr(body.clientOfferingIdentifiers);
@@ -3286,23 +3336,47 @@ No explanation, just JSON.`,
       //       actually charged for it. Falling back to (b) is the
       //       "self-healing even when RC's alias merge never happens"
       //       requirement, but with a real-money proof gate.
+      // Pre-flight ownership check (Task #486 security): if this
+      // anonymous id is already mapped to a DIFFERENT Replit user,
+      // refuse the entire endpoint. Returning early prevents an
+      // attacker who learned a victim's `$RCAnonymousID:…` from
+      // even attempting to bind it to their account.
+      const existingOwner = await storage.getReplitUserIdForAnonymous(anonymousAppUserId);
+      if (existingOwner && existingOwner !== userId) {
+        console.warn(
+          `[revenuecat/alias-anonymous] REFUSED owner-mismatch anon=${anonymousAppUserId} existingOwner=${existingOwner} requestedOwner=${userId}`,
+        );
+        return res.status(409).json({
+          aliased: false,
+          source: "owner_mismatch",
+          transient: false,
+          proofBackedPersist: "none" as const,
+        });
+      }
+
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
-        remember: (anon, replit) => storage.upsertSubscriptionAlias(anon, replit),
+        remember: async (anon, replit) => {
+          await storage.upsertSubscriptionAlias(anon, replit);
+        },
       });
 
-      let proofBackedPersist: "rc_alias" | "verify_proof" | "none" =
+      let proofBackedPersist: "rc_alias" | "verify_proof" | "none" | "owner_mismatch" =
         result.aliased ? "rc_alias" : "none";
 
       if (!result.aliased) {
         try {
           const anonVerify = await verifyEntitlement(anonymousAppUserId);
           if (anonVerify.hasPremium) {
-            await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
-            invalidateEntitlementCache(userId);
-            proofBackedPersist = "verify_proof";
-            console.log(
-              `[revenuecat/alias-anonymous] proof-backed persist anon=${anonymousAppUserId} replit=${userId} (RC alias failed, but anon has live entitlement)`,
-            );
+            const persisted = await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
+            if (persisted.stored) {
+              invalidateEntitlementCache(userId);
+              proofBackedPersist = "verify_proof";
+              console.log(
+                `[revenuecat/alias-anonymous] proof-backed persist anon=${anonymousAppUserId} replit=${userId} (RC alias failed, but anon has live entitlement)`,
+              );
+            } else {
+              proofBackedPersist = "owner_mismatch";
+            }
           }
         } catch (err: any) {
           console.warn(

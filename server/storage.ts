@@ -83,7 +83,10 @@ export interface IStorage {
 
   // Anonymous-RC-subscriber → Replit-user mapping. Persisted backstop for the
   // self-healing entitlement verifier.
-  upsertSubscriptionAlias(anonymousAppUserId: string, replitUserId: string): Promise<void>;
+  upsertSubscriptionAlias(
+    anonymousAppUserId: string,
+    replitUserId: string,
+  ): Promise<{ stored: boolean; reason?: "ok_new" | "ok_same_owner" | "owner_mismatch" }>;
   getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
   getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
 }
@@ -624,19 +627,41 @@ export class DatabaseStorage implements IStorage {
     await db.insert(foodLabels).values(label).onConflictDoNothing();
   }
 
-  // Anonymous-RC-subscriber → Replit-user mapping. Last-write-wins on the
-  // anonymous id (it can only have ever belonged to one Replit user, and if
-  // the same anonymous record is somehow re-seen we want the most recent
-  // Replit user attached). The reverse direction (one Replit user → many
-  // anonymous ids) is normal whenever the user buys on multiple sandbox
-  // accounts or the wrapper rotates the anonymous record.
-  async upsertSubscriptionAlias(anonymousAppUserId: string, replitUserId: string): Promise<void> {
-    await db.insert(subscriptionAlias)
-      .values({ anonymousAppUserId, replitUserId })
-      .onConflictDoUpdate({
-        target: subscriptionAlias.anonymousAppUserId,
-        set: { replitUserId, updatedAt: sql`now()` },
-      });
+  // Anonymous-RC-subscriber → Replit-user mapping. SECURITY: insert-only
+  // for new anonymous ids; for an already-mapped anonymous id we only
+  // refresh `updatedAt` when the requesting Replit user MATCHES the
+  // existing owner. Reassignment to a different Replit user is rejected
+  // (returns false) — otherwise an authenticated client could POST any
+  // observed `$RCAnonymousID:…` and silently steal another user's
+  // subscription on the next self-healing verify. The reverse direction
+  // (one Replit user → many anonymous ids) is fine and normal.
+  async upsertSubscriptionAlias(
+    anonymousAppUserId: string,
+    replitUserId: string,
+  ): Promise<{ stored: boolean; reason?: "ok_new" | "ok_same_owner" | "owner_mismatch" }> {
+    const [existing] = await db
+      .select({ replitUserId: subscriptionAlias.replitUserId })
+      .from(subscriptionAlias)
+      .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
+
+    if (!existing) {
+      await db.insert(subscriptionAlias)
+        .values({ anonymousAppUserId, replitUserId })
+        .onConflictDoNothing({ target: subscriptionAlias.anonymousAppUserId });
+      return { stored: true, reason: "ok_new" };
+    }
+
+    if (existing.replitUserId === replitUserId) {
+      await db.update(subscriptionAlias)
+        .set({ updatedAt: sql`now()` })
+        .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
+      return { stored: true, reason: "ok_same_owner" };
+    }
+
+    console.warn(
+      `[storage.upsertSubscriptionAlias] REJECTED reassignment anon=${anonymousAppUserId} existingOwner=${existing.replitUserId} requestedOwner=${replitUserId}`,
+    );
+    return { stored: false, reason: "owner_mismatch" };
   }
 
   async getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]> {
