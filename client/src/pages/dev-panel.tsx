@@ -22,6 +22,10 @@ import {
   getIdentityState,
   isNativelyAvailable,
   restorePurchases,
+  probeBridgeMethods,
+  type BridgeProbeResult,
+  type BridgeMethodOutcome,
+  getInstallId,
 } from "@/lib/natively-purchases";
 
 const TIME_OPTIONS = [
@@ -1020,6 +1024,8 @@ function RevenueCatDiagnosticsCard() {
   const [recovering, setRecovering] = useState(false);
   const [recoveryBefore, setRecoveryBefore] = useState<RecoverySnapshot | null>(null);
   const [recoveryAfter, setRecoveryAfter] = useState<RecoverySnapshot | null>(null);
+  const [bridgeProbe, setBridgeProbe] = useState<BridgeProbeResult | null>(null);
+  const [installId] = useState<string>(() => getInstallId());
 
   useEffect(() => {
     const update = () => {
@@ -1071,6 +1077,7 @@ function RevenueCatDiagnosticsCard() {
   useEffect(() => {
     probeBridge();
     probeServer();
+    probeBridgeMethods().then(setBridgeProbe).catch(() => setBridgeProbe(null));
   }, []);
 
   const callRefresh = async () => {
@@ -1215,6 +1222,60 @@ function RevenueCatDiagnosticsCard() {
             </p>
           </div>
         )}
+
+        {/* BRIDGE PROBE (Task #486) — sharper per-method readout that
+            distinguishes missing / null / timeout / value / error.
+            Replaces the older single ambiguous "(bridge does not expose)"
+            line with a per-method state. Install id is shown at the top
+            so two devices/installs can be told apart in trace logs. */}
+        <div
+          className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1"
+          data-testid="card-rc-bridge-probe"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+              Bridge probe (per-method)
+            </p>
+            <button
+              type="button"
+              onClick={() => probeBridgeMethods().then(setBridgeProbe).catch(() => setBridgeProbe(null))}
+              className="text-[10px] underline text-cyan-700 dark:text-cyan-400"
+              data-testid="button-rc-bridge-reprobe"
+            >
+              re-probe
+            </button>
+          </div>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-install-id"
+          >
+            installId: {installId}
+          </p>
+          {!bridgeProbe ? (
+            <p className="text-xs font-mono select-text break-all">(probing…)</p>
+          ) : (
+            <div className="space-y-0.5">
+              {Object.entries(bridgeProbe.methods).map(([method, outcome]) => {
+                const colour: Record<BridgeMethodOutcome, string> = {
+                  missing: "text-red-600 dark:text-red-400",
+                  null: "text-amber-600 dark:text-amber-400",
+                  timeout: "text-amber-600 dark:text-amber-400",
+                  error: "text-red-600 dark:text-red-400",
+                  value: "text-emerald-700 dark:text-emerald-400",
+                };
+                return (
+                  <p
+                    key={method}
+                    className="text-xs font-mono select-text break-all"
+                    data-testid={`text-rc-bridge-method-${method}`}
+                  >
+                    {method}: <span className={colour[outcome]}>{outcome}</span>
+                  </p>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* IDENTITY */}
         <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1">

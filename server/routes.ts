@@ -3255,13 +3255,28 @@ No explanation, just JSON.`,
         });
       }
 
+      // Persist the (anonymous → replit) edge BEFORE we even attempt the
+      // RC alias REST call. This is the critical durability requirement
+      // for Task #486: even if RevenueCat's own alias merge never
+      // happens (network error, RC outage, account-not-yet-created),
+      // verifyEntitlementSelfHealing can still grant entitlement on a
+      // future verify by checking this anonymous id directly. The DB
+      // upsert is idempotent — aliasAnonymousAppUserId may call it
+      // again on RC success and that's a no-op.
+      let preAliasPersisted = false;
+      try {
+        await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
+        preAliasPersisted = true;
+      } catch (err: any) {
+        console.warn(
+          `[revenuecat/alias-anonymous] pre-RC persist failed anon=${anonymousAppUserId} replit=${userId}: ${err?.message || err}`,
+        );
+      }
+
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
-        // Persist the (anonymous → replit) edge to the durable
-        // subscription_alias table so the self-healing verifier can
-        // find this anonymous record even after a server restart.
         remember: (anon, replit) => storage.upsertSubscriptionAlias(anon, replit),
       });
-      return res.status(200).json(result);
+      return res.status(200).json({ ...result, preAliasPersisted });
     } catch (error: any) {
       console.error("[revenuecat/alias-anonymous] error:", error?.message || error);
       return res.status(500).json({
