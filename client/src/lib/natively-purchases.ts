@@ -124,6 +124,123 @@ function sendPriceDiag(payload: Record<string, unknown>): void {
   }
 }
 
+// Last-seen offering snapshot from getMonthlyPriceDetails. Captured on
+// every fetch (success or failure) so the purchase-trace start event
+// can include the client-side offering identifiers for the server's
+// project-mismatch detector.
+export interface OfferingSnapshot {
+  source: PriceSource;
+  currentOfferingIdentifier: string | null;
+  offeringIdentifiers: string[];
+  packageIdentifiers: string[];
+  hasCurrent: boolean;
+  hasMonthly: boolean;
+}
+
+let lastOfferingSnapshot: OfferingSnapshot | null = null;
+
+function buildOfferingSnapshot(
+  result: MonthlyPriceResult,
+): OfferingSnapshot {
+  const raw = result.rawOfferings;
+  const current = raw?.current ?? null;
+  const offeringIdentifiers: string[] = [];
+  const packageIdentifiers: string[] = [];
+  try {
+    if (current?.identifier) offeringIdentifiers.push(current.identifier);
+    if (raw?.all) {
+      for (const k of Object.keys(raw.all)) {
+        if (!offeringIdentifiers.includes(k)) offeringIdentifiers.push(k);
+      }
+    }
+    const pkgs = current?.availablePackages || [];
+    for (const p of pkgs) {
+      if (p?.identifier) packageIdentifiers.push(p.identifier);
+    }
+    if (current?.monthly?.identifier && !packageIdentifiers.includes(current.monthly.identifier)) {
+      packageIdentifiers.push(current.monthly.identifier);
+    }
+  } catch {
+    // best-effort summary
+  }
+  return {
+    source: result.source,
+    currentOfferingIdentifier: current?.identifier ?? null,
+    offeringIdentifiers,
+    packageIdentifiers,
+    hasCurrent: Boolean(current),
+    hasMonthly: Boolean(current?.monthly),
+  };
+}
+
+export function getLastOfferingSnapshot(): OfferingSnapshot | null {
+  return lastOfferingSnapshot;
+}
+
+// Trace correlation id generator. Short, URL-safe, collision-resistant
+// enough for an in-memory ring buffer keyed by client.
+export function generateTraceId(): string {
+  const a = Math.random().toString(16).slice(2, 8);
+  const b = Math.random().toString(16).slice(2, 8);
+  return (a + b).padEnd(12, "0").slice(0, 12);
+}
+
+// Fire-and-forget purchase-trace POST. Same shape as sendPriceDiag —
+// best-effort, swallow errors, never break the purchase flow because a
+// diagnostic call failed. Server logs one line per phase and appends to
+// the in-memory ring buffer surfaced by /api/diag/rc-state.
+export function postPurchaseTrace(
+  id: string,
+  phase: string,
+  t: number,
+  data: Record<string, unknown>,
+  extras?: { clientOfferingIdentifiers?: string[]; clientPackageIdentifiers?: string[] },
+): void {
+  try {
+    fetch("/api/diag/purchase-trace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ id, phase, t, data, ...(extras ?? {}) }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // best-effort
+  }
+}
+
+export interface RcStateDiag {
+  replitUserId: string;
+  webhookConfigured: boolean;
+  subscriberProbe: {
+    source: string;
+    hasPremium: boolean;
+    httpStatus: number;
+    originalAppUserId: string | null;
+  };
+  serverOfferings: {
+    available: boolean;
+    offeringIdentifiers: string[];
+  };
+  projectMismatchSuspected: boolean;
+}
+
+// Best-effort fetch of the server-side RC state diagnostic. Used to
+// build the cause string appended to a failed purchase / restore toast
+// so the user can read the actionable cause without the dev panel.
+export async function fetchRcStateDiag(): Promise<RcStateDiag | null> {
+  try {
+    const resp = await fetch("/api/diag/rc-state", {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!resp.ok) return null;
+    return (await resp.json()) as RcStateDiag;
+  } catch {
+    return null;
+  }
+}
+
 function isNonEmptyPrice(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
@@ -173,15 +290,41 @@ function readOriginalAppUserId(info: CustomerInfo | null | undefined): string | 
  * Failures are logged and swallowed so they don't block the existing
  * verify-retry loop.
  */
+export interface AliasAttemptResult {
+  attempted: boolean;
+  aliased: boolean;
+  source: string;
+  httpStatus?: number | null;
+  anonymousAppUserId: string | null;
+}
+
 export async function aliasAnonymousIfNeeded(
   customerInfo: CustomerInfo | null | undefined,
   replitUserId: string | null | undefined,
-): Promise<void> {
-  if (!replitUserId) return;
+): Promise<AliasAttemptResult> {
+  if (!replitUserId) {
+    return { attempted: false, aliased: false, source: "no_user", anonymousAppUserId: null };
+  }
   const anonymousId = readOriginalAppUserId(customerInfo);
-  if (!anonymousId) return;
-  if (!looksAnonymous(anonymousId)) return;
-  if (anonymousId === replitUserId) return;
+  if (!anonymousId) {
+    return { attempted: false, aliased: false, source: "no_anon_id", anonymousAppUserId: null };
+  }
+  if (!looksAnonymous(anonymousId)) {
+    return {
+      attempted: false,
+      aliased: false,
+      source: "not_anon_format",
+      anonymousAppUserId: anonymousId,
+    };
+  }
+  if (anonymousId === replitUserId) {
+    return {
+      attempted: false,
+      aliased: false,
+      source: "already_replit_id",
+      anonymousAppUserId: anonymousId,
+    };
+  }
   try {
     const resp = await fetch("/api/revenuecat/alias-anonymous", {
       method: "POST",
@@ -191,14 +334,33 @@ export async function aliasAnonymousIfNeeded(
     });
     if (!resp.ok) {
       console.warn(`[revenuecat] alias-anonymous failed: HTTP ${resp.status}`);
-      return;
+      return {
+        attempted: true,
+        aliased: false,
+        source: `http_${resp.status}`,
+        httpStatus: resp.status,
+        anonymousAppUserId: anonymousId,
+      };
     }
     const data = await resp.json().catch(() => null);
     console.log(
       `[revenuecat] alias-anonymous result aliased=${data?.aliased ?? "?"} source=${data?.source ?? "?"}`,
     );
+    return {
+      attempted: true,
+      aliased: Boolean(data?.aliased),
+      source: typeof data?.source === "string" ? data.source : "unknown",
+      httpStatus: resp.status,
+      anonymousAppUserId: anonymousId,
+    };
   } catch (e: any) {
     console.warn("[revenuecat] alias-anonymous error:", e?.message || e);
+    return {
+      attempted: true,
+      aliased: false,
+      source: "network_error",
+      anonymousAppUserId: anonymousId,
+    };
   }
 }
 
@@ -409,6 +571,11 @@ export function getMonthlyPriceDetails(): Promise<MonthlyPriceResult> {
     const startedAt = Date.now();
     const finish = (r: Omit<MonthlyPriceResult, "durationMs">) => {
       const out: MonthlyPriceResult = { ...r, durationMs: Date.now() - startedAt };
+      // Cache an offering snapshot on every fetch (success OR null) so
+      // the purchase-trace start event and project-mismatch detector
+      // always see the most recent client-side identifiers.
+      const snapshot = buildOfferingSnapshot(out);
+      lastOfferingSnapshot = snapshot;
       if (out.priceString === null) {
         // eslint-disable-next-line no-console
         console.warn(`${LOG_TAG} resolved null`, {
@@ -418,36 +585,15 @@ export function getMonthlyPriceDetails(): Promise<MonthlyPriceResult> {
         });
         // Also surface to the server so we can read the cause from the
         // deployment log without needing an in-device Web Inspector.
-        const raw = out.rawOfferings;
-        const current = raw?.current ?? null;
-        const offeringIdentifiers: string[] = [];
-        const packageIdentifiers: string[] = [];
-        try {
-          if (current?.identifier) offeringIdentifiers.push(current.identifier);
-          if (raw?.all) {
-            for (const k of Object.keys(raw.all)) {
-              if (!offeringIdentifiers.includes(k)) offeringIdentifiers.push(k);
-            }
-          }
-          const pkgs = current?.availablePackages || [];
-          for (const p of pkgs) {
-            if (p?.identifier) packageIdentifiers.push(p.identifier);
-          }
-          if (current?.monthly?.identifier && !packageIdentifiers.includes(current.monthly.identifier)) {
-            packageIdentifiers.push(current.monthly.identifier);
-          }
-        } catch {
-          // ignore — best-effort summary
-        }
         sendPriceDiag({
           source: out.source,
           durationMs: out.durationMs,
           errorMessage: out.errorMessage ?? null,
-          currentOfferingIdentifier: current?.identifier ?? null,
-          offeringIdentifiers,
-          packageIdentifiers,
-          hasCurrent: Boolean(current),
-          hasMonthly: Boolean(current?.monthly),
+          currentOfferingIdentifier: snapshot.currentOfferingIdentifier,
+          offeringIdentifiers: snapshot.offeringIdentifiers,
+          packageIdentifiers: snapshot.packageIdentifiers,
+          hasCurrent: snapshot.hasCurrent,
+          hasMonthly: snapshot.hasMonthly,
           ua: typeof navigator !== "undefined" ? navigator.userAgent : null,
         });
       }

@@ -16,6 +16,10 @@ import {
   subscribeIdentity,
   getIdentityState,
   aliasAnonymousIfNeeded,
+  generateTraceId,
+  postPurchaseTrace,
+  fetchRcStateDiag,
+  getLastOfferingSnapshot,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -131,16 +135,47 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     return src ? `${msg} (verifier: ${src})` : msg;
   };
 
+  // Build a one-line cause string from the server-side diagnostic so
+  // the user can see, on the very paywall toast, *why* the unlock did
+  // not happen (probe source, alias source, webhook configured?,
+  // suspected project mismatch). No PII — no Replit user id, no email,
+  // no anonymous RC id. Truncated to a single short line.
+  const buildCauseString = async (
+    aliasSource: string | null,
+  ): Promise<string> => {
+    const diag = await fetchRcStateDiag();
+    if (!diag) return "(diag unavailable)";
+    const parts: string[] = [];
+    parts.push(`probe: ${diag.subscriberProbe?.source ?? "?"}`);
+    if (aliasSource) parts.push(`alias: ${aliasSource}`);
+    parts.push(`webhook: ${diag.webhookConfigured ? "ok" : "503"}`);
+    if (diag.projectMismatchSuspected) parts.push("mismatch: yes");
+    return `(${parts.join(", ")})`;
+  };
+
   // Poll the server's verifier a few times to cover the typical
   // 2–5s Apple → StoreKit → RevenueCat propagation gap in sandbox.
   // Total budget ~8s. Stops early on a verified=true. Keeps polling
   // through transient failures (5xx/429/network) so a one-off blip
   // doesn't drop us into the error path.
-  const verifyWithRetry = async (): Promise<boolean> => {
+  // When traceId is supplied, posts one purchase-trace event per
+  // attempt so the deployment log shows the full retry sequence.
+  const verifyWithRetry = async (
+    traceId?: string,
+    traceStartedAt?: number,
+  ): Promise<boolean> => {
     const ATTEMPTS = 6;
     const GAP_MS = 1300;
     for (let i = 0; i < ATTEMPTS; i++) {
       const { verified, transient } = await refreshPremiumOnServer();
+      if (traceId && traceStartedAt != null) {
+        postPurchaseTrace(traceId, "verify", Date.now() - traceStartedAt, {
+          attempt: i + 1,
+          verifySource: lastVerifySourceRef.current ?? null,
+          verifyHasPremium: verified,
+          verifyTransient: transient,
+        });
+      }
       if (verified) return true;
       // Stop early only when the server gave an authoritative "no" AND
       // we've already given Apple → RC at least one propagation window.
@@ -172,6 +207,35 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     hapticTap("MEDIUM");
     beginPurchaseFlight();
 
+    const traceId = generateTraceId();
+    const traceStart = Date.now();
+    const trace = (phase: string, data: Record<string, unknown>) => {
+      postPurchaseTrace(traceId, phase, Date.now() - traceStart, data);
+    };
+    const snapshot = getLastOfferingSnapshot();
+    // Start event includes the client-side offering identifiers so the
+    // server-side project-mismatch detector has both halves of the
+    // comparison. Sent on the FIRST trace post (server creates the
+    // ring-buffer entry on first event).
+    postPurchaseTrace(
+      traceId,
+      "start",
+      0,
+      {
+        isNative,
+        identityReady,
+        identityError: identityError ?? null,
+        bridgeMissingLogIn,
+        priceSource: snapshot?.source ?? null,
+      },
+      {
+        clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
+        clientPackageIdentifiers: snapshot?.packageIdentifiers ?? [],
+      },
+    );
+
+    let aliasSourceForToast: string | null = null;
+
     try {
       const result = await purchasePackage("$rc_monthly");
       // Client never decides premium. After a successful purchase we ask the
@@ -180,26 +244,50 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
         result.error === "pending_verification";
 
+      const anonId =
+        (result.customerInfo?.originalAppUserId ??
+          result.customerInfo?.original_app_user_id ??
+          null) || null;
+      trace("purchase-result", {
+        success: Boolean(result.success),
+        anonAppUserId: anonId,
+        isAnonymous: typeof anonId === "string" && anonId.startsWith("$RCAnonymousID:"),
+        pendingVerification: result.error === "pending_verification",
+        bridgeError: result.error ?? null,
+      });
+
       // Server-side alias: when the bridge has no logIn (or even when it
       // does and the device record was anonymous before logIn), attach the
       // anonymous RC subscriber id we just got back to the signed-in
       // Replit user id. Failures are non-blocking — the verify-retry loop
       // below still runs.
-      await aliasAnonymousIfNeeded(result.customerInfo, userId);
+      const aliasResult = await aliasAnonymousIfNeeded(result.customerInfo, userId);
+      aliasSourceForToast = aliasResult.attempted ? aliasResult.source : null;
+      trace("alias", {
+        aliasSource: aliasResult.source,
+        aliased: aliasResult.aliased,
+        aliasHttpStatus: aliasResult.httpStatus ?? null,
+      });
 
       if (purchaseLooksDone) {
-        const verified = await verifyWithRetry();
+        const verified = await verifyWithRetry(traceId, traceStart);
         if (verified) {
+          trace("final", { verdict: "granted", reason: "verify_ok" });
           hapticNotify("SUCCESS");
           onPurchaseSuccess();
         } else {
+          trace("final", { verdict: "denied", reason: "verify_failed" });
           hapticNotify("ERROR");
-          setError(withVerifierSource(t("paywall.error_purchase")));
+          const cause = await buildCauseString(aliasSourceForToast);
+          setError(`${withVerifierSource(t("paywall.error_purchase"))} ${cause}`);
         }
       } else if (result.error !== "cancelled") {
+        trace("final", { verdict: "denied", reason: `bridge_${result.error ?? "unknown"}` });
         hapticNotify("ERROR");
         const base = t("paywall.error_purchase");
         setError(result.error ? `${base} (bridge: ${result.error})` : base);
+      } else {
+        trace("final", { verdict: "denied", reason: "cancelled" });
       }
     } finally {
       endPurchaseFlight();
@@ -214,24 +302,71 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     hapticTap("LIGHT");
     beginPurchaseFlight();
 
+    const traceId = generateTraceId();
+    const traceStart = Date.now();
+    const trace = (phase: string, data: Record<string, unknown>) => {
+      postPurchaseTrace(traceId, phase, Date.now() - traceStart, data);
+    };
+    const snapshot = getLastOfferingSnapshot();
+    postPurchaseTrace(
+      traceId,
+      "start",
+      0,
+      {
+        isNative,
+        identityReady,
+        identityError: identityError ?? null,
+        bridgeMissingLogIn,
+        priceSource: snapshot?.source ?? null,
+        reason: "restore",
+      },
+      {
+        clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
+        clientPackageIdentifiers: snapshot?.packageIdentifiers ?? [],
+      },
+    );
+
+    let aliasSourceForToast: string | null = null;
+
     try {
       const result = await restorePurchases();
+      const anonId =
+        (result.customerInfo?.originalAppUserId ??
+          result.customerInfo?.original_app_user_id ??
+          null) || null;
+      trace("purchase-result", {
+        success: Boolean(result.success),
+        anonAppUserId: anonId,
+        isAnonymous: typeof anonId === "string" && anonId.startsWith("$RCAnonymousID:"),
+        bridgeError: result.error ?? null,
+      });
+
       // Don't trust customerInfo from the device for unlock decisions; let the
       // server verify with RevenueCat. We only use the device result to skip
       // the round-trip when it clearly shows nothing was restored.
       if (result.success) {
         // Same server-side alias path as purchase: any anonymous record
         // surfaced by Restore should be attached to the signed-in user.
-        await aliasAnonymousIfNeeded(result.customerInfo, userId);
-        const verified = await verifyWithRetry();
+        const aliasResult = await aliasAnonymousIfNeeded(result.customerInfo, userId);
+        aliasSourceForToast = aliasResult.attempted ? aliasResult.source : null;
+        trace("alias", {
+          aliasSource: aliasResult.source,
+          aliased: aliasResult.aliased,
+          aliasHttpStatus: aliasResult.httpStatus ?? null,
+        });
+        const verified = await verifyWithRetry(traceId, traceStart);
         if (verified) {
+          trace("final", { verdict: "granted", reason: "verify_ok" });
           hapticNotify("SUCCESS");
           onPurchaseSuccess();
         } else {
+          trace("final", { verdict: "denied", reason: "verify_failed" });
           hapticNotify("ERROR");
-          setError(withVerifierSource(t("paywall.error_restore")));
+          const cause = await buildCauseString(aliasSourceForToast);
+          setError(`${withVerifierSource(t("paywall.error_restore"))} ${cause}`);
         }
       } else {
+        trace("final", { verdict: "denied", reason: `bridge_${result.error ?? "unknown"}` });
         hapticNotify("ERROR");
         const base = t("paywall.error_restore");
         setError(result.error ? `${base} (bridge: ${result.error})` : base);

@@ -34,6 +34,7 @@ import {
   looksLikeAnonymousAppUserId,
   type RevenueCatWebhookBody,
 } from "./revenuecat";
+import { appendTraceEvent, getTracesForUser } from "./purchase-trace";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
 import { BUILD_INFO } from "./build-info";
 
@@ -3025,6 +3026,184 @@ No explanation, just JSON.`,
       // Diagnostic must never 500 — the client fires-and-forgets.
       console.warn("[paywall-price-diag] handler error:", err?.message || err);
       res.status(204).end();
+    }
+  });
+
+  // Per-purchase trace logger. The paywall calls this once per phase
+  // (start, identity, purchase-result, alias, verify, final) tagged with
+  // a client-generated correlation id. Each call writes one structured
+  // line to the deployment log AND appends to an in-memory ring buffer
+  // that the /api/diag/rc-state endpoint reads back. Session-cookie
+  // authenticated so the trace is bound to the signed-in Replit user id.
+  app.post("/api/diag/purchase-trace", isAuthenticated, (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const body = (req.body ?? {}) as Record<string, unknown>;
+
+      const str = (v: unknown, max = 120): string | null => {
+        if (typeof v !== "string") return null;
+        return v.slice(0, max);
+      };
+      const num = (v: unknown): number | null => {
+        if (typeof v !== "number" || !Number.isFinite(v)) return null;
+        return v;
+      };
+      const arrStr = (v: unknown, maxItems = 16, maxItemLen = 80): string[] => {
+        if (!Array.isArray(v)) return [];
+        const out: string[] = [];
+        for (const x of v.slice(0, maxItems)) {
+          if (typeof x === "string") out.push(x.slice(0, maxItemLen));
+        }
+        return out;
+      };
+
+      const id = str(body.id, 32);
+      const phase = str(body.phase, 32);
+      const t = num(body.t);
+      if (!id || !phase) {
+        return res.status(204).end();
+      }
+
+      // Whitelist the small set of fields we ever care about. Reject
+      // anything else so a buggy or malicious client cannot blow the
+      // ring buffer out by stuffing huge blobs.
+      const rawData = (body.data ?? {}) as Record<string, unknown>;
+      const data: Record<string, unknown> = {};
+      const keys = [
+        "isNative",
+        "identityReady",
+        "identityError",
+        "bridgeMissingLogIn",
+        "success",
+        "anonAppUserId",
+        "isAnonymous",
+        "pendingVerification",
+        "bridgeError",
+        "aliasSource",
+        "aliased",
+        "aliasHttpStatus",
+        "attempt",
+        "verifySource",
+        "verifyHasPremium",
+        "verifyTransient",
+        "verdict",
+        "reason",
+        "priceSource",
+      ];
+      for (const k of keys) {
+        const v = rawData[k];
+        if (typeof v === "string") data[k] = v.slice(0, 120);
+        else if (typeof v === "number" && Number.isFinite(v)) data[k] = v;
+        else if (typeof v === "boolean") data[k] = v;
+        else if (v == null) data[k] = null;
+      }
+
+      const offeringIdentifiers = arrStr(body.clientOfferingIdentifiers);
+      const packageIdentifiers = arrStr(body.clientPackageIdentifiers);
+
+      appendTraceEvent(
+        id,
+        userId,
+        { phase, t: t ?? 0, data },
+        {
+          clientOfferingIdentifiers: offeringIdentifiers.length > 0 ? offeringIdentifiers : undefined,
+          clientPackageIdentifiers: packageIdentifiers.length > 0 ? packageIdentifiers : undefined,
+        },
+      );
+
+      const dataStr = Object.entries(data)
+        .map(([k, v]) => `${k}=${v == null ? "null" : v}`)
+        .join(" ");
+      console.log(
+        `[purchase-trace id=${id} t=${t ?? 0}ms] ${phase} user=${userId}` +
+          (dataStr ? ` ${dataStr}` : ""),
+      );
+
+      res.status(204).end();
+    } catch (err: any) {
+      console.warn("[purchase-trace] handler error:", err?.message || err);
+      res.status(204).end();
+    }
+  });
+
+  // Read-back diagnostic for the App Store ↔ RevenueCat ↔ Replit handoff.
+  // Session-cookie authenticated (no userId query param) so an anonymous
+  // visitor cannot probe arbitrary users. Returns the current user's RC
+  // subscriber probe, the server-side offerings visible to our key, the
+  // last 5 purchase traces for this user, a project-mismatch verdict,
+  // and whether the webhook secret is configured. Strictly read-only.
+  app.get("/api/diag/rc-state", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const [probe, offerings] = await Promise.all([
+        probeSubscriber(userId),
+        fetchServerOfferings(userId),
+      ]);
+      const traces = getTracesForUser(userId, 5);
+      const latest = traces[0];
+      const clientOfferingIdentifiers = latest?.clientOfferingIdentifiers ?? [];
+      const clientPackageIdentifiers = latest?.clientPackageIdentifiers ?? [];
+
+      // Project-mismatch detector: if both sides have a non-empty
+      // offering-identifier list and the sets are disjoint, the wrapper
+      // is talking to a different RevenueCat project than our server
+      // key. Compare by exact identifier match, case-sensitive.
+      let projectMismatchSuspected = false;
+      let projectMismatchReason: string | null = null;
+      if (
+        offerings.available &&
+        offerings.offeringIdentifiers.length > 0 &&
+        clientOfferingIdentifiers.length > 0
+      ) {
+        const serverSet = new Set(offerings.offeringIdentifiers);
+        const overlap = clientOfferingIdentifiers.some((id) => serverSet.has(id));
+        if (!overlap) {
+          projectMismatchSuspected = true;
+          projectMismatchReason =
+            `client offerings [${clientOfferingIdentifiers.join(",")}] disjoint from ` +
+            `server offerings [${offerings.offeringIdentifiers.join(",")}]`;
+        }
+      }
+
+      const webhookConfigured = Boolean(process.env.REVENUECAT_WEBHOOK_AUTH_HEADER);
+
+      res.status(200).json({
+        replitUserId: userId,
+        webhookConfigured,
+        subscriberProbe: {
+          source: probe.source,
+          hasPremium: probe.hasPremium,
+          httpStatus: probe.httpStatus,
+          entitlements: probe.entitlements,
+          subscriptions: probe.subscriptions,
+          originalAppUserId: probe.originalAppUserId,
+          managementUrl: probe.managementUrl,
+          errorMessage: probe.errorMessage ?? null,
+        },
+        serverOfferings: {
+          available: offerings.available,
+          reason: offerings.reason ?? null,
+          currentOfferingId: offerings.currentOfferingId,
+          offeringIdentifiers: offerings.offeringIdentifiers,
+          productIdentifiers: offerings.productIdentifiers,
+          httpStatus: offerings.httpStatus ?? null,
+        },
+        clientOfferings: {
+          offeringIdentifiers: clientOfferingIdentifiers,
+          packageIdentifiers: clientPackageIdentifiers,
+        },
+        projectMismatchSuspected,
+        projectMismatchReason,
+        lastPurchaseTraces: traces.map((t) => ({
+          id: t.id,
+          startedAt: new Date(t.startedAt).toISOString(),
+          events: t.events,
+        })),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[diag/rc-state] error:", err?.message || err);
+      res.status(500).json({ error: "internal_error", message: err?.message ?? "unknown" });
     }
   });
 

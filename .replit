@@ -71,3 +71,8 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+REVENUECAT_WEBHOOK_AUTH_HEADER = "YRVsfG3m3gY3GXB3-N4IdA_nV-sP2ToF"
