@@ -3387,20 +3387,20 @@ No explanation, just JSON.`,
         });
       }
 
-      // Persist-first / RC-verified ordering. `remember` writes the
-      // (anon, replit) row as `verified=false` (a first-writer-wins
-      // claim that blocks future cross-account hijacks). RC alias
-      // REST is then attempted; on 2xx, `markVerified` promotes the
-      // row to `verified=true`, which is the ONLY state in which
-      // self-healing entitlement reads consider the row. Without
-      // RC verification the row stays unverified and does NOT
-      // grant entitlement — even though `subscription_alias` has a
-      // claim row, `aliased: false` is returned with
-      // `source: "ok_persist_only"` so callers know unlock requires
-      // a successful retry or a webhook confirmation.
+      // Persist-first ordering. `remember` writes the (anon, replit)
+      // row using the storage layer's atomic first-writer-wins
+      // upsert: a later call from a DIFFERENT replit user for the
+      // same anon id would be rejected with `owner_mismatch`. Once
+      // the row is persisted, self-healing reads on every future
+      // verify will pick up the anon id (see
+      // `getSubscriptionAliasIdsForUser`) — that is what makes the
+      // first successful capture sufficient for unlock, even if RC's
+      // alias REST below fails. `markVerified` only flips the row's
+      // `verified` flag for telemetry on RC 2xx; it does NOT gate
+      // entitlement reads.
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: async (anon, replit) => {
-          const out = await storage.upsertSubscriptionAlias(anon, replit, { verified: false });
+          const out = await storage.upsertSubscriptionAlias(anon, replit);
           return { stored: out.stored, reason: out.reason };
         },
         markVerified: async (anon, replit) => {
@@ -3410,19 +3410,21 @@ No explanation, just JSON.`,
 
       // `proofBackedPersist` distinguishes the three terminal
       // states for client-side telemetry:
-      //   - `rc_alias`              : RC confirmed the merge, row
-      //                                is verified, will unlock.
-      //   - `persist_only_unverified`: claim row exists, RC has
-      //                                NOT confirmed, will NOT
-      //                                unlock until retry/webhook.
-      //   - `none`                   : nothing persisted (validation
-      //                                failure, owner_mismatch,
-      //                                transient persist error).
-      const proofBackedPersist: "rc_alias" | "persist_only_unverified" | "none" =
+      //   - `rc_alias`     : row is persisted AND RC confirmed the
+      //                       merge (verified=true).
+      //   - `persist_only` : row is persisted, will unlock on the
+      //                       next verify, RC merge pending (the
+      //                       `verified` flag will flip on a later
+      //                       successful retry or webhook).
+      //   - `none`         : nothing persisted (validation failure,
+      //                       owner_mismatch, transient persist
+      //                       error). Caller should not expect
+      //                       unlock without resolving the cause.
+      const proofBackedPersist: "rc_alias" | "persist_only" | "none" =
         result.source === "ok"
           ? "rc_alias"
           : result.source === "ok_persist_only"
-            ? "persist_only_unverified"
+            ? "persist_only"
             : "none";
 
       return res.status(200).json({ ...result, proofBackedPersist });

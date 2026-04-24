@@ -732,32 +732,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]> {
-    // Self-healing entitlement reads MUST only return verified
-    // mappings. Unverified rows exist purely for diagnostics and
-    // could otherwise let a leaked anon id unlock the wrong user.
+    // Self-healing reads EVERY persisted row owned by this replit
+    // user, regardless of whether RevenueCat's alias REST has
+    // separately confirmed the merge. This is the explicit
+    // task-#486 trade-off: a single successful anonymous-id
+    // capture must unlock all future verifies, even when RC's
+    // alias merge fails for unrelated reasons (transient outage,
+    // network blip). Cross-user safety is provided by the
+    // first-writer-wins atomic upsert in `upsertSubscriptionAlias`
+    // — a row owned by another user cannot be silently re-pointed
+    // here. The `verified` column is kept for telemetry but does
+    // NOT gate this read.
     const rows = await db.select({ anon: subscriptionAlias.anonymousAppUserId })
       .from(subscriptionAlias)
-      .where(
-        and(
-          eq(subscriptionAlias.replitUserId, replitUserId),
-          eq(subscriptionAlias.verified, true),
-        ),
-      )
+      .where(eq(subscriptionAlias.replitUserId, replitUserId))
       .orderBy(desc(subscriptionAlias.updatedAt));
     return rows.map((r) => r.anon);
   }
 
   async getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null> {
-    // Same constraint as getSubscriptionAliasIdsForUser: only
-    // verified rows count as ownership for entitlement purposes.
+    // Same trade-off as getSubscriptionAliasIdsForUser: every
+    // persisted row counts as ownership. The first-writer-wins
+    // upsert is what guards against cross-user reassignment; the
+    // `verified` column here is informational only.
     const [row] = await db.select({ replitUserId: subscriptionAlias.replitUserId })
       .from(subscriptionAlias)
-      .where(
-        and(
-          eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId),
-          eq(subscriptionAlias.verified, true),
-        ),
-      );
+      .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
     return row?.replitUserId ?? null;
   }
 }
