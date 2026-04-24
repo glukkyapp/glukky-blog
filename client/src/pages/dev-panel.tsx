@@ -1263,6 +1263,22 @@ function RevenueCatDiagnosticsCard() {
                   error: "text-red-600 dark:text-red-400",
                   value: "text-emerald-700 dark:text-emerald-400",
                 };
+                const returnedValue = bridgeProbe.values?.[method] ?? null;
+                // Show "returned-value-X" with the actual value beside it,
+                // so a `value` outcome on getAppUserID is distinguishable
+                // from one on getAnonymousId — that's the whole point of
+                // the fidelity requirement.
+                let valueSuffix: string;
+                if (outcome === "value" && returnedValue !== null) {
+                  valueSuffix = ` returned-value-${returnedValue}`;
+                } else if (outcome === "value" && returnedValue === null) {
+                  // side-effect methods we don't invoke
+                  valueSuffix = " (present, not invoked)";
+                } else if (outcome === "null") {
+                  valueSuffix = " returned-value-null";
+                } else {
+                  valueSuffix = "";
+                }
                 return (
                   <p
                     key={method}
@@ -1270,6 +1286,7 @@ function RevenueCatDiagnosticsCard() {
                     data-testid={`text-rc-bridge-method-${method}`}
                   >
                     {method}: <span className={colour[outcome]}>{outcome}</span>
+                    <span className="text-cyan-700 dark:text-cyan-400">{valueSuffix}</span>
                   </p>
                 );
               })}

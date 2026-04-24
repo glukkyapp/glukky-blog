@@ -3191,9 +3191,27 @@ No explanation, just JSON.`,
 
       const webhookConfigured = Boolean(process.env.REVENUECAT_WEBHOOK_AUTH_HEADER);
 
+      // Top-level latest verdict badge (Task #486). Pulled from the most
+      // recent trace's `final` event so callers can triage in one
+      // glance without walking events.
+      let latestVerdictBadge: string | null = null;
+      let latestVerdictAt: string | null = null;
+      if (latest) {
+        const finalEvent = [...latest.events].reverse().find((e) => e.phase === "final");
+        if (finalEvent) {
+          const badge = (finalEvent.data as Record<string, unknown> | undefined)?.verdictBadge;
+          if (typeof badge === "string") {
+            latestVerdictBadge = badge;
+            latestVerdictAt = new Date(latest.startedAt + finalEvent.t).toISOString();
+          }
+        }
+      }
+
       res.status(200).json({
         replitUserId: userId,
         webhookConfigured,
+        latestVerdictBadge,
+        latestVerdictAt,
         subscriberProbe: {
           source: probe.source,
           hasPremium: probe.hasPremium,
@@ -3255,28 +3273,45 @@ No explanation, just JSON.`,
         });
       }
 
-      // Persist the (anonymous → replit) edge BEFORE we even attempt the
-      // RC alias REST call. This is the critical durability requirement
-      // for Task #486: even if RevenueCat's own alias merge never
-      // happens (network error, RC outage, account-not-yet-created),
-      // verifyEntitlementSelfHealing can still grant entitlement on a
-      // future verify by checking this anonymous id directly. The DB
-      // upsert is idempotent — aliasAnonymousAppUserId may call it
-      // again on RC success and that's a no-op.
-      let preAliasPersisted = false;
-      try {
-        await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
-        preAliasPersisted = true;
-      } catch (err: any) {
-        console.warn(
-          `[revenuecat/alias-anonymous] pre-RC persist failed anon=${anonymousAppUserId} replit=${userId}: ${err?.message || err}`,
-        );
-      }
-
+      // SECURITY: do NOT persist a (anon → replit) mapping before we
+      // have server-side proof that the anonymous id legitimately
+      // belongs to this user. A client could otherwise POST any
+      // observed `$RCAnonymousID:…` and steal another user's
+      // subscription on the next self-healing verify. We only persist
+      // on one of two trusted conditions:
+      //   (a) RC's `alias` REST call succeeds (RC merged the
+      //       subscribers — that IS the proof), OR
+      //   (b) RC `alias` failed BUT `verifyEntitlement(anon)` shows
+      //       a real entitlement on that anonymous id, proving Apple
+      //       actually charged for it. Falling back to (b) is the
+      //       "self-healing even when RC's alias merge never happens"
+      //       requirement, but with a real-money proof gate.
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: (anon, replit) => storage.upsertSubscriptionAlias(anon, replit),
       });
-      return res.status(200).json({ ...result, preAliasPersisted });
+
+      let proofBackedPersist: "rc_alias" | "verify_proof" | "none" =
+        result.aliased ? "rc_alias" : "none";
+
+      if (!result.aliased) {
+        try {
+          const anonVerify = await verifyEntitlement(anonymousAppUserId);
+          if (anonVerify.hasPremium) {
+            await storage.upsertSubscriptionAlias(anonymousAppUserId, userId);
+            invalidateEntitlementCache(userId);
+            proofBackedPersist = "verify_proof";
+            console.log(
+              `[revenuecat/alias-anonymous] proof-backed persist anon=${anonymousAppUserId} replit=${userId} (RC alias failed, but anon has live entitlement)`,
+            );
+          }
+        } catch (err: any) {
+          console.warn(
+            `[revenuecat/alias-anonymous] proof-verify failed anon=${anonymousAppUserId} replit=${userId}: ${err?.message || err}`,
+          );
+        }
+      }
+
+      return res.status(200).json({ ...result, proofBackedPersist });
     } catch (error: any) {
       console.error("[revenuecat/alias-anonymous] error:", error?.message || error);
       return res.status(500).json({

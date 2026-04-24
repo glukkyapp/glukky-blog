@@ -663,28 +663,82 @@ export type BridgeMethodOutcome = "missing" | "null" | "timeout" | "value" | "er
 export interface BridgeProbeResult {
   bridgePresent: boolean;
   methods: Record<string, BridgeMethodOutcome>;
+  // Per-method returned value (truncated, redacted) for read-only methods.
+  // Side-effect methods get null here because we never invoke them.
+  values: Record<string, string | null>;
   // Compact "purchasePackage:value|restorePurchases:missing" string for the trace.
   summary: string;
 }
 
+// Probed methods. Includes the canonical names exposed by Build Natively
+// plus the alternative names other RevenueCat wrappers (Cordova, Capacitor,
+// React Native) historically use, so a future re-export that switches
+// names is detected immediately.
 const PROBE_METHODS = [
   "getCustomerInfo",
   "getOfferings",
   "getAppUserID",
   "getAppUserId",
+  "getOriginalAppUserId",
+  "getAnonymousId",
+  "getAnonymousID",
   "logIn",
   "purchasePackage",
   "restorePurchases",
 ] as const;
 
+// Maximum per-value length recorded in the probe. Returned values are
+// JSON-stringified, then truncated. Anonymous ids are kept verbatim
+// (they're the whole point), but big customerInfo blobs get cut to 200
+// chars so a single probe doesn't blow up the trace ring buffer.
+const VALUE_TRUNCATE_LEN = 200;
+
+function summarizeProbeValue(method: string, raw: unknown): string | null {
+  if (raw == null) return null;
+  // For anonymous / app-user-id callers, just stringify the value
+  // directly — these are short and the WHOLE diagnostic point is to
+  // see them.
+  if (typeof raw === "string") return raw.slice(0, VALUE_TRUNCATE_LEN);
+  if (typeof raw === "number" || typeof raw === "boolean") return String(raw);
+  // For customerInfo / offerings, pull out the most diagnostic field
+  // (originalAppUserId or current offering id) and stringify a small
+  // shape. JSON.stringify can throw on cycles, so guard.
+  try {
+    if (method === "getCustomerInfo") {
+      const ci = raw as Record<string, unknown>;
+      const oid = (ci.originalAppUserId ?? ci.original_app_user_id ?? null) as string | null;
+      const ents = ci.entitlements as { active?: Record<string, unknown> } | undefined;
+      const activeEnts = ents?.active ? Object.keys(ents.active) : [];
+      return JSON.stringify({ originalAppUserId: oid, activeEntitlements: activeEnts }).slice(
+        0,
+        VALUE_TRUNCATE_LEN,
+      );
+    }
+    if (method === "getOfferings") {
+      const o = raw as Record<string, unknown>;
+      const cur = (o.current as Record<string, unknown> | undefined)?.identifier ?? null;
+      const all = o.all && typeof o.all === "object" ? Object.keys(o.all as object) : [];
+      return JSON.stringify({ current: cur, all }).slice(0, VALUE_TRUNCATE_LEN);
+    }
+    return JSON.stringify(raw).slice(0, VALUE_TRUNCATE_LEN);
+  } catch {
+    return "[unserialisable]";
+  }
+}
+
 export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
   const methods: Record<string, BridgeMethodOutcome> = {};
+  const values: Record<string, string | null> = {};
   const present = hasNativelyPurchases();
   if (!present || !window.NativelyPurchases) {
-    for (const m of PROBE_METHODS) methods[m] = "missing";
+    for (const m of PROBE_METHODS) {
+      methods[m] = "missing";
+      values[m] = null;
+    }
     return {
       bridgePresent: false,
       methods,
+      values,
       summary: PROBE_METHODS.map((m) => `${m}:missing`).join("|"),
     };
   }
@@ -693,10 +747,14 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
   try {
     purchases = new window.NativelyPurchases();
   } catch {
-    for (const m of PROBE_METHODS) methods[m] = "error";
+    for (const m of PROBE_METHODS) {
+      methods[m] = "error";
+      values[m] = null;
+    }
     return {
       bridgePresent: true,
       methods,
+      values,
       summary: PROBE_METHODS.map((m) => `${m}:error`).join("|"),
     };
   }
@@ -710,10 +768,12 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
     const fn = (purchases as any)[m];
     if (typeof fn !== "function") {
       methods[m] = "missing";
+      values[m] = null;
       continue;
     }
     if (sideEffectMethods.includes(m)) {
       methods[m] = "value"; // present, not invoked
+      values[m] = null;
       continue;
     }
     // Read-only callback methods can be invoked safely.
@@ -723,13 +783,15 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
     );
     if (res.outcome === "value") {
       methods[m] = res.value == null ? "null" : "value";
+      values[m] = summarizeProbeValue(m, res.value);
     } else {
       methods[m] = res.outcome;
+      values[m] = null;
     }
   }
 
   const summary = PROBE_METHODS.map((m) => `${m}:${methods[m]}`).join("|").slice(0, 240);
-  return { bridgePresent: true, methods, summary };
+  return { bridgePresent: true, methods, values, summary };
 }
 
 // ---------------------------------------------------------------------------
