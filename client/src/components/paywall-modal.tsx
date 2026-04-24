@@ -10,7 +10,6 @@ import {
   purchasePackage,
   restorePurchases,
   isPremiumFromCustomerInfo,
-  getMonthlyPriceString,
   ensureIdentified,
   isIdentityReadyFor,
   subscribeIdentity,
@@ -43,7 +42,6 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [price, setPrice] = useState<string | null>(null);
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(userId));
   const [identityError, setIdentityError] = useState<string | null>(() => getIdentityState().lastResult?.error ?? null);
 
@@ -186,18 +184,6 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     }
     return false;
   };
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setPrice(null);
-    getMonthlyPriceString().then((p) => {
-      if (!cancelled) setPrice(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   const handlePurchase = async () => {
     if (!isNative) return;
@@ -383,9 +369,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     onClose();
   };
 
-  const headline = price
-    ? t("paywall.headline_with_price", { price })
-    : t("paywall.headline_no_price");
+  const headline = t("paywall.headline");
 
   return (
     <AnimatePresence>

@@ -69,7 +69,8 @@ Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/
 - Constructor-style: `new NativelyPurchases().purchasePackage("$rc_monthly", callback)`
 - Auto-sync on app load via `getCustomerInfo()` → POST to `/api/update-premium-status`
 - Non-native fallback: "Please open this app on your iPhone to subscribe."
-- `getMonthlyPriceDetails()` / `getMonthlyPriceString()`: 8s-bounded RevenueCat price fetch. Always resolves; tagged `[paywall-price]` warnings on every null path (no-bridge, no-getOfferings, timeout, no-current, no-monthly-package, empty-string). No hardcoded fallback price — paywall headline drops the price line when null.
+- Paywall headline price is **hardcoded** in each locale file (`paywall.headline` key in `en.json` / `zh-Hant.json` / `yue.json`) as `HK$28`. The modal no longer fetches the price on open — no async tick, no flicker. To change the price, edit the three locale strings.
+- `getMonthlyPriceDetails()`: 8s-bounded RevenueCat price fetch, **diagnostics-only**. Used by the dev panel pricing card and the `/api/diag/paywall-price` endpoint to surface wrapper-bridge breakage (e.g. `source=null-no-getOfferings`). Always resolves; tagged `[paywall-price]` warnings on every null path (no-bridge, no-getOfferings, timeout, no-current, no-monthly-package, empty-string). Not wired into the paywall headline anymore.
 - `/api/build-info`: returns running build sha (from REPLIT_DEPLOYMENT_ID / GITHUB_SHA / etc), startedAt, NODE_ENV. Surfaced on dev panel to detect stale cached webview bundles.
 
 **Frontend:**

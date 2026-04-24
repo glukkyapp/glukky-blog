@@ -702,14 +702,6 @@ export function getMonthlyPriceDetails(): Promise<MonthlyPriceResult> {
   });
 }
 
-/**
- * Backwards-compatible wrapper used by the paywall headline. See
- * getMonthlyPriceDetails for the diagnostic-rich version used by the dev panel.
- */
-export async function getMonthlyPriceString(): Promise<string | null> {
-  const r = await getMonthlyPriceDetails();
-  return r.priceString;
-}
 
 export function isPremiumFromCustomerInfo(info: CustomerInfo | null): boolean {
   if (!info) return false;
