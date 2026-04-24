@@ -3266,6 +3266,7 @@ No explanation, just JSON.`,
       // glance without walking events.
       let latestVerdictBadge: string | null = null;
       let latestVerdictAt: string | null = null;
+      let latestProbeAfterMissing = false;
       if (latest) {
         const finalEvent = [...latest.events].reverse().find((e) => e.phase === "final");
         if (finalEvent) {
@@ -3273,6 +3274,21 @@ No explanation, just JSON.`,
           if (typeof badge === "string") {
             latestVerdictBadge = badge;
             latestVerdictAt = new Date(latest.startedAt + finalEvent.t).toISOString();
+          }
+          // Lightweight visibility metric: the client posts a
+          // `probe-after` event right after `final` to capture the
+          // bridge state once the purchase/restore flow settles.
+          // It is fire-and-forget on the client (intentional, to
+          // avoid latency on the unlock path), so navigation or a
+          // network blip can drop it. Log a single line here so
+          // the rate of missing after-probes is grep-able from the
+          // workflow console without adding an extra metrics path.
+          const hasProbeAfter = latest.events.some((e) => e.phase === "probe-after");
+          if (!hasProbeAfter) {
+            latestProbeAfterMissing = true;
+            console.log(
+              `[revenuecat] purchase-trace status: probe-after missing user=${userId} traceId=${latest.id} verdictBadge=${latestVerdictBadge ?? "null"}`,
+            );
           }
         }
       }
