@@ -33,6 +33,7 @@ import {
   type RevenueCatWebhookBody,
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
+import { BUILD_INFO } from "./build-info";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -86,26 +87,6 @@ function computeFocusPanel(
 
   return null;
 }
-
-// Build identifier surfaced via /api/build-info so a stale cached webview
-// bundle can be ruled out at a glance from the dev panel. Read once at
-// process start from existing platform env (no edits to package.json /
-// vite.config.ts). Falls back gracefully when nothing is available.
-const BUILD_INFO = (() => {
-  const sha =
-    process.env.REPLIT_DEPLOYMENT_ID ||
-    process.env.REPL_DEPLOYMENT_ID ||
-    process.env.GITHUB_SHA ||
-    process.env.GIT_COMMIT_SHA ||
-    process.env.COMMIT_SHA ||
-    process.env.SOURCE_COMMIT ||
-    null;
-  return {
-    sha: sha ? String(sha).slice(0, 12) : null,
-    startedAt: new Date().toISOString(),
-    nodeEnv: process.env.NODE_ENV ?? null,
-  };
-})();
 
 export async function registerRoutes(
   httpServer: Server,

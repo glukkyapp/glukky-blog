@@ -97,8 +97,21 @@ The iOS purchase flow ONLY works if the Natively-exported wrapper exposes Revenu
 5. Sign out / sign back in on a previously-purchased sandbox account, tap Restore, confirm the entitlement re-attaches to the same Replit user id.
 
 ## Deployment notes
-- Production static-serve sends `Cache-Control: no-cache, must-revalidate` for `index.html` and `public, max-age=31536000, immutable` for `/assets/*` (see `server/static.ts`). Vite already fingerprints asset filenames, so a redeploy gets picked up on the next cold launch: WebView re-validates `index.html`, sees new bundle filenames, fetches new JS/CSS automatically.
-- If a paywall or copy change is not appearing on the iPhone after deploy, force-quit the app once and relaunch — the cold launch re-fetches `index.html` because of the no-cache header.
+- Production static-serve sends `Cache-Control: no-store` for `index.html` and the SPA fallback (see `server/static.ts`) and `public, max-age=31536000, immutable` for `/assets/*`. Vite already fingerprints asset filenames, so a redeploy gets picked up on the next cold launch: WebView re-fetches `index.html`, sees new bundle filenames, fetches new JS/CSS automatically. `no-store` (vs the older `no-cache, must-revalidate`) prevents intermediate proxies/CDNs from holding the shell.
+- Every served `index.html` (both prod static and dev Vite middleware) is post-processed to inject `<meta name="build-sha" content="…">` and `window.__BUILD_SHA__ = "…"`. The value comes from the same env vars `/api/build-info` reads (`REPLIT_DEPLOYMENT_ID` / `GITHUB_SHA` / etc) via `server/build-info.ts`. No edits to `package.json` or `vite.config.ts`.
+- If a paywall or copy change is not appearing on the iPhone after deploy, force-quit the app once and relaunch — the cold launch re-fetches `index.html` because of the no-store header.
+
+## WebView staleness diagnosis (TestFlight badge)
+The diagnostic badge (top-right corner) appears on every screen — loading, language selection, onboarding, paywall — whenever `localStorage.devBadge === "1"`. Persistence is automatic: append `?debug=1` to the URL the iOS wrapper loads (once is enough — it's saved to localStorage and survives reloads/app restarts). To disable, append `?debug=0` once.
+
+The badge shows three lines: `L:<loaded sha>` (the SHA baked into the HTML the WebView actually loaded, from `window.__BUILD_SHA__`), `S:<server sha>` (the SHA the deploy server is currently serving, from `/api/build-info`), and the `window.location.host`. SHAs are first 7 chars. Background turns red on mismatch.
+
+A non-blocking yellow "Reload" banner appears at the top whenever `L != S`. It's safe-to-tap: it just calls `window.location.reload()`. The version check runs on app mount, on `visibilitychange → visible`, and when the paywall opens. It's throttled to once per minute and skipped while a purchase or restore is mid-flight (see `client/src/lib/purchase-in-flight.ts`).
+
+Reading the badge:
+- **L == S, but the layout/copy is still old** → the deploy itself is stale: the build step uploaded an old `dist/`. Rebuild and republish.
+- **L != S** → the WebView is loading a stale shell. Tap the Reload banner. If reload doesn't change L, the iOS wrapper is pinned to a snapshot or older deploy URL — fix in the wrapper repo.
+- **Host doesn't match the latest deploy URL** (e.g. shows an old `*.replit.app` or a snapshot URL) → the iOS wrapper's hardcoded URL is wrong; fix in the wrapper repo.
 
 ## External Dependencies
 - **PostgreSQL:** Primary database for all application data.

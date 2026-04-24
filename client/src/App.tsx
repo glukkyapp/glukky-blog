@@ -34,6 +34,7 @@ import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
+import BuildDiagnosticBadge from "@/components/build-diagnostic-badge";
 
 preloadStage1Launch();
 
@@ -597,6 +598,7 @@ function App() {
     <TooltipProvider>
       <Toaster />
       <Router />
+      <BuildDiagnosticBadge />
       <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
         stage1Ready ? (

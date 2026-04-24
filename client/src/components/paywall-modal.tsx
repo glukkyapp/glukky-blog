@@ -19,6 +19,7 @@ import {
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
 import { preloadStage4DietTipThumbnails } from "@/lib/preload-assets";
+import { beginPurchaseFlight, endPurchaseFlight } from "@/lib/purchase-in-flight";
 
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 const PRIVACY_URL = "https://support-url-generator.com/privacy/jjw2eCXTIxWb";
@@ -69,6 +70,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   // user finishes paying and lands on /health-info.
   useEffect(() => {
     if (open) preloadStage4DietTipThumbnails();
+  }, [open]);
+
+  // Notify the build-staleness checker so it re-runs whenever the
+  // paywall opens — that's a high-stakes screen where being on a
+  // stale shell is most disruptive.
+  useEffect(() => {
+    if (open) {
+      window.dispatchEvent(new CustomEvent("paywall-opened"));
+    }
   }, [open]);
 
   // Ask the server to verify entitlement with RevenueCat and update
@@ -150,29 +160,34 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     setPurchasing(true);
     setError(null);
     hapticTap("MEDIUM");
+    beginPurchaseFlight();
 
-    const result = await purchasePackage("$rc_monthly");
-    // Client never decides premium. After a successful purchase we ask the
-    // server to refresh, and the server verifies entitlement with RevenueCat.
-    const purchaseLooksDone =
-      (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
-      result.error === "pending_verification";
+    try {
+      const result = await purchasePackage("$rc_monthly");
+      // Client never decides premium. After a successful purchase we ask the
+      // server to refresh, and the server verifies entitlement with RevenueCat.
+      const purchaseLooksDone =
+        (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
+        result.error === "pending_verification";
 
-    if (purchaseLooksDone) {
-      const verified = await verifyWithRetry();
-      if (verified) {
-        hapticNotify("SUCCESS");
-        onPurchaseSuccess();
-      } else {
+      if (purchaseLooksDone) {
+        const verified = await verifyWithRetry();
+        if (verified) {
+          hapticNotify("SUCCESS");
+          onPurchaseSuccess();
+        } else {
+          hapticNotify("ERROR");
+          setError(withVerifierSource(t("paywall.error_purchase")));
+        }
+      } else if (result.error !== "cancelled") {
         hapticNotify("ERROR");
-        setError(withVerifierSource(t("paywall.error_purchase")));
+        const base = t("paywall.error_purchase");
+        setError(result.error ? `${base} (bridge: ${result.error})` : base);
       }
-    } else if (result.error !== "cancelled") {
-      hapticNotify("ERROR");
-      const base = t("paywall.error_purchase");
-      setError(result.error ? `${base} (bridge: ${result.error})` : base);
+    } finally {
+      endPurchaseFlight();
+      setPurchasing(false);
     }
-    setPurchasing(false);
   };
 
   const handleRestore = async () => {
@@ -180,26 +195,31 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     setRestoring(true);
     setError(null);
     hapticTap("LIGHT");
+    beginPurchaseFlight();
 
-    const result = await restorePurchases();
-    // Don't trust customerInfo from the device for unlock decisions; let the
-    // server verify with RevenueCat. We only use the device result to skip
-    // the round-trip when it clearly shows nothing was restored.
-    if (result.success) {
-      const verified = await verifyWithRetry();
-      if (verified) {
-        hapticNotify("SUCCESS");
-        onPurchaseSuccess();
+    try {
+      const result = await restorePurchases();
+      // Don't trust customerInfo from the device for unlock decisions; let the
+      // server verify with RevenueCat. We only use the device result to skip
+      // the round-trip when it clearly shows nothing was restored.
+      if (result.success) {
+        const verified = await verifyWithRetry();
+        if (verified) {
+          hapticNotify("SUCCESS");
+          onPurchaseSuccess();
+        } else {
+          hapticNotify("ERROR");
+          setError(withVerifierSource(t("paywall.error_restore")));
+        }
       } else {
         hapticNotify("ERROR");
-        setError(withVerifierSource(t("paywall.error_restore")));
+        const base = t("paywall.error_restore");
+        setError(result.error ? `${base} (bridge: ${result.error})` : base);
       }
-    } else {
-      hapticNotify("ERROR");
-      const base = t("paywall.error_restore");
-      setError(result.error ? `${base} (bridge: ${result.error})` : base);
+    } finally {
+      endPurchaseFlight();
+      setRestoring(false);
     }
-    setRestoring(false);
   };
 
   const handleMaybeLater = () => {

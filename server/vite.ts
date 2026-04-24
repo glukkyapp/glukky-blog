@@ -5,6 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { injectBuildShaIntoHtml } from "./build-info";
 
 const viteLogger = createLogger();
 
@@ -48,8 +49,12 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      const transformed = await vite.transformIndexHtml(url, template);
+      const page = injectBuildShaIntoHtml(transformed);
+      res
+        .status(200)
+        .set({ "Content-Type": "text/html", "Cache-Control": "no-store" })
+        .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
