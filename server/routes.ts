@@ -3359,21 +3359,10 @@ No explanation, just JSON.`,
         });
       }
 
-      // SECURITY: a (anon → replit) mapping is persisted ONLY when
-      // RevenueCat's own `alias` REST call succeeds. RC's server-side
-      // alias merge is the trust anchor — it verifies the call with
-      // the secret server key and merges subscribers atomically. We
-      // do NOT fall back to a "this anon id has a paid entitlement,
-      // therefore trust the requester" path: that lets a hostile
-      // client who somehow learned another user's unmapped
-      // `$RCAnonymousID:…` (shared device, leaked log, etc.) be the
-      // FIRST to claim it and steal the subscription on the next
-      // self-healing verify. First-claim risk is unacceptable here.
-      //
       // Pre-flight ownership check (defence in depth on top of the
-      // storage-layer guard): if this anonymous id is already
-      // mapped to a DIFFERENT Replit user, refuse the entire
-      // endpoint with 409.
+      // storage-layer's atomic first-writer-wins guard): if this
+      // anonymous id is already mapped to a DIFFERENT Replit user,
+      // refuse the endpoint with 409 before attempting to persist.
       const existingOwner = await storage.getReplitUserIdForAnonymous(anonymousAppUserId);
       if (existingOwner && existingOwner !== userId) {
         console.warn(
@@ -3387,17 +3376,9 @@ No explanation, just JSON.`,
         });
       }
 
-      // Persist-first ordering. `remember` writes the (anon, replit)
-      // row using the storage layer's atomic first-writer-wins
-      // upsert: a later call from a DIFFERENT replit user for the
-      // same anon id would be rejected with `owner_mismatch`. Once
-      // the row is persisted, self-healing reads on every future
-      // verify will pick up the anon id (see
-      // `getSubscriptionAliasIdsForUser`) — that is what makes the
-      // first successful capture sufficient for unlock, even if RC's
-      // alias REST below fails. `markVerified` only flips the row's
-      // `verified` flag for telemetry on RC 2xx; it does NOT gate
-      // entitlement reads.
+      // Persist-first design (task #486 Option A): the persisted
+      // row drives self-healing on every future verify, even if
+      // RC's alias REST fails. `markVerified` is telemetry only.
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: async (anon, replit) => {
           const out = await storage.upsertSubscriptionAlias(anon, replit);
@@ -3408,18 +3389,9 @@ No explanation, just JSON.`,
         },
       });
 
-      // `proofBackedPersist` distinguishes the three terminal
-      // states for client-side telemetry:
-      //   - `rc_alias`     : row is persisted AND RC confirmed the
-      //                       merge (verified=true).
-      //   - `persist_only` : row is persisted, will unlock on the
-      //                       next verify, RC merge pending (the
-      //                       `verified` flag will flip on a later
-      //                       successful retry or webhook).
-      //   - `none`         : nothing persisted (validation failure,
-      //                       owner_mismatch, transient persist
-      //                       error). Caller should not expect
-      //                       unlock without resolving the cause.
+      // Client telemetry: rc_alias = row persisted AND RC merged;
+      // persist_only = row persisted, RC merge pending (still
+      // unlocks on next verify); none = nothing persisted.
       const proofBackedPersist: "rc_alias" | "persist_only" | "none" =
         result.source === "ok"
           ? "rc_alias"

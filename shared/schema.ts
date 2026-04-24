@@ -171,15 +171,11 @@ export type CycleHistoryRow = typeof cycleHistory.$inferSelect;
 export const subscriptionAlias = pgTable("subscription_alias", {
   anonymousAppUserId: varchar("anonymous_app_user_id").primaryKey(),
   replitUserId: varchar("replit_user_id").notNull(),
-  // `verified` distinguishes a record that has been confirmed by
-  // RevenueCat (alias REST 2xx, or RC webhook acknowledging the
-  // pair) from one that was only persisted optimistically by the
-  // client-driven /alias-anonymous endpoint. Only verified rows
-  // are eligible to drive `verifyEntitlementSelfHealing` unlocks
-  // — unverified rows are kept for audit/diagnostics so we can
-  // see attempted claims, but they MUST NOT grant entitlement
-  // because the anon id is client-supplied and could belong to
-  // another user (leaked / shared device).
+  // Telemetry only. Flips to true when RevenueCat's alias REST
+  // (or a matching webhook) independently confirms the merge.
+  // Does NOT gate self-healing reads — every persisted row drives
+  // unlock per the task #486 design. Cross-user safety is the
+  // first-writer-wins guard in `upsertSubscriptionAlias`.
   verified: boolean("verified").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
