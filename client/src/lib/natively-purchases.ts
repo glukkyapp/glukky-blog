@@ -408,9 +408,37 @@ export function restorePurchases(): Promise<RestoreResult> {
     if (!hasNativelyPurchases() || !window.NativelyPurchases) {
       return resolve({ success: false, error: "not_native" });
     }
+    let purchases: NativelyPurchasesInstance;
     try {
-      const purchases = new window.NativelyPurchases();
-      purchases.restorePurchases((result) => {
+      purchases = new window.NativelyPurchases();
+    } catch (e: unknown) {
+      return resolve({ success: false, error: e instanceof Error ? e.message : "unknown" });
+    }
+    // Older Build Natively wrappers (and the iOS web preview shim) do not
+    // implement restorePurchases. Calling it then throws a confusing
+    // "purchases.restorePurchases is not a function" instead of failing
+    // gracefully. Detect missing method up front so the paywall can fall
+    // back to a forced server-side verify and the verdict badge can
+    // distinguish "user pressed Restore but bridge has no method" from
+    // a genuine RC-side failure.
+    const restoreFn = (purchases as any).restorePurchases;
+    if (typeof restoreFn !== "function") {
+      return resolve({ success: false, error: "restore_not_supported" });
+    }
+    // Bound the wait so a never-firing callback can't hang the paywall
+    // forever — the wrapper has been observed to silently drop the
+    // restore callback in some sandbox states.
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve({ success: false, error: "restore_timeout" });
+    }, 15000);
+    try {
+      restoreFn.call(purchases, (result: { error?: string; customerInfo?: CustomerInfo }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         if (result?.error) {
           resolve({ success: false, error: result.error });
         } else {
@@ -418,9 +446,335 @@ export function restorePurchases(): Promise<RestoreResult> {
         }
       });
     } catch (e: unknown) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       resolve({ success: false, error: e instanceof Error ? e.message : "unknown" });
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Anonymous-id capture sequence (Task #486 self-healing).
+//
+// After every purchase or restore, RevenueCat assigns the buyer an
+// `$RCAnonymousID:…` record that we MUST be able to read back so the
+// server can alias it to the signed-in Replit user id. The Build Natively
+// wrapper exposes (or is supposed to expose) several routes to that id:
+//
+//   1. The CustomerInfo callback returned by purchasePackage / restore
+//   2. A fresh getCustomerInfo() round-trip
+//   3. A bridge-side getAppUserID() / getAppUserId() accessor
+//
+// In sandbox we have observed each of these returning null on different
+// devices for different reasons (timing, missing method, wrapper version).
+// Walking them in order — and recording which one yielded the id — turns
+// "anon id never obtained" from a silent dead-end into an actionable
+// signal in the trace, AND raises the success rate of the alias step
+// because a single working route is enough.
+// ---------------------------------------------------------------------------
+
+export type AnonCaptureMethod =
+  | "purchase_callback"
+  | "getCustomerInfo"
+  | "getAppUserID"
+  | "getAppUserId";
+
+export interface AnonCaptureAttempt {
+  method: AnonCaptureMethod;
+  // What the method actually returned, classified for the trace whitelist:
+  //   - "anon"   → an `$RCAnonymousID:…` value (success)
+  //   - "real"   → a non-anonymous string (e.g. a real Replit user id)
+  //   - "null"   → the method returned but with no usable id
+  //   - "missing"→ the method does not exist on the bridge instance
+  //   - "timeout"→ the callback never fired within the bound
+  //   - "error"  → the call threw or the wrapper signaled an error
+  outcome: "anon" | "real" | "null" | "missing" | "timeout" | "error";
+}
+
+export interface AnonCaptureResult {
+  anonymousAppUserId: string | null;
+  capturedBy: AnonCaptureMethod | null;
+  attempts: AnonCaptureAttempt[];
+}
+
+const CAPTURE_STEP_TIMEOUT_MS = 4000;
+
+function classifyId(value: unknown): "anon" | "real" | "null" {
+  if (typeof value !== "string" || value.length === 0) return "null";
+  return looksAnonymous(value) ? "anon" : "real";
+}
+
+// One bridge-method call, bounded with a per-step timeout so a hung
+// callback in any single accessor cannot block the whole sequence.
+function callWithTimeout<T>(
+  fn: ((cb: (v: T) => void) => void) | undefined,
+  timeoutMs: number,
+): Promise<{ outcome: "value" | "missing" | "timeout" | "error"; value?: T; error?: string }> {
+  return new Promise((resolve) => {
+    if (typeof fn !== "function") return resolve({ outcome: "missing" });
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve({ outcome: "timeout" });
+    }, timeoutMs);
+    try {
+      fn((v: T) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ outcome: "value", value: v });
+      });
+    } catch (e: any) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ outcome: "error", error: e?.message || "unknown" });
+    }
+  });
+}
+
+export async function captureAnonymousIdSequence(
+  purchaseCallbackInfo: CustomerInfo | null | undefined,
+): Promise<AnonCaptureResult> {
+  const attempts: AnonCaptureAttempt[] = [];
+
+  // 1) Whatever came back on the purchase / restore callback. Free, no
+  // round-trip, but often null on the first sandbox purchase.
+  const fromCallback = readOriginalAppUserId(purchaseCallbackInfo ?? null);
+  attempts.push({ method: "purchase_callback", outcome: classifyId(fromCallback) });
+  if (fromCallback && looksAnonymous(fromCallback)) {
+    return { anonymousAppUserId: fromCallback, capturedBy: "purchase_callback", attempts };
+  }
+
+  // 2) Fresh getCustomerInfo() round-trip. Most reliable next step
+  // because by the time we get here the wrapper has had its callback
+  // chain settle.
+  if (!hasNativelyPurchases() || !window.NativelyPurchases) {
+    attempts.push({ method: "getCustomerInfo", outcome: "missing" });
+    attempts.push({ method: "getAppUserID", outcome: "missing" });
+    attempts.push({ method: "getAppUserId", outcome: "missing" });
+    return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
+  }
+
+  let purchases: NativelyPurchasesInstance | null = null;
+  try {
+    purchases = new window.NativelyPurchases();
+  } catch (e: any) {
+    attempts.push({ method: "getCustomerInfo", outcome: "error" });
+    attempts.push({ method: "getAppUserID", outcome: "error" });
+    attempts.push({ method: "getAppUserId", outcome: "error" });
+    return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
+  }
+
+  const ciFnRaw = (purchases as any).getCustomerInfo;
+  const ciFn = typeof ciFnRaw === "function"
+    ? (cb: (v: CustomerInfo | null) => void) => ciFnRaw.call(purchases, cb)
+    : undefined;
+  const ciRes = await callWithTimeout<CustomerInfo | null>(ciFn, CAPTURE_STEP_TIMEOUT_MS);
+  let ciId: string | null = null;
+  if (ciRes.outcome === "missing") {
+    attempts.push({ method: "getCustomerInfo", outcome: "missing" });
+  } else if (ciRes.outcome === "timeout") {
+    attempts.push({ method: "getCustomerInfo", outcome: "timeout" });
+  } else if (ciRes.outcome === "error") {
+    attempts.push({ method: "getCustomerInfo", outcome: "error" });
+  } else {
+    ciId = readOriginalAppUserId(ciRes.value ?? null);
+    attempts.push({ method: "getCustomerInfo", outcome: classifyId(ciId) });
+    if (ciId && looksAnonymous(ciId)) {
+      return { anonymousAppUserId: ciId, capturedBy: "getCustomerInfo", attempts };
+    }
+  }
+
+  // 3) getAppUserID — the canonical RC accessor. Only present on newer
+  // wrapper builds; missing is expected and not an error.
+  const getIdUpper = (purchases as any).getAppUserID;
+  const upperRes = await callWithTimeout<string | null>(
+    typeof getIdUpper === "function" ? (cb: (v: string | null) => void) => getIdUpper.call(purchases, cb) : undefined,
+    CAPTURE_STEP_TIMEOUT_MS,
+  );
+  if (upperRes.outcome === "missing") {
+    attempts.push({ method: "getAppUserID", outcome: "missing" });
+  } else if (upperRes.outcome === "timeout") {
+    attempts.push({ method: "getAppUserID", outcome: "timeout" });
+  } else if (upperRes.outcome === "error") {
+    attempts.push({ method: "getAppUserID", outcome: "error" });
+  } else {
+    const cls = classifyId(upperRes.value);
+    attempts.push({ method: "getAppUserID", outcome: cls });
+    if (cls === "anon" && typeof upperRes.value === "string") {
+      return { anonymousAppUserId: upperRes.value, capturedBy: "getAppUserID", attempts };
+    }
+  }
+
+  // 4) getAppUserId — alternate spelling some wrapper versions ship.
+  const getIdLower = (purchases as any).getAppUserId;
+  const lowerRes = await callWithTimeout<string | null>(
+    typeof getIdLower === "function" ? (cb: (v: string | null) => void) => getIdLower.call(purchases, cb) : undefined,
+    CAPTURE_STEP_TIMEOUT_MS,
+  );
+  if (lowerRes.outcome === "missing") {
+    attempts.push({ method: "getAppUserId", outcome: "missing" });
+  } else if (lowerRes.outcome === "timeout") {
+    attempts.push({ method: "getAppUserId", outcome: "timeout" });
+  } else if (lowerRes.outcome === "error") {
+    attempts.push({ method: "getAppUserId", outcome: "error" });
+  } else {
+    const cls = classifyId(lowerRes.value);
+    attempts.push({ method: "getAppUserId", outcome: cls });
+    if (cls === "anon" && typeof lowerRes.value === "string") {
+      return { anonymousAppUserId: lowerRes.value, capturedBy: "getAppUserId", attempts };
+    }
+  }
+
+  return {
+    // If no anon id was found we still hand back whatever non-anonymous
+    // id we saw (e.g. a real Replit user id from a previously aliased
+    // record), since the alias path will reject it itself with
+    // "already_replit_id" / "not_anon_format" — recording the value
+    // makes the trace legible.
+    anonymousAppUserId: null,
+    capturedBy: null,
+    attempts,
+  };
+}
+
+// Compact one-line summary of a capture sequence for the trace event,
+// e.g. "purchase_callback:null|getCustomerInfo:anon".
+export function summarizeCaptureSequence(result: AnonCaptureResult): string {
+  return result.attempts.map((a) => `${a.method}:${a.outcome}`).join("|").slice(0, 120);
+}
+
+// ---------------------------------------------------------------------------
+// Bridge probe (Task #486).
+//
+// A finer-grained version of the boolean "bridgePresent" check. For each
+// method the paywall depends on we record exactly how it failed —
+// "missing" (not on the instance), "null" (returned with no value),
+// "timeout" (callback never fired) or "value" (returned something) —
+// so a stuck purchase can be diagnosed from the trace alone instead of
+// requiring an over-the-shoulder TestFlight session.
+// ---------------------------------------------------------------------------
+
+export type BridgeMethodOutcome = "missing" | "null" | "timeout" | "value" | "error";
+
+export interface BridgeProbeResult {
+  bridgePresent: boolean;
+  methods: Record<string, BridgeMethodOutcome>;
+  // Compact "purchasePackage:value|restorePurchases:missing" string for the trace.
+  summary: string;
+}
+
+const PROBE_METHODS = [
+  "getCustomerInfo",
+  "getOfferings",
+  "getAppUserID",
+  "getAppUserId",
+  "logIn",
+  "purchasePackage",
+  "restorePurchases",
+] as const;
+
+export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
+  const methods: Record<string, BridgeMethodOutcome> = {};
+  const present = hasNativelyPurchases();
+  if (!present || !window.NativelyPurchases) {
+    for (const m of PROBE_METHODS) methods[m] = "missing";
+    return {
+      bridgePresent: false,
+      methods,
+      summary: PROBE_METHODS.map((m) => `${m}:missing`).join("|"),
+    };
+  }
+
+  let purchases: NativelyPurchasesInstance;
+  try {
+    purchases = new window.NativelyPurchases();
+  } catch {
+    for (const m of PROBE_METHODS) methods[m] = "error";
+    return {
+      bridgePresent: true,
+      methods,
+      summary: PROBE_METHODS.map((m) => `${m}:error`).join("|"),
+    };
+  }
+
+  // For purchase-flow methods (purchasePackage, logIn, restorePurchases)
+  // we MUST NOT actually invoke them — that would charge the user or
+  // trigger a real RC round-trip with side effects. Existence-only check.
+  const sideEffectMethods: ReadonlyArray<string> = ["purchasePackage", "logIn", "restorePurchases"];
+
+  for (const m of PROBE_METHODS) {
+    const fn = (purchases as any)[m];
+    if (typeof fn !== "function") {
+      methods[m] = "missing";
+      continue;
+    }
+    if (sideEffectMethods.includes(m)) {
+      methods[m] = "value"; // present, not invoked
+      continue;
+    }
+    // Read-only callback methods can be invoked safely.
+    const res = await callWithTimeout<unknown>(
+      (cb: (v: unknown) => void) => fn.call(purchases, cb),
+      3000,
+    );
+    if (res.outcome === "value") {
+      methods[m] = res.value == null ? "null" : "value";
+    } else {
+      methods[m] = res.outcome;
+    }
+  }
+
+  const summary = PROBE_METHODS.map((m) => `${m}:${methods[m]}`).join("|").slice(0, 240);
+  return { bridgePresent: true, methods, summary };
+}
+
+// ---------------------------------------------------------------------------
+// Install id (Task #486).
+//
+// A stable, anonymous, per-browser-install UUID kept in localStorage and
+// stamped onto every trace / probe POST. Lets us correlate a user's
+// successful purchase with the exact device install in the deployment
+// log, even after the user signs out and back in. Not a tracking id —
+// it never leaves the trace pipeline and is never written to the user
+// profile.
+// ---------------------------------------------------------------------------
+
+const INSTALL_ID_KEY = "glukky.installId";
+
+function generateUuid(): string {
+  try {
+    const c: any = (globalThis as any).crypto;
+    if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  } catch {
+    // fall through to manual generation
+  }
+  // RFC4122-ish fallback for environments without crypto.randomUUID.
+  const hex = "0123456789abcdef";
+  let s = "";
+  for (let i = 0; i < 32; i++) {
+    s += hex[Math.floor(Math.random() * 16)];
+    if (i === 7 || i === 11 || i === 15 || i === 19) s += "-";
+  }
+  return s;
+}
+
+export function getInstallId(): string {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    return "no-storage";
+  }
+  try {
+    const existing = window.localStorage.getItem(INSTALL_ID_KEY);
+    if (existing && existing.length > 0) return existing;
+    const fresh = generateUuid();
+    window.localStorage.setItem(INSTALL_ID_KEY, fresh);
+    return fresh;
+  } catch {
+    return "storage-error";
+  }
 }
 
 export function getCustomerInfoDetail(): Promise<CustomerInfoDetail> {

@@ -11,8 +11,10 @@ import {
   type FoodCombo, type InsertFoodCombo,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
+  type SubscriptionAlias,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
+  subscriptionAlias,
   users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
@@ -78,6 +80,12 @@ export interface IStorage {
   getFoodLabelByName(name: string): Promise<FoodLabel | null>;
   getFoodLabelByCombo(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodLabel | null>;
   saveFoodLabel(label: InsertFoodLabel): Promise<void>;
+
+  // Anonymous-RC-subscriber → Replit-user mapping. Persisted backstop for the
+  // self-healing entitlement verifier.
+  upsertSubscriptionAlias(anonymousAppUserId: string, replitUserId: string): Promise<void>;
+  getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
+  getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -614,6 +622,36 @@ export class DatabaseStorage implements IStorage {
 
   async saveFoodLabel(label: InsertFoodLabel): Promise<void> {
     await db.insert(foodLabels).values(label).onConflictDoNothing();
+  }
+
+  // Anonymous-RC-subscriber → Replit-user mapping. Last-write-wins on the
+  // anonymous id (it can only have ever belonged to one Replit user, and if
+  // the same anonymous record is somehow re-seen we want the most recent
+  // Replit user attached). The reverse direction (one Replit user → many
+  // anonymous ids) is normal whenever the user buys on multiple sandbox
+  // accounts or the wrapper rotates the anonymous record.
+  async upsertSubscriptionAlias(anonymousAppUserId: string, replitUserId: string): Promise<void> {
+    await db.insert(subscriptionAlias)
+      .values({ anonymousAppUserId, replitUserId })
+      .onConflictDoUpdate({
+        target: subscriptionAlias.anonymousAppUserId,
+        set: { replitUserId, updatedAt: sql`now()` },
+      });
+  }
+
+  async getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]> {
+    const rows = await db.select({ anon: subscriptionAlias.anonymousAppUserId })
+      .from(subscriptionAlias)
+      .where(eq(subscriptionAlias.replitUserId, replitUserId))
+      .orderBy(desc(subscriptionAlias.updatedAt));
+    return rows.map((r) => r.anon);
+  }
+
+  async getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null> {
+    const [row] = await db.select({ replitUserId: subscriptionAlias.replitUserId })
+      .from(subscriptionAlias)
+      .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
+    return row?.replitUserId ?? null;
   }
 }
 

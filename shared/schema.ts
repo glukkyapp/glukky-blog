@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum, serial, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp, pgEnum, serial, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -160,6 +160,25 @@ export const cycleHistory = pgTable("cycle_history", {
 export const insertCycleHistorySchema = createInsertSchema(cycleHistory).omit({ id: true, createdAt: true });
 export type InsertCycleHistory = z.infer<typeof insertCycleHistorySchema>;
 export type CycleHistoryRow = typeof cycleHistory.$inferSelect;
+
+// Anonymous-RC-subscriber → Replit-user mapping. Persists what was previously
+// only an in-memory Map so that a server restart in the middle of a sandbox
+// session does not lose the link between an anonymous `$RCAnonymousID:…`
+// purchase and the signed-in user. The verifier reads this table when the
+// primary lookup against the Replit user id finds nothing on RevenueCat —
+// that is the self-healing path that lets a single successful capture of
+// the anonymous id unlock all future verifies.
+export const subscriptionAlias = pgTable("subscription_alias", {
+  anonymousAppUserId: varchar("anonymous_app_user_id").primaryKey(),
+  replitUserId: varchar("replit_user_id").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  byReplitUser: index("subscription_alias_replit_user_idx").on(table.replitUserId),
+}));
+
+export const insertSubscriptionAliasSchema = createInsertSchema(subscriptionAlias).omit({ updatedAt: true });
+export type InsertSubscriptionAlias = z.infer<typeof insertSubscriptionAliasSchema>;
+export type SubscriptionAlias = typeof subscriptionAlias.$inferSelect;
 
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true });

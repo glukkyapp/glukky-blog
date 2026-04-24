@@ -26,6 +26,7 @@ import { canUseFeature, getGateStatus } from "./gate";
 import { ensureCompPremium, isCompUserId } from "./comp-emails";
 import {
   verifyEntitlement,
+  verifyEntitlementSelfHealing,
   invalidateEntitlementCache,
   probeSubscriber,
   fetchServerOfferings,
@@ -2923,10 +2924,23 @@ No explanation, just JSON.`,
         if (req.body?.force === true) {
           invalidateEntitlementCache(userId);
         }
-        const result = await verifyEntitlement(userId);
+        // Self-healing path: try the Replit user id first, then walk
+        // every anonymous id we've ever aliased to this user. This is
+        // the backstop for "purchase succeeded but app still locked"
+        // when the alias REST call had failed transiently or the
+        // server restarted between purchase and verify.
+        const result = await verifyEntitlementSelfHealing(
+          userId,
+          (uid) => storage.getSubscriptionAliasIdsForUser(uid),
+        );
         verifiedPremium = result.hasPremium;
         source = result.source;
         transient = result.transient;
+        if (result.aliasGranted) {
+          console.log(
+            `[premium/refresh] user=${userId} self-healed via alias (tried=${result.triedAliasIds.length})`,
+          );
+        }
       }
 
       let profile = existing;
@@ -3089,6 +3103,16 @@ No explanation, just JSON.`,
         "verdict",
         "reason",
         "priceSource",
+        // Self-healing diagnostics (Task #486)
+        "installId",
+        "verdictBadge",
+        "captureMethod",
+        "captureMethodSucceeded",
+        "captureSequence",
+        "bridgeProbe",
+        "aliasGranted",
+        "aliasTriedCount",
+        "restoreMissingMethod",
       ];
       for (const k of keys) {
         const v = rawData[k];
@@ -3231,7 +3255,12 @@ No explanation, just JSON.`,
         });
       }
 
-      const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId);
+      const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
+        // Persist the (anonymous → replit) edge to the durable
+        // subscription_alias table so the self-healing verifier can
+        // find this anonymous record even after a server restart.
+        remember: (anon, replit) => storage.upsertSubscriptionAlias(anon, replit),
+      });
       return res.status(200).json(result);
     } catch (error: any) {
       console.error("[revenuecat/alias-anonymous] error:", error?.message || error);
@@ -3280,6 +3309,11 @@ No explanation, just JSON.`,
           const r = await verifyEntitlement(userId);
           return r.hasPremium;
         },
+        // Durable backstop: when an INITIAL_PURCHASE webhook arrives
+        // referencing only an `$RCAnonymousID:…`, fall back to the
+        // persisted alias table so we still credit the right user
+        // after a server restart wiped the in-memory cache.
+        loadReplitUserIdForAnonymous: (anon) => storage.getReplitUserIdForAnonymous(anon),
       });
 
       console.log(

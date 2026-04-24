@@ -19,6 +19,13 @@ import {
   postPurchaseTrace,
   fetchRcStateDiag,
   getLastOfferingSnapshot,
+  captureAnonymousIdSequence,
+  summarizeCaptureSequence,
+  probeBridgeMethods,
+  getInstallId,
+  type AnonCaptureResult,
+  type BridgeProbeResult,
+  type CustomerInfo,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -185,6 +192,67 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     return false;
   };
 
+  // Verdict-badge classification (Task #486). One short, machine-grep-able
+  // tag per purchase / restore so the deployment log can be filtered to
+  // the exact failure mode without parsing free-form messages. Order
+  // matters — earlier branches win.
+  type VerdictBadge =
+    | "OK"
+    | "AUTH_NOT_READY"
+    | "BRIDGE_MISSING_PURCHASE"
+    | "RC_ID_NEVER_OBTAINED"
+    | "MAPPING_POST_FAILED"
+    | "VERIFY_AFTER_MAPPING_FAILED"
+    | "OTHER";
+
+  const classifyVerdict = (input: {
+    isNative: boolean;
+    identityBlocked: boolean;
+    bridgePurchasePackageMissing: boolean;
+    purchaseError: string | null;
+    capturedAnonId: string | null;
+    aliasAttempted: boolean;
+    aliasOk: boolean;
+    verified: boolean;
+    cancelled: boolean;
+  }): VerdictBadge => {
+    if (input.verified) return "OK";
+    if (input.cancelled) return "OTHER";
+    if (input.identityBlocked) return "AUTH_NOT_READY";
+    if (!input.isNative || input.bridgePurchasePackageMissing) return "BRIDGE_MISSING_PURCHASE";
+    if (
+      input.purchaseError &&
+      input.purchaseError !== "pending_verification" &&
+      input.purchaseError !== "cancelled"
+    ) {
+      return "BRIDGE_MISSING_PURCHASE";
+    }
+    if (!input.capturedAnonId) return "RC_ID_NEVER_OBTAINED";
+    if (input.aliasAttempted && !input.aliasOk) return "MAPPING_POST_FAILED";
+    if (input.aliasOk && !input.verified) return "VERIFY_AFTER_MAPPING_FAILED";
+    return "OTHER";
+  };
+
+  // Wrap postPurchaseTrace so every event in this paywall session is
+  // stamped with the install id. The server's whitelist filters it
+  // out if the field isn't expected, so this is safe to always send.
+  const traceWith = (
+    traceId: string,
+    traceStart: number,
+    installId: string,
+    phase: string,
+    data: Record<string, unknown>,
+    extras?: { clientOfferingIdentifiers?: string[]; clientPackageIdentifiers?: string[] },
+  ) => {
+    postPurchaseTrace(
+      traceId,
+      phase,
+      Date.now() - traceStart,
+      { installId, ...data },
+      extras,
+    );
+  };
+
   const handlePurchase = async () => {
     if (!isNative) return;
     if (subscribeBlockedByIdentity) return; // button is also disabled, but belt-and-suspenders
@@ -195,24 +263,33 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
     const traceId = generateTraceId();
     const traceStart = Date.now();
-    const trace = (phase: string, data: Record<string, unknown>) => {
-      postPurchaseTrace(traceId, phase, Date.now() - traceStart, data);
-    };
+    const installId = getInstallId();
+    const trace = (phase: string, data: Record<string, unknown>) =>
+      traceWith(traceId, traceStart, installId, phase, data);
     const snapshot = getLastOfferingSnapshot();
+
+    // Run the sharper bridge probe up front so the start event records
+    // exactly which methods are present / null / missing on this build.
+    // Probe is read-only and does NOT invoke purchasePackage / logIn /
+    // restorePurchases — those are existence-only checks.
+    const bridgeProbe: BridgeProbeResult = await probeBridgeMethods();
+
     // Start event includes the client-side offering identifiers so the
     // server-side project-mismatch detector has both halves of the
     // comparison. Sent on the FIRST trace post (server creates the
     // ring-buffer entry on first event).
-    postPurchaseTrace(
+    traceWith(
       traceId,
+      traceStart,
+      installId,
       "start",
-      0,
       {
         isNative,
         identityReady,
         identityError: identityError ?? null,
         bridgeMissingLogIn,
         priceSource: snapshot?.source ?? null,
+        bridgeProbe: bridgeProbe.summary,
       },
       {
         clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
@@ -221,6 +298,11 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     );
 
     let aliasSourceForToast: string | null = null;
+    let aliasAttempted = false;
+    let aliasOk = false;
+    let aliasGrantedFromServer = false;
+    let capture: AnonCaptureResult | null = null;
+    let verified = false;
 
     try {
       const result = await purchasePackage("$rc_monthly");
@@ -230,25 +312,38 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
         result.error === "pending_verification";
 
-      const anonId =
-        (result.customerInfo?.originalAppUserId ??
-          result.customerInfo?.original_app_user_id ??
-          null) || null;
+      // Multi-route capture of the anonymous RC subscriber id. We MUST
+      // get this id (or confirm it cannot be obtained) before alias /
+      // verify, otherwise the self-healing path has nothing to attach.
+      capture = await captureAnonymousIdSequence(result.customerInfo);
+      const capturedAnonId = capture.anonymousAppUserId;
+
       trace("purchase-result", {
         success: Boolean(result.success),
-        anonAppUserId: anonId,
-        isAnonymous: typeof anonId === "string" && anonId.startsWith("$RCAnonymousID:"),
+        anonAppUserId: capturedAnonId,
+        isAnonymous: capturedAnonId
+          ? capturedAnonId.startsWith("$RCAnonymousID:")
+          : false,
         pendingVerification: result.error === "pending_verification",
         bridgeError: result.error ?? null,
+        captureMethod: capture.capturedBy ?? null,
+        captureMethodSucceeded: capturedAnonId !== null,
+        captureSequence: summarizeCaptureSequence(capture),
       });
 
       // Server-side alias: when the bridge has no logIn (or even when it
       // does and the device record was anonymous before logIn), attach the
-      // anonymous RC subscriber id we just got back to the signed-in
-      // Replit user id. Failures are non-blocking — the verify-retry loop
-      // below still runs.
-      const aliasResult = await aliasAnonymousIfNeeded(result.customerInfo, userId);
+      // captured anonymous RC subscriber id to the signed-in Replit user
+      // id. We feed the captured id (which may have come from a fresh
+      // getCustomerInfo() rather than the original purchase callback) into
+      // the existing helper via a synthesised CustomerInfo wrapper.
+      const aliasInfo: CustomerInfo | null = capturedAnonId
+        ? { originalAppUserId: capturedAnonId }
+        : (result.customerInfo ?? null);
+      const aliasResult = await aliasAnonymousIfNeeded(aliasInfo, userId);
       aliasSourceForToast = aliasResult.attempted ? aliasResult.source : null;
+      aliasAttempted = aliasResult.attempted;
+      aliasOk = aliasResult.aliased;
       trace("alias", {
         aliasSource: aliasResult.source,
         aliased: aliasResult.aliased,
@@ -256,25 +351,48 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       });
 
       if (purchaseLooksDone) {
-        const verified = await verifyWithRetry(traceId, traceStart);
+        verified = await verifyWithRetry(traceId, traceStart);
         if (verified) {
-          trace("final", { verdict: "granted", reason: "verify_ok" });
+          aliasGrantedFromServer = true;
           hapticNotify("SUCCESS");
-          onPurchaseSuccess();
         } else {
-          trace("final", { verdict: "denied", reason: "verify_failed" });
           hapticNotify("ERROR");
           const cause = await buildCauseString(aliasSourceForToast);
           setError(`${withVerifierSource(t("paywall.error_purchase"))} ${cause}`);
         }
       } else if (result.error !== "cancelled") {
-        trace("final", { verdict: "denied", reason: `bridge_${result.error ?? "unknown"}` });
         hapticNotify("ERROR");
         const base = t("paywall.error_purchase");
         setError(result.error ? `${base} (bridge: ${result.error})` : base);
-      } else {
-        trace("final", { verdict: "denied", reason: "cancelled" });
       }
+
+      const verdictBadge = classifyVerdict({
+        isNative,
+        identityBlocked: subscribeBlockedByIdentity,
+        bridgePurchasePackageMissing: bridgeProbe.methods.purchasePackage === "missing",
+        purchaseError: result.error ?? null,
+        capturedAnonId,
+        aliasAttempted,
+        aliasOk,
+        verified,
+        cancelled: result.error === "cancelled",
+      });
+
+      trace("final", {
+        verdict: verified ? "granted" : "denied",
+        reason: verified
+          ? "verify_ok"
+          : result.error === "cancelled"
+            ? "cancelled"
+            : !purchaseLooksDone
+              ? `bridge_${result.error ?? "unknown"}`
+              : "verify_failed",
+        verdictBadge,
+        aliasGranted: aliasGrantedFromServer,
+        bridgeProbe: bridgeProbe.summary,
+      });
+
+      if (verified) onPurchaseSuccess();
     } finally {
       endPurchaseFlight();
       setPurchasing(false);
@@ -290,14 +408,17 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
     const traceId = generateTraceId();
     const traceStart = Date.now();
-    const trace = (phase: string, data: Record<string, unknown>) => {
-      postPurchaseTrace(traceId, phase, Date.now() - traceStart, data);
-    };
+    const installId = getInstallId();
+    const trace = (phase: string, data: Record<string, unknown>) =>
+      traceWith(traceId, traceStart, installId, phase, data);
     const snapshot = getLastOfferingSnapshot();
-    postPurchaseTrace(
+    const bridgeProbe: BridgeProbeResult = await probeBridgeMethods();
+
+    traceWith(
       traceId,
+      traceStart,
+      installId,
       "start",
-      0,
       {
         isNative,
         identityReady,
@@ -305,6 +426,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         bridgeMissingLogIn,
         priceSource: snapshot?.source ?? null,
         reason: "restore",
+        bridgeProbe: bridgeProbe.summary,
       },
       {
         clientOfferingIdentifiers: snapshot?.offeringIdentifiers ?? [],
@@ -313,50 +435,93 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     );
 
     let aliasSourceForToast: string | null = null;
+    let aliasAttempted = false;
+    let aliasOk = false;
+    let capture: AnonCaptureResult | null = null;
+    let verified = false;
 
     try {
       const result = await restorePurchases();
-      const anonId =
-        (result.customerInfo?.originalAppUserId ??
-          result.customerInfo?.original_app_user_id ??
-          null) || null;
+
+      // Even when the bridge says "restore_not_supported" or
+      // "restore_timeout" we still try a forced server-side verify
+      // because a previous successful purchase from this install may
+      // already have been aliased and just needs the verifier to
+      // re-read it.
+      capture = await captureAnonymousIdSequence(result.customerInfo);
+      const capturedAnonId = capture.anonymousAppUserId;
+
       trace("purchase-result", {
         success: Boolean(result.success),
-        anonAppUserId: anonId,
-        isAnonymous: typeof anonId === "string" && anonId.startsWith("$RCAnonymousID:"),
+        anonAppUserId: capturedAnonId,
+        isAnonymous: capturedAnonId
+          ? capturedAnonId.startsWith("$RCAnonymousID:")
+          : false,
         bridgeError: result.error ?? null,
+        captureMethod: capture.capturedBy ?? null,
+        captureMethodSucceeded: capturedAnonId !== null,
+        captureSequence: summarizeCaptureSequence(capture),
+        restoreMissingMethod: result.error === "restore_not_supported",
       });
 
-      // Don't trust customerInfo from the device for unlock decisions; let the
-      // server verify with RevenueCat. We only use the device result to skip
-      // the round-trip when it clearly shows nothing was restored.
-      if (result.success) {
+      const aliasInfo: CustomerInfo | null = capturedAnonId
+        ? { originalAppUserId: capturedAnonId }
+        : (result.customerInfo ?? null);
+
+      if (result.success || capturedAnonId) {
         // Same server-side alias path as purchase: any anonymous record
         // surfaced by Restore should be attached to the signed-in user.
-        const aliasResult = await aliasAnonymousIfNeeded(result.customerInfo, userId);
+        const aliasResult = await aliasAnonymousIfNeeded(aliasInfo, userId);
         aliasSourceForToast = aliasResult.attempted ? aliasResult.source : null;
+        aliasAttempted = aliasResult.attempted;
+        aliasOk = aliasResult.aliased;
         trace("alias", {
           aliasSource: aliasResult.source,
           aliased: aliasResult.aliased,
           aliasHttpStatus: aliasResult.httpStatus ?? null,
         });
-        const verified = await verifyWithRetry(traceId, traceStart);
-        if (verified) {
-          trace("final", { verdict: "granted", reason: "verify_ok" });
-          hapticNotify("SUCCESS");
-          onPurchaseSuccess();
-        } else {
-          trace("final", { verdict: "denied", reason: "verify_failed" });
-          hapticNotify("ERROR");
-          const cause = await buildCauseString(aliasSourceForToast);
-          setError(`${withVerifierSource(t("paywall.error_restore"))} ${cause}`);
-        }
+      }
+
+      // Always run the verify retry loop on Restore, even when the
+      // bridge call itself failed — the server's self-healing verifier
+      // can still grant via a previously persisted alias.
+      verified = await verifyWithRetry(traceId, traceStart);
+      if (verified) {
+        hapticNotify("SUCCESS");
+      } else if (result.success) {
+        hapticNotify("ERROR");
+        const cause = await buildCauseString(aliasSourceForToast);
+        setError(`${withVerifierSource(t("paywall.error_restore"))} ${cause}`);
       } else {
-        trace("final", { verdict: "denied", reason: `bridge_${result.error ?? "unknown"}` });
         hapticNotify("ERROR");
         const base = t("paywall.error_restore");
         setError(result.error ? `${base} (bridge: ${result.error})` : base);
       }
+
+      const verdictBadge = classifyVerdict({
+        isNative,
+        identityBlocked: false, // Restore is allowed even with logIn missing
+        bridgePurchasePackageMissing: bridgeProbe.methods.purchasePackage === "missing",
+        purchaseError: result.error ?? null,
+        capturedAnonId,
+        aliasAttempted,
+        aliasOk,
+        verified,
+        cancelled: false,
+      });
+
+      trace("final", {
+        verdict: verified ? "granted" : "denied",
+        reason: verified
+          ? "verify_ok"
+          : result.success
+            ? "verify_failed"
+            : `bridge_${result.error ?? "unknown"}`,
+        verdictBadge,
+        bridgeProbe: bridgeProbe.summary,
+      });
+
+      if (verified) onPurchaseSuccess();
     } finally {
       endPurchaseFlight();
       setRestoring(false);

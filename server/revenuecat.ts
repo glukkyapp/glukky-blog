@@ -73,7 +73,7 @@ function evaluatePayload(payload: RcSubscriberResponse): boolean {
 
 export interface VerifyResult {
   hasPremium: boolean;
-  source: "cache" | "revenuecat" | "not_found" | "no_key" | "error_transient" | "error";
+  source: "cache" | "revenuecat" | "not_found" | "no_key" | "error_transient" | "error" | "alias";
   // True when the underlying verifier failed in a way that may resolve
   // on retry (5xx, 429, network/parse). False when the answer is
   // authoritative (200 from RC, 404 from RC, comp user, no key).
@@ -163,6 +163,69 @@ export function invalidateEntitlementCache(appUserId?: string): void {
   else cache.clear();
 }
 
+// Self-healing wrapper around verifyEntitlement. Tries the Replit user id
+// first; if RC has no entitlement under that id, walks every anonymous id
+// previously aliased to the same Replit user (loaded from the persistent
+// `subscription_alias` table via the supplied loader) and verifies each
+// one in turn. As soon as any anonymous id reports premium, we treat the
+// user as premium and invalidate the negative cache for the Replit id so
+// the next direct verify also sees it (RC's alias merge is eventually
+// consistent on their side, but our subscription_alias mapping is the
+// durable record on ours).
+//
+// This is the fix for the "purchase succeeded, app still locked" loop
+// when the alias REST call had failed transiently or the server had
+// restarted between purchase and verify.
+export async function verifyEntitlementSelfHealing(
+  replitUserId: string,
+  loadAnonAliases: (replitUserId: string) => Promise<string[]>,
+): Promise<VerifyResult & { aliasGranted: boolean; triedAliasIds: string[] }> {
+  const primary = await verifyEntitlement(replitUserId);
+  if (primary.hasPremium) {
+    return { ...primary, aliasGranted: false, triedAliasIds: [] };
+  }
+  let aliases: string[] = [];
+  try {
+    aliases = await loadAnonAliases(replitUserId);
+  } catch (err: any) {
+    console.warn(
+      `[revenuecat] verifySelfHealing: alias load failed user=${replitUserId}: ${err?.message || err}`,
+    );
+  }
+  if (aliases.length === 0) {
+    return { ...primary, aliasGranted: false, triedAliasIds: [] };
+  }
+
+  let lastTransient = primary.transient;
+  for (const anon of aliases) {
+    const r = await verifyEntitlement(anon);
+    if (r.hasPremium) {
+      // Drop the negative cache for the Replit user so a subsequent direct
+      // verify (e.g. from a /api/me call) returns true without going
+      // through this self-healing path.
+      invalidateEntitlementCache(replitUserId);
+      console.log(
+        `[revenuecat] verifySelfHealing granted user=${replitUserId} via alias=${anon}`,
+      );
+      return {
+        hasPremium: true,
+        source: "alias",
+        transient: false,
+        aliasGranted: true,
+        triedAliasIds: aliases,
+      };
+    }
+    if (r.transient) lastTransient = true;
+  }
+  return {
+    hasPremium: false,
+    source: primary.source,
+    transient: lastTransient,
+    aliasGranted: false,
+    triedAliasIds: aliases,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Server-side aliasing of an anonymous RC subscriber to a Replit user id.
 //
@@ -180,9 +243,10 @@ export function looksLikeAnonymousAppUserId(value: unknown): value is string {
   return typeof value === "string" && value.startsWith(ANON_ID_PREFIX) && value.length > ANON_ID_PREFIX.length;
 }
 
-// Small in-memory mapping anonymous_app_user_id → replit_user_id, used as a
-// webhook fallback when an INITIAL_PURCHASE arrives before the client has
-// finished the alias round-trip. Last-write-wins, expires after a few days.
+// In-memory cache of anonymous_app_user_id → replit_user_id, used as a
+// hot-path read in front of the persistent `subscription_alias` table.
+// The DB is the source of truth; the cache is just a TTL-bounded view of
+// recently observed mappings to absorb webhook bursts. Last-write-wins.
 const ALIAS_MAPPING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const aliasMapping = new Map<string, { replitUserId: string; expiresAt: number }>();
 
@@ -193,6 +257,9 @@ function rememberAliasMapping(anonymousId: string, replitUserId: string): void {
   });
 }
 
+// Synchronous in-memory-only lookup. Kept exported for legacy callers and
+// tests; production code should prefer `lookupAliasMappingAsync` so it
+// also consults the persistent table after a server restart.
 export function lookupAliasMapping(anonymousId: string): string | null {
   const entry = aliasMapping.get(anonymousId);
   if (!entry) return null;
@@ -201,6 +268,23 @@ export function lookupAliasMapping(anonymousId: string): string | null {
     return null;
   }
   return entry.replitUserId;
+}
+
+export async function lookupAliasMappingAsync(
+  anonymousId: string,
+  loader?: (id: string) => Promise<string | null>,
+): Promise<string | null> {
+  const cached = lookupAliasMapping(anonymousId);
+  if (cached) return cached;
+  if (!loader) return null;
+  try {
+    const v = await loader(anonymousId);
+    if (v) rememberAliasMapping(anonymousId, v);
+    return v ?? null;
+  } catch (err: any) {
+    console.warn(`[revenuecat] alias DB lookup failed anon=${anonymousId}: ${err?.message || err}`);
+    return null;
+  }
 }
 
 // Exposed for tests so we can reset state between cases.
@@ -223,9 +307,18 @@ export interface AliasResult {
   errorMessage?: string;
 }
 
+export interface AliasPersistDeps {
+  // Called after a successful RC alias merge to record the
+  // (anonymous_id → replit_user_id) edge in the persistent
+  // `subscription_alias` table. Errors are swallowed and logged so a
+  // DB hiccup doesn't fail the alias REST call from the client's POV.
+  remember?: (anonymousId: string, replitUserId: string) => Promise<void>;
+}
+
 export async function aliasAnonymousAppUserId(
   anonymousId: string,
   replitUserId: string,
+  persist?: AliasPersistDeps,
 ): Promise<AliasResult> {
   if (!looksLikeAnonymousAppUserId(anonymousId)) {
     return { aliased: false, source: "invalid_anonymous_id", transient: false };
@@ -294,11 +387,21 @@ export async function aliasAnonymousAppUserId(
     }
 
     // Success. Invalidate the entitlement cache for the Replit user id so the
-    // next verify round-trip sees the merged subscriber, and remember the
-    // mapping so a webhook arriving before the next client refresh can still
-    // route the entitlement to the correct user.
+    // next verify round-trip sees the merged subscriber, remember the
+    // mapping in the in-memory cache, and persist it to the DB so it
+    // survives a server restart (the self-healing verifier reads from
+    // there when the primary RC lookup finds nothing).
     invalidateEntitlementCache(replitUserId);
     rememberAliasMapping(anonymousId, replitUserId);
+    if (persist?.remember) {
+      try {
+        await persist.remember(anonymousId, replitUserId);
+      } catch (err: any) {
+        console.warn(
+          `[revenuecat] alias persist failed anon=${anonymousId} replit=${replitUserId}: ${err?.message || err}`,
+        );
+      }
+    }
 
     console.log(
       `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status}`,
@@ -614,6 +717,10 @@ function cancellationShouldRevoke(event: RevenueCatWebhookEvent): boolean {
 export interface ApplyEventDeps {
   setPremium: (userId: string, value: boolean) => Promise<boolean>;
   reverify?: (userId: string) => Promise<boolean>;
+  // Optional DB-backed loader so an INITIAL_PURCHASE arriving with only
+  // anonymous candidate ids can still resolve to a real Replit user id
+  // even after a server restart cleared the in-memory alias cache.
+  loadReplitUserIdForAnonymous?: (anonymousId: string) => Promise<string | null>;
 }
 
 export async function applyWebhookEvent(
@@ -656,7 +763,7 @@ export async function applyWebhookEvent(
     candidates.every(looksLikeAnonymousAppUserId)
   ) {
     for (const anon of candidates) {
-      const mapped = lookupAliasMapping(anon);
+      const mapped = await lookupAliasMappingAsync(anon, deps.loadReplitUserIdForAnonymous);
       if (mapped && !candidates.includes(mapped)) {
         candidates.push(mapped);
       }
