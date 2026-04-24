@@ -82,11 +82,12 @@ export interface IStorage {
   saveFoodLabel(label: InsertFoodLabel): Promise<void>;
 
   // Anonymous-RC-subscriber → Replit-user mapping. Persisted backstop for the
-  // self-healing entitlement verifier. Records start as
-  // `verified=false` (optimistic, client-supplied anon id) and are
-  // promoted to `verified=true` once RevenueCat confirms the alias
-  // (REST 2xx, or matching webhook). Self-healing reads ONLY
-  // verified rows; unverified rows are kept for diagnostics.
+  // self-healing entitlement verifier. Every persisted row drives
+  // unlock on the next verify, regardless of `verified` (Option A,
+  // task #486). `verified` is telemetry: false on first persist,
+  // flipped to true when RC's alias REST 2xx (or a matching
+  // webhook) confirms the merge. Cross-user safety is provided
+  // by the first-writer-wins atomic upsert below.
   upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
