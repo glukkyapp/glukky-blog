@@ -478,7 +478,10 @@ export type AnonCaptureMethod =
   | "purchase_callback"
   | "getCustomerInfo"
   | "getAppUserID"
-  | "getAppUserId";
+  | "getAppUserId"
+  | "getOriginalAppUserId"
+  | "getAnonymousId"
+  | "getAnonymousID";
 
 export interface AnonCaptureAttempt {
   method: AnonCaptureMethod;
@@ -626,6 +629,42 @@ export async function captureAnonymousIdSequence(
     attempts.push({ method: "getAppUserId", outcome: cls });
     if (cls === "anon" && typeof lowerRes.value === "string") {
       return { anonymousAppUserId: lowerRes.value, capturedBy: "getAppUserId", attempts };
+    }
+  }
+
+  // 5) Alternative accessor names used by other RevenueCat wrappers
+  // (Cordova, Capacitor, React Native variants). The probe surfaces
+  // these too, but the original capture sequence ignored them — that
+  // can leave the unlock failure unsolved when ONLY one of these is
+  // exposed. Same per-step timeout + outcome recording. First anon
+  // hit wins.
+  const ALT_ACCESSORS: AnonCaptureMethod[] = [
+    "getOriginalAppUserId",
+    "getAnonymousId",
+    "getAnonymousID",
+  ];
+  for (const method of ALT_ACCESSORS) {
+    const fn = (purchases as any)[method];
+    const res = await callWithTimeout<string | null>(
+      typeof fn === "function" ? (cb: (v: string | null) => void) => fn.call(purchases, cb) : undefined,
+      CAPTURE_STEP_TIMEOUT_MS,
+    );
+    if (res.outcome === "missing") {
+      attempts.push({ method, outcome: "missing" });
+      continue;
+    }
+    if (res.outcome === "timeout") {
+      attempts.push({ method, outcome: "timeout" });
+      continue;
+    }
+    if (res.outcome === "error") {
+      attempts.push({ method, outcome: "error" });
+      continue;
+    }
+    const cls = classifyId(res.value);
+    attempts.push({ method, outcome: cls });
+    if (cls === "anon" && typeof res.value === "string") {
+      return { anonymousAppUserId: res.value, capturedBy: method, attempts };
     }
   }
 
