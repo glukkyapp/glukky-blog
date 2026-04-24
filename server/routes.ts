@@ -3185,8 +3185,28 @@ No explanation, just JSON.`,
         },
       );
 
+      // Format trace event values for the deployment log line.
+      // Primitives are inlined as-is; structured values (e.g. the
+      // bridge probe object) are JSON-stringified and truncated so a
+      // single trace line stays readable in the log viewer but still
+      // surfaces per-method outcome / returned-value fields directly,
+      // instead of the useless "[object Object]" that `${v}` would
+      // produce. Truncation cap is generous (300 chars) since the
+      // payload itself is already sanitised + size-bounded upstream.
+      const formatLogValue = (v: unknown): string => {
+        if (v === null || v === undefined) return "null";
+        if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+          return String(v);
+        }
+        try {
+          const s = JSON.stringify(v);
+          return s.length > 300 ? `${s.slice(0, 297)}...` : s;
+        } catch {
+          return "[unserializable]";
+        }
+      };
       const dataStr = Object.entries(data)
-        .map(([k, v]) => `${k}=${v == null ? "null" : v}`)
+        .map(([k, v]) => `${k}=${formatLogValue(v)}`)
         .join(" ");
       console.log(
         `[purchase-trace id=${id} t=${t ?? 0}ms] ${phase} user=${userId}` +

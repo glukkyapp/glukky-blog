@@ -335,14 +335,18 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       // Multi-route capture of the anonymous RC subscriber id. We MUST
       // get this id (or confirm it cannot be obtained) before alias /
       // verify, otherwise the self-healing path has nothing to attach.
+      // Capture itself runs each accessor in PARALLEL bounded by a
+      // single timeout, so it adds at most one timeout window — not
+      // `count × timeout` — to the unlock path.
       capture = await captureAnonymousIdSequence(result.customerInfo);
       const capturedAnonId = capture.anonymousAppUserId;
 
-      // Re-run the bridge probe AFTER the capture sequence so the trace
-      // captures the wrapper's state at the moment of the charge — some
-      // wrappers only initialise `getCustomerInfo` / `getAppUserID`
-      // after the first purchase callback resolves.
-      const bridgeProbeAfter: BridgeProbeResult = await probeBridgeMethods();
+      // The post-capture bridge probe used to be awaited here, which
+      // could add seconds to the unlock path. It is now fired in the
+      // background after the `final` event — see the `probe-after`
+      // trace below — and the verdict-badge check uses the BEFORE
+      // probe, since `purchasePackage` membership on the wrapper does
+      // not change between two adjacent calls within one purchase.
 
       trace("purchase-result", {
         success: Boolean(result.success),
@@ -355,10 +359,6 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         captureMethod: capture.capturedBy ?? null,
         captureMethodSucceeded: capturedAnonId !== null,
         captureSequence: summarizeCaptureSequence(capture),
-        // Full structured probe — server stores per-method outcome
-        // and returned-value maps so /api/diag/rc-state can render
-        // them with full fidelity.
-        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       // Server-side alias: when the bridge has no logIn (or even when it
@@ -405,7 +405,11 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       const verdictBadge = classifyVerdict({
         isNative,
         identityBlocked: subscribeBlockedByIdentity,
-        bridgePurchasePackageMissing: bridgeProbeAfter.methods.purchasePackage === "missing",
+        // `purchasePackage` membership on the wrapper does not change
+        // mid-purchase, so the BEFORE probe is authoritative for the
+        // verdict badge. This avoids waiting on a second probe round-
+        // trip on the unlock path.
+        bridgePurchasePackageMissing: bridgeProbe.methods.purchasePackage === "missing",
         purchaseError: result.error ?? null,
         capturedAnonId,
         aliasAttempted,
@@ -428,10 +432,22 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         verifySource,
         bridgeProbe: bridgeProbe.summary,
         bridgeProbeBefore: bridgeProbe,
-        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       if (verified) onPurchaseSuccess();
+
+      // Fire-and-forget post-purchase probe so we still record what
+      // the wrapper looked like AFTER the charge — useful for diagnosing
+      // wrappers that only initialise certain accessors after the first
+      // purchase callback resolves — without blocking unlock latency.
+      // Errors here are intentionally swallowed.
+      void probeBridgeMethods()
+        .then((bridgeProbeAfter) => {
+          trace("probe-after", { bridgeProbeAfter });
+        })
+        .catch(() => {
+          /* probe-after is best-effort, never gates unlock */
+        });
     } finally {
       endPurchaseFlight();
       setPurchasing(false);
@@ -490,7 +506,11 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       // re-read it.
       capture = await captureAnonymousIdSequence(result.customerInfo);
       const capturedAnonId = capture.anonymousAppUserId;
-      const bridgeProbeAfter: BridgeProbeResult = await probeBridgeMethods();
+
+      // Post-capture probe is fire-and-forget after `final` (see
+      // below) so it does not block the unlock path. The verdict
+      // badge uses the BEFORE probe — `purchasePackage` membership
+      // does not change between two adjacent calls.
 
       trace("purchase-result", {
         success: Boolean(result.success),
@@ -503,7 +523,6 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         captureMethodSucceeded: capturedAnonId !== null,
         captureSequence: summarizeCaptureSequence(capture),
         restoreMissingMethod: result.error === "restore_not_supported",
-        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       const aliasInfo: CustomerInfo | null = capturedAnonId
@@ -549,7 +568,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       const verdictBadge = classifyVerdict({
         isNative,
         identityBlocked: false, // Restore is allowed even with logIn missing
-        bridgePurchasePackageMissing: bridgeProbeAfter.methods.purchasePackage === "missing",
+        // BEFORE probe is sufficient — purchasePackage membership on
+        // the wrapper does not change between two adjacent calls.
+        bridgePurchasePackageMissing: bridgeProbe.methods.purchasePackage === "missing",
         purchaseError: result.error ?? null,
         capturedAnonId,
         aliasAttempted,
@@ -570,10 +591,19 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         verifySource,
         bridgeProbe: bridgeProbe.summary,
         bridgeProbeBefore: bridgeProbe,
-        bridgeProbeAfter: bridgeProbeAfter,
       });
 
       if (verified) onPurchaseSuccess();
+
+      // Fire-and-forget post-restore probe (same pattern as purchase
+      // flow). Never gates unlock latency.
+      void probeBridgeMethods()
+        .then((bridgeProbeAfter) => {
+          trace("probe-after", { bridgeProbeAfter });
+        })
+        .catch(() => {
+          /* probe-after is best-effort */
+        });
     } finally {
       endPurchaseFlight();
       setRestoring(false);

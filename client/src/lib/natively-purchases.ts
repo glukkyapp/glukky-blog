@@ -538,6 +538,45 @@ function callWithTimeout<T>(
   });
 }
 
+// Typed view over the wrapper instance — every accessor we attempt is
+// declared optional so we can read it without `any` and the missing
+// case is naturally a `typeof === "function"` check. The accessors
+// share a single callback signature: `(cb: (value) => void) => void`.
+type StringIdAccessor = (cb: (v: string | null) => void) => void;
+type CustomerInfoAccessor = (cb: (v: CustomerInfo | null) => void) => void;
+
+interface BridgeAccessors {
+  getCustomerInfo?: CustomerInfoAccessor;
+  getAppUserID?: StringIdAccessor;
+  getAppUserId?: StringIdAccessor;
+  getOriginalAppUserId?: StringIdAccessor;
+  getAnonymousId?: StringIdAccessor;
+  getAnonymousID?: StringIdAccessor;
+}
+
+// Bind a bridge accessor to its `this` so we can pass it through
+// `callWithTimeout`. Returns `undefined` if the method does not exist
+// (the wrapper version on this device does not ship it). Generic over
+// the value type (string id vs CustomerInfo).
+function bindAccessor<T>(
+  instance: BridgeAccessors,
+  fn: ((cb: (v: T) => void) => void) | undefined,
+): ((cb: (v: T) => void) => void) | undefined {
+  if (typeof fn !== "function") return undefined;
+  return (cb: (v: T) => void) => fn.call(instance, cb);
+}
+
+// Order matters: when more than one accessor returns an anon id in
+// parallel we pick the winner by this priority. `purchase_callback`
+// is handled before the parallel block.
+const STRING_ACCESSOR_PRIORITY: Array<keyof BridgeAccessors> = [
+  "getAppUserID",
+  "getAppUserId",
+  "getOriginalAppUserId",
+  "getAnonymousId",
+  "getAnonymousID",
+];
+
 export async function captureAnonymousIdSequence(
   purchaseCallbackInfo: CustomerInfo | null | undefined,
 ): Promise<AnonCaptureResult> {
@@ -551,129 +590,80 @@ export async function captureAnonymousIdSequence(
     return { anonymousAppUserId: fromCallback, capturedBy: "purchase_callback", attempts };
   }
 
-  // 2) Fresh getCustomerInfo() round-trip. Most reliable next step
-  // because by the time we get here the wrapper has had its callback
-  // chain settle.
+  // 2) Bridge missing → record every remaining method as missing for
+  // a legible trace and bail.
+  const allBridgeMethods: AnonCaptureMethod[] = [
+    "getCustomerInfo",
+    ...STRING_ACCESSOR_PRIORITY,
+  ];
   if (!hasNativelyPurchases() || !window.NativelyPurchases) {
-    attempts.push({ method: "getCustomerInfo", outcome: "missing" });
-    attempts.push({ method: "getAppUserID", outcome: "missing" });
-    attempts.push({ method: "getAppUserId", outcome: "missing" });
+    for (const method of allBridgeMethods) attempts.push({ method, outcome: "missing" });
     return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
   }
 
   let purchases: NativelyPurchasesInstance | null = null;
   try {
     purchases = new window.NativelyPurchases();
-  } catch (e: any) {
-    attempts.push({ method: "getCustomerInfo", outcome: "error" });
-    attempts.push({ method: "getAppUserID", outcome: "error" });
-    attempts.push({ method: "getAppUserId", outcome: "error" });
+  } catch {
+    for (const method of allBridgeMethods) attempts.push({ method, outcome: "error" });
     return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
   }
 
-  const ciFnRaw = (purchases as any).getCustomerInfo;
-  const ciFn = typeof ciFnRaw === "function"
-    ? (cb: (v: CustomerInfo | null) => void) => ciFnRaw.call(purchases, cb)
-    : undefined;
-  const ciRes = await callWithTimeout<CustomerInfo | null>(ciFn, CAPTURE_STEP_TIMEOUT_MS);
-  let ciId: string | null = null;
-  if (ciRes.outcome === "missing") {
-    attempts.push({ method: "getCustomerInfo", outcome: "missing" });
-  } else if (ciRes.outcome === "timeout") {
-    attempts.push({ method: "getCustomerInfo", outcome: "timeout" });
-  } else if (ciRes.outcome === "error") {
-    attempts.push({ method: "getCustomerInfo", outcome: "error" });
-  } else {
-    ciId = readOriginalAppUserId(ciRes.value ?? null);
-    attempts.push({ method: "getCustomerInfo", outcome: classifyId(ciId) });
-    if (ciId && looksAnonymous(ciId)) {
-      return { anonymousAppUserId: ciId, capturedBy: "getCustomerInfo", attempts };
-    }
-  }
+  // Typed view of the wrapper instance — no `any` cast.
+  const bridge = purchases as unknown as BridgeAccessors;
 
-  // 3) getAppUserID — the canonical RC accessor. Only present on newer
-  // wrapper builds; missing is expected and not an error.
-  const getIdUpper = (purchases as any).getAppUserID;
-  const upperRes = await callWithTimeout<string | null>(
-    typeof getIdUpper === "function" ? (cb: (v: string | null) => void) => getIdUpper.call(purchases, cb) : undefined,
+  // 3) Fire every read-only accessor in parallel. Each call is bounded
+  // by `CAPTURE_STEP_TIMEOUT_MS`, so the whole capture step is bounded
+  // by ~CAPTURE_STEP_TIMEOUT_MS regardless of how many wrapper
+  // accessors are present, instead of `count × timeout` worst-case.
+  // This keeps the unlock path fast on partial bridges.
+  const ciPromise = callWithTimeout<CustomerInfo | null>(
+    bindAccessor<CustomerInfo | null>(bridge, bridge.getCustomerInfo),
     CAPTURE_STEP_TIMEOUT_MS,
   );
-  if (upperRes.outcome === "missing") {
-    attempts.push({ method: "getAppUserID", outcome: "missing" });
-  } else if (upperRes.outcome === "timeout") {
-    attempts.push({ method: "getAppUserID", outcome: "timeout" });
-  } else if (upperRes.outcome === "error") {
-    attempts.push({ method: "getAppUserID", outcome: "error" });
-  } else {
-    const cls = classifyId(upperRes.value);
-    attempts.push({ method: "getAppUserID", outcome: cls });
-    if (cls === "anon" && typeof upperRes.value === "string") {
-      return { anonymousAppUserId: upperRes.value, capturedBy: "getAppUserID", attempts };
-    }
-  }
-
-  // 4) getAppUserId — alternate spelling some wrapper versions ship.
-  const getIdLower = (purchases as any).getAppUserId;
-  const lowerRes = await callWithTimeout<string | null>(
-    typeof getIdLower === "function" ? (cb: (v: string | null) => void) => getIdLower.call(purchases, cb) : undefined,
-    CAPTURE_STEP_TIMEOUT_MS,
-  );
-  if (lowerRes.outcome === "missing") {
-    attempts.push({ method: "getAppUserId", outcome: "missing" });
-  } else if (lowerRes.outcome === "timeout") {
-    attempts.push({ method: "getAppUserId", outcome: "timeout" });
-  } else if (lowerRes.outcome === "error") {
-    attempts.push({ method: "getAppUserId", outcome: "error" });
-  } else {
-    const cls = classifyId(lowerRes.value);
-    attempts.push({ method: "getAppUserId", outcome: cls });
-    if (cls === "anon" && typeof lowerRes.value === "string") {
-      return { anonymousAppUserId: lowerRes.value, capturedBy: "getAppUserId", attempts };
-    }
-  }
-
-  // 5) Alternative accessor names used by other RevenueCat wrappers
-  // (Cordova, Capacitor, React Native variants). The probe surfaces
-  // these too, but the original capture sequence ignored them — that
-  // can leave the unlock failure unsolved when ONLY one of these is
-  // exposed. Same per-step timeout + outcome recording. First anon
-  // hit wins.
-  const ALT_ACCESSORS: AnonCaptureMethod[] = [
-    "getOriginalAppUserId",
-    "getAnonymousId",
-    "getAnonymousID",
-  ];
-  for (const method of ALT_ACCESSORS) {
-    const fn = (purchases as any)[method];
-    const res = await callWithTimeout<string | null>(
-      typeof fn === "function" ? (cb: (v: string | null) => void) => fn.call(purchases, cb) : undefined,
+  const stringPromises = STRING_ACCESSOR_PRIORITY.map((name) =>
+    callWithTimeout<string | null>(
+      bindAccessor<string | null>(bridge, bridge[name] as StringIdAccessor | undefined),
       CAPTURE_STEP_TIMEOUT_MS,
-    );
-    if (res.outcome === "missing") {
-      attempts.push({ method, outcome: "missing" });
-      continue;
+    ),
+  );
+  const [ciRes, ...stringResList] = await Promise.all([ciPromise, ...stringPromises]);
+
+  // Resolve outcomes in priority order: getCustomerInfo first (most
+  // reliable + carries the originalAppUserId field), then each string
+  // accessor in declared priority. First anon hit wins.
+  let captured: { id: string; method: AnonCaptureMethod } | null = null;
+
+  if (ciRes.outcome === "missing" || ciRes.outcome === "timeout" || ciRes.outcome === "error") {
+    attempts.push({ method: "getCustomerInfo", outcome: ciRes.outcome });
+  } else {
+    const ciId = readOriginalAppUserId(ciRes.value ?? null);
+    attempts.push({ method: "getCustomerInfo", outcome: classifyId(ciId) });
+    if (!captured && ciId && looksAnonymous(ciId)) {
+      captured = { id: ciId, method: "getCustomerInfo" };
     }
-    if (res.outcome === "timeout") {
-      attempts.push({ method, outcome: "timeout" });
-      continue;
-    }
-    if (res.outcome === "error") {
-      attempts.push({ method, outcome: "error" });
-      continue;
+  }
+
+  STRING_ACCESSOR_PRIORITY.forEach((name, i) => {
+    const res = stringResList[i];
+    const method = name as AnonCaptureMethod;
+    if (res.outcome === "missing" || res.outcome === "timeout" || res.outcome === "error") {
+      attempts.push({ method, outcome: res.outcome });
+      return;
     }
     const cls = classifyId(res.value);
     attempts.push({ method, outcome: cls });
-    if (cls === "anon" && typeof res.value === "string") {
-      return { anonymousAppUserId: res.value, capturedBy: method, attempts };
+    if (!captured && cls === "anon" && typeof res.value === "string") {
+      captured = { id: res.value, method };
     }
+  });
+
+  if (captured !== null) {
+    const hit = captured as { id: string; method: AnonCaptureMethod };
+    return { anonymousAppUserId: hit.id, capturedBy: hit.method, attempts };
   }
 
   return {
-    // If no anon id was found we still hand back whatever non-anonymous
-    // id we saw (e.g. a real Replit user id from a previously aliased
-    // record), since the alias path will reject it itself with
-    // "already_replit_id" / "not_anon_format" — recording the value
-    // makes the trace legible.
     anonymousAppUserId: null,
     capturedBy: null,
     attempts,
@@ -846,9 +836,13 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
 
 const INSTALL_ID_KEY = "glukky.installId";
 
+interface CryptoLike {
+  randomUUID?: () => string;
+}
+
 function generateUuid(): string {
   try {
-    const c: any = (globalThis as any).crypto;
+    const c = (globalThis as { crypto?: CryptoLike }).crypto;
     if (c && typeof c.randomUUID === "function") return c.randomUUID();
   } catch {
     // fall through to manual generation
