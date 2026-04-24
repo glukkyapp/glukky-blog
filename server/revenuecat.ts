@@ -301,18 +301,38 @@ export interface AliasResult {
     | "invalid_replit_user_id"
     | "not_found"
     | "error_transient"
-    | "error";
+    | "error"
+    // RC alias merge succeeded but storage refused the
+    // (anonymous_id → replit_user_id) write because a different
+    // user already owns the row. Not transient — caller must not
+    // retry without resolving the conflict.
+    | "owner_mismatch"
+    // RC alias merge succeeded but the storage write failed
+    // transiently (DB hiccup, network error). Caller may retry.
+    | "persist_error";
   transient: boolean;
   httpStatus?: number;
   errorMessage?: string;
 }
 
+export interface AliasPersistOutcome {
+  // True only when the storage layer atomically inserted a new row OR
+  // refreshed an existing row owned by the SAME `replit_user_id`.
+  // False on `owner_mismatch` (a different user already owns the
+  // anonymous id) or on a transient persist error.
+  stored: boolean;
+  reason: "ok_new" | "ok_same_owner" | "owner_mismatch" | "error";
+}
+
 export interface AliasPersistDeps {
   // Called after a successful RC alias merge to record the
   // (anonymous_id → replit_user_id) edge in the persistent
-  // `subscription_alias` table. Errors are swallowed and logged so a
-  // DB hiccup doesn't fail the alias REST call from the client's POV.
-  remember?: (anonymousId: string, replitUserId: string) => Promise<void>;
+  // `subscription_alias` table. The caller MUST report whether the
+  // row was actually stored — `aliasAnonymousAppUserId` only
+  // populates the in-memory mapping cache when persistence is
+  // confirmed, so a race-rejected ownership conflict cannot leak a
+  // false-positive cache entry.
+  remember?: (anonymousId: string, replitUserId: string) => Promise<AliasPersistOutcome>;
 }
 
 export async function aliasAnonymousAppUserId(
@@ -386,36 +406,62 @@ export async function aliasAnonymousAppUserId(
       };
     }
 
-    // Success. Invalidate the entitlement cache for the Replit user id so the
-    // next verify round-trip sees the merged subscriber, remember the
-    // mapping in the in-memory cache, and persist it to the DB so it
-    // survives a server restart (the self-healing verifier reads from
-    // there when the primary RC lookup finds nothing).
+    // RC merge succeeded. Now do persistence FIRST and only populate
+    // the in-memory mapping cache on confirmed success — otherwise a
+    // race-rejected ownership conflict (handled atomically by the
+    // storage layer) could leak a stale entry that would later
+    // misroute a webhook fallback.
     invalidateEntitlementCache(replitUserId);
-    rememberAliasMapping(anonymousId, replitUserId);
+
+    let persistOutcome: AliasPersistOutcome = { stored: true, reason: "ok_new" };
     if (persist?.remember) {
       try {
-        await persist.remember(anonymousId, replitUserId);
-      } catch (err: any) {
+        persistOutcome = await persist.remember(anonymousId, replitUserId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.warn(
-          `[revenuecat] alias persist failed anon=${anonymousId} replit=${replitUserId}: ${err?.message || err}`,
+          `[revenuecat] alias persist failed anon=${anonymousId} replit=${replitUserId}: ${msg}`,
         );
+        persistOutcome = { stored: false, reason: "error" };
       }
     }
 
-    console.log(
-      `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status}`,
-    );
-    return { aliased: true, source: "ok", transient: false, httpStatus: resp.status };
-  } catch (err: any) {
+    if (persistOutcome.stored) {
+      // Cache only when persistence is confirmed. The in-memory cache
+      // never holds an entry the DB would reject.
+      rememberAliasMapping(anonymousId, replitUserId);
+      console.log(
+        `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status} persist=${persistOutcome.reason}`,
+      );
+      return { aliased: true, source: "ok", transient: false, httpStatus: resp.status };
+    }
+
+    // RC merged the subscriber, but our storage layer rejected the
+    // ownership write — either an `owner_mismatch` race or a
+    // transient DB error. Surface that as `aliased: false` with a
+    // distinct source so the trace shows the exact gating reason
+    // instead of a misleading "ok". The cache is intentionally NOT
+    // populated.
     console.warn(
-      `[revenuecat] alias error anon=${anonymousId} replit=${replitUserId}: ${err?.message || err}`,
+      `[revenuecat] alias persist rejected anon=${anonymousId} replit=${replitUserId} reason=${persistOutcome.reason}`,
+    );
+    return {
+      aliased: false,
+      source: persistOutcome.reason === "owner_mismatch" ? "owner_mismatch" : "persist_error",
+      transient: persistOutcome.reason === "error",
+      httpStatus: resp.status,
+      errorMessage: `persist_${persistOutcome.reason}`,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[revenuecat] alias error anon=${anonymousId} replit=${replitUserId}: ${msg}`,
     );
     return {
       aliased: false,
       source: "error_transient",
       transient: true,
-      errorMessage: err?.message || "network",
+      errorMessage: msg || "network",
     };
   }
 }

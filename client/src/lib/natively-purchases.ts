@@ -73,12 +73,21 @@ export interface OfferingsSummary {
 
 export interface NativelyPurchasesInstance {
   purchasePackage(packageId: string, callback: (result: { error?: string; cancelled?: boolean; customerInfo?: CustomerInfo }) => void): void;
-  restorePurchases(callback: (result: { error?: string; customerInfo?: CustomerInfo }) => void): void;
+  // Optional because older Build Natively wrappers (and the iOS web
+  // preview shim) do not ship `restorePurchases` — see the typed
+  // `typeof === "function"` check in `restorePurchases()` below.
+  restorePurchases?(callback: (result: { error?: string; customerInfo?: CustomerInfo }) => void): void;
   getCustomerInfo(callback: (result: CustomerInfo | null) => void): void;
   getOfferings?(callback: (result: OfferingsResult | null) => void): void;
   logIn?(appUserId: string, callback: (result: { customerInfo?: CustomerInfo; created?: boolean; error?: string }) => void): void;
   getAppUserID?(callback: (id: string | null) => void): void;
   getAppUserId?(callback: (id: string | null) => void): void;
+  // Alternative anonymous-id accessors exposed by other RC wrapper
+  // versions; declared optional so the probe + capture sequence can
+  // read them without `any` casts.
+  getOriginalAppUserId?(callback: (id: string | null) => void): void;
+  getAnonymousId?(callback: (id: string | null) => void): void;
+  getAnonymousID?(callback: (id: string | null) => void): void;
 }
 
 export type PriceSource =
@@ -353,8 +362,9 @@ export async function aliasAnonymousIfNeeded(
       httpStatus: resp.status,
       anonymousAppUserId: anonymousId,
     };
-  } catch (e: any) {
-    console.warn("[revenuecat] alias-anonymous error:", e?.message || e);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[revenuecat] alias-anonymous error:", msg);
     return {
       attempted: true,
       aliased: false,
@@ -420,8 +430,10 @@ export function restorePurchases(): Promise<RestoreResult> {
     // gracefully. Detect missing method up front so the paywall can fall
     // back to a forced server-side verify and the verdict badge can
     // distinguish "user pressed Restore but bridge has no method" from
-    // a genuine RC-side failure.
-    const restoreFn = (purchases as any).restorePurchases;
+    // a genuine RC-side failure. Read via the typed optional accessor —
+    // the interface declares `restorePurchases?` so this is `undefined`
+    // when the wrapper does not ship it, no `any` cast required.
+    const restoreFn = purchases.restorePurchases;
     if (typeof restoreFn !== "function") {
       return resolve({ success: false, error: "restore_not_supported" });
     }
@@ -529,11 +541,11 @@ function callWithTimeout<T>(
         clearTimeout(timer);
         resolve({ outcome: "value", value: v });
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ outcome: "error", error: e?.message || "unknown" });
+      resolve({ outcome: "error", error: e instanceof Error ? e.message : "unknown" });
     }
   });
 }
@@ -793,8 +805,20 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
   // trigger a real RC round-trip with side effects. Existence-only check.
   const sideEffectMethods: ReadonlyArray<string> = ["purchasePackage", "logIn", "restorePurchases"];
 
+  // Typed indexed view of the wrapper. Every probed method is one of
+  // the names declared on `NativelyPurchasesInstance` (canonical or
+  // alternative), so we type the lookup as
+  // `Record<ProbeMethod, AnyBridgeFn | undefined>` and read it without
+  // an `any` cast. The bridge accessors all share a one-arg
+  // `(callback) => void` shape; the callback's parameter type varies
+  // but is opaque here because `summarizeProbeValue` already accepts
+  // `unknown`.
+  type ProbeMethod = (typeof PROBE_METHODS)[number];
+  type AnyBridgeFn = (cb: (v: unknown) => void) => void;
+  const accessors = purchases as unknown as Record<ProbeMethod, AnyBridgeFn | undefined>;
+
   for (const m of PROBE_METHODS) {
-    const fn = (purchases as any)[m];
+    const fn = accessors[m];
     if (typeof fn !== "function") {
       methods[m] = "missing";
       values[m] = null;

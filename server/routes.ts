@@ -3373,10 +3373,16 @@ No explanation, just JSON.`,
 
       // The `remember` callback inside aliasAnonymousAppUserId is
       // only invoked on RC alias success — that is the single
-      // trusted persistence path.
+      // trusted persistence path. The storage layer enforces
+      // ownership atomically and returns a definitive
+      // stored/owner_mismatch outcome that we forward unchanged so
+      // `aliasAnonymousAppUserId` can decide whether to populate the
+      // in-memory cache. No early cache writes; no wishful "stored:
+      // true" on a race-rejected upsert.
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: async (anon, replit) => {
-          await storage.upsertSubscriptionAlias(anon, replit);
+          const out = await storage.upsertSubscriptionAlias(anon, replit);
+          return { stored: out.stored, reason: out.reason };
         },
       });
 

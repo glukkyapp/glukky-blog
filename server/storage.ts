@@ -86,7 +86,7 @@ export interface IStorage {
   upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
-  ): Promise<{ stored: boolean; reason?: "ok_new" | "ok_same_owner" | "owner_mismatch" }>;
+  ): Promise<{ stored: boolean; reason: "ok_new" | "ok_same_owner" | "owner_mismatch" }>;
   getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
   getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
 }
@@ -627,39 +627,65 @@ export class DatabaseStorage implements IStorage {
     await db.insert(foodLabels).values(label).onConflictDoNothing();
   }
 
-  // Anonymous-RC-subscriber → Replit-user mapping. SECURITY: insert-only
-  // for new anonymous ids; for an already-mapped anonymous id we only
-  // refresh `updatedAt` when the requesting Replit user MATCHES the
-  // existing owner. Reassignment to a different Replit user is rejected
-  // (returns false) — otherwise an authenticated client could POST any
-  // observed `$RCAnonymousID:…` and silently steal another user's
-  // subscription on the next self-healing verify. The reverse direction
-  // (one Replit user → many anonymous ids) is fine and normal.
+  // Anonymous-RC-subscriber → Replit-user mapping. SECURITY: ownership
+  // is enforced atomically in a single SQL statement, race-safe even
+  // when two requests for the same anonymous id arrive concurrently.
+  //
+  // The statement:
+  //   - INSERTs when the row does not exist (ok_new)
+  //   - UPDATEs `updated_at` when the existing owner matches the
+  //     requested owner (ok_same_owner)
+  //   - SKIPs the UPDATE when the existing owner differs (the
+  //     `WHERE` predicate filters the conflict-resolution row)
+  //
+  // We then RETURN the stored `replit_user_id`. If that value equals
+  // the requested owner, the row was inserted or refreshed — `stored`
+  // is true. If RETURNING is empty, the conflict-resolution UPDATE
+  // was skipped because the existing owner differed — that's a
+  // rejected reassignment, `stored` is false. Either way, no stale
+  // ownership is recorded and no claim races the row.
   async upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
-  ): Promise<{ stored: boolean; reason?: "ok_new" | "ok_same_owner" | "owner_mismatch" }> {
-    const [existing] = await db
+  ): Promise<{ stored: boolean; reason: "ok_new" | "ok_same_owner" | "owner_mismatch" }> {
+    // Snapshot ownership BEFORE the upsert so we can distinguish
+    // "ok_new" from "ok_same_owner" in the returned reason. The
+    // snapshot is advisory only — the atomic upsert below is the
+    // sole source of truth for whether anything was actually written.
+    const [pre] = await db
       .select({ replitUserId: subscriptionAlias.replitUserId })
       .from(subscriptionAlias)
       .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
 
-    if (!existing) {
-      await db.insert(subscriptionAlias)
-        .values({ anonymousAppUserId, replitUserId })
-        .onConflictDoNothing({ target: subscriptionAlias.anonymousAppUserId });
-      return { stored: true, reason: "ok_new" };
+    const written = await db.insert(subscriptionAlias)
+      .values({ anonymousAppUserId, replitUserId })
+      .onConflictDoUpdate({
+        target: subscriptionAlias.anonymousAppUserId,
+        set: { updatedAt: sql`now()` },
+        // Race-safe ownership guard: the conflict-resolution UPDATE
+        // only fires when the existing owner matches the requested
+        // owner. A concurrent INSERT by a different owner cannot
+        // win this without us seeing a no-rows return.
+        setWhere: sql`${subscriptionAlias.replitUserId} = ${replitUserId}`,
+      })
+      .returning({ replitUserId: subscriptionAlias.replitUserId });
+
+    if (written.length > 0 && written[0].replitUserId === replitUserId) {
+      // INSERT succeeded OR the same-owner UPDATE fired. Distinguish
+      // the two using the pre-snapshot for accurate telemetry.
+      return {
+        stored: true,
+        reason: pre ? "ok_same_owner" : "ok_new",
+      };
     }
 
-    if (existing.replitUserId === replitUserId) {
-      await db.update(subscriptionAlias)
-        .set({ updatedAt: sql`now()` })
-        .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
-      return { stored: true, reason: "ok_same_owner" };
-    }
-
+    // RETURNING empty (or — defence in depth — returned a row that
+    // does NOT belong to us). The atomic guard rejected the write,
+    // either because another owner already holds the row or because
+    // a concurrent same-owner write raced and kept the old owner.
+    const existingOwner = pre?.replitUserId ?? "(unknown)";
     console.warn(
-      `[storage.upsertSubscriptionAlias] REJECTED reassignment anon=${anonymousAppUserId} existingOwner=${existing.replitUserId} requestedOwner=${replitUserId}`,
+      `[storage.upsertSubscriptionAlias] REJECTED reassignment anon=${anonymousAppUserId} existingOwner=${existingOwner} requestedOwner=${replitUserId}`,
     );
     return { stored: false, reason: "owner_mismatch" };
   }
