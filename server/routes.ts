@@ -3371,14 +3371,15 @@ No explanation, just JSON.`,
         });
       }
 
-      // The `remember` callback inside aliasAnonymousAppUserId is
-      // only invoked on RC alias success — that is the single
-      // trusted persistence path. The storage layer enforces
-      // ownership atomically and returns a definitive
-      // stored/owner_mismatch outcome that we forward unchanged so
-      // `aliasAnonymousAppUserId` can decide whether to populate the
-      // in-memory cache. No early cache writes; no wishful "stored:
-      // true" on a race-rejected upsert.
+      // The `remember` callback runs FIRST inside
+      // `aliasAnonymousAppUserId` (persist-first ordering). The
+      // storage layer enforces ownership atomically with
+      // first-writer-wins semantics, so a race-rejected upsert
+      // returns `owner_mismatch` and the RC REST call is skipped
+      // entirely. RC's alias REST is best-effort: if it fails
+      // transiently the persisted DB row still drives self-healing
+      // verifies, so the user is still considered functionally
+      // aliased (`source: "ok_persist_only"`).
       const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId, {
         remember: async (anon, replit) => {
           const out = await storage.upsertSubscriptionAlias(anon, replit);
@@ -3386,8 +3387,15 @@ No explanation, just JSON.`,
         },
       });
 
-      const proofBackedPersist: "rc_alias" | "none" =
-        result.aliased ? "rc_alias" : "none";
+      // `proofBackedPersist` distinguishes the three terminal states
+      // for client-side telemetry: full RC merge, persist-only
+      // (DB row exists, RC didn't sync), or nothing persisted.
+      const proofBackedPersist: "rc_alias" | "persist_only" | "none" =
+        result.source === "ok"
+          ? "rc_alias"
+          : result.source === "ok_persist_only"
+            ? "persist_only"
+            : "none";
 
       return res.status(200).json({ ...result, proofBackedPersist });
     } catch (error: any) {

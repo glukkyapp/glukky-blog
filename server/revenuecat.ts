@@ -141,8 +141,9 @@ export async function verifyEntitlement(
     let payload: RcSubscriberResponse;
     try {
       payload = (await resp.json()) as RcSubscriberResponse;
-    } catch (err: any) {
-      console.warn(`[revenuecat] verify parse error for ${appUserId}:`, err?.message || err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[revenuecat] verify parse error for ${appUserId}:`, msg);
       return { hasPremium: false, source: "error_transient", transient: true };
     }
     const hasPremium = evaluatePayload(payload);
@@ -167,9 +168,10 @@ export async function verifyEntitlement(
     }
     cache.set(appUserId, { hasPremium, expiresAt: Date.now() + CACHE_TTL_MS });
     return { hasPremium, source: "revenuecat", transient: false };
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Network-level failure (fetch threw) — retryable.
-    console.warn(`[revenuecat] verify error for ${appUserId}:`, err?.message || err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[revenuecat] verify error for ${appUserId}:`, msg);
     return { hasPremium: false, source: "error_transient", transient: true };
   }
 }
@@ -203,9 +205,10 @@ export async function verifyEntitlementSelfHealing(
   let aliases: string[] = [];
   try {
     aliases = await loadAnonAliases(replitUserId);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[revenuecat] verifySelfHealing: alias load failed user=${replitUserId}: ${err?.message || err}`,
+      `[revenuecat] verifySelfHealing: alias load failed user=${replitUserId}: ${msg}`,
     );
   }
   if (aliases.length === 0) {
@@ -303,8 +306,9 @@ export async function lookupAliasMappingAsync(
     const v = await loader(anonymousId);
     if (v) rememberAliasMapping(anonymousId, v);
     return v ?? null;
-  } catch (err: any) {
-    console.warn(`[revenuecat] alias DB lookup failed anon=${anonymousId}: ${err?.message || err}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[revenuecat] alias DB lookup failed anon=${anonymousId}: ${msg}`);
     return null;
   }
 }
@@ -331,7 +335,14 @@ export interface AliasResult {
     | "owner_mismatch"
     // RC alias merge succeeded but the storage write failed
     // transiently (DB hiccup, network error). Caller may retry.
-    | "persist_error";
+    | "persist_error"
+    // Storage persist succeeded but RC alias REST didn't (404 /
+    // transient / no key). The user is still considered aliased
+    // because `verifyEntitlementSelfHealing` will heal future
+    // verifies via the persisted (anon → replit) edge — this is
+    // the durable self-healing record, RC's alias REST is just
+    // a best-effort to keep RC's own subscriber graph clean.
+    | "ok_persist_only";
   transient: boolean;
   httpStatus?: number;
   errorMessage?: string;
@@ -347,13 +358,19 @@ export interface AliasPersistOutcome {
 }
 
 export interface AliasPersistDeps {
-  // Called after a successful RC alias merge to record the
-  // (anonymous_id → replit_user_id) edge in the persistent
-  // `subscription_alias` table. The caller MUST report whether the
-  // row was actually stored — `aliasAnonymousAppUserId` only
-  // populates the in-memory mapping cache when persistence is
-  // confirmed, so a race-rejected ownership conflict cannot leak a
-  // false-positive cache entry.
+  // Called to record the (anonymous_id → replit_user_id) edge in
+  // the persistent `subscription_alias` table. Persistence is the
+  // AUTHORITATIVE server-side ownership record — RC's alias REST is
+  // attempted only AFTER a successful persist as a best-effort to
+  // keep RC's own subscriber graph clean. If RC alias fails
+  // transiently the caller is still considered "aliased" because
+  // `verifyEntitlementSelfHealing` will heal future verifies via
+  // the persisted mapping.
+  //
+  // The caller MUST report whether the row was actually stored.
+  // `owner_mismatch` is the first-writer-wins guard: a different
+  // authenticated user already claimed this anonymous id, so we
+  // refuse the write and don't touch RC.
   remember?: (anonymousId: string, replitUserId: string) => Promise<AliasPersistOutcome>;
 }
 
@@ -373,10 +390,63 @@ export async function aliasAnonymousAppUserId(
     return { aliased: false, source: "invalid_replit_user_id", transient: false };
   }
 
+  // STEP 1 — Persist the (anonymous_id → replit_user_id) edge FIRST.
+  //
+  // The DB row is the AUTHORITATIVE server-side ownership record;
+  // RC's alias REST below is best-effort. The atomic upsert in the
+  // storage layer enforces first-writer-wins ownership, so a
+  // different authenticated user cannot later claim the same
+  // anonymous id (returns `owner_mismatch`). This is what makes
+  // `verifyEntitlementSelfHealing` work even when the RC alias
+  // merge never happens (transient RC outage, network blip, server
+  // restart between purchase and verify).
+  let persistOutcome: AliasPersistOutcome = { stored: true, reason: "ok_new" };
+  if (persist?.remember) {
+    try {
+      persistOutcome = await persist.remember(anonymousId, replitUserId);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[revenuecat] alias persist failed anon=${anonymousId} replit=${replitUserId}: ${msg}`,
+      );
+      persistOutcome = { stored: false, reason: "error" };
+    }
+  }
+
+  if (!persistOutcome.stored) {
+    // First-writer-wins guard or transient DB error. Don't even try
+    // RC — without our DB record the (anon → replit) edge isn't
+    // authoritatively owned by this user, so calling RC's alias REST
+    // would silently merge subscribers across users on RC's side.
+    console.warn(
+      `[revenuecat] alias persist rejected anon=${anonymousId} replit=${replitUserId} reason=${persistOutcome.reason}`,
+    );
+    return {
+      aliased: false,
+      source: persistOutcome.reason === "owner_mismatch" ? "owner_mismatch" : "persist_error",
+      transient: persistOutcome.reason === "error",
+      errorMessage: `persist_${persistOutcome.reason}`,
+    };
+  }
+
+  // Persistence confirmed → cache the mapping and invalidate the
+  // entitlement cache for the Replit user so the next verify sees
+  // fresh state.
+  rememberAliasMapping(anonymousId, replitUserId);
+  invalidateEntitlementCache(replitUserId);
+
+  // STEP 2 — Best-effort RC alias REST. Failure here does NOT undo
+  // the persisted record: self-healing verify will still find the
+  // entitlement under the anonymous id and grant premium. We
+  // distinguish RC-merged from persist-only via the `source` field
+  // for diagnostics.
   const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
   if (!apiKey) {
     warnMissingKeyOnce();
-    return { aliased: false, source: "no_key", transient: false };
+    console.log(
+      `[revenuecat] alias persist-only (no api key) anon=${anonymousId} replit=${replitUserId} persist=${persistOutcome.reason}`,
+    );
+    return { aliased: true, source: "ok_persist_only", transient: false };
   }
 
   try {
@@ -391,97 +461,41 @@ export async function aliasAnonymousAppUserId(
       body: JSON.stringify({ new_app_user_id: replitUserId }),
     });
 
-    if (resp.status === 404) {
-      console.log(
-        `[revenuecat] alias anon=${anonymousId} replit=${replitUserId} ` +
-          `result=not_found http=404`,
-      );
-      return { aliased: false, source: "not_found", transient: false, httpStatus: 404 };
-    }
-
-    if (resp.status === 429 || resp.status >= 500) {
-      console.warn(
-        `[revenuecat] alias transient HTTP ${resp.status} anon=${anonymousId} replit=${replitUserId}`,
-      );
-      return {
-        aliased: false,
-        source: "error_transient",
-        transient: true,
-        httpStatus: resp.status,
-        errorMessage: `HTTP ${resp.status}`,
-      };
-    }
-
-    if (!resp.ok) {
-      let bodyText = "";
-      try { bodyText = (await resp.text()).slice(0, 300); } catch {}
-      console.warn(
-        `[revenuecat] alias failed anon=${anonymousId} replit=${replitUserId} ` +
-          `http=${resp.status} body=${bodyText}`,
-      );
-      return {
-        aliased: false,
-        source: "error",
-        transient: false,
-        httpStatus: resp.status,
-        errorMessage: `HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
-      };
-    }
-
-    // RC merge succeeded. Now do persistence FIRST and only populate
-    // the in-memory mapping cache on confirmed success — otherwise a
-    // race-rejected ownership conflict (handled atomically by the
-    // storage layer) could leak a stale entry that would later
-    // misroute a webhook fallback.
-    invalidateEntitlementCache(replitUserId);
-
-    let persistOutcome: AliasPersistOutcome = { stored: true, reason: "ok_new" };
-    if (persist?.remember) {
-      try {
-        persistOutcome = await persist.remember(anonymousId, replitUserId);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(
-          `[revenuecat] alias persist failed anon=${anonymousId} replit=${replitUserId}: ${msg}`,
-        );
-        persistOutcome = { stored: false, reason: "error" };
-      }
-    }
-
-    if (persistOutcome.stored) {
-      // Cache only when persistence is confirmed. The in-memory cache
-      // never holds an entry the DB would reject.
-      rememberAliasMapping(anonymousId, replitUserId);
+    if (resp.ok) {
       console.log(
         `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status} persist=${persistOutcome.reason}`,
       );
       return { aliased: true, source: "ok", transient: false, httpStatus: resp.status };
     }
 
-    // RC merged the subscriber, but our storage layer rejected the
-    // ownership write — either an `owner_mismatch` race or a
-    // transient DB error. Surface that as `aliased: false` with a
-    // distinct source so the trace shows the exact gating reason
-    // instead of a misleading "ok". The cache is intentionally NOT
-    // populated.
+    // RC alias didn't merge. Persist record is still in place, so
+    // mark this as `ok_persist_only` (functionally aliased, RC just
+    // didn't sync). `transient` reflects whether the RC error
+    // looked retryable.
+    let bodyText = "";
+    try { bodyText = (await resp.text()).slice(0, 300); } catch { /* ignored */ }
+    const isTransient = resp.status === 429 || resp.status >= 500;
     console.warn(
-      `[revenuecat] alias persist rejected anon=${anonymousId} replit=${replitUserId} reason=${persistOutcome.reason}`,
+      `[revenuecat] alias persist-only (RC ${resp.status}) anon=${anonymousId} replit=${replitUserId} body=${bodyText}`,
     );
     return {
-      aliased: false,
-      source: persistOutcome.reason === "owner_mismatch" ? "owner_mismatch" : "persist_error",
-      transient: persistOutcome.reason === "error",
+      aliased: true,
+      source: "ok_persist_only",
+      transient: isTransient,
       httpStatus: resp.status,
-      errorMessage: `persist_${persistOutcome.reason}`,
+      errorMessage: `RC HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
     };
   } catch (err: unknown) {
+    // Network-level failure — persistence still happened, so the
+    // user is functionally aliased and self-healing will work on
+    // the next verify.
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[revenuecat] alias error anon=${anonymousId} replit=${replitUserId}: ${msg}`,
+      `[revenuecat] alias persist-only (RC network err) anon=${anonymousId} replit=${replitUserId}: ${msg}`,
     );
     return {
-      aliased: false,
-      source: "error_transient",
+      aliased: true,
+      source: "ok_persist_only",
       transient: true,
       errorMessage: msg || "network",
     };
