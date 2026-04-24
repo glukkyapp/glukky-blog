@@ -58,6 +58,24 @@ app.use((req, res, next) => {
       }
 
       log(logLine);
+    } else if (
+      path === "/" ||
+      path === "/index.html" ||
+      path === "/favicon.png" ||
+      path.startsWith("/assets/")
+    ) {
+      // Diagnostic logging for the IPA-bundling hypothesis. If the Build
+      // Natively wrapper is fetching the web bundle from prod on cold launch
+      // we should see GET /, GET /assets/index-*.js, GET /assets/index-*.css
+      // hits here. If we see only /api/* hits and zero shell hits across an
+      // entire device session, the bundle is being served locally from the
+      // IPA. User-Agent + Referer help distinguish the WebView from a regular
+      // browser visit.
+      const ua = String(req.headers["user-agent"] || "").slice(0, 120);
+      const ref = String(req.headers["referer"] || "").slice(0, 120);
+      log(
+        `[shell] ${req.method} ${path} ${res.statusCode} in ${duration}ms ua="${ua}" ref="${ref}"`,
+      );
     }
   });
 
