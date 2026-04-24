@@ -610,7 +610,12 @@ export async function captureAnonymousIdSequence(
   ];
   if (!hasNativelyPurchases() || !window.NativelyPurchases) {
     for (const method of allBridgeMethods) attempts.push({ method, outcome: "missing" });
-    return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
+    // We only ever return anonymous-format ids in `anonymousAppUserId`.
+    // `fromCallback` was already rejected by the `looksAnonymous` guard
+    // above, so returning it here would put a non-anon id (or null)
+    // through the alias path and skew badge classification. Return
+    // null explicitly.
+    return { anonymousAppUserId: null, capturedBy: null, attempts };
   }
 
   let purchases: NativelyPurchasesInstance | null = null;
@@ -618,7 +623,9 @@ export async function captureAnonymousIdSequence(
     purchases = new window.NativelyPurchases();
   } catch {
     for (const method of allBridgeMethods) attempts.push({ method, outcome: "error" });
-    return { anonymousAppUserId: fromCallback, capturedBy: null, attempts };
+    // Same rationale as the bridge-missing branch: never surface a
+    // non-anon id via `anonymousAppUserId`.
+    return { anonymousAppUserId: null, capturedBy: null, attempts };
   }
 
   // Typed view of the wrapper instance — no `any` cast.
