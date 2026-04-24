@@ -515,6 +515,13 @@ export interface AnonCaptureResult {
 
 const CAPTURE_STEP_TIMEOUT_MS = 4000;
 
+// Per-method timeout for the pre-purchase / pre-restore bridge probe.
+// All probe methods run in parallel under this single window, so the
+// worst-case wall time of a fully unresponsive bridge is ~1.5 s
+// regardless of how many accessors are declared. Keep this aggressive
+// so the probe doesn't visibly delay the user-initiated tap.
+const PROBE_METHOD_TIMEOUT_MS = 1500;
+
 function classifyId(value: unknown): "anon" | "real" | "null" {
   if (typeof value !== "string" || value.length === 0) return "null";
   return looksAnonymous(value) ? "anon" : "real";
@@ -831,31 +838,64 @@ export async function probeBridgeMethods(): Promise<BridgeProbeResult> {
   type AnyBridgeFn = (cb: (v: unknown) => void) => void;
   const accessors = purchases as unknown as Record<ProbeMethod, AnyBridgeFn | undefined>;
 
-  for (const m of PROBE_METHODS) {
+  // Run every read-only probe in parallel under a tight per-method
+  // budget. Worst-case wall time is now ONE timeout window
+  // (`PROBE_METHOD_TIMEOUT_MS`) regardless of how many accessors are
+  // present, instead of `count × timeout`. This addresses the
+  // "purchase / restore feels sluggish on flaky bridges" regression
+  // from running the probe synchronously up-front: even a fully
+  // dead bridge resolves the whole probe in ~1.5 s, not ~21 s.
+  // The job promise can resolve to any one of the callWithTimeout
+  // outcome shapes OR our two synthetic resolutions ("missing" /
+  // "value-without-invocation"). Use a structural type that covers
+  // them all without `any`.
+  interface ProbeOutcome {
+    outcome: "value" | "missing" | "null" | "timeout" | "error";
+    value?: unknown;
+  }
+  interface ProbeJob {
+    method: ProbeMethod;
+    promise: Promise<ProbeOutcome>;
+  }
+  const jobs: ProbeJob[] = PROBE_METHODS.map<ProbeJob>((m) => {
     const fn = accessors[m];
     if (typeof fn !== "function") {
-      methods[m] = "missing";
-      values[m] = null;
-      continue;
+      return { method: m, promise: Promise.resolve<ProbeOutcome>({ outcome: "missing" }) };
     }
     if (sideEffectMethods.includes(m)) {
-      methods[m] = "value"; // present, not invoked
-      values[m] = null;
-      continue;
+      // Existence-only — never invoked.
+      return { method: m, promise: Promise.resolve<ProbeOutcome>({ outcome: "value", value: null }) };
     }
-    // Read-only callback methods can be invoked safely.
-    const res = await callWithTimeout<unknown>(
-      (cb: (v: unknown) => void) => fn.call(purchases, cb),
-      3000,
-    );
+    return {
+      method: m,
+      promise: callWithTimeout<unknown>(
+        (cb: (v: unknown) => void) => fn.call(purchases, cb),
+        PROBE_METHOD_TIMEOUT_MS,
+      ),
+    };
+  });
+
+  const results = await Promise.all(jobs.map((j) => j.promise));
+  jobs.forEach((job, i) => {
+    const res = results[i];
+    if (res.outcome === "missing") {
+      methods[job.method] = "missing";
+      values[job.method] = null;
+      return;
+    }
+    if (sideEffectMethods.includes(job.method)) {
+      methods[job.method] = "value";
+      values[job.method] = null;
+      return;
+    }
     if (res.outcome === "value") {
-      methods[m] = res.value == null ? "null" : "value";
-      values[m] = summarizeProbeValue(m, res.value);
+      methods[job.method] = res.value == null ? "null" : "value";
+      values[job.method] = summarizeProbeValue(job.method, res.value);
     } else {
-      methods[m] = res.outcome;
-      values[m] = null;
+      methods[job.method] = res.outcome;
+      values[job.method] = null;
     }
-  }
+  });
 
   const summary = PROBE_METHODS.map((m) => `${m}:${methods[m]}`).join("|").slice(0, 240);
   return { bridgePresent: true, methods, values, summary };
