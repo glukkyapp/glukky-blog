@@ -75,4 +75,3 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-REVENUECAT_WEBHOOK_AUTH_HEADER = "YRVsfG3m3gY3GXB3-N4IdA_nV-sP2ToF"

@@ -3194,6 +3194,14 @@ No explanation, just JSON.`,
         },
         projectMismatchSuspected,
         projectMismatchReason,
+        lastPurchaseTrace:
+          traces.length > 0
+            ? {
+                id: traces[0].id,
+                startedAt: new Date(traces[0].startedAt).toISOString(),
+                events: traces[0].events,
+              }
+            : null,
         lastPurchaseTraces: traces.map((t) => ({
           id: t.id,
           startedAt: new Date(t.startedAt).toISOString(),
