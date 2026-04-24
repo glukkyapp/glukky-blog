@@ -14,24 +14,24 @@ declare global {
 function readDevBadgeFlag(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(DEV_BADGE_KEY) === "1";
+    return window.localStorage.getItem(DEV_BADGE_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
 // Apply ?debug=1 / ?debug=0 once at module load so the persistence
 // happens before any rendering, regardless of which page mounts the
-// badge first. The iOS wrapper only needs to append ?debug=1 a single
-// time and the flag survives every subsequent reload.
+// badge first. The badge is on by default; ?debug=0 is the one-tap
+// permanent off-switch and ?debug=1 re-enables it after that.
 function applyDebugQueryFlag(): void {
   if (typeof window === "undefined") return;
   try {
     const params = new URLSearchParams(window.location.search);
     const debug = params.get("debug");
-    if (debug === "1") {
-      window.localStorage.setItem(DEV_BADGE_KEY, "1");
-    } else if (debug === "0") {
+    if (debug === "0") {
+      window.localStorage.setItem(DEV_BADGE_KEY, "0");
+    } else if (debug === "1") {
       window.localStorage.removeItem(DEV_BADGE_KEY);
     }
   } catch {
