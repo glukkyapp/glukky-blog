@@ -321,7 +321,19 @@ function AuthenticatedApp() {
     let cancelled = false;
     let registeredViaMessage = false;
 
-    const registerPlayerId = async (playerId: string): Promise<boolean> => {
+    const resolveTimezone = (): string => {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return tz && tz.length > 0 ? tz : "UTC";
+      } catch {
+        return "UTC";
+      }
+    };
+
+    const registerPlayerId = async (
+      playerId: string,
+      source: string,
+    ): Promise<boolean> => {
       const cached = localStorage.getItem(cacheKey);
       if (cached === playerId) {
         console.log("[onesignal] already cached, skipping registration");
@@ -331,14 +343,19 @@ function AuthenticatedApp() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({
+          playerId,
+          source,
+          timezone: resolveTimezone(),
+        }),
       });
       if (resp.ok) {
         localStorage.setItem(cacheKey, playerId);
-        console.log("[onesignal] registered successfully:", playerId);
+        console.log("[onesignal] registered successfully:", playerId, "source:", source);
         return true;
       }
-      console.warn("[onesignal] registration failed:", resp.status);
+      const text = await resp.text().catch(() => "");
+      console.warn("[onesignal] registration failed:", resp.status, text);
       return false;
     };
 
@@ -349,83 +366,351 @@ function AuthenticatedApp() {
         const id = data?.oneSignalId || data?.playerId || data?.onesignal_player_id || data?.id;
         if (id && typeof id === "string" && id.length > 10) {
           console.log("[onesignal] received player ID via message event:", id);
-          const success = await registerPlayerId(id);
+          const success = await registerPlayerId(id, "bridge_message");
           if (success) registeredViaMessage = true;
         }
       } catch {}
     };
     window.addEventListener("message", onMessage);
 
-    const tryGetPlayerId = async (): Promise<string | null> => {
-      const w = window as any;
+    // Per task #493 step 1: structured probe of every bridge path
+    // we know about. Tracks (per path) whether the method exists,
+    // whether it returned a Promise (so we don't `await` a callback
+    // and silently get undefined), the raw result, and the
+    // extracted id. Also captures the OS push-permission state so
+    // "denied by user" is visually distinct from "bridge returned
+    // nothing." The whole result is POSTed to the dev-gated probe
+    // endpoint so the server logs show the actual problem device's
+    // bridge state without requiring the dev panel to be open.
+    type ProbePath = {
+      name: string;
+      methodPresent: boolean | null;
+      promiseShaped: boolean | null;
+      raw: unknown;
+      extractedId: string | null;
+      error: string | null;
+    };
+    type ProbePermission = { state: string | null; raw: unknown; source: string | null };
 
+    const detectPushPermission = async (): Promise<ProbePermission> => {
+      const w = window as any;
+      try {
+        if (w.NativelyNotifications) {
+          const n = new w.NativelyNotifications();
+          for (const m of [
+            "getNotificationPermissionStatus",
+            "getPermissionStatus",
+            "getPermission",
+            "hasPermission",
+          ]) {
+            if (typeof n?.[m] === "function") {
+              try {
+                const res: any = await new Promise((resolve) => {
+                  const t = setTimeout(() => resolve("__timeout__"), 4000);
+                  let returned: any;
+                  try {
+                    returned = n[m]((cb: any) => {
+                      clearTimeout(t);
+                      resolve(cb);
+                    });
+                  } catch (e: any) {
+                    clearTimeout(t);
+                    resolve({ __throw: e?.message ?? String(e) });
+                    return;
+                  }
+                  if (returned && typeof returned.then === "function") {
+                    returned.then((v: any) => { clearTimeout(t); resolve(v); }).catch((e: any) => { clearTimeout(t); resolve({ __throw: e?.message ?? String(e) }); });
+                  }
+                });
+                const text = typeof res === "string" ? res : JSON.stringify(res);
+                let state: string | null = null;
+                if (typeof res === "string") state = res;
+                else if (res && typeof res === "object") {
+                  state = res.state ?? res.status ?? res.permission ?? res.value ?? null;
+                  if (typeof state !== "string") state = null;
+                }
+                return { state, raw: text, source: `NativelyNotifications.${m}` };
+              } catch (e: any) {
+                return { state: "error", raw: e?.message ?? String(e), source: `NativelyNotifications.${m}` };
+              }
+            }
+          }
+        }
+        if (w.NativelyPush) {
+          const p = new w.NativelyPush();
+          for (const m of ["getNotificationPermissionStatus", "getPermissionStatus", "hasPermission"]) {
+            if (typeof p?.[m] === "function") {
+              try {
+                const res = await p[m]();
+                const text = typeof res === "string" ? res : JSON.stringify(res);
+                const state = typeof res === "string" ? res : (res?.state ?? res?.status ?? null);
+                return { state: typeof state === "string" ? state : null, raw: text, source: `NativelyPush.${m}` };
+              } catch (e: any) {
+                return { state: "error", raw: e?.message ?? String(e), source: `NativelyPush.${m}` };
+              }
+            }
+          }
+        }
+        if (w.OneSignal && typeof w.OneSignal.getDeviceState === "function") {
+          try {
+            const ds = await w.OneSignal.getDeviceState();
+            return {
+              state: ds?.hasNotificationPermission === true
+                ? "granted"
+                : ds?.hasNotificationPermission === false
+                  ? "denied-or-not-asked"
+                  : null,
+              raw: JSON.stringify(ds),
+              source: "OneSignal.getDeviceState",
+            };
+          } catch (e: any) {
+            return { state: "error", raw: e?.message ?? String(e), source: "OneSignal.getDeviceState" };
+          }
+        }
+      } catch (e: any) {
+        return { state: "error", raw: e?.message ?? String(e), source: "outer" };
+      }
+      return { state: "no-bridge", raw: null, source: null };
+    };
+
+    const probeBridge = async (): Promise<{
+      paths: ProbePath[];
+      permission: ProbePermission;
+      chosenSource: string | null;
+      chosenPlayerId: string | null;
+    }> => {
+      const w = window as any;
+      const paths: ProbePath[] = [];
+      let chosenSource: string | null = null;
+      let chosenPlayerId: string | null = null;
+
+      // (a) NativelyNotifications.getOneSignalId — known to be
+      // CALLBACK-shaped on the current Build Natively wrapper.
+      // Awaiting the direct return value silently resolves to
+      // undefined, so we MUST go through the callback shape.
       if (w.NativelyNotifications) {
+        const path: ProbePath = {
+          name: "NativelyNotifications.getOneSignalId",
+          methodPresent: null,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        };
         try {
           const notif = new w.NativelyNotifications();
-          const result: any = await new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(null), 10000);
-            notif.getOneSignalId((res: any) => {
-              clearTimeout(timeout);
-              resolve(res);
+          const present = typeof notif.getOneSignalId === "function";
+          path.methodPresent = present;
+          if (present) {
+            // Detect shape: peek at the direct return without
+            // awaiting it for callback-shaped APIs.
+            let directReturn: any;
+            try { directReturn = notif.getOneSignalId(); } catch {}
+            path.promiseShaped =
+              !!directReturn && typeof directReturn === "object" && typeof directReturn.then === "function";
+
+            const result: any = await new Promise((resolve) => {
+              const t = setTimeout(() => resolve("__timeout__"), 8000);
+              try {
+                notif.getOneSignalId((res: any) => { clearTimeout(t); resolve(res); });
+              } catch (e: any) {
+                clearTimeout(t);
+                resolve({ __throw: e?.message ?? String(e) });
+              }
             });
-          });
-          console.log("[onesignal] NativelyNotifications.getOneSignalId callback:", JSON.stringify(result));
-          const id = result?.playerId || result?.oneSignalId || result?.id;
-          if (id) return id;
-        } catch (e: any) {
-          console.warn("[onesignal] NativelyNotifications error:", e.message);
-        }
-      }
-
-      if (w.NativelyPush) {
-        try {
-          const push = new w.NativelyPush();
-          const result = await push.getOneSignalId();
-          console.log("[onesignal] NativelyPush.getOneSignalId:", JSON.stringify(result));
-          const id = result?.oneSignalId || result?.playerId || result?.id;
-          if (id) return id;
-        } catch (e: any) {
-          console.warn("[onesignal] NativelyPush error:", e.message);
-        }
-      }
-
-      if (w.OneSignal) {
-        try {
-          if (typeof w.OneSignal.getUserId === "function") {
-            const id = await w.OneSignal.getUserId();
-            console.log("[onesignal] OneSignal.getUserId:", id);
-            if (id) return id;
+            path.raw = typeof result === "string" ? result : JSON.stringify(result);
+            const id =
+              (typeof result === "string" && result) ||
+              result?.playerId || result?.oneSignalId || result?.id || null;
+            if (id && typeof id === "string" && id.length > 10) {
+              path.extractedId = id;
+              if (!chosenSource) { chosenSource = "NativelyNotifications"; chosenPlayerId = id; }
+            }
           }
         } catch (e: any) {
-          console.warn("[onesignal] OneSignal global error:", e.message);
+          path.error = e?.message ?? String(e);
         }
+        paths.push(path);
+      } else {
+        paths.push({
+          name: "NativelyNotifications.getOneSignalId",
+          methodPresent: false,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        });
       }
 
-      return null;
+      // (b) NativelyPush.getOneSignalId — Promise-shaped.
+      if (w.NativelyPush) {
+        const path: ProbePath = {
+          name: "NativelyPush.getOneSignalId",
+          methodPresent: null,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        };
+        try {
+          const push = new w.NativelyPush();
+          const present = typeof push.getOneSignalId === "function";
+          path.methodPresent = present;
+          if (present) {
+            let directReturn: any;
+            try { directReturn = push.getOneSignalId(); } catch {}
+            path.promiseShaped =
+              !!directReturn && typeof directReturn === "object" && typeof directReturn.then === "function";
+            const result: any = path.promiseShaped
+              ? await Promise.race([
+                  directReturn,
+                  new Promise((r) => setTimeout(() => r("__timeout__"), 8000)),
+                ])
+              : directReturn;
+            path.raw = typeof result === "string" ? result : JSON.stringify(result);
+            const id = result?.oneSignalId || result?.playerId || result?.id || (typeof result === "string" ? result : null);
+            if (id && typeof id === "string" && id.length > 10) {
+              path.extractedId = id;
+              if (!chosenSource) { chosenSource = "NativelyPush"; chosenPlayerId = id; }
+            }
+          }
+        } catch (e: any) {
+          path.error = e?.message ?? String(e);
+        }
+        paths.push(path);
+      } else {
+        paths.push({
+          name: "NativelyPush.getOneSignalId",
+          methodPresent: false,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        });
+      }
+
+      // (c) global OneSignal.getUserId — Promise-shaped.
+      if (w.OneSignal) {
+        const path: ProbePath = {
+          name: "OneSignal.getUserId",
+          methodPresent: null,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        };
+        try {
+          const present = typeof w.OneSignal.getUserId === "function";
+          path.methodPresent = present;
+          if (present) {
+            let directReturn: any;
+            try { directReturn = w.OneSignal.getUserId(); } catch {}
+            path.promiseShaped =
+              !!directReturn && typeof directReturn === "object" && typeof directReturn.then === "function";
+            const result: any = path.promiseShaped
+              ? await Promise.race([
+                  directReturn,
+                  new Promise((r) => setTimeout(() => r("__timeout__"), 8000)),
+                ])
+              : directReturn;
+            path.raw = typeof result === "string" ? result : JSON.stringify(result);
+            if (typeof result === "string" && result.length > 10) {
+              path.extractedId = result;
+              if (!chosenSource) { chosenSource = "OneSignal.getUserId"; chosenPlayerId = result; }
+            }
+          }
+        } catch (e: any) {
+          path.error = e?.message ?? String(e);
+        }
+        paths.push(path);
+      } else {
+        paths.push({
+          name: "OneSignal.getUserId",
+          methodPresent: false,
+          promiseShaped: null,
+          raw: null,
+          extractedId: null,
+          error: null,
+        });
+      }
+
+      const permission = await detectPushPermission();
+      return { paths, permission, chosenSource, chosenPlayerId };
     };
 
-    const attemptRegister = async (attempt: number): Promise<boolean> => {
-      if (registeredViaMessage) return true;
-      console.log(`[onesignal] attempt ${attempt}`);
-      const playerId = await tryGetPlayerId();
-      console.log("[onesignal] extracted playerId:", playerId);
-      if (!playerId) return false;
-      return registerPlayerId(playerId);
+    const reportProbe = async (
+      probeResult: Awaited<ReturnType<typeof probeBridge>>,
+    ): Promise<void> => {
+      try {
+        await fetch("/api/dev/onesignal-bridge-probe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paths: probeResult.paths,
+            permission: probeResult.permission,
+            chosenSource: probeResult.chosenSource,
+            chosenPlayerId: probeResult.chosenPlayerId,
+            timezone: resolveTimezone(),
+            userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+          }),
+        });
+      } catch {
+        // Best-effort. Non-dev users get 403 here, which is expected.
+      }
     };
 
+    // Registration fix selection (task #493 step 4):
+    // Without device-side probe output yet, we keep a capped retry
+    // loop (case (a) bridge-init race) as the default — that is the
+    // most common failure mode on cold-launch in BuildNatively. The
+    // probe block above also reports cases (b), (c), and (d) so the
+    // next deploy can pick the targeted fix from server logs:
+    //   • methodPresent=false on every path → case (b) wrong bridge
+    //   • permission.state=denied             → case (c) OS denial
+    //   • extractedId present but register 400 → case (d) drop in
+    //     transit (the strict server log shows what we tried to send)
     const run = async () => {
+      let probeResultForReport: Awaited<ReturnType<typeof probeBridge>> | null = null;
       for (let attempt = 0; attempt < 15; attempt++) {
         if (cancelled) return;
+        if (registeredViaMessage) return;
         try {
-          const done = await attemptRegister(attempt);
-          if (done) return;
+          console.log(`[onesignal] attempt ${attempt}`);
+          const probeResult = await probeBridge();
+          probeResultForReport = probeResult;
+          console.log(
+            "[onesignal] probe result:",
+            JSON.stringify({
+              chosen: probeResult.chosenSource,
+              chosenId: probeResult.chosenPlayerId,
+              permission: probeResult.permission.state,
+              paths: probeResult.paths.map((p) => ({
+                name: p.name,
+                methodPresent: p.methodPresent,
+                promiseShaped: p.promiseShaped,
+                extractedId: p.extractedId,
+                error: p.error,
+              })),
+            }),
+          );
+          if (probeResult.chosenPlayerId && probeResult.chosenSource) {
+            await reportProbe(probeResult);
+            const ok = await registerPlayerId(probeResult.chosenPlayerId, probeResult.chosenSource);
+            if (ok) return;
+          }
         } catch (e) {
           console.warn("[onesignal] registration attempt error:", e);
         }
         const delay = Math.min(1000 + attempt * 1000, 5000);
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise((r) => setTimeout(r, delay));
       }
       console.warn("[onesignal] all 15 attempts exhausted, player ID not registered");
+      if (probeResultForReport) {
+        // Best-effort one more report so the server records the
+        // final state for diagnosis.
+        await reportProbe(probeResultForReport);
+      }
     };
 
     run();

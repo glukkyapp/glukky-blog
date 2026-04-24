@@ -16,6 +16,15 @@ interface NotificationPayload {
   send_after?: string;
   delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
+  // For delivery_time_of_day sends, the t+0 and t+6s reports
+  // always read 0 — the actual delivery hasn't happened yet.
+  // Setting `postTriggerReportAfterMs` schedules an additional
+  // delivery-report fetch this many ms in the future, intended
+  // to land a few minutes after the latest recipient's local
+  // trigger time. The label is used in the log line so the
+  // operator can distinguish it from t+0 / t+6s entries.
+  postTriggerReportAfterMs?: number;
+  postTriggerReportLabel?: string;
 }
 
 interface OneSignalRequestBody {
@@ -207,7 +216,23 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
           // Fetch the delivery report immediately, then once more if
           // counters look unpopulated.
           if (typeof result.id === "string" && result.id.length > 0) {
-            void logDeliveryReport(result.id);
+            const notificationId = result.id;
+            void logDeliveryReport(notificationId);
+            // For delivery_time_of_day sends, also schedule a
+            // post-trigger report so the actual recipient counts
+            // show up in logs once the local time has passed.
+            if (
+              typeof payload.postTriggerReportAfterMs === "number" &&
+              payload.postTriggerReportAfterMs > 0 &&
+              payload.postTriggerReportAfterMs < 24 * 60 * 60_000
+            ) {
+              const label = payload.postTriggerReportLabel ?? "post-trigger";
+              setTimeout(() => {
+                fetchDeliveryReport(notificationId).then((r) =>
+                  logReport(notificationId, label, r),
+                );
+              }, payload.postTriggerReportAfterMs);
+            }
           }
         } catch {}
       }

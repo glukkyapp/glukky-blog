@@ -475,13 +475,70 @@ export async function registerRoutes(
     }
   });
 
+  // OneSignal subscription IDs are UUIDv4-shaped (with dashes). We
+  // accept the canonical form only — anything else is "garbage" we
+  // do not want silently stored, because a stored-but-unreachable
+  // player_id looks identical to a real registration in the DB and
+  // mid-leads diagnosis for days. Trim first so trailing whitespace
+  // from copy/paste doesn't slip through.
+  const ONESIGNAL_PLAYER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   app.post("/api/onesignal/register", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { playerId } = req.body;
-      if (!playerId || typeof playerId !== "string") {
-        return res.status(400).json({ message: "playerId is required" });
+      const rawPlayerId = req.body?.playerId;
+      const rawSource = req.body?.source;
+      const rawTimezone = req.body?.timezone;
+
+      // Strict validation. Empty / non-string / wrong-shape values
+      // are explicitly rejected with a structured log line so we
+      // can grep `onesignal/register REJECTED` and know exactly
+      // which device/email tried to store garbage.
+      const playerId =
+        typeof rawPlayerId === "string" ? rawPlayerId.trim() : null;
+      const looksValid =
+        playerId !== null &&
+        playerId.length > 0 &&
+        ONESIGNAL_PLAYER_ID_RE.test(playerId);
+
+      const user = await authStorage.getUser(userId);
+      const email = user?.email ?? "?";
+      const source =
+        typeof rawSource === "string" && rawSource.length > 0 && rawSource.length <= 64
+          ? rawSource
+          : "unknown";
+      const timezone =
+        typeof rawTimezone === "string" && rawTimezone.length > 0 && rawTimezone.length <= 64
+          ? rawTimezone
+          : null;
+
+      if (!looksValid) {
+        const shown = playerId === null ? "(missing)" : playerId.length === 0 ? "(empty)" : playerId;
+        console.warn(
+          `onesignal/register REJECTED email=${email} player_id=${shown} source=${source} reason=${
+            playerId === null
+              ? "missing-or-non-string"
+              : playerId.length === 0
+                ? "empty-after-trim"
+                : "not-uuid-shape"
+          }`,
+        );
+        return res.status(400).json({
+          message:
+            playerId === null
+              ? "playerId is required"
+              : playerId.length === 0
+                ? "playerId must not be empty"
+                : "playerId must be a OneSignal subscription UUID",
+        });
       }
+
+      const previousProfile = await storage.getProfile(userId);
+      const previousPlayerId = previousProfile?.onesignalPlayerId ?? null;
+
+      // Defend the unique invariant: if any other user_profiles row
+      // currently holds this player_id, null it on that row first.
+      // (Schema invariant: one user → one active subscription id.)
       await db
         .update(userProfiles)
         .set({ onesignalPlayerId: null })
@@ -489,13 +546,45 @@ export async function registerRoutes(
           eq(userProfiles.onesignalPlayerId, playerId),
           sql`${userProfiles.userId} != ${userId}`,
         ));
-      const profile = await storage.updateProfile(userId, { onesignalPlayerId: playerId });
+
+      const profile = await storage.updateProfile(userId, {
+        onesignalPlayerId: playerId,
+        onesignalRegisteredAt: new Date(),
+        // Fall back to UTC when the client could not resolve a
+        // timezone — the scheduler treats UTC as "may have passed"
+        // so the user still gets the send instead of silently
+        // rolling to tomorrow.
+        deviceTimezone: timezone ?? "UTC",
+      });
       if (!profile) return res.status(404).json({ message: "Profile not found" });
-      res.json({ success: true });
+
+      console.log(
+        `onesignal/register email=${email} player_id=${playerId} previous=${previousPlayerId ?? "none"} source=${source} tz=${timezone ?? "UTC(fallback)"}`,
+      );
+
+      res.json({
+        success: true,
+        playerId,
+        previousPlayerId,
+        timezone: timezone ?? "UTC",
+        registeredAt: profile.onesignalRegisteredAt?.toISOString?.() ?? null,
+      });
     } catch (error) {
       console.error("Error registering OneSignal player ID:", error);
       res.status(500).json({ message: "Failed to register player ID" });
     }
+  });
+
+  // Lightweight always-on uptime endpoint. Configure an external
+  // uptime monitor (UptimeRobot / cron-job.org / etc.) to GET this
+  // every 5 minutes between 23:55 UTC and 00:10 UTC so the daily
+  // notification scheduling pass at SCHEDULE_HOUR_UTC=0 actually
+  // runs on autoscale deployments. Cheaper than switching to a
+  // reserved VM. Public on purpose — there is nothing here to
+  // protect, only a 200 acknowledgement.
+  app.get("/api/uptime/ping", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, at: new Date().toISOString() });
   });
 
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
@@ -1825,7 +1914,7 @@ export async function registerRoutes(
   const snapAdviceCount = new Map<string, { date: string; count: number }>();
   // Internal/test allowlist: these user IDs bypass the snap/label and snap/advice daily caps.
   const UNLIMITED_SNAP_USER_IDS = new Set<string>([
-    "352049ea-0f08-4ca5-a980-62bef203e2a3", // yusycyn@gmail.com
+    "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
     "770c837e-10bc-4ec1-b891-0683cdc07a96", // cynthiayuyu@hotmail.com
   ]);
 
@@ -1918,6 +2007,134 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to send test notification" });
     }
   });
+
+  // ---- OneSignal probe + status (dev-gated) ----
+  // Surface registration state to the dev panel so we can answer
+  // "is yusycyn's device actually registered?" without a DB query.
+  // The probe endpoint also persists the most recent client-side
+  // bridge attempt in memory, indexed by user id, so the panel can
+  // render the last lookup result alongside the stored player_id.
+  type OneSignalBridgeProbe = {
+    receivedAt: string;
+    paths: Array<{
+      name: string;
+      methodPresent: boolean | null;
+      promiseShaped: boolean | null;
+      raw: unknown;
+      extractedId: string | null;
+      error: string | null;
+    }>;
+    permission: {
+      state: string | null;        // granted / denied / not-yet-asked / unknown
+      raw: unknown;
+      source: string | null;       // which bridge reported it
+    };
+    chosenSource: string | null;
+    chosenPlayerId: string | null;
+    timezone: string | null;
+    userAgent: string | null;
+  };
+  const lastOneSignalProbe = new Map<string, OneSignalBridgeProbe>();
+
+  app.post(
+    "/api/dev/onesignal-bridge-probe",
+    isAuthenticated,
+    isDevUser,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await authStorage.getUser(userId);
+        const email = user?.email ?? "?";
+        const body = (req.body ?? {}) as Partial<OneSignalBridgeProbe>;
+
+        // Accept whatever shape the client sends, but truncate /
+        // sanitize before holding it in memory or logging it.
+        const safe: OneSignalBridgeProbe = {
+          receivedAt: new Date().toISOString(),
+          paths: Array.isArray(body.paths)
+            ? body.paths.slice(0, 12).map((p: any) => ({
+                name: typeof p?.name === "string" ? p.name.slice(0, 64) : "?",
+                methodPresent: typeof p?.methodPresent === "boolean" ? p.methodPresent : null,
+                promiseShaped: typeof p?.promiseShaped === "boolean" ? p.promiseShaped : null,
+                raw: typeof p?.raw === "string" ? p.raw.slice(0, 400) : p?.raw ?? null,
+                extractedId: typeof p?.extractedId === "string" ? p.extractedId.slice(0, 80) : null,
+                error: typeof p?.error === "string" ? p.error.slice(0, 200) : null,
+              }))
+            : [],
+          permission: {
+            state:
+              typeof body?.permission?.state === "string"
+                ? body.permission.state.slice(0, 32)
+                : null,
+            raw:
+              typeof body?.permission?.raw === "string"
+                ? (body.permission.raw as string).slice(0, 200)
+                : body?.permission?.raw ?? null,
+            source:
+              typeof body?.permission?.source === "string"
+                ? body.permission.source.slice(0, 64)
+                : null,
+          },
+          chosenSource:
+            typeof body?.chosenSource === "string" ? body.chosenSource.slice(0, 64) : null,
+          chosenPlayerId:
+            typeof body?.chosenPlayerId === "string" ? body.chosenPlayerId.slice(0, 80) : null,
+          timezone:
+            typeof body?.timezone === "string" ? body.timezone.slice(0, 64) : null,
+          userAgent:
+            typeof body?.userAgent === "string" ? body.userAgent.slice(0, 200) : null,
+        };
+
+        lastOneSignalProbe.set(userId, safe);
+
+        // Log a single, scannable summary so the actual problem
+        // device's bridge state shows up in `npm run dev` / deploy
+        // logs without a follow-up DB query.
+        const pathSummary = safe.paths
+          .map(
+            (p) =>
+              `${p.name}=${p.methodPresent === false ? "missing" : p.extractedId ? `id(${p.extractedId.slice(0, 8)}…)` : p.error ? `err` : p.promiseShaped === false ? "callback-no-result" : "no-id"}`,
+          )
+          .join(",");
+        console.log(
+          `onesignal/probe email=${email} permission=${safe.permission.state ?? "?"} chosen=${safe.chosenSource ?? "none"} chosen_id=${safe.chosenPlayerId ?? "none"} tz=${safe.timezone ?? "?"} paths=[${pathSummary}]`,
+        );
+
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("onesignal-bridge-probe error:", error);
+        res.status(500).json({ message: "probe failed", error: error?.message ?? "unknown" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/dev/onesignal-status",
+    isAuthenticated,
+    isDevUser,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const [user, profile] = await Promise.all([
+          authStorage.getUser(userId),
+          storage.getProfile(userId),
+        ]);
+        res.json({
+          email: user?.email ?? null,
+          userId,
+          onesignalPlayerId: profile?.onesignalPlayerId ?? null,
+          onesignalRegisteredAt: profile?.onesignalRegisteredAt
+            ? new Date(profile.onesignalRegisteredAt).toISOString()
+            : null,
+          deviceTimezone: profile?.deviceTimezone ?? null,
+          lastBridgeProbe: lastOneSignalProbe.get(userId) ?? null,
+        });
+      } catch (error: any) {
+        console.error("onesignal-status error:", error);
+        res.status(500).json({ message: "status failed" });
+      }
+    },
+  );
 
   app.get("/api/dev/state", isAuthenticated, isDevUser, async (req: any, res) => {
     try {

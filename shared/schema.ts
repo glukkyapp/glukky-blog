@@ -64,6 +64,8 @@ export const userProfiles = pgTable("user_profiles", {
   fontSizePreference: varchar("font_size_preference").notNull().default("small"),
   introSeen: boolean("intro_seen").notNull().default(false),
   onesignalPlayerId: text("onesignal_player_id"),
+  onesignalRegisteredAt: timestamp("onesignal_registered_at"),
+  deviceTimezone: text("device_timezone"),
   lastReengagementNotification: timestamp("last_reengagement_notification"),
   hasCreatedFirstWeeklyPlan: boolean("has_created_first_weekly_plan").notNull().default(false),
   hasTriedFirstFoodSnap: boolean("has_tried_first_food_snap").notNull().default(false),

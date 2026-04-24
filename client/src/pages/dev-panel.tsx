@@ -372,6 +372,8 @@ export default function DevPanel() {
         </CardContent>
       </Card>
 
+      <PushRegistrationCard />
+
       <OneSignalDebugCard />
 
       <BuildInfoCard />
@@ -1491,6 +1493,326 @@ function RevenueCatDiagnosticsCard() {
             {recovering ? "Linking…" : "Link this device's RC ID to my account"}
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface OneSignalStatus {
+  email: string | null;
+  userId: string;
+  onesignalPlayerId: string | null;
+  onesignalRegisteredAt: string | null;
+  deviceTimezone: string | null;
+  lastBridgeProbe: {
+    receivedAt: string;
+    paths: Array<{
+      name: string;
+      methodPresent: boolean | null;
+      promiseShaped: boolean | null;
+      raw: unknown;
+      extractedId: string | null;
+      error: string | null;
+    }>;
+    permission: { state: string | null; raw: unknown; source: string | null };
+    chosenSource: string | null;
+    chosenPlayerId: string | null;
+    timezone: string | null;
+    userAgent: string | null;
+  } | null;
+}
+
+function PushRegistrationCard() {
+  const { toast } = useToast();
+  const { data: status, isLoading, refetch } = useQuery<OneSignalStatus>({
+    queryKey: ["/api/dev/onesignal-status"],
+  });
+  const [reregistering, setReregistering] = useState(false);
+  const [reregisterLog, setReregisterLog] = useState<string[]>([]);
+
+  const copy = (value: string) => {
+    try {
+      navigator.clipboard?.writeText(value);
+      toast({ title: "Copied" });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  const reregister = async () => {
+    setReregistering(true);
+    const lines: string[] = [];
+    const w = window as any;
+
+    const resolveTimezone = () => {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return tz && tz.length > 0 ? tz : "UTC";
+      } catch { return "UTC"; }
+    };
+
+    let chosenId: string | null = null;
+    let chosenSource: string | null = null;
+
+    // (0) capture OS push-permission state up front so the inline
+    // log explicitly says "granted / denied / not-yet-asked" for
+    // this click — not whatever the boot probe last reported. This
+    // matters for diagnosing case (c) (OS-level denial) without
+    // refetching status from the server.
+    try {
+      let permLine = "permission: unknown (no detection path)";
+      if (w.NativelyNotifications) {
+        const n = new w.NativelyNotifications();
+        for (const m of [
+          "getNotificationPermissionStatus",
+          "getPermissionStatus",
+          "getPermission",
+          "hasPermission",
+        ]) {
+          if (typeof n?.[m] === "function") {
+            try {
+              const res: any = await new Promise((resolve) => {
+                const t = setTimeout(() => resolve("__timeout__"), 4000);
+                let returned: any;
+                try {
+                  returned = n[m]((cb: any) => { clearTimeout(t); resolve(cb); });
+                } catch (e: any) { clearTimeout(t); resolve({ __throw: e?.message ?? String(e) }); return; }
+                if (returned && typeof returned.then === "function") {
+                  returned.then((v: any) => { clearTimeout(t); resolve(v); }).catch((e: any) => { clearTimeout(t); resolve({ __throw: e?.message ?? String(e) }); });
+                }
+              });
+              const text = typeof res === "string" ? res : JSON.stringify(res);
+              permLine = `permission: ${text} (NativelyNotifications.${m})`;
+              break;
+            } catch (e: any) {
+              permLine = `permission: error ${e?.message ?? e} (NativelyNotifications.${m})`;
+              break;
+            }
+          }
+        }
+      } else if (w.NativelyPush) {
+        const p = new w.NativelyPush();
+        for (const m of ["getNotificationPermissionStatus", "getPermissionStatus", "hasPermission"]) {
+          if (typeof p?.[m] === "function") {
+            try {
+              const res = await p[m]();
+              const text = typeof res === "string" ? res : JSON.stringify(res);
+              permLine = `permission: ${text} (NativelyPush.${m})`;
+              break;
+            } catch (e: any) {
+              permLine = `permission: error ${e?.message ?? e} (NativelyPush.${m})`;
+              break;
+            }
+          }
+        }
+      } else if (w.OneSignal && typeof w.OneSignal.getDeviceState === "function") {
+        try {
+          const ds = await w.OneSignal.getDeviceState();
+          permLine = `permission: ${JSON.stringify(ds)} (OneSignal.getDeviceState)`;
+        } catch (e: any) {
+          permLine = `permission: error ${e?.message ?? e} (OneSignal.getDeviceState)`;
+        }
+      }
+      lines.push(permLine);
+    } catch (e: any) {
+      lines.push(`permission: outer error ${e?.message ?? e}`);
+    }
+
+    // (a) NativelyNotifications callback
+    if (w.NativelyNotifications) {
+      try {
+        const n = new w.NativelyNotifications();
+        if (typeof n.getOneSignalId === "function") {
+          const r: any = await new Promise((resolve) => {
+            const t = setTimeout(() => resolve("__timeout__"), 6000);
+            try { n.getOneSignalId((res: any) => { clearTimeout(t); resolve(res); }); }
+            catch (e: any) { clearTimeout(t); resolve({ __throw: e?.message }); }
+          });
+          lines.push(`NativelyNotifications.getOneSignalId → ${typeof r === "string" ? r : JSON.stringify(r)}`);
+          const id = (typeof r === "string" && r) || r?.playerId || r?.oneSignalId || r?.id;
+          if (id && typeof id === "string" && id.length > 10) { chosenId = id; chosenSource = "NativelyNotifications"; }
+        } else {
+          lines.push("NativelyNotifications.getOneSignalId: method missing");
+        }
+      } catch (e: any) {
+        lines.push(`NativelyNotifications error: ${e?.message ?? e}`);
+      }
+    } else {
+      lines.push("NativelyNotifications: not present");
+    }
+
+    // (b) NativelyPush promise
+    if (!chosenId && w.NativelyPush) {
+      try {
+        const p = new w.NativelyPush();
+        if (typeof p.getOneSignalId === "function") {
+          const r: any = await Promise.race([
+            p.getOneSignalId(),
+            new Promise((res) => setTimeout(() => res("__timeout__"), 6000)),
+          ]);
+          lines.push(`NativelyPush.getOneSignalId → ${typeof r === "string" ? r : JSON.stringify(r)}`);
+          const id = r?.oneSignalId || r?.playerId || r?.id || (typeof r === "string" ? r : null);
+          if (id && typeof id === "string" && id.length > 10) { chosenId = id; chosenSource = "NativelyPush"; }
+        } else {
+          lines.push("NativelyPush.getOneSignalId: method missing");
+        }
+      } catch (e: any) {
+        lines.push(`NativelyPush error: ${e?.message ?? e}`);
+      }
+    } else if (!chosenId) {
+      lines.push("NativelyPush: not present");
+    }
+
+    // (c) global OneSignal promise
+    if (!chosenId && w.OneSignal && typeof w.OneSignal.getUserId === "function") {
+      try {
+        const r: any = await Promise.race([
+          w.OneSignal.getUserId(),
+          new Promise((res) => setTimeout(() => res("__timeout__"), 6000)),
+        ]);
+        lines.push(`OneSignal.getUserId → ${typeof r === "string" ? r : JSON.stringify(r)}`);
+        if (typeof r === "string" && r.length > 10) { chosenId = r; chosenSource = "OneSignal.getUserId"; }
+      } catch (e: any) {
+        lines.push(`OneSignal.getUserId error: ${e?.message ?? e}`);
+      }
+    }
+
+    if (!chosenId || !chosenSource) {
+      lines.push("⛔ no player id from any bridge path");
+      setReregisterLog(lines);
+      setReregistering(false);
+      // still refetch status so the dev panel reflects the latest state
+      try {
+        await fetch("/api/dev/onesignal-bridge-probe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paths: [],
+            permission: { state: null, raw: null, source: null },
+            chosenSource: null,
+            chosenPlayerId: null,
+            timezone: resolveTimezone(),
+            userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+          }),
+        });
+      } catch {}
+      refetch();
+      return;
+    }
+
+    try {
+      const resp = await fetch("/api/onesignal/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          playerId: chosenId,
+          source: chosenSource,
+          timezone: resolveTimezone(),
+        }),
+      });
+      const body = await resp.text();
+      lines.push(`POST /api/onesignal/register → ${resp.status} ${body}`);
+      if (resp.ok) {
+        // bust the local cache so the boot effect doesn't short-circuit later
+        try { localStorage.removeItem(`glukky_onesignal_pid_${status?.userId ?? ""}`); } catch {}
+        toast({ title: "Re-registered", description: chosenId.slice(0, 12) + "…" });
+      } else {
+        toast({ title: "Register failed", description: `${resp.status}`, variant: "destructive" });
+      }
+    } catch (e: any) {
+      lines.push(`register fetch error: ${e?.message ?? e}`);
+      toast({ title: "Register error", description: e?.message ?? "unknown", variant: "destructive" });
+    }
+
+    setReregisterLog(lines);
+    setReregistering(false);
+    refetch();
+  };
+
+  const playerId = status?.onesignalPlayerId ?? null;
+  const probe = status?.lastBridgeProbe ?? null;
+  const permissionState = probe?.permission?.state ?? null;
+  const permissionPretty =
+    permissionState === "granted" ? "granted ✅" :
+    permissionState === "denied" || permissionState === "denied-or-not-asked" ? `${permissionState} ⛔` :
+    permissionState === "not-yet-asked" ? "not yet asked" :
+    permissionState ?? "(no probe yet)";
+
+  return (
+    <Card className="border-indigo-200 dark:border-indigo-900">
+      <CardContent className="pt-4 space-y-3">
+        <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-400">Push registration</p>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">Loading…</p>
+        ) : (
+          <div className="bg-indigo-50 dark:bg-indigo-950 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-email">
+              email: {status?.email ?? "(unknown)"}
+            </p>
+            <div className="flex items-start gap-2">
+              <p className="text-xs font-mono select-text break-all flex-1" data-testid="text-pushreg-player-id">
+                player_id: {playerId ?? "⛔ NOT REGISTERED"}
+              </p>
+              {playerId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => copy(playerId)}
+                  data-testid="button-pushreg-copy-id"
+                >
+                  Copy
+                </Button>
+              )}
+            </div>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-registered-at">
+              registered_at: {status?.onesignalRegisteredAt ?? "(never)"}
+            </p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-timezone">
+              device_tz: {status?.deviceTimezone ?? "(none)"}
+            </p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-permission">
+              os_push_permission: {permissionPretty}
+              {probe?.permission?.source ? ` (${probe.permission.source})` : ""}
+            </p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-probe-chosen">
+              last_probe_chosen: {probe?.chosenSource ?? "(none)"} {probe?.chosenPlayerId ? `→ ${probe.chosenPlayerId.slice(0, 16)}…` : ""}
+            </p>
+            <p className="text-xs font-mono select-text break-all" data-testid="text-pushreg-probe-at">
+              last_probe_at: {probe?.receivedAt ?? "(no probe yet)"}
+            </p>
+            {probe?.paths?.length ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs font-mono text-indigo-600 dark:text-indigo-300">paths:</p>
+                {probe.paths.map((p, i) => (
+                  <p key={i} className="text-[10px] font-mono select-text break-all pl-2" data-testid={`text-pushreg-probe-path-${i}`}>
+                    • {p.name}: {p.methodPresent === false ? "missing" :
+                      p.extractedId ? `id=${p.extractedId.slice(0, 12)}…` :
+                      p.error ? `err=${p.error}` :
+                      p.promiseShaped === false ? "callback no result" : "no id"}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+        {reregisterLog.length > 0 && (
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-1">
+            {reregisterLog.map((line, i) => (
+              <p key={i} className="text-[10px] font-mono select-text break-all" data-testid={`text-pushreg-relog-${i}`}>{line}</p>
+            ))}
+          </div>
+        )}
+        <Button
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+          onClick={reregister}
+          disabled={reregistering}
+          data-testid="button-pushreg-reregister"
+        >
+          {reregistering ? "Re-registering…" : "Re-register OneSignal now"}
+        </Button>
       </CardContent>
     </Card>
   );
