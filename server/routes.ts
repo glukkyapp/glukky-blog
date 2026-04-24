@@ -30,6 +30,8 @@ import {
   probeSubscriber,
   fetchServerOfferings,
   applyWebhookEvent,
+  aliasAnonymousAppUserId,
+  looksLikeAnonymousAppUserId,
   type RevenueCatWebhookBody,
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
@@ -2950,6 +2952,42 @@ No explanation, just JSON.`,
 
   app.post("/api/update-premium-status", isAuthenticated, refreshPremiumHandler);
   app.post("/api/refresh-premium-status", isAuthenticated, refreshPremiumHandler);
+
+  // Attach an anonymous RevenueCat subscriber id (`$RCAnonymousID:…`) to the
+  // signed-in Replit user id by calling RC's REST alias endpoint server-side.
+  // This is the supported path on Build Natively wrappers that don't expose
+  // the `Set Customer ID` capability — the client posts the
+  // `customerInfo.original_app_user_id` it got back from purchase / restore,
+  // and from then on `verifyEntitlement(replitUserId)` resolves the merged
+  // subscriber.
+  app.post("/api/revenuecat/alias-anonymous", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const body = (req.body || {}) as { anonymousAppUserId?: unknown };
+      const anonymousAppUserId = body.anonymousAppUserId;
+
+      if (!looksLikeAnonymousAppUserId(anonymousAppUserId)) {
+        // Reject anything that isn't an `$RCAnonymousID:…` to prevent
+        // accidental hijack of another real Replit user id.
+        return res.status(400).json({
+          aliased: false,
+          source: "invalid_anonymous_id",
+          transient: false,
+        });
+      }
+
+      const result = await aliasAnonymousAppUserId(anonymousAppUserId, userId);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      console.error("[revenuecat/alias-anonymous] error:", error?.message || error);
+      return res.status(500).json({
+        aliased: false,
+        source: "error",
+        transient: false,
+        errorMessage: error?.message || "internal_error",
+      });
+    }
+  });
 
   // RevenueCat → server webhook. Configured in the RC dashboard with a shared
   // secret in the Authorization header so we can flip is_premium the moment

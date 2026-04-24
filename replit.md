@@ -81,20 +81,25 @@ Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/
 - Dev panel: NativelyPurchases probe card
 
 ## RevenueCat / Natively wrapper
-The iOS purchase flow ONLY works if the Natively-exported wrapper exposes RevenueCat's `Set Customer ID` capability. Without it, every purchase is recorded against an anonymous `$RCAnonymousID:…` record, the server's `verifyEntitlement(replitUserId)` returns 404 forever, and paying users get locked out of premium.
+iOS purchases are attached to the signed-in Replit user id **server-side** by aliasing the device's anonymous RevenueCat subscriber id (`$RCAnonymousID:…`) onto the Replit user id via RC's REST API. This removes the dependency on the Build Natively wrapper exposing a `Set Customer ID` (`logIn`) capability — that toggle does not exist in the current Build Natively dashboard, but the alias path works on every wrapper that already exposes purchase + restore + customerInfo.
+
+**Architecture:**
+- Bridge returns `customerInfo.original_app_user_id` (the anonymous id) from `purchasePackage` / `restorePurchases`.
+- Client posts that id to `POST /api/revenuecat/alias-anonymous` (authenticated). Server validates it looks like `$RCAnonymousID:…` (rejects anything else to prevent hijack), calls RC's `POST /v1/subscribers/{anon}/alias` with `{ new_app_user_id: <replitUserId> }` using `REVENUECAT_SECRET_API_KEY`, invalidates the entitlement cache for that Replit user id, and remembers the mapping in-memory (TTL 7 days) for the webhook fallback.
+- The existing verify-retry loop in the paywall picks up the merged subscriber on the next `/refresh-premium-status` and flips `is_premium` true.
+- Webhook fallback: when an `INITIAL_PURCHASE` arrives whose only candidate ids are anonymous (rare — client closed the app before step 1), `applyWebhookEvent` consults the same in-memory mapping to route the entitlement to the right user. No mapping → existing `no_user` outcome.
+- Subsequent purchases / renewals on the same RC subscriber don't need to re-alias (the alias is sticky on RC's side).
 
 **Required Natively bridge capabilities (RevenueCat plugin):**
-- `Set Customer ID` (a.k.a. `logIn`) — MUST be enabled. The web JS bridge must expose `new NativelyPurchases().logIn(appUserId, callback)`.
-- `Get Customer Info` — required to read current entitlements after purchase.
-- `Restore Purchases` — required for the paywall's Restore button.
+- `Get Customer Info` — required to read `original_app_user_id` after purchase / restore so the alias call has something to send.
+- `Restore Purchases` — required for the paywall's Restore button and for picking up entitlements purchased before the user signed in.
 - `Get Offerings` — required for live price-string fetch.
+- `Set Customer ID` (`logIn`) — **optional**. When present we still call it (via `ensureIdentified`) so purchases land on the right RC subscriber from the start instead of being aliased after the fact. When absent, the alias path covers it; the paywall does not block.
 
-**Post-export sanity checklist (run on a real device after every Natively re-export):**
-1. Cold-launch the app, sign in, open `/dev` → "RevenueCat Diagnostics" card.
-2. Confirm: `Bridge present: YES`, `Bridge appUserId (current) == Replit user id`, `Bridge originalAppUserId == Replit user id`, `Match: ✅ YES`, `logIn ready: YES`.
-3. If the dev panel shows the red "Native bridge is missing the Set Customer ID capability" banner, the wrapper is broken — re-export it with `Set Customer ID` enabled. The paywall Subscribe button is intentionally disabled in this state to prevent silent loss of payments.
-4. Run a sandbox purchase. Within ~8s the server log should show `[revenuecat] verify hit user=<replitId> hasPremium=true entitlements=[premium@<future-date>]` and the paywall should auto-close.
-5. Sign out / sign back in on a previously-purchased sandbox account, tap Restore, confirm the entitlement re-attaches to the same Replit user id.
+**Sanity checklist (run on a real device after every Natively re-export or paywall change):**
+1. Cold-launch the app, sign in, open the paywall, run a sandbox purchase. Within ~8s the server log should show `[revenuecat] alias ok anon=$RCAnonymousID:… replit=<replitId>` followed by `[revenuecat] verify hit user=<replitId> hasPremium=true` and the paywall should auto-close.
+2. Sign out / sign back in on a previously-purchased sandbox account, tap Restore, confirm the alias log fires and the entitlement re-attaches.
+3. Open `/dev` → "RevenueCat Diagnostics". On wrappers without `Set Customer ID` an amber note explains the alias path is in use; this is informational, not a failure.
 
 ## Deployment notes
 - Production static-serve sends `Cache-Control: no-store` for `index.html` and the SPA fallback (see `server/static.ts`) and `public, max-age=31536000, immutable` for `/assets/*`. Vite already fingerprints asset filenames, so a redeploy gets picked up on the next cold launch: WebView re-fetches `index.html`, sees new bundle filenames, fetches new JS/CSS automatically. `no-store` (vs the older `no-cache, must-revalidate`) prevents intermediate proxies/CDNs from holding the shell.

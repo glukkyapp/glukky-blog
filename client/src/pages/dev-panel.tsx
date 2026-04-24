@@ -1193,24 +1193,25 @@ function RevenueCatDiagnosticsCard() {
 
         {bridgeMissingLogIn && (
           <div
-            className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950 p-3 space-y-1"
+            className="rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950 p-3 space-y-1"
             data-testid="banner-rc-no-login-method"
           >
-            <p className="text-xs font-bold text-red-700 dark:text-red-300">
-              ⛔ Native bridge is missing the Set Customer ID capability.
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              Native bridge does not expose Set Customer ID (logIn).
             </p>
-            <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
-              Every iOS purchase from this build is being recorded against an
-              anonymous <code>$RCAnonymousID:…</code> record, so the server can
-              never attach premium to your Replit user id. The Subscribe button
-              is intentionally disabled until this is fixed.
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              Purchases on this build are recorded against an anonymous{" "}
+              <code>$RCAnonymousID:…</code> record on RevenueCat. That's fine —
+              the server attaches it to your Replit user id automatically via
+              the post-purchase alias call (<code>POST /api/revenuecat/alias-anonymous</code>),
+              and the verifier picks the entitlement up on the next refresh.
+              Subscribe is no longer blocked.
             </p>
-            <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
-              <strong>Fix:</strong> in Build Natively → RevenueCat plugin,
-              enable the <strong>Set Customer ID</strong> capability, re-export
-              the wrapper, ship a new TestFlight build, and cold-launch.
-              Re-check this card afterwards: <code>logIn ready</code> must
-              read <strong>YES</strong>.
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              Optional optimization: enabling <strong>Set Customer ID</strong>{" "}
+              in Build Natively (if it ever becomes available) would let the
+              wrapper attach the id <em>before</em> Apple confirms the purchase
+              instead of right after, removing the brief anonymous window.
             </p>
           </div>
         )}

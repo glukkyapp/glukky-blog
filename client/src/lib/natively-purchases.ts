@@ -126,6 +126,62 @@ export function isNativelyAvailable(): boolean {
   return hasNativelyPurchases();
 }
 
+const ANON_ID_PREFIX = "$RCAnonymousID:";
+
+function looksAnonymous(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith(ANON_ID_PREFIX) && value.length > ANON_ID_PREFIX.length;
+}
+
+function readOriginalAppUserId(info: CustomerInfo | null | undefined): string | null {
+  if (!info) return null;
+  const v = info.originalAppUserId ?? info.original_app_user_id ?? null;
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+/**
+ * Ask the server to attach an anonymous RC subscriber id (the
+ * `original_app_user_id` we got back from the bridge after
+ * purchase / restore) to the signed-in Replit user id. This is the
+ * server-side aliasing path that replaces the wrapper's missing
+ * `Set Customer ID` capability.
+ *
+ * No-op (resolves silently) when:
+ * - There is no anonymous id to attach.
+ * - The id already matches the signed-in Replit user id (alias unnecessary).
+ * - The bridge isn't present (web preview).
+ *
+ * Failures are logged and swallowed so they don't block the existing
+ * verify-retry loop.
+ */
+export async function aliasAnonymousIfNeeded(
+  customerInfo: CustomerInfo | null | undefined,
+  replitUserId: string | null | undefined,
+): Promise<void> {
+  if (!replitUserId) return;
+  const anonymousId = readOriginalAppUserId(customerInfo);
+  if (!anonymousId) return;
+  if (!looksAnonymous(anonymousId)) return;
+  if (anonymousId === replitUserId) return;
+  try {
+    const resp = await fetch("/api/revenuecat/alias-anonymous", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ anonymousAppUserId: anonymousId }),
+    });
+    if (!resp.ok) {
+      console.warn(`[revenuecat] alias-anonymous failed: HTTP ${resp.status}`);
+      return;
+    }
+    const data = await resp.json().catch(() => null);
+    console.log(
+      `[revenuecat] alias-anonymous result aliased=${data?.aliased ?? "?"} source=${data?.source ?? "?"}`,
+    );
+  } catch (e: any) {
+    console.warn("[revenuecat] alias-anonymous error:", e?.message || e);
+  }
+}
+
 export function purchasePackage(packageId: string): Promise<PurchaseResult> {
   return new Promise((resolve) => {
     if (!hasNativelyPurchases() || !window.NativelyPurchases) {

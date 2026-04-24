@@ -164,6 +164,160 @@ export function invalidateEntitlementCache(appUserId?: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Server-side aliasing of an anonymous RC subscriber to a Replit user id.
+//
+// The Build Natively wrapper does not expose RevenueCat's `Set Customer ID`
+// (logIn) capability, so every iOS purchase is recorded against an anonymous
+// `$RCAnonymousID:…` record. We attach that anonymous record to the signed-in
+// Replit user id by calling RC's REST alias endpoint server-side. After this,
+// `verifyEntitlement(replitUserId)` resolves the merged subscriber and finds
+// the entitlement.
+// ---------------------------------------------------------------------------
+
+const ANON_ID_PREFIX = "$RCAnonymousID:";
+
+export function looksLikeAnonymousAppUserId(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith(ANON_ID_PREFIX) && value.length > ANON_ID_PREFIX.length;
+}
+
+// Small in-memory mapping anonymous_app_user_id → replit_user_id, used as a
+// webhook fallback when an INITIAL_PURCHASE arrives before the client has
+// finished the alias round-trip. Last-write-wins, expires after a few days.
+const ALIAS_MAPPING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const aliasMapping = new Map<string, { replitUserId: string; expiresAt: number }>();
+
+function rememberAliasMapping(anonymousId: string, replitUserId: string): void {
+  aliasMapping.set(anonymousId, {
+    replitUserId,
+    expiresAt: Date.now() + ALIAS_MAPPING_TTL_MS,
+  });
+}
+
+export function lookupAliasMapping(anonymousId: string): string | null {
+  const entry = aliasMapping.get(anonymousId);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    aliasMapping.delete(anonymousId);
+    return null;
+  }
+  return entry.replitUserId;
+}
+
+// Exposed for tests so we can reset state between cases.
+export function _clearAliasMappingForTests(): void {
+  aliasMapping.clear();
+}
+
+export interface AliasResult {
+  aliased: boolean;
+  source:
+    | "ok"
+    | "no_key"
+    | "invalid_anonymous_id"
+    | "invalid_replit_user_id"
+    | "not_found"
+    | "error_transient"
+    | "error";
+  transient: boolean;
+  httpStatus?: number;
+  errorMessage?: string;
+}
+
+export async function aliasAnonymousAppUserId(
+  anonymousId: string,
+  replitUserId: string,
+): Promise<AliasResult> {
+  if (!looksLikeAnonymousAppUserId(anonymousId)) {
+    return { aliased: false, source: "invalid_anonymous_id", transient: false };
+  }
+  if (typeof replitUserId !== "string" || replitUserId.length === 0) {
+    return { aliased: false, source: "invalid_replit_user_id", transient: false };
+  }
+  if (looksLikeAnonymousAppUserId(replitUserId)) {
+    // Defence in depth: never alias an anonymous id onto another anonymous id.
+    return { aliased: false, source: "invalid_replit_user_id", transient: false };
+  }
+
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return { aliased: false, source: "no_key", transient: false };
+  }
+
+  try {
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(anonymousId)}/alias`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ new_app_user_id: replitUserId }),
+    });
+
+    if (resp.status === 404) {
+      console.log(
+        `[revenuecat] alias anon=${anonymousId} replit=${replitUserId} ` +
+          `result=not_found http=404`,
+      );
+      return { aliased: false, source: "not_found", transient: false, httpStatus: 404 };
+    }
+
+    if (resp.status === 429 || resp.status >= 500) {
+      console.warn(
+        `[revenuecat] alias transient HTTP ${resp.status} anon=${anonymousId} replit=${replitUserId}`,
+      );
+      return {
+        aliased: false,
+        source: "error_transient",
+        transient: true,
+        httpStatus: resp.status,
+        errorMessage: `HTTP ${resp.status}`,
+      };
+    }
+
+    if (!resp.ok) {
+      let bodyText = "";
+      try { bodyText = (await resp.text()).slice(0, 300); } catch {}
+      console.warn(
+        `[revenuecat] alias failed anon=${anonymousId} replit=${replitUserId} ` +
+          `http=${resp.status} body=${bodyText}`,
+      );
+      return {
+        aliased: false,
+        source: "error",
+        transient: false,
+        httpStatus: resp.status,
+        errorMessage: `HTTP ${resp.status}${bodyText ? ` ${bodyText}` : ""}`,
+      };
+    }
+
+    // Success. Invalidate the entitlement cache for the Replit user id so the
+    // next verify round-trip sees the merged subscriber, and remember the
+    // mapping so a webhook arriving before the next client refresh can still
+    // route the entitlement to the correct user.
+    invalidateEntitlementCache(replitUserId);
+    rememberAliasMapping(anonymousId, replitUserId);
+
+    console.log(
+      `[revenuecat] alias ok anon=${anonymousId} replit=${replitUserId} http=${resp.status}`,
+    );
+    return { aliased: true, source: "ok", transient: false, httpStatus: resp.status };
+  } catch (err: any) {
+    console.warn(
+      `[revenuecat] alias error anon=${anonymousId} replit=${replitUserId}: ${err?.message || err}`,
+    );
+    return {
+      aliased: false,
+      source: "error_transient",
+      transient: true,
+      errorMessage: err?.message || "network",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostics: subscriber probe + server-side offerings list
 //
 // These power the dev-panel diagnostics card. The subscriber probe returns
@@ -488,8 +642,30 @@ export async function applyWebhookEvent(
     };
   }
 
+  // INITIAL_PURCHASE fallback: if every candidate id is anonymous (the
+  // wrapper has no Set Customer ID and the client never finished the
+  // alias round-trip), look the anonymous id up in the in-memory alias
+  // mapping populated by aliasAnonymousAppUserId() and append the mapped
+  // Replit user id as a real candidate. Only INITIAL_PURCHASE — renewals
+  // and other events should already carry the real id once the alias has
+  // been performed once.
+  if (
+    intent === "grant" &&
+    type === "INITIAL_PURCHASE" &&
+    candidates.length > 0 &&
+    candidates.every(looksLikeAnonymousAppUserId)
+  ) {
+    for (const anon of candidates) {
+      const mapped = lookupAliasMapping(anon);
+      if (mapped && !candidates.includes(mapped)) {
+        candidates.push(mapped);
+      }
+    }
+  }
+
   // Find the first candidate that maps to a known user.
   for (const userId of candidates) {
+    if (looksLikeAnonymousAppUserId(userId)) continue;
     invalidateEntitlementCache(userId);
 
     if (intent === "revoke") {

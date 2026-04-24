@@ -15,6 +15,7 @@ import {
   isIdentityReadyFor,
   subscribeIdentity,
   getIdentityState,
+  aliasAnonymousIfNeeded,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -44,11 +45,19 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
   const isNative = isNativelyAvailable();
   const bridgeMissingLogIn = isNative && identityError === "no_login_method";
+  // When the wrapper does NOT expose `Set Customer ID` (no logIn), the
+  // identity gate would block Subscribe forever. In that build we rely
+  // on the post-purchase server-side alias path instead, so the gate is
+  // bypassed. When logIn IS available we keep gating on it (preferred
+  // path: purchases land on the right RC subscriber from the start).
+  const useIdentityGate = isNative && !bridgeMissingLogIn;
+  const subscribeBlockedByIdentity = useIdentityGate && !identityReady;
 
   // Keep an up-to-date view of "is RC identity established for the
   // current Replit user?" so we can gate the subscribe button on it
-  // and never let a fast-tapping user record a purchase against the
-  // anonymous app-user-id.
+  // when the bridge supports logIn. Without logIn we still subscribe
+  // to identity changes so the diagnostic state (identityError) stays
+  // fresh for the dev panel.
   useEffect(() => {
     const update = () => {
       setIdentityReady(isIdentityReadyFor(userId));
@@ -59,7 +68,8 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     if (open && userId) {
       // Defensive: if the boot-time effect somehow didn't fire (e.g. the
       // paywall is opened from an unauthenticated edge case), kick off
-      // logIn now so the user isn't permanently blocked.
+      // logIn now. On builds where logIn is missing this just records
+      // the `no_login_method` error and the alias path takes over.
       ensureIdentified(userId);
     }
     return unsubscribe;
@@ -156,7 +166,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
   const handlePurchase = async () => {
     if (!isNative) return;
-    if (!identityReady) return; // button is also disabled, but belt-and-suspenders
+    if (subscribeBlockedByIdentity) return; // button is also disabled, but belt-and-suspenders
     setPurchasing(true);
     setError(null);
     hapticTap("MEDIUM");
@@ -169,6 +179,13 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       const purchaseLooksDone =
         (result.success && isPremiumFromCustomerInfo(result.customerInfo || null)) ||
         result.error === "pending_verification";
+
+      // Server-side alias: when the bridge has no logIn (or even when it
+      // does and the device record was anonymous before logIn), attach the
+      // anonymous RC subscriber id we just got back to the signed-in
+      // Replit user id. Failures are non-blocking — the verify-retry loop
+      // below still runs.
+      await aliasAnonymousIfNeeded(result.customerInfo, userId);
 
       if (purchaseLooksDone) {
         const verified = await verifyWithRetry();
@@ -203,6 +220,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       // server verify with RevenueCat. We only use the device result to skip
       // the round-trip when it clearly shows nothing was restored.
       if (result.success) {
+        // Same server-side alias path as purchase: any anonymous record
+        // surfaced by Restore should be attached to the signed-in user.
+        await aliasAnonymousIfNeeded(result.customerInfo, userId);
         const verified = await verifyWithRetry();
         if (verified) {
           hapticNotify("SUCCESS");
@@ -330,25 +350,14 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
             {isNative ? (
               <div className="w-full flex flex-col gap-2 mt-3">
-                {bridgeMissingLogIn && (
-                  <div
-                    className="rounded-lg border border-red-400 bg-red-50 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-300 leading-relaxed"
-                    data-testid="banner-paywall-no-login-method"
-                  >
-                    This build of the app cannot attach purchases to your
-                    account, so subscribing is temporarily disabled. A new
-                    app build will be released shortly — please try again
-                    after updating from TestFlight / the App Store.
-                  </div>
-                )}
                 <Button
                   className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
-                  disabled={purchasing || restoring || !identityReady}
+                  disabled={purchasing || restoring || subscribeBlockedByIdentity}
                   data-testid="button-paywall-subscribe"
                 >
                   <Sparkles className="w-5 h-5" />
-                  {purchasing || !identityReady
+                  {purchasing || subscribeBlockedByIdentity
                     ? t("paywall.processing")
                     : t("paywall.subscribe_button")}
                 </Button>
