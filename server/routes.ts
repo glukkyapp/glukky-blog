@@ -2960,6 +2960,74 @@ No explanation, just JSON.`,
   // `customerInfo.original_app_user_id` it got back from purchase / restore,
   // and from then on `verifyEntitlement(replitUserId)` resolves the merged
   // subscriber.
+
+  // Paywall price-source diagnostic. The wrapper bridge can fail to return
+  // a monthly price for six different reasons, each tagged in
+  // getMonthlyPriceDetails. The console.warn it emits lives in the
+  // in-device Web Inspector / Build Natively log, neither of which is
+  // easy to read after a TestFlight session. This endpoint mirrors that
+  // signature into the deployment log so the cause can be identified
+  // from the workflow console / production logs.
+  //
+  // Non-sensitive payload, unauthenticated, never persisted. We accept
+  // only a small whitelist of fields and bound their sizes.
+  app.post("/api/diag/paywall-price", (req, res) => {
+    try {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const str = (v: unknown, max = 200): string | null => {
+        if (typeof v !== "string") return null;
+        return v.slice(0, max);
+      };
+      const arrStr = (v: unknown, maxItems = 16, maxItemLen = 80): string[] => {
+        if (!Array.isArray(v)) return [];
+        const out: string[] = [];
+        for (const x of v.slice(0, maxItems)) {
+          if (typeof x === "string") out.push(x.slice(0, maxItemLen));
+        }
+        return out;
+      };
+      const num = (v: unknown): number | null => {
+        if (typeof v !== "number" || !Number.isFinite(v)) return null;
+        return v;
+      };
+      const bool = (v: unknown): boolean | null => (typeof v === "boolean" ? v : null);
+
+      const payload = {
+        source: str(body.source) ?? "unknown",
+        durationMs: num(body.durationMs),
+        errorMessage: str(body.errorMessage, 300),
+        currentOfferingIdentifier: str(body.currentOfferingIdentifier),
+        offeringIdentifiers: arrStr(body.offeringIdentifiers),
+        packageIdentifiers: arrStr(body.packageIdentifiers),
+        hasCurrent: bool(body.hasCurrent),
+        hasMonthly: bool(body.hasMonthly),
+        ua: str(body.ua, 240),
+      };
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.ip ||
+        "unknown";
+
+      console.log(
+        `[paywall-price-diag] source=${payload.source} ` +
+          `durationMs=${payload.durationMs ?? "n/a"} ` +
+          `hasCurrent=${payload.hasCurrent} hasMonthly=${payload.hasMonthly} ` +
+          `currentOffering=${payload.currentOfferingIdentifier ?? "null"} ` +
+          `offerings=[${payload.offeringIdentifiers.join(",")}] ` +
+          `packages=[${payload.packageIdentifiers.join(",")}] ` +
+          `errorMessage=${payload.errorMessage ?? "null"} ` +
+          `ip=${ip} ua=${payload.ua ?? "null"}`,
+      );
+
+      res.status(204).end();
+    } catch (err: any) {
+      // Diagnostic must never 500 — the client fires-and-forgets.
+      console.warn("[paywall-price-diag] handler error:", err?.message || err);
+      res.status(204).end();
+    }
+  });
+
   app.post("/api/revenuecat/alias-anonymous", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub as string;

@@ -104,6 +104,26 @@ export interface MonthlyPriceResult {
 const PRICE_FETCH_TIMEOUT_MS = 8000;
 const LOG_TAG = "[paywall-price]";
 
+// One diag POST per page load. The paywall can be opened repeatedly; we
+// only need the first failure signature to figure out which of the six
+// null sources is firing on a given device build.
+let diagSent = false;
+
+function sendPriceDiag(payload: Record<string, unknown>): void {
+  if (diagSent) return;
+  diagSent = true;
+  try {
+    fetch("/api/diag/paywall-price", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // best-effort; never break price resolution because diag failed
+  }
+}
+
 function isNonEmptyPrice(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
@@ -395,6 +415,40 @@ export function getMonthlyPriceDetails(): Promise<MonthlyPriceResult> {
           source: out.source,
           durationMs: out.durationMs,
           errorMessage: out.errorMessage,
+        });
+        // Also surface to the server so we can read the cause from the
+        // deployment log without needing an in-device Web Inspector.
+        const raw = out.rawOfferings;
+        const current = raw?.current ?? null;
+        const offeringIdentifiers: string[] = [];
+        const packageIdentifiers: string[] = [];
+        try {
+          if (current?.identifier) offeringIdentifiers.push(current.identifier);
+          if (raw?.all) {
+            for (const k of Object.keys(raw.all)) {
+              if (!offeringIdentifiers.includes(k)) offeringIdentifiers.push(k);
+            }
+          }
+          const pkgs = current?.availablePackages || [];
+          for (const p of pkgs) {
+            if (p?.identifier) packageIdentifiers.push(p.identifier);
+          }
+          if (current?.monthly?.identifier && !packageIdentifiers.includes(current.monthly.identifier)) {
+            packageIdentifiers.push(current.monthly.identifier);
+          }
+        } catch {
+          // ignore — best-effort summary
+        }
+        sendPriceDiag({
+          source: out.source,
+          durationMs: out.durationMs,
+          errorMessage: out.errorMessage ?? null,
+          currentOfferingIdentifier: current?.identifier ?? null,
+          offeringIdentifiers,
+          packageIdentifiers,
+          hasCurrent: Boolean(current),
+          hasMonthly: Boolean(current?.monthly),
+          ua: typeof navigator !== "undefined" ? navigator.userAgent : null,
         });
       }
       resolve(out);

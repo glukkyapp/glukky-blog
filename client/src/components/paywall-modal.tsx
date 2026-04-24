@@ -326,7 +326,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
               {headline}
             </p>
 
-            <div className="w-full flex flex-col gap-[4px] text-left text-base mt-[26px]">
+            <div className="w-full flex flex-col gap-[2px] text-left text-base mt-[26px]">
               {["feature_plans", "feature_snap", "feature_roadmap", "feature_insights"].map((key) => (
                 <div key={key} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
