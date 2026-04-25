@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import PaywallModal from "@/components/paywall-modal";
-import { ensureIdentified } from "@/lib/natively-purchases";
+import { ensureIdentified, ensureCustomerIdSet } from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
@@ -254,8 +254,36 @@ function AuthenticatedApp() {
     // an anonymous "$RCAnonymousID:…" record and the server's
     // verifyEntitlement(replitUserId) always 404s. Safe + idempotent
     // when the bridge is missing (web preview).
+    //
+    // Two paths fire here:
+    //   1) `setCustomerId` — Build Natively's documented `Set Customer
+    //      ID` action. PRIMARY path: tells the RC SDK who's buying
+    //      BEFORE the purchase, so the receipt lands on the right
+    //      subscriber from the start and the verifier returns
+    //      hasPremium=true on the first poll without aliasing.
+    //   2) `logIn` — older identity path kept for backwards compat on
+    //      wrappers that don't expose setCustomerId. No-op on bridges
+    //      where logIn is missing.
+    // The post-purchase server-side alias path remains as a dormant
+    // safety net for users who already purchased under an anonymous
+    // id before this fix shipped.
     const userId = (profile as any)?.userId;
-    if (userId) ensureIdentified(userId);
+    if (!userId) return;
+    ensureCustomerIdSet(userId);
+    ensureIdentified(userId);
+
+    // Re-assert the customer id on app foreground — Build Natively
+    // wrappers have been observed to forget the SDK-side identity
+    // after the app has been backgrounded for a while. `force` bypasses
+    // the per-user idempotence cache so a previous `success` doesn't
+    // suppress the re-attempt.
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        ensureCustomerIdSet(userId, { force: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [(profile as any)?.userId]);
 
   useEffect(() => {

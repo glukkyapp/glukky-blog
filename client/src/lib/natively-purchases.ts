@@ -80,6 +80,16 @@ export interface NativelyPurchasesInstance {
   getCustomerInfo(callback: (result: CustomerInfo | null) => void): void;
   getOfferings?(callback: (result: OfferingsResult | null) => void): void;
   logIn?(appUserId: string, callback: (result: { customerInfo?: CustomerInfo; created?: boolean; error?: string }) => void): void;
+  // Build Natively's documented `Set Customer ID` action. Tells the
+  // RevenueCat SDK which customer subsequent purchases should be
+  // attributed to. We read it via the typed optional accessor so the
+  // call site can `typeof === "function"` check without an `any` cast.
+  // Older wrapper builds did not expose this — when missing, the gate
+  // falls back to the post-purchase server-side alias path.
+  setCustomerId?(
+    customerId: string,
+    callback: (result?: { success?: boolean; customerInfo?: CustomerInfo; error?: string } | null) => void,
+  ): void;
   getAppUserID?(callback: (id: string | null) => void): void;
   getAppUserId?(callback: (id: string | null) => void): void;
   // Alternative anonymous-id accessors exposed by other RC wrapper
@@ -232,6 +242,19 @@ export interface RcStateDiag {
     offeringIdentifiers: string[];
   };
   projectMismatchSuspected: boolean;
+  // Replaces the old per-trace `bridgeMissingLogIn` flag. At-a-glance
+  // tells us whether OUR code did its job — set the customer id on the
+  // wrapper before the user could tap Subscribe — so the next failure
+  // investigation immediately points at the right line.
+  customerIdState?: {
+    attempted: boolean;
+    succeeded: boolean;
+    outcome: string | null;
+    errorMessage: string | null;
+    lastAttemptAt: string | null;
+    customerIdSent: string | null;
+    currentReplitUserId: string;
+  };
 }
 
 // Best-effort fetch of the server-side RC state diagnostic. Used to
@@ -1383,6 +1406,339 @@ export function ensureIdentified(appUserId: string): Promise<LoginResult> {
 
   currentLoginRef = { userId: appUserId, promise, ready: false };
   notifyIdentity();
+  return promise;
+}
+
+// ---------------------------------------------------------------------------
+// setCustomerId (Build Natively's documented `Set Customer ID` action).
+//
+// This is the SUPPORTED, primary path for telling RevenueCat which Replit
+// user is buying. It replaces the older alias-based workaround that ran
+// AFTER purchase — by calling setCustomerId BEFORE the user can tap
+// Subscribe, the receipt is recorded against the right RC subscriber from
+// the start, and the existing verifier returns hasPremium=true on the
+// first poll without any aliasing.
+//
+// We track the most-recent attempt per Replit user id so the paywall can
+// gate Subscribe on readiness AND the dev panel / purchase trace can
+// surface the exact outcome (success / error / timed_out / no_method /
+// bridge_missing). On the web (no bridge) readiness is treated as `true`
+// so non-native flows are not blocked.
+// ---------------------------------------------------------------------------
+
+export type SetCustomerIdOutcome =
+  // Bridge confirmed the customer id is set (callback returned without
+  // an error key, within the timeout window).
+  | "success"
+  // Bridge invoked the callback with an `error` field, OR the
+  // constructor / call threw synchronously.
+  | "error"
+  // Callback never fired within the timeout. Per the task: never
+  // silently treat absence as failure — record this distinct outcome.
+  | "timed_out"
+  // No `window.NativelyPurchases` (web preview). Considered "ready" for
+  // gating purposes so non-native flows don't permanently block.
+  | "bridge_missing"
+  // Bridge instance present but does not expose `setCustomerId`. The
+  // post-purchase server-side alias path is the documented fallback.
+  | "no_method"
+  // Helper was never called for this user yet. Default state of the
+  // tracker before auth resolves.
+  | "not_attempted";
+
+export interface SetCustomerIdResult {
+  outcome: SetCustomerIdOutcome;
+  success: boolean;
+  bridgePresent: boolean;
+  durationMs: number;
+  errorMessage: string | null;
+  // Names of the keys present on the wrapper's callback result, captured
+  // verbatim for the trace so a future "wrapper changed shape" regression
+  // is visible without an over-the-shoulder TestFlight session.
+  rawResultKeys: string[];
+}
+
+export interface CustomerIdState {
+  attempted: boolean;
+  succeeded: boolean;
+  outcome: SetCustomerIdOutcome | null;
+  errorMessage: string | null;
+  durationMs: number | null;
+  // Wall-clock ms timestamp of the most recent attempt. Used by the dev
+  // panel / `/api/diag/rc-state` so a stale "succeeded a week ago" is
+  // visibly different from a fresh "succeeded just now".
+  lastAttemptAt: number | null;
+  customerIdSent: string | null;
+  bridgePresent: boolean;
+  inFlight: boolean;
+}
+
+const SET_CUSTOMER_ID_TIMEOUT_MS = 8000;
+
+interface CustomerIdRef {
+  userId: string;
+  promise: Promise<SetCustomerIdResult>;
+  inFlight: boolean;
+  result: SetCustomerIdResult | null;
+  lastAttemptAt: number;
+}
+
+let customerIdRef: CustomerIdRef | null = null;
+const customerIdListeners = new Set<() => void>();
+
+function notifyCustomerId() {
+  customerIdListeners.forEach((fn) => {
+    try { fn(); } catch {}
+  });
+}
+
+export function subscribeCustomerId(fn: () => void): () => void {
+  customerIdListeners.add(fn);
+  return () => { customerIdListeners.delete(fn); };
+}
+
+export function getCustomerIdState(): CustomerIdState {
+  if (!customerIdRef) {
+    return {
+      attempted: false,
+      succeeded: false,
+      outcome: null,
+      errorMessage: null,
+      durationMs: null,
+      lastAttemptAt: null,
+      customerIdSent: null,
+      bridgePresent: hasNativelyPurchases(),
+      inFlight: false,
+    };
+  }
+  const r = customerIdRef.result;
+  return {
+    attempted: true,
+    succeeded: !!r?.success,
+    outcome: r?.outcome ?? null,
+    errorMessage: r?.errorMessage ?? null,
+    durationMs: r?.durationMs ?? null,
+    lastAttemptAt: customerIdRef.lastAttemptAt,
+    customerIdSent: customerIdRef.userId,
+    bridgePresent: hasNativelyPurchases(),
+    inFlight: customerIdRef.inFlight,
+  };
+}
+
+// Gate readiness check used by the paywall. The semantics mirror
+// `isIdentityReadyFor` but track the new setCustomerId path:
+// - No bridge (web preview) → ready (non-native flows must not block).
+// - No `setCustomerId` method on this wrapper → ready (the server-side
+//   alias path is the documented fallback for that build).
+// - error / timed_out → ready (FALL BACK to the legacy alias-based flow
+//   so a flaky bridge call never permanently blocks Subscribe; the
+//   failure is still surfaced via traces and the dev-panel readout).
+// - success → ready.
+// - not_attempted (initial state, in-flight first call) → blocked until
+//   the first attempt for THIS user resolves with any outcome.
+export function isCustomerIdReadyFor(userId: string | undefined | null): boolean {
+  if (!userId) return false;
+  if (!hasNativelyPurchases()) return true;
+  if (customerIdRef?.userId === userId && customerIdRef.result) {
+    const o = customerIdRef.result.outcome;
+    return (
+      o === "success" ||
+      o === "no_method" ||
+      o === "bridge_missing" ||
+      o === "error" ||
+      o === "timed_out"
+    );
+  }
+  return false;
+}
+
+// Per-call reason describing why the gate is currently closed for the
+// signed-in user. Surfaced in the dev panel + the purchase trace so a
+// failed Subscribe tap maps to a single named cause.
+export type CustomerIdGateReason =
+  | "ready"
+  | "auth_not_ready"
+  | "customer_id_not_set_yet"
+  | "customer_id_set_for_different_user"
+  | "customer_id_call_errored"
+  | "customer_id_call_timed_out"
+  | "bridge_missing";
+
+export function customerIdGateReason(
+  userId: string | undefined | null,
+): CustomerIdGateReason {
+  if (!userId) return "auth_not_ready";
+  if (!hasNativelyPurchases()) return "bridge_missing";
+  if (!customerIdRef) return "customer_id_not_set_yet";
+  if (customerIdRef.userId !== userId) return "customer_id_set_for_different_user";
+  const r = customerIdRef.result;
+  if (!r) return "customer_id_not_set_yet";
+  // The gate is RELEASED for success / no_method / bridge_missing AND for
+  // error / timed_out (we fall back to the legacy alias path rather than
+  // hard-block Subscribe on a flaky bridge). The trace separately
+  // records the underlying outcome so a degraded fallback is visible.
+  if (
+    r.outcome === "success" ||
+    r.outcome === "no_method" ||
+    r.outcome === "bridge_missing" ||
+    r.outcome === "error" ||
+    r.outcome === "timed_out"
+  ) {
+    return "ready";
+  }
+  return "customer_id_not_set_yet";
+}
+
+function doSetCustomerId(appUserId: string): Promise<SetCustomerIdResult> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    if (!hasNativelyPurchases() || !window.NativelyPurchases) {
+      return resolve({
+        outcome: "bridge_missing",
+        success: false,
+        bridgePresent: false,
+        durationMs: 0,
+        errorMessage: null,
+        rawResultKeys: [],
+      });
+    }
+    let purchases: NativelyPurchasesInstance;
+    try {
+      purchases = new window.NativelyPurchases();
+    } catch (e: unknown) {
+      return resolve({
+        outcome: "error",
+        success: false,
+        bridgePresent: true,
+        durationMs: Date.now() - startedAt,
+        errorMessage: e instanceof Error ? e.message : "unknown",
+        rawResultKeys: [],
+      });
+    }
+    if (typeof purchases.setCustomerId !== "function") {
+      console.warn("[revenuecat] NativelyPurchases.setCustomerId not exposed by bridge");
+      return resolve({
+        outcome: "no_method",
+        success: false,
+        bridgePresent: true,
+        durationMs: Date.now() - startedAt,
+        errorMessage: null,
+        rawResultKeys: [],
+      });
+    }
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.warn("[revenuecat] setCustomerId timed out");
+      resolve({
+        outcome: "timed_out",
+        success: false,
+        bridgePresent: true,
+        durationMs: Date.now() - startedAt,
+        errorMessage: null,
+        rawResultKeys: [],
+      });
+    }, SET_CUSTOMER_ID_TIMEOUT_MS);
+    try {
+      purchases.setCustomerId(appUserId, (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        const r = (result || {}) as Record<string, unknown>;
+        const rawResultKeys = Object.keys(r).slice(0, 16).map((k) => k.slice(0, 64));
+        const errorMessage = typeof r.error === "string" && r.error.length > 0 ? r.error.slice(0, 240) : null;
+        if (errorMessage) {
+          console.warn("[revenuecat] setCustomerId error:", errorMessage);
+          resolve({
+            outcome: "error",
+            success: false,
+            bridgePresent: true,
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            rawResultKeys,
+          });
+        } else {
+          resolve({
+            outcome: "success",
+            success: true,
+            bridgePresent: true,
+            durationMs: Date.now() - startedAt,
+            errorMessage: null,
+            rawResultKeys,
+          });
+        }
+      });
+    } catch (e: unknown) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        outcome: "error",
+        success: false,
+        bridgePresent: true,
+        durationMs: Date.now() - startedAt,
+        errorMessage: e instanceof Error ? e.message : "unknown",
+        rawResultKeys: [],
+      });
+    }
+  });
+}
+
+// Idempotent ensure: returns the cached promise when an attempt for the
+// same user is already in flight or has succeeded. Re-runs when the
+// previous attempt for this user errored / timed out, or when the user
+// id has changed since the last attempt. Pass `{ force: true }` to
+// bypass the cache (e.g. on app foreground).
+export function ensureCustomerIdSet(
+  appUserId: string,
+  opts?: { force?: boolean },
+): Promise<SetCustomerIdResult> {
+  if (!appUserId) {
+    return Promise.resolve({
+      outcome: "not_attempted",
+      success: false,
+      bridgePresent: hasNativelyPurchases(),
+      durationMs: 0,
+      errorMessage: null,
+      rawResultKeys: [],
+    });
+  }
+  if (!opts?.force && customerIdRef?.userId === appUserId) {
+    if (customerIdRef.inFlight) return customerIdRef.promise;
+    const r = customerIdRef.result;
+    if (r && (r.outcome === "success" || r.outcome === "no_method" || r.outcome === "bridge_missing")) {
+      return customerIdRef.promise;
+    }
+    // Otherwise fall through and retry — a previous error / timeout
+    // shouldn't lock the user out forever.
+  }
+  const startedAt = Date.now();
+  const promise = doSetCustomerId(appUserId).then((res) => {
+    if (customerIdRef && customerIdRef.userId === appUserId) {
+      customerIdRef.result = res;
+      customerIdRef.inFlight = false;
+      customerIdRef.lastAttemptAt = startedAt;
+    }
+    notifyCustomerId();
+    try {
+      console.log(
+        `[revenuecat] setCustomerId user=${appUserId} outcome=${res.outcome} ` +
+          `success=${res.success} durationMs=${res.durationMs} ` +
+          `errorMessage=${res.errorMessage ?? "null"} ` +
+          `rawResultKeys=[${res.rawResultKeys.join(",")}]`,
+      );
+    } catch {}
+    return res;
+  });
+  customerIdRef = {
+    userId: appUserId,
+    promise,
+    inFlight: true,
+    result: null,
+    lastAttemptAt: startedAt,
+  };
+  notifyCustomerId();
   return promise;
 }
 

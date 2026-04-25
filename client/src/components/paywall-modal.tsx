@@ -14,6 +14,11 @@ import {
   isIdentityReadyFor,
   subscribeIdentity,
   getIdentityState,
+  ensureCustomerIdSet,
+  isCustomerIdReadyFor,
+  subscribeCustomerId,
+  getCustomerIdState,
+  customerIdGateReason,
   aliasAnonymousIfNeeded,
   generateTraceId,
   postPurchaseTrace,
@@ -26,6 +31,7 @@ import {
   type AnonCaptureResult,
   type BridgeProbeResult,
   type CustomerInfo,
+  type CustomerIdState,
 } from "@/lib/natively-purchases";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import heroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
@@ -49,39 +55,65 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Legacy identity (wrapper.logIn) state — still tracked + posted in
+  // traces for back-compat with deployed builds, but NOT used to gate
+  // Subscribe anymore. The new gate is `customerIdReady` below.
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(userId));
   const [identityError, setIdentityError] = useState<string | null>(() => getIdentityState().lastResult?.error ?? null);
 
+  // PRIMARY gate: did our `setCustomerId(replitUserId)` call succeed for
+  // the currently-signed-in user? When yes, RevenueCat will record the
+  // upcoming purchase against the right subscriber from the very first
+  // receipt — no post-purchase aliasing required.
+  const [customerIdReady, setCustomerIdReady] = useState<boolean>(() => isCustomerIdReadyFor(userId));
+  const [customerIdState, setCustomerIdStateLocal] = useState<CustomerIdState>(() => getCustomerIdState());
+
   const isNative = isNativelyAvailable();
   const bridgeMissingLogIn = isNative && identityError === "no_login_method";
-  // When the wrapper does NOT expose `Set Customer ID` (no logIn), the
-  // identity gate would block Subscribe forever. In that build we rely
-  // on the post-purchase server-side alias path instead, so the gate is
-  // bypassed. When logIn IS available we keep gating on it (preferred
-  // path: purchases land on the right RC subscriber from the start).
-  const useIdentityGate = isNative && !bridgeMissingLogIn;
-  const subscribeBlockedByIdentity = useIdentityGate && !identityReady;
 
-  // Keep an up-to-date view of "is RC identity established for the
-  // current Replit user?" so we can gate the subscribe button on it
-  // when the bridge supports logIn. Without logIn we still subscribe
-  // to identity changes so the diagnostic state (identityError) stays
-  // fresh for the dev panel.
+  // Block Subscribe whenever we're on a real native bridge and the
+  // customer id has not yet been confirmed for THIS user. Note that
+  // `isCustomerIdReadyFor` returns true on:
+  //   - web preview (no bridge), and
+  //   - wrappers whose RC bridge has no `setCustomerId` method
+  //     (`no_method` outcome — falls back to the dormant server-side
+  //      alias path),
+  // so neither of those paths permanently blocks the button.
+  const subscribeBlockedByCustomerId = isNative && !customerIdReady;
+
+  // Named reason surfaced to traces / dev panel describing WHY the gate
+  // is currently closed (or "ready" when it is open). Lets the next
+  // failed-Subscribe investigation map to a single named cause.
+  const gateClosedReason = customerIdGateReason(userId);
+
+  // Keep both identity (legacy) and customer-id (primary) state fresh
+  // so the gate flips on as soon as the boot-time setCustomerId promise
+  // resolves, and the dev-panel readouts stay live.
   useEffect(() => {
-    const update = () => {
+    const updateIdentity = () => {
       setIdentityReady(isIdentityReadyFor(userId));
       setIdentityError(getIdentityState().lastResult?.error ?? null);
     };
-    update();
-    const unsubscribe = subscribeIdentity(update);
+    const updateCustomerId = () => {
+      setCustomerIdReady(isCustomerIdReadyFor(userId));
+      setCustomerIdStateLocal(getCustomerIdState());
+    };
+    updateIdentity();
+    updateCustomerId();
+    const unsubIdentity = subscribeIdentity(updateIdentity);
+    const unsubCustomerId = subscribeCustomerId(updateCustomerId);
     if (open && userId) {
       // Defensive: if the boot-time effect somehow didn't fire (e.g. the
       // paywall is opened from an unauthenticated edge case), kick off
-      // logIn now. On builds where logIn is missing this just records
-      // the `no_login_method` error and the alias path takes over.
+      // both helpers now. On builds where setCustomerId is missing the
+      // helper records `no_method` and the alias path takes over.
+      ensureCustomerIdSet(userId);
       ensureIdentified(userId);
     }
-    return unsubscribe;
+    return () => {
+      unsubIdentity();
+      unsubCustomerId();
+    };
   }, [userId, open]);
 
   // When the paywall opens, start warming the Health Info diet-tip
@@ -169,21 +201,35 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     traceId?: string,
     traceStartedAt?: number,
     installIdForTrace?: string,
+    replitUserIdForTrace?: string,
   ): Promise<{ verified: boolean; verifySource: string | null }> => {
     const ATTEMPTS = 6;
     const GAP_MS = 1300;
     for (let i = 0; i < ATTEMPTS; i++) {
+      // verify-attempt: posted BEFORE the round-trip so a hung verifier
+      // is visible in the trace as an attempt with no matching result.
+      if (traceId && traceStartedAt != null) {
+        postPurchaseTrace(traceId, "verify-attempt", Date.now() - traceStartedAt, {
+          installId: installIdForTrace ?? null,
+          replitUserId: replitUserIdForTrace ?? null,
+          attempt: i + 1,
+        });
+      }
       const { verified, transient } = await refreshPremiumOnServer();
       if (traceId && traceStartedAt != null) {
-        // Route through the same wrapper used elsewhere so installId
-        // is attached to the verify event too (Task #486 step 8).
-        postPurchaseTrace(traceId, "verify", Date.now() - traceStartedAt, {
+        // verify-result: emit BOTH the new explicit name AND the legacy
+        // `verify` event so log-grep tooling on older trace readers
+        // doesn't lose the per-attempt rows.
+        const data = {
           installId: installIdForTrace ?? null,
+          replitUserId: replitUserIdForTrace ?? null,
           attempt: i + 1,
           verifySource: lastVerifySourceRef.current ?? null,
           verifyHasPremium: verified,
           verifyTransient: transient,
-        });
+        };
+        postPurchaseTrace(traceId, "verify-result", Date.now() - traceStartedAt, data);
+        postPurchaseTrace(traceId, "verify", Date.now() - traceStartedAt, data);
       }
       if (verified) return { verified: true, verifySource: lastVerifySourceRef.current };
       // Stop early only when the server gave an authoritative "no" AND
@@ -286,7 +332,44 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
   const handlePurchase = async () => {
     if (!isNative) return;
-    if (subscribeBlockedByIdentity) return; // button is also disabled, but belt-and-suspenders
+    // If the gate is still closed when the user taps Subscribe, record
+    // a dedicated trace event with EVERY active gate-closed reason so a
+    // blocked-tap is never silent. Then bail without flipping into the
+    // purchasing state — the inline banner above the button explains the
+    // wait so the user can retry once the gate releases.
+    if (subscribeBlockedByCustomerId) {
+      const traceId = generateTraceId();
+      const traceStart = Date.now();
+      const installId = getInstallId();
+      const replitUserIdAtBlock = userId ?? null;
+      const cidStateNow = getCustomerIdState();
+      traceWith(
+        traceId,
+        traceStart,
+        installId,
+        "purchase-blocked-by-gate",
+        {
+          replitUserId: replitUserIdAtBlock,
+          authenticated: !!replitUserIdAtBlock,
+          customerIdReady: false,
+          customerIdSent: cidStateNow.customerIdSent ?? null,
+          setCustomerIdOutcome: cidStateNow.outcome ?? null,
+          setCustomerIdSucceeded: cidStateNow.succeeded,
+          setCustomerIdErrorMessage: cidStateNow.errorMessage ?? null,
+          setCustomerIdDurationMs: cidStateNow.durationMs ?? null,
+          gateClosedReason: customerIdGateReason(replitUserIdAtBlock),
+          gateReleased: false,
+          identityReady,
+          identityError: identityError ?? null,
+          bridgeMissingLogIn,
+        },
+      );
+      console.warn(
+        "[paywall] purchase blocked by gate",
+        customerIdGateReason(replitUserIdAtBlock),
+      );
+      return;
+    }
     setPurchasing(true);
     setError(null);
     hapticTap("MEDIUM");
@@ -295,8 +378,16 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     const traceId = generateTraceId();
     const traceStart = Date.now();
     const installId = getInstallId();
+    // Snapshot the user id we believe is signed in at the START of the
+    // purchase flow. Every trace event in this flow is stamped with this
+    // value so a drift between phases (e.g. user signed out mid-flow) is
+    // visible by diffing `replitUserId` across the trace events.
+    const replitUserIdAtStart = userId ?? null;
     const trace = (phase: string, data: Record<string, unknown>) =>
-      traceWith(traceId, traceStart, installId, phase, data);
+      traceWith(traceId, traceStart, installId, phase, {
+        replitUserId: replitUserIdAtStart,
+        ...data,
+      });
     const snapshot = getLastOfferingSnapshot();
 
     // Run the sharper bridge probe up front so the start event records
@@ -304,6 +395,51 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     // Probe is read-only and does NOT invoke purchasePackage / logIn /
     // restorePurchases — those are existence-only checks.
     const bridgeProbe: BridgeProbeResult = await probeBridgeMethods();
+
+    // Phase ordering — every event records which Replit user we believed
+    // was active when it fired, so a "wrong customer" failure points at
+    // the exact phase where the drift occurred:
+    //   auth-resolved → set-customer-id-attempt → set-customer-id-result
+    //   → readiness-flag-set → paywall-gate-released
+    //   → purchase-button-clicked → start (legacy) → purchase-result
+    //   → verify-attempt × N → verify-result × N → final
+    trace("auth-resolved", {
+      authenticated: !!replitUserIdAtStart,
+    });
+
+    // The boot-time effect already kicked off setCustomerId. We re-emit
+    // the most recent state into the trace so the deployment log shows
+    // the exact outcome that gated this purchase, and re-fire the
+    // attempt synchronously to cover the rare race where the boot
+    // effect has not yet completed.
+    trace("set-customer-id-attempt", {
+      customerIdSent: replitUserIdAtStart,
+    });
+    const cidResult = replitUserIdAtStart
+      ? await ensureCustomerIdSet(replitUserIdAtStart)
+      : null;
+    const cidStateAfter = getCustomerIdState();
+    trace("set-customer-id-result", {
+      customerIdSent: cidStateAfter.customerIdSent ?? replitUserIdAtStart,
+      setCustomerIdOutcome: cidResult?.outcome ?? cidStateAfter.outcome ?? null,
+      setCustomerIdSucceeded: cidResult?.success ?? cidStateAfter.succeeded,
+      setCustomerIdDurationMs: cidResult?.durationMs ?? cidStateAfter.durationMs ?? null,
+      setCustomerIdErrorMessage: cidResult?.errorMessage ?? cidStateAfter.errorMessage ?? null,
+      setCustomerIdRawResultKeys: cidResult?.rawResultKeys ?? [],
+    });
+
+    const customerIdReadyNow = isCustomerIdReadyFor(replitUserIdAtStart);
+    trace("readiness-flag-set", {
+      customerIdReady: customerIdReadyNow,
+      gateClosedReason: customerIdGateReason(replitUserIdAtStart),
+    });
+    trace("paywall-gate-released", {
+      gateReleased: customerIdReadyNow,
+      gateClosedReason: customerIdGateReason(replitUserIdAtStart),
+    });
+    trace("purchase-button-clicked", {
+      customerIdSent: cidStateAfter.customerIdSent ?? replitUserIdAtStart,
+    });
 
     // Start event includes the client-side offering identifiers so the
     // server-side project-mismatch detector has both halves of the
@@ -315,10 +451,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       installId,
       "start",
       {
+        replitUserId: replitUserIdAtStart,
         isNative,
         identityReady,
         identityError: identityError ?? null,
         bridgeMissingLogIn,
+        customerIdReady: customerIdReadyNow,
+        customerIdSent: cidStateAfter.customerIdSent ?? replitUserIdAtStart,
+        setCustomerIdOutcome: cidStateAfter.outcome ?? null,
+        gateClosedReason: customerIdGateReason(replitUserIdAtStart),
         priceSource: snapshot?.source ?? null,
         // Send the FULL structured probe object (server name:
         // bridgeProbeBefore) so /api/diag/rc-state can render
@@ -333,6 +474,22 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         clientPackageIdentifiers: snapshot?.packageIdentifiers ?? [],
       },
     );
+
+    // Drift assertion: the customer id we believe is now set on the
+    // wrapper MUST match the Replit user we are about to charge. If it
+    // does not, log loudly so the next failure investigation
+    // immediately points at OUR code instead of "the wrapper".
+    const cidExpected = replitUserIdAtStart;
+    const cidActual = cidStateAfter.customerIdSent;
+    if (cidExpected && cidActual && cidExpected !== cidActual) {
+      console.error(
+        `[paywall][BUG] customer_id_drift expected=${cidExpected} actual=${cidActual}`,
+      );
+      trace("customer-id-drift", {
+        expectedReplitUserId: cidExpected,
+        actualReplitUserId: cidActual,
+      });
+    }
 
     let aliasSourceForToast: string | null = null;
     let aliasAttempted = false;
@@ -399,7 +556,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
       let verifySource: string | null = null;
       if (purchaseLooksDone) {
-        const v = await verifyWithRetry(traceId, traceStart, installId);
+        const v = await verifyWithRetry(traceId, traceStart, installId, replitUserIdAtStart ?? undefined);
         verified = v.verified;
         verifySource = v.verifySource;
         // Mark "alias granted" only when the server's self-healing
@@ -421,7 +578,11 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
       const verdictBadge = classifyVerdict({
         isNative,
-        identityBlocked: subscribeBlockedByIdentity,
+        // The verdict-badge classifier still calls this slot
+        // `identityBlocked`, but the meaning is now "was Subscribe
+        // blocked by an unmet identity precondition?". For the new
+        // setCustomerId-based gate, that's `subscribeBlockedByCustomerId`.
+        identityBlocked: subscribeBlockedByCustomerId,
         // `purchasePackage` membership on the wrapper does not change
         // mid-purchase, so the BEFORE probe is authoritative for the
         // verdict badge. This avoids waiting on a second probe round-
@@ -447,6 +608,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         verdictBadge,
         aliasGranted: aliasGrantedFromServer,
         verifySource,
+        customerIdSent: cidStateAfter.customerIdSent ?? replitUserIdAtStart,
+        setCustomerIdOutcome: cidStateAfter.outcome ?? null,
+        gateClosedReason: customerIdGateReason(replitUserIdAtStart),
         bridgeProbe: bridgeProbe.summary,
         bridgeProbeBefore: bridgeProbe,
       });
@@ -481,10 +645,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
     const traceId = generateTraceId();
     const traceStart = Date.now();
     const installId = getInstallId();
+    const replitUserIdAtStart = userId ?? null;
     const trace = (phase: string, data: Record<string, unknown>) =>
-      traceWith(traceId, traceStart, installId, phase, data);
+      traceWith(traceId, traceStart, installId, phase, {
+        replitUserId: replitUserIdAtStart,
+        ...data,
+      });
     const snapshot = getLastOfferingSnapshot();
     const bridgeProbe: BridgeProbeResult = await probeBridgeMethods();
+    const cidStateAtStart = getCustomerIdState();
 
     traceWith(
       traceId,
@@ -492,10 +661,15 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       installId,
       "start",
       {
+        replitUserId: replitUserIdAtStart,
         isNative,
         identityReady,
         identityError: identityError ?? null,
         bridgeMissingLogIn,
+        customerIdReady: isCustomerIdReadyFor(replitUserIdAtStart),
+        customerIdSent: cidStateAtStart.customerIdSent ?? replitUserIdAtStart,
+        setCustomerIdOutcome: cidStateAtStart.outcome ?? null,
+        gateClosedReason: customerIdGateReason(replitUserIdAtStart),
         priceSource: snapshot?.source ?? null,
         reason: "restore",
         bridgeProbe: bridgeProbe.summary,
@@ -564,7 +738,7 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
       // bridge call itself failed — the server's self-healing verifier
       // can still grant via a previously persisted alias.
       let verifySource: string | null = null;
-      const v = await verifyWithRetry(traceId, traceStart, installId);
+      const v = await verifyWithRetry(traceId, traceStart, installId, replitUserIdAtStart ?? undefined);
       verified = v.verified;
       verifySource = v.verifySource;
       const aliasGrantedFromServer = verified && verifySource === "alias";
@@ -606,6 +780,9 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
         verdictBadge,
         aliasGranted: aliasGrantedFromServer,
         verifySource,
+        customerIdSent: cidStateAtStart.customerIdSent ?? replitUserIdAtStart,
+        setCustomerIdOutcome: cidStateAtStart.outcome ?? null,
+        gateClosedReason: customerIdGateReason(replitUserIdAtStart),
         bridgeProbe: bridgeProbe.summary,
         bridgeProbeBefore: bridgeProbe,
       });
@@ -733,14 +910,27 @@ export default function PaywallModal({ open, onClose, onPurchaseSuccess, lockApp
 
             {isNative ? (
               <div className="w-full flex flex-col gap-2 mt-3">
+                {subscribeBlockedByCustomerId && (
+                  <div
+                    className="w-full rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
+                    data-testid="banner-paywall-gate-blocked"
+                  >
+                    <span className="font-semibold">
+                      {t("paywall.preparing_account") || "Preparing your account…"}
+                    </span>{" "}
+                    <span data-testid="text-paywall-gate-reason">
+                      ({gateClosedReason})
+                    </span>
+                  </div>
+                )}
                 <Button
                   className="w-full h-12 text-xl gap-2 bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={handlePurchase}
-                  disabled={purchasing || restoring || subscribeBlockedByIdentity}
+                  disabled={purchasing || restoring}
                   data-testid="button-paywall-subscribe"
                 >
                   <Sparkles className="w-5 h-5" />
-                  {purchasing || subscribeBlockedByIdentity
+                  {purchasing
                     ? t("paywall.processing")
                     : t("paywall.subscribe_button")}
                 </Button>

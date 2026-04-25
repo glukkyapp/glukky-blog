@@ -20,6 +20,11 @@ import {
   isIdentityReadyFor,
   subscribeIdentity,
   getIdentityState,
+  isCustomerIdReadyFor,
+  subscribeCustomerId,
+  getCustomerIdState,
+  customerIdGateReason,
+  type CustomerIdState,
   isNativelyAvailable,
   restorePurchases,
   probeBridgeMethods,
@@ -1018,6 +1023,8 @@ function RevenueCatDiagnosticsCard() {
   const [priceSource, setPriceSource] = useState<{ source: PriceSource; price: string | null } | null>(null);
   const [identityReady, setIdentityReady] = useState<boolean>(() => isIdentityReadyFor(replitUserId || undefined));
   const [identityError, setIdentityError] = useState<string | null>(() => getIdentityState().lastResult?.error ?? null);
+  const [customerIdReady, setCustomerIdReady] = useState<boolean>(() => isCustomerIdReadyFor(replitUserId || undefined));
+  const [customerIdState, setCustomerIdStateLocal] = useState<CustomerIdState>(() => getCustomerIdState());
   const [serverProbe, setServerProbe] = useState<ServerProbeResp | null>(null);
   const [serverProbeError, setServerProbeError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<RefreshResp | null>(null);
@@ -1036,6 +1043,15 @@ function RevenueCatDiagnosticsCard() {
     };
     update();
     return subscribeIdentity(update);
+  }, [replitUserId]);
+
+  useEffect(() => {
+    const update = () => {
+      setCustomerIdReady(isCustomerIdReadyFor(replitUserId || undefined));
+      setCustomerIdStateLocal(getCustomerIdState());
+    };
+    update();
+    return subscribeCustomerId(update);
   }, [replitUserId]);
 
   const bridgeMissingLogIn = bridgePresent && identityError === "no_login_method";
@@ -1199,6 +1215,70 @@ function RevenueCatDiagnosticsCard() {
     <Card className="border-cyan-200 dark:border-cyan-900">
       <CardContent className="pt-4 space-y-3">
         <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">RevenueCat Diagnostics</p>
+
+        {/* setCustomerId state (Task #497) — primary readout for "did
+            our paywall code identify the buyer correctly?". Sourced
+            from the local helper's last-attempt cache (subscribed via
+            subscribeCustomerId) so it stays live without polling. */}
+        <div
+          className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-3 space-y-1"
+          data-testid="card-rc-customer-id-state"
+        >
+          <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+            setCustomerId state (paywall gate)
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-attempted"
+          >
+            attempted: {customerIdState.attempted ? "YES" : "NO"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-succeeded"
+          >
+            succeeded: {customerIdState.succeeded ? "YES" : "NO"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-outcome"
+          >
+            outcome: {customerIdState.outcome ?? "(none)"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-sent"
+          >
+            customerIdSent: {customerIdState.customerIdSent ?? "(none)"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-error"
+          >
+            errorMessage: {customerIdState.errorMessage ?? "(none)"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-duration"
+          >
+            durationMs: {customerIdState.durationMs ?? "(n/a)"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-last-attempt"
+          >
+            lastAttemptAt: {customerIdState.lastAttemptAt
+              ? new Date(customerIdState.lastAttemptAt).toISOString()
+              : "(never)"}
+          </p>
+          <p
+            className="text-xs font-mono select-text break-all"
+            data-testid="text-rc-customer-id-gate-ready"
+          >
+            paywall gate: {customerIdReady ? "RELEASED" : "BLOCKED"} (
+            {customerIdGateReason(replitUserId || undefined)})
+          </p>
+        </div>
 
         {bridgeMissingLogIn && (
           <div

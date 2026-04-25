@@ -3331,6 +3331,24 @@ No explanation, just JSON.`,
         "aliasTriedCount",
         "restoreMissingMethod",
         "proofBackedPersist",
+        // setCustomerId-based identity gate (Task #497). Each event is
+        // stamped with `replitUserId` so a phase-to-phase drift in the
+        // signed-in user is visible by diffing across the trace, and
+        // the per-attempt outcome / duration / error message is
+        // recorded so a failure points at OUR call rather than "the
+        // wrapper".
+        "replitUserId",
+        "authenticated",
+        "customerIdSent",
+        "customerIdReady",
+        "setCustomerIdOutcome",
+        "setCustomerIdSucceeded",
+        "setCustomerIdDurationMs",
+        "setCustomerIdErrorMessage",
+        "gateClosedReason",
+        "gateReleased",
+        "expectedReplitUserId",
+        "actualReplitUserId",
       ];
       for (const k of keys) {
         const v = rawData[k];
@@ -3338,6 +3356,20 @@ No explanation, just JSON.`,
         else if (typeof v === "number" && Number.isFinite(v)) data[k] = v;
         else if (typeof v === "boolean") data[k] = v;
         else if (v == null) data[k] = null;
+      }
+
+      // Array-of-string fields whitelisted separately because they
+      // require per-item length capping. Used for the wrapper's raw
+      // callback result-key list so a "wrapper changed shape"
+      // regression is visible without leaking arbitrary blobs.
+      const arrayKeys = ["setCustomerIdRawResultKeys"];
+      for (const k of arrayKeys) {
+        const v = rawData[k];
+        if (Array.isArray(v)) {
+          data[k] = arrStr(v, 16, 64);
+        } else if (v == null) {
+          data[k] = null;
+        }
       }
 
       // Structured probe payloads (Task #486 step 5/6). Stored as a
@@ -3510,9 +3542,55 @@ No explanation, just JSON.`,
         }
       }
 
+      // customerIdState (Task #497): the at-a-glance "did our code do
+      // its job?" readout. Sourced from the most recent trace's
+      // `set-customer-id-result` event so the dev panel can answer
+      // "is the wrapper currently identified as the right Replit
+      // user?" without walking events. Replaces the old per-trace
+      // `bridgeMissingLogIn` flag — that bool only said "this wrapper
+      // doesn't expose logIn", which doesn't tell us anything about
+      // the new setCustomerId path.
+      let customerIdState: {
+        attempted: boolean;
+        succeeded: boolean;
+        outcome: string | null;
+        errorMessage: string | null;
+        lastAttemptAt: string | null;
+        customerIdSent: string | null;
+        currentReplitUserId: string;
+      } = {
+        attempted: false,
+        succeeded: false,
+        outcome: null,
+        errorMessage: null,
+        lastAttemptAt: null,
+        customerIdSent: null,
+        currentReplitUserId: userId,
+      };
+      if (latest) {
+        const cidEvent = [...latest.events].reverse().find((e) => e.phase === "set-customer-id-result");
+        if (cidEvent) {
+          const d = (cidEvent.data ?? {}) as Record<string, unknown>;
+          const outcome = typeof d.setCustomerIdOutcome === "string" ? d.setCustomerIdOutcome : null;
+          const succeeded = d.setCustomerIdSucceeded === true;
+          const errorMessage = typeof d.setCustomerIdErrorMessage === "string" ? d.setCustomerIdErrorMessage : null;
+          const customerIdSent = typeof d.customerIdSent === "string" ? d.customerIdSent : null;
+          customerIdState = {
+            attempted: true,
+            succeeded,
+            outcome,
+            errorMessage,
+            lastAttemptAt: new Date(latest.startedAt + cidEvent.t).toISOString(),
+            customerIdSent,
+            currentReplitUserId: userId,
+          };
+        }
+      }
+
       res.status(200).json({
         replitUserId: userId,
         webhookConfigured,
+        customerIdState,
         latestVerdictBadge,
         latestVerdictAt,
         subscriberProbe: {
