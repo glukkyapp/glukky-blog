@@ -1,0 +1,126 @@
+Based directly from the BuildNatively docs, here is the complete, accurate picture of how to send to specific users at specific times.
+
+The core concept
+BuildNatively provides two targeting methods via its JavaScript SDK for your Replit app:
+
+Method	Target	Best for
+Player ID	One specific device/user	Individual triggers (e.g. user hasn't logged today)
+Segments	Groups of users	Broadcast (e.g. all premium users)
+External ID	Your own user ID linked to OneSignal	Most reliable for production
+Step 1: Fix your registration — use External ID
+This is the most important fix for your current problem.
+
+Instead of (or alongside) storing the Player ID, link your own user ID to OneSignal using setExternalId. This survives app reinstalls and device changes:
+
+javascript
+const notifications = new NativelyNotifications();
+
+// Run this right after user logs in
+notifications.getOneSignalId(function(resp) {
+  const playerId = resp.playerId;
+
+  if (playerId) {
+    // Link your backend user ID to this device in OneSignal
+    notifications.setExternalId({ externalId: "USER_DB_ID_HERE" }, function(resp) {
+      console.log("External ID set:", resp.externalId);
+    });
+
+    // Also save player ID to your backend as before
+    fetch("/api/onesignal/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playerId,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
+    });
+  }
+});
+Step 2: Send to a specific user at a specific time (from your Replit backend)
+Using the OneSignal REST API from your server — target by Player ID or External ID:
+
+javascript
+// server/onesignal.ts — send to ONE specific user at a specific time
+
+async function sendScheduledPushToUser({ playerId, title, message, sendAtUTC }) {
+  const body = {
+    app_id: process.env.ONESIGNAL_APP_ID,
+    
+    // Target specific user by Player ID:
+    include_subscription_ids: [playerId],
+    // OR target by your own user ID (External ID):
+    // include_aliases: { external_id: ["user_db_id_here"] },
+
+    headings: { en: title },
+    contents: { en: message },
+
+    // Send at a specific UTC time (ISO 8601 format):
+    send_after: sendAtUTC,   // e.g. "2026-04-25T14:00:00Z"
+
+    // OR send at specific LOCAL time per user's timezone:
+    // delivery_time_of_day: "10:00PM",
+    // delayed_option: "timezone",
+
+    target_channel: "push"
+  };
+
+  const res = await fetch("https://api.onesignal.com/notifications?c=push", {
+    method: "POST",
+    headers: {
+      "Authorization": `Key ${process.env.ONESIGNAL_REST_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  const result = await res.json();
+  console.log(`Push sent to ${playerId}: notif_id=${result.id} recipients=${result.recipients}`);
+  return result;
+}
+Step 3: Two timing strategies — pick per notification type
+A. Fire at a fixed UTC time (send_after)
+Best for: immediate sends, or when you calculate the exact UTC time yourself.
+
+javascript
+// Calculate 10 PM HKT = 14:00 UTC today
+const sendAt = new Date();
+sendAt.setUTCHours(14, 0, 0, 0);  // 14:00 UTC = 22:00 HKT
+
+await sendScheduledPushToUser({
+  playerId: user.onesignal_player_id,
+  title: "Evening Check-in",
+  message: "How was your sugar today?",
+  sendAtUTC: sendAt.toISOString()
+});
+B. Fire at a local time per user's timezone (delivery_time_of_day)
+Best for: when you want 10 PM in each user's local time, OneSignal handles the conversion.
+
+javascript
+const body = {
+  app_id: process.env.ONESIGNAL_APP_ID,
+  include_subscription_ids: registeredPlayerIds,  // array of all users
+  headings: { en: "Evening Check-in" },
+  contents: { en: "How was your sugar today?" },
+  delivery_time_of_day: "10:00PM",   // local time per user
+  delayed_option: "timezone",         // OneSignal uses device timezone
+  target_channel: "push"
+};
+⚠️ Known issue with your setup: delivery_time_of_day silently rolls to tomorrow if today's time has already passed. Use send_after with explicit UTC calculation to avoid this.
+
+Step 4: BuildNatively important warnings from their docs
+Directly from their documentation:
+
+Rebuild required after any change in BuildNatively dashboard for push settings.
+
+If using Preview app for testing, set a preview tag. For your own TestFlight build, leave that field blank.
+
+Player ID is updated on second app launch after permission is granted — this is why yusycyn's first-launch registration fails silently.
+
+Re-check Player ID on every login, because the ID can change on reinstalls.
+
+Summary fix for your yusycyn issue
+The BuildNatively docs confirm: "If a user grants permission during their current session, the updated status will be reflected in OneSignal on the subsequent (second) app launch."
+
+This means your registration call in App.tsx fires too early — before OneSignal has given BuildNatively the Player ID. The fix is exactly the retry loop from yesterday's answer, plus switching to setExternalId so you can target users by your own database ID regardless of Player ID timing issues.
+
+Prepared using Claude Sonnet 4.6 Thinking
