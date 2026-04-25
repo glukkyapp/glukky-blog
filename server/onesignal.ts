@@ -12,7 +12,12 @@ interface NotificationPayload {
   subtitle: string;
   message: string;
   deepLink: string;
-  playerIds: string[];
+  // Targeting: prefer external_ids when present (alias-based);
+  // fall back to playerIds (subscription-id based) for users
+  // whose wrapper hasn't yet returned an external id.
+  // Exactly one of these should be non-empty per call.
+  externalIds?: string[];
+  playerIds?: string[];
   send_after?: string;
   delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
@@ -29,7 +34,12 @@ interface NotificationPayload {
 
 interface OneSignalRequestBody {
   app_id: string;
-  include_subscription_ids: string[];
+  // Exactly one of include_aliases / include_subscription_ids per call.
+  include_aliases?: { external_id: string[] };
+  include_subscription_ids?: string[];
+  // RULE A — required when include_aliases is used. Without this
+  // OneSignal silently delivers nothing on the alias path.
+  target_channel?: "push";
   headings: { en: string };
   subtitle: { en: string };
   contents: { en: string };
@@ -142,38 +152,81 @@ async function logDeliveryReport(notificationId: string): Promise<void> {
   }, 6000);
 }
 
-export async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
+// Result of a single sendPushNotification call. `notificationId` is
+// the OneSignal id from the FIRST batch (callers in the new
+// pre-scheduler always pass <=1 recipient per call so this is
+// always the right id to persist). Older callers that send broadly
+// and don't care about the id can still ignore this field.
+export interface SendPushResult {
+  success: boolean;
+  notificationId: string | null;
+}
+
+export async function sendPushNotification(payload: NotificationPayload): Promise<SendPushResult> {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
     log("OneSignal credentials not configured, skipping notification", "onesignal");
-    return false;
+    return { success: false, notificationId: null };
   }
 
-  const uniquePlayerIds = Array.from(new Set(payload.playerIds));
-
-  if (uniquePlayerIds.length === 0) {
-    log("No player IDs to send to, skipping", "onesignal");
-    return false;
+  // RULE B — guard send_after. A past timestamp is treated by
+  // OneSignal as "send immediately", which silently negates the
+  // whole point of pre-scheduling. Drop the field with a warning
+  // and let the next pass requeue, rather than firing at the
+  // wrong time.
+  if (payload.send_after) {
+    const ms = Date.parse(payload.send_after);
+    if (!Number.isFinite(ms) || ms <= Date.now()) {
+      log(
+        `OneSignal send REJECTED: send_after=${payload.send_after} is invalid or not strictly in the future. Skipping send; next pass will requeue.`,
+        "onesignal",
+      );
+      return { success: false, notificationId: null };
+    }
   }
 
-  if (uniquePlayerIds.length !== payload.playerIds.length) {
-    log(`Deduplicated player IDs: ${payload.playerIds.length} -> ${uniquePlayerIds.length}`, "onesignal");
+  const externalIds = Array.from(new Set(payload.externalIds ?? []));
+  const playerIds = Array.from(new Set(payload.playerIds ?? []));
+
+  if (externalIds.length === 0 && playerIds.length === 0) {
+    log("No external_ids or player_ids to send to, skipping", "onesignal");
+    return { success: false, notificationId: null };
+  }
+
+  // Choose the target axis. New callers always pass exactly one;
+  // legacy callers (broad immediate sends) pass playerIds only.
+  const useAliases = externalIds.length > 0;
+  const targets = useAliases ? externalIds : playerIds;
+
+  if (useAliases && payload.playerIds && payload.playerIds.length > 0) {
+    log(
+      `OneSignal send: external_ids and player_ids both provided; preferring external_ids (n=${externalIds.length})`,
+      "onesignal",
+    );
   }
 
   const batchSize = 2000;
   let totalSuccess = true;
+  let firstNotificationId: string | null = null;
 
-  for (let i = 0; i < uniquePlayerIds.length; i += batchSize) {
-    const batch = uniquePlayerIds.slice(i, i + batchSize);
+  for (let i = 0; i < targets.length; i += batchSize) {
+    const batch = targets.slice(i, i + batchSize);
 
     const body: OneSignalRequestBody = {
       app_id: ONESIGNAL_APP_ID,
-      include_subscription_ids: batch,
       headings: { en: payload.title },
       subtitle: { en: payload.subtitle },
       contents: { en: payload.message },
       url: payload.deepLink,
       data: { deepLink: payload.deepLink },
     };
+
+    if (useAliases) {
+      body.include_aliases = { external_id: batch };
+      // RULE A — required for the alias path.
+      body.target_channel = "push";
+    } else {
+      body.include_subscription_ids = batch;
+    }
 
     if (payload.send_after) {
       body.send_after = payload.send_after;
@@ -186,9 +239,9 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     }
 
     // Full pretty-printed payload so we can see exactly what OneSignal
-    // received — including every targeted subscription id and every
-    // schedule-related field. This is the diagnostic that lets us
-    // answer "did we even send to this device?" without guessing.
+    // received — including every targeted id and every schedule-related
+    // field. This is the diagnostic that lets us answer "did we even
+    // send to this device?" without guessing.
     log(`OneSignal send → POST ${ONESIGNAL_API_URL}\n${JSON.stringify(body, null, 2)}`, "onesignal");
 
     try {
@@ -213,10 +266,11 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
             log(`OneSignal reported errors: ${JSON.stringify(result.errors)}`, "onesignal");
             totalSuccess = false;
           }
-          // Fetch the delivery report immediately, then once more if
-          // counters look unpopulated.
+          // Capture the first batch's notification id so the
+          // pre-scheduler can persist it for later cancellation.
           if (typeof result.id === "string" && result.id.length > 0) {
             const notificationId = result.id;
+            if (firstNotificationId === null) firstNotificationId = notificationId;
             void logDeliveryReport(notificationId);
             // For delivery_time_of_day sends, also schedule a
             // post-trigger report so the actual recipient counts
@@ -242,7 +296,7 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     }
   }
 
-  return totalSuccess;
+  return { success: totalSuccess, notificationId: firstNotificationId };
 }
 
 // Schema invariant: user_profiles.user_id is UNIQUE and

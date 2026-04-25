@@ -37,18 +37,28 @@ The application is built with a React + TypeScript frontend, utilizing Wouter fo
 - **Developer Debug Panel (`/dev`):** Provides tools for authorized developers to inspect state, override time, set profile parameters, and generate historical data for testing.
 
 ## Push Notifications (OneSignal)
-Server-side push notifications via OneSignal REST API. Mobile wrapper (BuildNatively) handles the SDK side.
+Pre-scheduled via OneSignal `send_after` so trigger-time ownership lives on OneSignal's side, not our autoscale instance. Mobile wrapper (BuildNatively) handles the device-side SDK.
 
-**4 Notifications:**
-1. **Late Dinner Reminder** — 2 PM daily, only users with `lateDinnerScheduled = true` today. Deep link: `/`
-2. **Sunday Planning Reminder** — 10 PM every Sunday, all registered users. Deep link: `/plan`
-3. **Re-engagement** — 6 PM daily, users inactive 3+ days with 3-day cooldown. Deep link: `/`
-4. **Daily Check-In Reminder** — 10 PM daily (except Sunday), all registered users. Deep link: `/`
+**4 Notifications (per-user local time):**
+1. **Late Dinner Reminder** — 2 PM local, only users with `lateDinnerScheduled = true` for that local weekday. Deep link: `/`
+2. **Daily Check-In Reminder** — 10 PM local every day except Sunday, all registered users. Deep link: `/`
+3. **Weekly Report (Sunday Planning)** — 10 PM local every Sunday, all registered users. Deep link: `/plan`
+4. **Re-engagement** — 6 PM local, users inactive 3+ days with 3-day cooldown. Deep link: `/`
 
-**DB columns:** `onesignal_player_id` (text), `last_reengagement_notification` (timestamp) on `user_profiles`
-**API:** POST `/api/onesignal/register` — stores player ID from BuildNatively JS bridge
-**Scheduler:** `server/notifications.ts` — `setInterval` every 30 min, acts at hours 14, 18, 22
-**Config:** `server/onesignal.ts` — OneSignal REST API wrapper using `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY` secrets
+**DB columns on `user_profiles`:** `onesignal_player_id`, `onesignal_external_id` (= app user id, preferred target), `device_timezone`, `last_reengagement_notification`
+**Dedup table:** `scheduled_notifications` (user_id, type, local_trigger_date, send_at_utc, onesignal_notification_id) with unique index on `(user_id, type, local_trigger_date)` — race-safe via `onConflictDoNothing`
+**API:**
+- POST `/api/onesignal/register` — stores player ID from BuildNatively JS bridge (legacy fallback target)
+- POST `/api/onesignal/external-id` — stores wrapper-confirmed external_id (= authenticated user id); strict hijack guard
+- GET `/api/uptime/ping` — public, kicks the autoscale instance awake so the hourly pre-scheduling pass runs (no longer load-bearing for delivery time)
+
+**Scheduler:** `server/notifications.ts` — boot pass + hourly pass, each with a 36 h forward window. For every (user, type) whose next local trigger falls inside the window and isn't already in the dedup table, it POSTs to OneSignal with `send_after` set to the local trigger time and persists the row only on a successful POST. DST handled by re-resolving `Intl.DateTimeFormat` UTC offset at the candidate trigger instant.
+**OneSignal target rules (`server/onesignal.ts`):**
+- Rule A: every send sets `target_channel: "push"` and uses `include_aliases: { external_id: [...] }` when an external_id is present
+- Rule B: rejects past `send_after` to avoid silent immediate-fire
+- Rule C: falls back to `include_subscription_ids: [player_id]` when no external_id is registered yet
+**Config:** `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY` secrets
+**Logs to grep:** `notif/queued`, `notif/pass-complete`, `notif/race-detected`, `onesignal/external-id`
 
 ## Subscription Paywall Gate System
 Soft-gating system for premium features. Uses `GATE_MODE` env var (`off`/`soft`/`hard`, default `soft`).

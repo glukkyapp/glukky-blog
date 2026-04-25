@@ -12,9 +12,11 @@ import {
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   type SubscriptionAlias,
+  type ScheduledNotification,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
   subscriptionAlias,
+  scheduledNotifications,
   users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
@@ -99,6 +101,32 @@ export interface IStorage {
   ): Promise<{ updated: boolean }>;
   getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
   getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
+
+  // Pre-scheduling dedup (task #500). Used by the OneSignal
+  // pre-scheduler to record (and check) whether a given
+  // (user, type, local-trigger date) has already been queued.
+  // The unique index on those three columns is what guarantees
+  // the hourly pass never double-schedules.
+  getScheduledNotification(
+    userId: string,
+    notificationType: string,
+    localTriggerDate: string,
+  ): Promise<ScheduledNotification | undefined>;
+  recordScheduledNotification(
+    userId: string,
+    notificationType: string,
+    localTriggerDate: string,
+    sendAtUtc: Date,
+    onesignalNotificationId: string | null,
+  ): Promise<{ inserted: boolean; row: ScheduledNotification | undefined }>;
+  // Reserve-then-send pattern (race-safety): the pre-scheduler
+  // first reserves the dedup row with NULL notification id, then
+  // sends to OneSignal, then either finalises with the returned id
+  // (`setScheduledNotificationId`) or rolls back the reservation
+  // (`deleteScheduledNotificationById`) so the next hourly pass
+  // gets a fresh attempt.
+  setScheduledNotificationId(id: number, onesignalNotificationId: string | null): Promise<void>;
+  deleteScheduledNotificationById(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -760,6 +788,66 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptionAlias)
       .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
     return row?.replitUserId ?? null;
+  }
+
+  async getScheduledNotification(
+    userId: string,
+    notificationType: string,
+    localTriggerDate: string,
+  ): Promise<ScheduledNotification | undefined> {
+    const [row] = await db.select().from(scheduledNotifications)
+      .where(and(
+        eq(scheduledNotifications.userId, userId),
+        eq(scheduledNotifications.notificationType, notificationType),
+        eq(scheduledNotifications.localTriggerDate, localTriggerDate),
+      ))
+      .limit(1);
+    return row;
+  }
+
+  async recordScheduledNotification(
+    userId: string,
+    notificationType: string,
+    localTriggerDate: string,
+    sendAtUtc: Date,
+    onesignalNotificationId: string | null,
+  ): Promise<{ inserted: boolean; row: ScheduledNotification | undefined }> {
+    // Race-safe: the unique index on
+    // (user_id, notification_type, local_trigger_date) guarantees
+    // that a concurrent second pass for the same trigger gets a
+    // no-op DO NOTHING and the existing row is returned.
+    const inserted = await db.insert(scheduledNotifications)
+      .values({
+        userId,
+        notificationType,
+        localTriggerDate,
+        sendAtUtc,
+        onesignalNotificationId,
+      })
+      .onConflictDoNothing({
+        target: [
+          scheduledNotifications.userId,
+          scheduledNotifications.notificationType,
+          scheduledNotifications.localTriggerDate,
+        ],
+      })
+      .returning();
+    if (inserted.length > 0) {
+      return { inserted: true, row: inserted[0] };
+    }
+    const existing = await this.getScheduledNotification(userId, notificationType, localTriggerDate);
+    return { inserted: false, row: existing };
+  }
+
+  async setScheduledNotificationId(id: number, onesignalNotificationId: string | null): Promise<void> {
+    await db.update(scheduledNotifications)
+      .set({ onesignalNotificationId })
+      .where(eq(scheduledNotifications.id, id));
+  }
+
+  async deleteScheduledNotificationById(id: number): Promise<void> {
+    await db.delete(scheduledNotifications)
+      .where(eq(scheduledNotifications.id, id));
   }
 }
 

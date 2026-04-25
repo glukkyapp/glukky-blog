@@ -346,8 +346,10 @@ function AuthenticatedApp() {
 
     const userId = (profile as any).userId;
     const cacheKey = `glukky_onesignal_pid_${userId}`;
+    const externalIdCacheKey = `glukky_onesignal_external_id_${userId}`;
     let cancelled = false;
     let registeredViaMessage = false;
+    let externalIdAttempted = false;
 
     const resolveTimezone = (): string => {
       try {
@@ -400,6 +402,119 @@ function AuthenticatedApp() {
       } catch {}
     };
     window.addEventListener("message", onMessage);
+
+    // Persist the wrapper-confirmed external_id (= app user id) on
+    // the server profile. The pre-scheduler prefers the alias path
+    // over the player_id path so OneSignal can deliver sends even
+    // after a subscription id rotation. Local cache prevents a
+    // second POST for the same value across reloads.
+    const persistExternalId = async (source: string): Promise<boolean> => {
+      const cached = localStorage.getItem(externalIdCacheKey);
+      if (cached === userId) return true;
+      try {
+        const resp = await fetch("/api/onesignal/external-id", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ externalId: userId, source }),
+        });
+        if (resp.ok) {
+          localStorage.setItem(externalIdCacheKey, userId);
+          console.log("[onesignal] external_id persisted source:", source);
+          return true;
+        }
+        const text = await resp.text().catch(() => "");
+        console.warn("[onesignal] external_id persist failed:", resp.status, text);
+      } catch (e) {
+        console.warn("[onesignal] external_id persist error:", e);
+      }
+      return false;
+    };
+
+    // Probe both common shapes of setExternalId on the wrapper
+    // (callback-shaped on NativelyNotifications, promise-shaped
+    // fallback). On either success we persist the id server-side.
+    // This runs once per session — successive attempts are no-ops
+    // because the cached check above short-circuits.
+    const trySetExternalIdOnBridge = async (): Promise<boolean> => {
+      if (externalIdAttempted) return false;
+      externalIdAttempted = true;
+      const w = window as any;
+      let bridgeOk = false;
+
+      if (w.NativelyNotifications) {
+        try {
+          const notif = new w.NativelyNotifications();
+          if (typeof notif.setExternalId === "function") {
+            const result: any = await new Promise((resolve) => {
+              const t = setTimeout(() => resolve("__timeout__"), 6000);
+              try {
+                let directReturn: any;
+                try {
+                  directReturn = notif.setExternalId(
+                    { externalId: userId },
+                    (res: any) => { clearTimeout(t); resolve(res); },
+                  );
+                } catch {
+                  // Some implementations take just the object.
+                  directReturn = notif.setExternalId({ externalId: userId });
+                }
+                if (directReturn && typeof directReturn.then === "function") {
+                  directReturn
+                    .then((v: any) => { clearTimeout(t); resolve(v); })
+                    .catch((e: any) => { clearTimeout(t); resolve({ __throw: e?.message ?? String(e) }); });
+                }
+              } catch (e: any) {
+                clearTimeout(t);
+                resolve({ __throw: e?.message ?? String(e) });
+              }
+            });
+            console.log("[onesignal] setExternalId via NativelyNotifications:", typeof result === "string" ? result : JSON.stringify(result));
+            if (result !== "__timeout__" && !(result && (result as any).__throw)) {
+              bridgeOk = true;
+            }
+          }
+        } catch (e: any) {
+          console.warn("[onesignal] NativelyNotifications.setExternalId error:", e?.message ?? e);
+        }
+      }
+
+      if (!bridgeOk && w.NativelyPush) {
+        try {
+          const push = new w.NativelyPush();
+          if (typeof push.setExternalId === "function") {
+            let directReturn: any;
+            try { directReturn = push.setExternalId({ externalId: userId }); } catch {}
+            const result: any =
+              directReturn && typeof directReturn.then === "function"
+                ? await Promise.race([
+                    directReturn,
+                    new Promise((r) => setTimeout(() => r("__timeout__"), 6000)),
+                  ])
+                : directReturn;
+            console.log("[onesignal] setExternalId via NativelyPush:", typeof result === "string" ? result : JSON.stringify(result));
+            if (result !== "__timeout__") bridgeOk = true;
+          }
+        } catch (e: any) {
+          console.warn("[onesignal] NativelyPush.setExternalId error:", e?.message ?? e);
+        }
+      }
+
+      // Only persist server-side when the bridge actually
+      // confirmed the alias-subscription association. Persisting
+      // on bridge failure would route the pre-scheduler to the
+      // alias path (it prefers external_id over player_id) before
+      // OneSignal knows about the alias, silently dropping
+      // notifications. On bridge failure we leave the server
+      // unconfigured for alias and the player_id fallback path
+      // continues to handle delivery.
+      if (bridgeOk) {
+        await persistExternalId("bridge_set");
+      } else {
+        console.log("[onesignal] external_id NOT persisted: bridge did not confirm setExternalId");
+      }
+      return bridgeOk;
+    };
 
     // Per task #493 step 1: structured probe of every bridge path
     // we know about. Tracks (per path) whether the method exists,
@@ -699,6 +814,13 @@ function AuthenticatedApp() {
     //   • extractedId present but register 400 → case (d) drop in
     //     transit (the strict server log shows what we tried to send)
     const run = async () => {
+      // Fire-and-forget: associate the external_id (= user id)
+      // with the OneSignal subscription on the wrapper, then
+      // persist server-side. Independent of the player_id loop
+      // below — both paths can succeed; the server prefers the
+      // alias when present.
+      void trySetExternalIdOnBridge();
+
       let probeResultForReport: Awaited<ReturnType<typeof probeBridge>> | null = null;
       for (let attempt = 0; attempt < 15; attempt++) {
         if (cancelled) return;

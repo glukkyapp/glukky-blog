@@ -577,14 +577,75 @@ export async function registerRoutes(
 
   // Lightweight always-on uptime endpoint. Configure an external
   // uptime monitor (UptimeRobot / cron-job.org / etc.) to GET this
-  // every 5 minutes between 23:55 UTC and 00:10 UTC so the daily
-  // notification scheduling pass at SCHEDULE_HOUR_UTC=0 actually
-  // runs on autoscale deployments. Cheaper than switching to a
-  // reserved VM. Public on purpose — there is nothing here to
-  // protect, only a 200 acknowledgement.
+  // periodically (e.g. every 30 minutes) so the hourly OneSignal
+  // pre-scheduling pass actually runs on autoscale deployments.
+  // After task #500 the path is no longer load-bearing for on-time
+  // delivery — OneSignal owns the actual trigger time via
+  // send_after — but the wakeup is still needed so the hourly
+  // pass can pre-schedule new triggers ~1× per UTC day. Public on
+  // purpose: nothing to protect, only a 200 acknowledgement.
   app.get("/api/uptime/ping", (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ ok: true, at: new Date().toISOString() });
+  });
+
+  // Persists the wrapper-confirmed OneSignal external_id (= app
+  // user id) onto the user profile. The pre-scheduler prefers the
+  // alias path when this is non-null so OneSignal can deliver
+  // sends even after a subscription (player) id rotation. Strict
+  // validation: the submitted external_id MUST equal the
+  // authenticated user's own id (no setting external_id for some
+  // other user). Idempotent: writing the same value is a no-op.
+  app.post("/api/onesignal/external-id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rawExternalId = req.body?.externalId;
+      const rawSource = req.body?.source;
+
+      const externalId =
+        typeof rawExternalId === "string" ? rawExternalId.trim() : null;
+      const user = await authStorage.getUser(userId);
+      const email = user?.email ?? "?";
+      const source =
+        typeof rawSource === "string" && rawSource.length > 0 && rawSource.length <= 64
+          ? rawSource
+          : "unknown";
+
+      if (!externalId) {
+        console.warn(
+          `onesignal/external-id REJECTED email=${email} reason=missing-or-empty source=${source}`,
+        );
+        return res.status(400).json({ message: "externalId is required" });
+      }
+      // Hijack guard: must equal the signed-in user id.
+      if (externalId !== userId) {
+        console.warn(
+          `onesignal/external-id REJECTED email=${email} reason=user-mismatch submitted=${externalId.slice(0, 12)}… source=${source}`,
+        );
+        return res.status(400).json({ message: "externalId must match authenticated user id" });
+      }
+
+      const previousProfile = await storage.getProfile(userId);
+      const previous = previousProfile?.onesignalExternalId ?? null;
+
+      const profile = await storage.updateProfile(userId, {
+        onesignalExternalId: externalId,
+      });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      console.log(
+        `onesignal/external-id email=${email} external_id=${externalId} previous=${previous ?? "none"} source=${source}`,
+      );
+
+      res.json({
+        success: true,
+        externalId,
+        previousExternalId: previous,
+      });
+    } catch (error) {
+      console.error("Error registering OneSignal external ID:", error);
+      res.status(500).json({ message: "Failed to register external ID" });
+    }
   });
 
   app.get("/api/plan/current", isAuthenticated, async (req: any, res) => {
@@ -2000,8 +2061,8 @@ export async function registerRoutes(
         },
       };
       const payload = payloads[type];
-      const success = await sendPushNotification({ ...payload, playerIds: [profile.onesignalPlayerId] });
-      res.json({ success, type });
+      const result = await sendPushNotification({ ...payload, playerIds: [profile.onesignalPlayerId] });
+      res.json({ success: result.success, type, notificationId: result.notificationId });
     } catch (error: any) {
       console.error("Error sending test notification:", error);
       res.status(500).json({ message: "Failed to send test notification" });

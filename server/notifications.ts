@@ -1,127 +1,394 @@
-import * as fs from "fs";
-import * as path from "path";
 import { db } from "./db";
 import { userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs } from "@shared/schema";
 import { eq, and, isNotNull, sql } from "drizzle-orm";
 import { sendPushNotification } from "./onesignal";
+import { storage } from "./storage";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { log } from "./index";
 
-const DEDUP_FILE = path.join(process.cwd(), ".notification-scheduled-date");
+// Forward window: every pre-scheduling pass queues every eligible
+// (user, type) whose next local trigger falls within this many
+// hours. 36h is the smallest window that covers today's 14:00 +
+// 18:00 + 22:00 local triggers AND tomorrow's 14:00 local trigger
+// even when the only wakeup of the UTC day happens at 00:00 UTC
+// (= 8 AM HKT). It keeps late-dinner (today's 2 PM) and
+// daily check-in (today's 10 PM) inside the same pass.
+const LOOKAHEAD_HOURS = 36;
+const LOOKAHEAD_MS = LOOKAHEAD_HOURS * 60 * 60 * 1000;
 
-// Run the scheduling pass at the start of the UTC day so every
-// timezone still has all of today's local trigger times in the
-// future. Without this, deployments that wake later than the
-// configured trigger hour silently roll the send to "tomorrow"
-// for all users in already-passed timezones (this is exactly the
-// failure that affected the 2026-04-24 6 PM HKT and 10 PM HKT
-// re-engagement / daily-checkin sends — the deployment did not
-// wake until 14:16 UTC = 22:16 HKT).
-//
-// **Awake-at-the-hour mechanism:** moving SCHEDULE_HOUR_UTC alone
-// is not enough on autoscale — the deployment is also asleep at
-// 00:00 UTC. The chosen mechanism (smallest-change for the
-// current `deploymentTarget = "autoscale"` setup) is an external
-// uptime ping against `GET /api/uptime/ping`. Configure
-// UptimeRobot / cron-job.org to hit that endpoint every 5 minutes
-// between 23:55 UTC and 00:10 UTC; the inbound request wakes the
-// instance, the boot calls scheduleAllNotifications() once, and
-// the in-process setInterval keeps the pass running while the
-// instance stays up. If/when this deployment is upgraded to a
-// reserved VM, the uptime ping becomes optional.
-const SCHEDULE_HOUR_UTC = 0;
+// Hourly cadence keeps the dedup table fresh and gives every
+// (user, type) ~24 attempts to enter the window before its
+// trigger time. Boot pass + every-hour pass means the only way to
+// miss a send is for the entire instance to be dead for an
+// entire UTC day, which is exactly what the existing
+// /api/uptime/ping safety net guards against.
+const PASS_INTERVAL_MS = 60 * 60 * 1000;
 
-type NotificationType = "late_dinner" | "reengagement" | "evening";
+type NotificationType =
+  | "daily_checkin"   // 10 PM local
+  | "weekly_report"   // 10 PM local on Sunday
+  | "late_dinner"     // 2 PM local
+  | "reengagement";   // 6 PM local when no logs in last 3 days
 
-function getTodayDateStr(): string {
-  return new Date().toISOString().split("T")[0];
+const ALL_TYPES: NotificationType[] = [
+  "daily_checkin",
+  "weekly_report",
+  "late_dinner",
+  "reengagement",
+];
+
+interface NotificationContent {
+  title: string;
+  subtitle: string;
+  message: string;
+  deepLink: string;
 }
 
-function getScheduledTypes(dateStr: string): Set<NotificationType> {
+const CONTENTS: Record<NotificationType, NotificationContent> = {
+  daily_checkin: {
+    title: "Glukky",
+    subtitle: "Daily check-in",
+    message: "Your daily check-in is open — tap to log your day!",
+    deepLink: "/",
+  },
+  weekly_report: {
+    title: "Glukky",
+    subtitle: "Weekly review",
+    message: "Your weekly review is ready! Check your progress and plan next week.",
+    deepLink: "/plan",
+  },
+  late_dinner: {
+    title: "Glukky",
+    subtitle: "Dinner reminder",
+    message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
+    deepLink: "/",
+  },
+  reengagement: {
+    title: "Glukky",
+    subtitle: "We miss you!",
+    message: "Your plan is waiting — even a small step counts.",
+    deepLink: "/",
+  },
+};
+
+const TRIGGER_HOUR_LOCAL: Record<NotificationType, number> = {
+  daily_checkin: 22, // 10 PM
+  weekly_report: 22, // 10 PM
+  late_dinner: 14,   // 2 PM
+  reengagement: 18,  // 6 PM
+};
+
+interface ScheduledUser {
+  userId: string;
+  onesignalPlayerId: string | null;
+  onesignalExternalId: string | null;
+  deviceTimezone: string | null;
+}
+
+async function getRegisteredUsers(): Promise<ScheduledUser[]> {
+  // Targets every onboarded user that has SOME way to receive a
+  // push (alias OR player id). The new alias path is preferred
+  // when both exist; user_profiles rows with neither are excluded
+  // because there's nothing OneSignal can deliver to them.
+  const rows = await db.select({
+    userId: userProfiles.userId,
+    onesignalPlayerId: userProfiles.onesignalPlayerId,
+    onesignalExternalId: userProfiles.onesignalExternalId,
+    deviceTimezone: userProfiles.deviceTimezone,
+  })
+    .from(userProfiles)
+    .where(and(
+      eq(userProfiles.onboardingComplete, true),
+      sql`(${userProfiles.onesignalPlayerId} IS NOT NULL OR ${userProfiles.onesignalExternalId} IS NOT NULL)`,
+    ));
+  return rows.map((r) => ({
+    userId: r.userId,
+    onesignalPlayerId: r.onesignalPlayerId ?? null,
+    onesignalExternalId: r.onesignalExternalId ?? null,
+    deviceTimezone: r.deviceTimezone ?? null,
+  }));
+}
+
+// DST-correct calendar-field lookup in another timezone. Returns
+// the full set of fields (year/month/day/hour/minute/weekday)
+// because the scheduler needs all of them to compute the next
+// local trigger UTC instant.
+interface LocalParts {
+  year: number;
+  month: number; // 1-12
+  day: number;   // 1-31
+  hour: number;  // 0-23
+  minute: number;
+  weekday: number; // 0=Sun..6=Sat
+}
+
+function getLocalParts(at: Date, timeZone: string): LocalParts | null {
   try {
-    const content = fs.readFileSync(DEDUP_FILE, "utf-8").trim();
-    const data = JSON.parse(content);
-    if (data.date === dateStr && Array.isArray(data.types)) {
-      return new Set(data.types as NotificationType[]);
-    }
-    return new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function markTypeScheduled(dateStr: string, type: NotificationType): void {
-  const existing = getScheduledTypes(dateStr);
-  existing.add(type);
-  fs.writeFileSync(DEDUP_FILE, JSON.stringify({ date: dateStr, types: Array.from(existing) }), "utf-8");
-}
-
-function formatTimeOfDay(hour: number): string {
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12}:00${period}`;
-}
-
-// DST-correct local hour/minute lookup. We do NOT use
-// `new Date(date.toLocaleString("en-US", {timeZone}))` — that
-// idiom misparses around DST transitions and on locales whose
-// default formatter isn't en-US. `formatToParts` is the
-// supported way to read calendar fields in another timezone.
-function getLocalHourMinute(at: Date, timeZone: string): { hour: number; minute: number } | null {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
+    const fmt = new Intl.DateTimeFormat("en-US", {
       timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    }).formatToParts(at);
+      weekday: "short",
+    });
+    const parts = fmt.formatToParts(at);
+    let year: number | null = null;
+    let month: number | null = null;
+    let day: number | null = null;
     let hour: number | null = null;
     let minute: number | null = null;
+    let weekdayStr: string | null = null;
     for (const p of parts) {
-      if (p.type === "hour") hour = parseInt(p.value, 10);
+      if (p.type === "year") year = parseInt(p.value, 10);
+      else if (p.type === "month") month = parseInt(p.value, 10);
+      else if (p.type === "day") day = parseInt(p.value, 10);
+      else if (p.type === "hour") hour = parseInt(p.value, 10);
       else if (p.type === "minute") minute = parseInt(p.value, 10);
+      else if (p.type === "weekday") weekdayStr = p.value;
     }
-    if (hour === null || minute === null || Number.isNaN(hour) || Number.isNaN(minute)) return null;
-    // hour-cycle 'h23' returns 24 for midnight in some impls; normalize.
+    if (year === null || month === null || day === null || hour === null || minute === null) return null;
+    if (Number.isNaN(year + month + day + hour + minute)) return null;
     if (hour === 24) hour = 0;
-    return { hour, minute };
+    const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const weekday = weekdayStr && weekdayStr in weekdayMap ? weekdayMap[weekdayStr] : 0;
+    return { year, month, day, hour, minute, weekday };
   } catch {
     return null;
   }
 }
 
-interface RegisteredUser {
-  userId: string;
-  onesignalPlayerId: string;
-  deviceTimezone: string | null;
+// Convert the UTC offset of `timeZone` at moment `at` into ms.
+// We compute it by rounding the difference between the wall clock
+// in `timeZone` and the wall clock in UTC at the same instant.
+function utcOffsetMs(at: Date, timeZone: string): number | null {
+  const local = getLocalParts(at, timeZone);
+  const utc = getLocalParts(at, "UTC");
+  if (!local || !utc) return null;
+  const localUtcEpoch = Date.UTC(local.year, local.month - 1, local.day, local.hour, local.minute);
+  const utcUtcEpoch = Date.UTC(utc.year, utc.month - 1, utc.day, utc.hour, utc.minute);
+  return localUtcEpoch - utcUtcEpoch;
 }
 
-async function getRegisteredUsers(): Promise<RegisteredUser[]> {
-  const rows = await db.select({
-    userId: userProfiles.userId,
-    onesignalPlayerId: userProfiles.onesignalPlayerId,
-    deviceTimezone: userProfiles.deviceTimezone,
-  })
-    .from(userProfiles)
-    .where(and(
-      isNotNull(userProfiles.onesignalPlayerId),
-      eq(userProfiles.onboardingComplete, true),
-    ));
-  return rows
-    .filter((r): r is RegisteredUser => r.onesignalPlayerId !== null)
-    .map((r) => ({
-      userId: r.userId,
-      onesignalPlayerId: r.onesignalPlayerId,
-      deviceTimezone: r.deviceTimezone ?? null,
-    }));
+interface NextTrigger {
+  // YYYY-MM-DD in the user's local tz, identifies "which day's
+  // trigger" this is — used as the dedup key.
+  localTriggerDate: string;
+  // UTC instant when OneSignal should deliver. Always strictly
+  // in the future.
+  sendAtUtc: Date;
+  // Local weekday (0=Sun..6=Sat) the trigger fires on, used by
+  // the "weekly_report only on Sunday" filter.
+  weekday: number;
+}
+
+// Build a candidate trigger for a specific (yy, mm, dd) firing at
+// triggerHourLocal:00 in `timeZone`. Re-resolves the UTC offset
+// AT the candidate instant (not at `now`) so DST jumps land on
+// the correct UTC moment. `localTriggerDate`, `weekday` and
+// `sendAtUtc` are by construction in lock-step — the dedup key
+// and the per-type weekday gating cannot drift apart.
+function buildLocalTrigger(
+  now: Date,
+  timeZone: string,
+  triggerHourLocal: number,
+  yy: number,
+  mm: number,
+  dd: number,
+  weekday: number,
+): NextTrigger | null {
+  const wallAsUtcMs = Date.UTC(yy, mm - 1, dd, triggerHourLocal, 0, 0);
+  const offsetGuess = utcOffsetMs(now, timeZone);
+  if (offsetGuess === null) return null;
+  let cand = new Date(wallAsUtcMs - offsetGuess);
+  const offsetAtCand = utcOffsetMs(cand, timeZone);
+  if (offsetAtCand !== null && offsetAtCand !== offsetGuess) {
+    cand = new Date(wallAsUtcMs - offsetAtCand);
+  }
+  return {
+    localTriggerDate: formatYmd(yy, mm, dd),
+    sendAtUtc: cand,
+    weekday,
+  };
+}
+
+// Enumerate every occurrence of `triggerHourLocal:00` in
+// `timeZone` whose UTC instant is strictly future and within
+// `lookaheadMs` of `now`. Yielded candidates are sorted ascending
+// by sendAtUtc and each carries a (date, weekday) consistent with
+// its sendAtUtc — see `buildLocalTrigger`.
+//
+// Why "every occurrence" and not just the next one: per-type
+// eligibility (e.g. weekly_report fires only on Sunday;
+// late_dinner fires only on weekdays where the user has
+// lateDinnerScheduled=true) means the FIRST candidate may be
+// ineligible while a LATER one inside the window is eligible.
+// The Saturday→Sunday weekly_report case is the canonical
+// example: on Saturday 12:00 local UTC+12, today's 22:00
+// candidate is non-Sunday and ineligible, but tomorrow's 22:00
+// is Sunday-eligible and inside the 36 h window, so it must be
+// queued by THIS pass — not deferred to a later pass that may
+// never fire (autoscale instance asleep).
+function* enumerateLocalTriggers(
+  now: Date,
+  timeZone: string,
+  triggerHourLocal: number,
+  lookaheadMs: number,
+): Generator<NextTrigger> {
+  const local = getLocalParts(now, timeZone);
+  if (!local) return;
+  // Hard cap so a tz misconfiguration cannot loop forever. The
+  // 36 h lookahead never needs more than 2-3 days.
+  for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+    const seed = new Date(Date.UTC(local.year, local.month - 1, local.day) + dayOffset * 24 * 60 * 60 * 1000);
+    const yy = seed.getUTCFullYear();
+    const mm = seed.getUTCMonth() + 1;
+    const dd = seed.getUTCDate();
+    const wd = (local.weekday + dayOffset) % 7;
+    const c = buildLocalTrigger(now, timeZone, triggerHourLocal, yy, mm, dd, wd);
+    if (!c) continue;
+    const delta = c.sendAtUtc.getTime() - now.getTime();
+    if (delta <= 0) continue;
+    if (delta > lookaheadMs) return; // ascending → further days also out of window
+    yield c;
+  }
+}
+
+function formatYmd(y: number, m: number, d: number): string {
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${y}-${mm}-${dd}`;
+}
+
+interface EligibilityContext {
+  user: ScheduledUser;
+  type: NotificationType;
+  next: NextTrigger;
+  now: Date;
+}
+
+type EligibilityResult =
+  | { eligible: true }
+  | { eligible: false; reason: string };
+
+async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
+  switch (ctx.type) {
+    case "daily_checkin":
+      // 10 PM local every day except Sunday (Sunday slot is
+      // owned by the weekly_report).
+      if (ctx.next.weekday === 0) return { eligible: false, reason: "sunday_owned_by_weekly_report" };
+      return { eligible: true };
+    case "weekly_report":
+      // Only fires on Sunday's 10 PM local slot.
+      if (ctx.next.weekday !== 0) return { eligible: false, reason: "non_sunday" };
+      return { eligible: true };
+    case "late_dinner": {
+      // Only when the user has lateDinnerScheduled=true on the
+      // weekly_plan_day matching the local trigger date's weekday.
+      const planRows = await db.select({
+        lateDinnerScheduled: weeklyPlanDays.lateDinnerScheduled,
+      })
+        .from(weeklyPlanDays)
+        .innerJoin(weeklyPlans, eq(weeklyPlanDays.weeklyPlanId, weeklyPlans.id))
+        .innerJoin(userProfiles, eq(weeklyPlans.userId, userProfiles.userId))
+        .where(and(
+          eq(weeklyPlans.userId, ctx.user.userId),
+          eq(weeklyPlans.weekNumber, userProfiles.currentWeek),
+          // Plan-day weekday uses Mon=0..Sun=6 (see notifications.ts
+          // original logic: `(now.getDay() + 6) % 7`). Convert from
+          // JS weekday (0=Sun..6=Sat).
+          eq(weeklyPlanDays.dayOfWeek, (ctx.next.weekday + 6) % 7),
+          eq(weeklyPlanDays.lateDinnerScheduled, true),
+        ))
+        .limit(1);
+      if (planRows.length === 0) return { eligible: false, reason: "no_late_dinner_today" };
+      return { eligible: true };
+    }
+    case "reengagement": {
+      // Inactive (no daily_logs in last 3 days) + 3-day cooldown.
+      const profile = await storage.getProfile(ctx.user.userId);
+      if (!profile) return { eligible: false, reason: "no_profile" };
+      if (profile.lastReengagementNotification) {
+        const cooldownEnd = new Date(profile.lastReengagementNotification);
+        cooldownEnd.setDate(cooldownEnd.getDate() + 3);
+        if (ctx.now < cooldownEnd) return { eligible: false, reason: "cooldown" };
+      }
+      const threeDaysAgo = new Date(ctx.now);
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const threeDaysAgoStr = threeDaysAgo.toISOString().split("T")[0];
+      const recent = await db.select({ id: dailyLogs.id })
+        .from(dailyLogs)
+        .where(and(
+          eq(dailyLogs.userId, ctx.user.userId),
+          sql`${dailyLogs.date} >= ${threeDaysAgoStr}`,
+        ))
+        .limit(1);
+      if (recent.length > 0) return { eligible: false, reason: "active_in_last_3_days" };
+      return { eligible: true };
+    }
+  }
+}
+
+// Send a single (user, type) pre-scheduled notification.
+// Targets by external_id when present, falls back to player_id.
+// Returns the OneSignal notification id on success (so the caller
+// can persist it for later cancellation).
+async function queueOneNotification(
+  user: ScheduledUser,
+  type: NotificationType,
+  next: NextTrigger,
+  emailForLog: string,
+): Promise<{ ok: boolean; notificationId: string | null; targetMode: "alias" | "player_id" | "none" }> {
+  const content = CONTENTS[type];
+  const sendAfter = next.sendAtUtc.toISOString();
+
+  // Prefer alias path (Rule C: keep player-id fallback).
+  const useAlias = !!user.onesignalExternalId;
+  const targetMode: "alias" | "player_id" | "none" = useAlias
+    ? "alias"
+    : user.onesignalPlayerId
+      ? "player_id"
+      : "none";
+
+  if (targetMode === "none") {
+    log(
+      `notif/skipped type=${type} user=${emailForLog} reason=no_targets`,
+      "notifications",
+    );
+    return { ok: false, notificationId: null, targetMode };
+  }
+
+  const result = await sendPushNotification({
+    title: content.title,
+    subtitle: content.subtitle,
+    message: content.message,
+    deepLink: content.deepLink,
+    send_after: sendAfter,
+    externalIds: useAlias ? [user.onesignalExternalId as string] : undefined,
+    playerIds: useAlias ? undefined : [user.onesignalPlayerId as string],
+  });
+
+  log(
+    `notif/queued type=${type} user=${emailForLog} external_id=${user.onesignalExternalId ?? "none"} player_id=${user.onesignalPlayerId ?? "none"} target_mode=${targetMode} send_after=${sendAfter} notification_id=${result.notificationId ?? "none"} ok=${result.success}`,
+    "notifications",
+  );
+
+  return { ok: result.success, notificationId: result.notificationId, targetMode };
+}
+
+interface PassCounters {
+  queued: number;
+  alreadyScheduled: number;
+  ineligible: number;
+  outOfWindow: number;
+  noTargets: number;
+  errored: number;
 }
 
 async function lookupEmails(userIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  // authStorage.getUser is one-by-one, but the lists are small
-  // (<= a few hundred) and this only runs once per scheduled
-  // notification type. If this ever grows we can switch to a
-  // bulk join against the auth users table.
   await Promise.all(
     userIds.map(async (uid) => {
       try {
@@ -133,377 +400,186 @@ async function lookupEmails(userIds: string[]): Promise<Map<string, string>> {
   return out;
 }
 
-function summarizeEmails(emails: string[]): string {
-  if (emails.length === 0) return "[]";
-  if (emails.length <= 12) return `[${emails.join(", ")}]`;
-  return `[${emails.slice(0, 12).join(", ")}, …+${emails.length - 12}]`;
-}
-
-interface SplitResult {
-  futureUsers: RegisteredUser[];   // local trigger still upcoming today → schedule via timezone path
-  passedUsers: RegisteredUser[];   // local trigger already past today → send immediately
-  unknownTimezoneUserIds: string[];
-}
-
-// Split users into "today's local trigger time is still in the
-// future" vs "already passed". UTC-fallback users are bucketed
-// as "passed" per the task spec — we'd rather send them slightly
-// off-time today than silently roll to tomorrow.
-function splitUsersByLocalTrigger(
-  users: RegisteredUser[],
-  triggerHour: number,
-  now: Date,
-): SplitResult {
-  const futureUsers: RegisteredUser[] = [];
-  const passedUsers: RegisteredUser[] = [];
-  const unknownTimezoneUserIds: string[] = [];
-  for (const u of users) {
-    const tz = u.deviceTimezone ?? null;
-    if (!tz || tz === "UTC") {
-      // Treat unknown / UTC-fallback as "may have passed".
-      passedUsers.push(u);
-      if (!tz) unknownTimezoneUserIds.push(u.userId);
-      continue;
-    }
-    const local = getLocalHourMinute(now, tz);
-    if (!local) {
-      // Bad / unrecognized timezone string — treat as passed.
-      passedUsers.push(u);
-      unknownTimezoneUserIds.push(u.userId);
-      continue;
-    }
-    // Strictly-greater: if we are exactly at the trigger hour:00,
-    // OneSignal's timezone path would already be on the boundary
-    // and could no-op for some users. Sending immediately is the
-    // safer, on-time choice.
-    if (local.hour < triggerHour) {
-      futureUsers.push(u);
-    } else {
-      passedUsers.push(u);
-    }
-  }
-  return { futureUsers, passedUsers, unknownTimezoneUserIds };
-}
-
-// Compute the "latest local trigger UTC instant" across the
-// targeted future-group users. Used to schedule the post-trigger
-// delivery report fetch. For users whose local time has not yet
-// reached the trigger hour today, the next occurrence is today's
-// trigger in their timezone; we approximate by walking through
-// the targeted users and tracking the maximum UTC timestamp.
-function maxUtcMillisForTodayLocalTrigger(
-  users: RegisteredUser[],
-  triggerHour: number,
-  now: Date,
-): number | null {
-  let maxMillis: number | null = null;
-  for (const u of users) {
-    if (!u.deviceTimezone || u.deviceTimezone === "UTC") continue;
-    const local = getLocalHourMinute(now, u.deviceTimezone);
-    if (!local) continue;
-    // Hours until today's local trigger fires in this user's tz.
-    const hoursUntil = triggerHour - local.hour;
-    if (hoursUntil <= 0) continue;
-    // Approximate: trigger at top of triggerHour:00 local. Subtract
-    // the current minute to land near the user's local triggerHour:00.
-    const minutesUntil = hoursUntil * 60 - local.minute;
-    const utcMs = now.getTime() + minutesUntil * 60_000;
-    if (maxMillis === null || utcMs > maxMillis) maxMillis = utcMs;
-  }
-  return maxMillis;
-}
-
-// Send one logical notification to BOTH groups (future via
-// timezone schedule, passed via immediate send). Returns true
-// only if every sub-send succeeded; the caller uses that to
-// decide whether to write the dedup mark.
-async function sendSplit(opts: {
-  type: NotificationType;
-  label: string;
-  triggerHour: number;
-  users: RegisteredUser[];
-  payload: { title: string; subtitle: string; message: string; deepLink: string };
-}): Promise<boolean> {
+async function preScheduleAll(): Promise<void> {
   const now = new Date();
-  const { futureUsers, passedUsers, unknownTimezoneUserIds } = splitUsersByLocalTrigger(
-    opts.users,
-    opts.triggerHour,
-    now,
-  );
-
-  if (futureUsers.length === 0 && passedUsers.length === 0) {
-    log(`${opts.label}: no targeted users`, "notifications");
-    return true;
+  const users = await getRegisteredUsers();
+  if (users.length === 0) {
+    log("notif/pass-complete window=36h queued=0 already_scheduled=0 ineligible=0 (no registered users)", "notifications");
+    return;
   }
 
-  const allUserIds = [
-    ...futureUsers.map((u) => u.userId),
-    ...passedUsers.map((u) => u.userId),
-  ];
-  const emailMap = await lookupEmails(allUserIds);
-  const futureEmails = futureUsers.map((u) => emailMap.get(u.userId) ?? u.userId);
-  const passedEmails = passedUsers.map((u) => emailMap.get(u.userId) ?? u.userId);
+  const emails = await lookupEmails(users.map((u) => u.userId));
+  const counters: PassCounters = {
+    queued: 0,
+    alreadyScheduled: 0,
+    ineligible: 0,
+    outOfWindow: 0,
+    noTargets: 0,
+    errored: 0,
+  };
+
+  for (const user of users) {
+    const tz = user.deviceTimezone && user.deviceTimezone !== "UTC"
+      ? user.deviceTimezone
+      : "UTC";
+    const emailForLog = emails.get(user.userId) ?? user.userId;
+
+    for (const type of ALL_TYPES) {
+      try {
+        const triggerHour = TRIGGER_HOUR_LOCAL[type];
+
+        // Walk every (user × type) trigger occurrence that falls
+        // inside the 36 h window — not just the next one — so a
+        // first-day-ineligible/second-day-eligible type (e.g.
+        // weekly_report on Saturday→Sunday, or late_dinner on a
+        // day where lateDinnerScheduled flips between two
+        // adjacent days) gets queued by THIS pass instead of
+        // being deferred to a future pass that may never run.
+        const candidates: NextTrigger[] = [];
+        for (const c of enumerateLocalTriggers(now, tz, triggerHour, LOOKAHEAD_MS)) {
+          candidates.push(c);
+        }
+        if (candidates.length === 0) {
+          // Either tz resolve failed or no occurrence falls in
+          // the window. The former is loud; the latter normal
+          // and silent.
+          if (!getLocalParts(now, tz)) {
+            counters.errored++;
+            log(
+              `notif/skipped type=${type} user=${emailForLog} reason=tz_resolve_failed tz=${tz}`,
+              "notifications",
+            );
+          } else {
+            counters.outOfWindow++;
+          }
+          continue;
+        }
+
+        for (const next of candidates) {
+          // Fast-path dedup check (cheap read; the authoritative
+          // race-safety check is the unique-index reservation
+          // below).
+          const existing = await storage.getScheduledNotification(
+            user.userId,
+            type,
+            next.localTriggerDate,
+          );
+          if (existing) {
+            counters.alreadyScheduled++;
+            continue;
+          }
+
+          // Per-candidate eligibility — `late_dinner` and
+          // `weekly_report` both depend on the candidate's
+          // weekday, not on `now`'s weekday.
+          const elig = await isEligible({ user, type, next, now });
+          if (!elig.eligible) {
+            counters.ineligible++;
+            continue;
+          }
+
+          // RESERVE-THEN-SEND-THEN-FINALIZE. We insert the dedup
+          // row FIRST with NULL notification_id; the unique index
+          // on (user_id, type, local_trigger_date) atomically
+          // serialises concurrent passes — the loser sees
+          // inserted=false and skips, so OneSignal never receives
+          // duplicate sends for the same trigger. We then POST
+          // and either UPDATE the row with the returned
+          // notification id or DELETE it on failure so the next
+          // hourly pass can retry. Net effect: the table stays
+          // truthful AND duplicate sends are impossible.
+          const reservation = await storage.recordScheduledNotification(
+            user.userId,
+            type,
+            next.localTriggerDate,
+            next.sendAtUtc,
+            null,
+          );
+          if (!reservation.inserted) {
+            counters.alreadyScheduled++;
+            continue;
+          }
+          const reservedId = reservation.row?.id;
+          if (reservedId === undefined) {
+            // Should never happen: inserted=true implies
+            // returning produced a row. Defensive log + skip.
+            counters.errored++;
+            log(`notif/reservation-missing-id type=${type} user=${emailForLog}`, "notifications");
+            continue;
+          }
+
+          const r = await queueOneNotification(user, type, next, emailForLog);
+          if (r.targetMode === "none") {
+            await storage.deleteScheduledNotificationById(reservedId);
+            counters.noTargets++;
+            // No targets is a per-user condition, not per-day —
+            // skip remaining candidates for this (user, type).
+            break;
+          }
+          if (!r.ok) {
+            await storage.deleteScheduledNotificationById(reservedId);
+            counters.errored++;
+            continue;
+          }
+
+          await storage.setScheduledNotificationId(reservedId, r.notificationId);
+          counters.queued++;
+          // Reengagement tracking: stamp profile so the 3-day
+          // cooldown holds even if the dedup row is later GC'd.
+          if (type === "reengagement") {
+            try {
+              await db.update(userProfiles)
+                .set({ lastReengagementNotification: new Date() })
+                .where(eq(userProfiles.userId, user.userId));
+            } catch (e: any) {
+              log(`notif/cooldown-stamp-failed user=${emailForLog} ${e?.message ?? e}`, "notifications");
+            }
+          }
+        }
+      } catch (e: any) {
+        counters.errored++;
+        log(
+          `notif/error type=${type} user=${emailForLog} ${e?.message ?? e}`,
+          "notifications",
+        );
+      }
+    }
+  }
 
   log(
-    `${opts.label}: targeted ${allUserIds.length} users emails=${summarizeEmails([...futureEmails, ...passedEmails])} schedule=${formatTimeOfDay(opts.triggerHour)}/timezone unknown_tz=${unknownTimezoneUserIds.length}`,
+    `notif/pass-complete window=${LOOKAHEAD_HOURS}h users=${users.length} queued=${counters.queued} already_scheduled=${counters.alreadyScheduled} ineligible=${counters.ineligible} out_of_window=${counters.outOfWindow} no_targets=${counters.noTargets} errored=${counters.errored}`,
     "notifications",
   );
-
-  let allOk = true;
-
-  // Compute "ms until 5 minutes after the latest user's local
-  // trigger fires today" so the delivery-report fetch happens
-  // after OneSignal has actually delivered the future-group
-  // batch. We only schedule the post-trigger report when the
-  // future-group batch is non-empty.
-  const latestUtcMs = maxUtcMillisForTodayLocalTrigger(futureUsers, opts.triggerHour, now);
-  let postTriggerDelayMs: number | undefined;
-  if (latestUtcMs !== null) {
-    const delay = latestUtcMs - Date.now() + 5 * 60_000;
-    if (delay > 0 && delay < 24 * 60 * 60_000) postTriggerDelayMs = delay;
-  }
-
-  if (futureUsers.length > 0) {
-    log(
-      `${opts.label}: future-group n=${futureUsers.length} emails=${summarizeEmails(futureEmails)} → delivery_time_of_day ${formatTimeOfDay(opts.triggerHour)}/timezone post_trigger_report_in_ms=${postTriggerDelayMs ?? "n/a"}`,
-      "notifications",
-    );
-    const ok = await sendPushNotification({
-      ...opts.payload,
-      playerIds: futureUsers.map((u) => u.onesignalPlayerId),
-      delivery_time_of_day: formatTimeOfDay(opts.triggerHour),
-      delayed_option: "timezone",
-      postTriggerReportAfterMs: postTriggerDelayMs,
-      postTriggerReportLabel: `${opts.label}/post-trigger`,
-    });
-    if (!ok) allOk = false;
-  }
-
-  if (passedUsers.length > 0) {
-    log(
-      `${opts.label}: passed-group n=${passedUsers.length} emails=${summarizeEmails(passedEmails)} → immediate (today's local trigger already past or tz unknown)`,
-      "notifications",
-    );
-    const ok = await sendPushNotification({
-      ...opts.payload,
-      playerIds: passedUsers.map((u) => u.onesignalPlayerId),
-    });
-    if (!ok) allOk = false;
-  }
-
-  return allOk;
 }
 
-async function scheduleLateDinnerReminder(): Promise<boolean> {
-  const now = new Date();
-  const todayDow = (now.getDay() + 6) % 7;
+let passInFlight = false;
 
-  const usersWithLateDinner = await db
-    .select({
-      userId: userProfiles.userId,
-      onesignalPlayerId: userProfiles.onesignalPlayerId,
-      deviceTimezone: userProfiles.deviceTimezone,
-    })
-    .from(userProfiles)
-    .innerJoin(weeklyPlans, eq(weeklyPlans.userId, userProfiles.userId))
-    .innerJoin(weeklyPlanDays, eq(weeklyPlanDays.weeklyPlanId, weeklyPlans.id))
-    .where(and(
-      isNotNull(userProfiles.onesignalPlayerId),
-      eq(userProfiles.onboardingComplete, true),
-      eq(weeklyPlanDays.dayOfWeek, todayDow),
-      eq(weeklyPlanDays.lateDinnerScheduled, true),
-      eq(weeklyPlans.weekNumber, userProfiles.currentWeek),
-    ));
-
-  const users: RegisteredUser[] = usersWithLateDinner
-    .filter((u) => u.onesignalPlayerId !== null)
-    .map((u) => ({
-      userId: u.userId,
-      onesignalPlayerId: u.onesignalPlayerId as string,
-      deviceTimezone: u.deviceTimezone ?? null,
-    }));
-
-  if (users.length === 0) {
-    log("Late dinner reminder: no users with late dinner today", "notifications");
-    return true;
-  }
-
-  return sendSplit({
-    type: "late_dinner",
-    label: "late_dinner",
-    triggerHour: 14,
-    users,
-    payload: {
-      title: "Glukky",
-      subtitle: "Dinner reminder",
-      message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
-      deepLink: "/",
-    },
-  });
-}
-
-async function scheduleReengagementReminder(): Promise<boolean> {
-  const threeDaysAgo = new Date();
-  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-  const threeDaysAgoStr = threeDaysAgo.toISOString().split("T")[0];
-
-  const registeredUsers = await getRegisteredUsers();
-
-  const eligibleUsers: RegisteredUser[] = [];
-
-  for (const user of registeredUsers) {
-    const profile = await db.select({
-      lastReengagementNotification: userProfiles.lastReengagementNotification,
-    })
-      .from(userProfiles)
-      .where(eq(userProfiles.userId, user.userId))
-      .then(rows => rows[0]);
-
-    if (profile?.lastReengagementNotification) {
-      const cooldownEnd = new Date(profile.lastReengagementNotification);
-      cooldownEnd.setDate(cooldownEnd.getDate() + 3);
-      if (new Date() < cooldownEnd) continue;
-    }
-
-    const recentLogs = await db.select({ id: dailyLogs.id })
-      .from(dailyLogs)
-      .where(and(
-        eq(dailyLogs.userId, user.userId),
-        sql`${dailyLogs.date} >= ${threeDaysAgoStr}`,
-      ))
-      .limit(1);
-
-    if (recentLogs.length === 0) {
-      eligibleUsers.push(user);
-      await db.update(userProfiles)
-        .set({ lastReengagementNotification: new Date() })
-        .where(eq(userProfiles.userId, user.userId));
-    }
-  }
-
-  if (eligibleUsers.length === 0) {
-    log("Re-engagement: no inactive users to notify", "notifications");
-    return true;
-  }
-
-  return sendSplit({
-    type: "reengagement",
-    label: "reengagement",
-    triggerHour: 18,
-    users: eligibleUsers,
-    payload: {
-      title: "Glukky",
-      subtitle: "We miss you!",
-      message: "Your plan is waiting — even a small step counts.",
-      deepLink: "/",
-    },
-  });
-}
-
-async function scheduleSundayPlanningReminder(): Promise<boolean> {
-  const users = await getRegisteredUsers();
-  if (users.length === 0) {
-    log("Sunday planning reminder: no registered users", "notifications");
-    return true;
-  }
-  return sendSplit({
-    type: "evening",
-    label: "sunday_planning",
-    triggerHour: 22,
-    users,
-    payload: {
-      title: "Glukky",
-      subtitle: "Weekly review",
-      message: "Your weekly review is ready! Check your progress and plan next week.",
-      deepLink: "/plan",
-    },
-  });
-}
-
-async function scheduleDailyCheckInReminder(): Promise<boolean> {
-  const users = await getRegisteredUsers();
-  if (users.length === 0) {
-    log("Daily check-in reminder: no registered users", "notifications");
-    return true;
-  }
-  return sendSplit({
-    type: "evening",
-    label: "daily_check_in",
-    triggerHour: 22,
-    users,
-    payload: {
-      title: "Glukky",
-      subtitle: "Daily check-in",
-      message: "Your daily check-in is open — tap to log your day!",
-      deepLink: "/",
-    },
-  });
-}
-
-async function scheduleAllNotifications() {
-  const dateStr = getTodayDateStr();
-  const now = new Date();
-  const currentHourUtc = now.getUTCHours();
-
-  if (currentHourUtc < SCHEDULE_HOUR_UTC) {
-    log(`Waiting for ${SCHEDULE_HOUR_UTC}:00 UTC to schedule notifications (currently ${currentHourUtc}:00 UTC)`, "notifications");
+async function runPassGuarded(): Promise<void> {
+  if (passInFlight) {
+    log("notif/pass-skipped reason=in_flight", "notifications");
     return;
   }
-
-  const alreadyScheduled = getScheduledTypes(dateStr);
-  const allTypes: NotificationType[] = ["late_dinner", "reengagement", "evening"];
-  const pending = allTypes.filter(t => !alreadyScheduled.has(t));
-
-  if (pending.length === 0) {
-    log(`All notifications already scheduled for ${dateStr}, skipping`, "notifications");
-    return;
+  passInFlight = true;
+  try {
+    await preScheduleAll();
+  } catch (e: any) {
+    log(`notif/pass-failed ${e?.message ?? e}`, "notifications");
+  } finally {
+    passInFlight = false;
   }
-
-  log(`Scheduling notifications for ${dateStr} (pending: ${pending.join(", ")})`, "notifications");
-
-  for (const type of pending) {
-    try {
-      // The dedup write happens AFTER every sub-send for this type
-      // has completed. Previously we wrote dedup after the first
-      // (and only) send call, which on a server restart between
-      // the future-group send and the passed-group send could
-      // cause the passed group to never be sent (or — under the
-      // new split — the same group to fire twice).
-      let success = false;
-      switch (type) {
-        case "late_dinner":
-          success = await scheduleLateDinnerReminder();
-          break;
-        case "reengagement":
-          success = await scheduleReengagementReminder();
-          break;
-        case "evening":
-          if (now.getDay() === 0) {
-            success = await scheduleSundayPlanningReminder();
-          } else {
-            success = await scheduleDailyCheckInReminder();
-          }
-          break;
-      }
-      if (success) {
-        markTypeScheduled(dateStr, type);
-      } else {
-        log(`OneSignal returned failure for ${type}, will retry on next run`, "notifications");
-      }
-    } catch (error: any) {
-      log(`Failed to schedule ${type} notification: ${error.message}`, "notifications");
-    }
-  }
-
-  log(`Notification scheduling complete for ${dateStr}`, "notifications");
 }
 
 export function startNotificationScheduler() {
-  log("Notification scheduler started (schedules via OneSignal timezone delivery)", "notifications");
+  log(
+    `Notification pre-scheduler started (lookahead=${LOOKAHEAD_HOURS}h, cadence=hourly, target=external_id with player_id fallback)`,
+    "notifications",
+  );
 
-  scheduleAllNotifications();
+  // Boot pass — gives every wakeup an immediate chance to queue
+  // anything the previous instance missed.
+  void runPassGuarded();
 
   setInterval(() => {
-    scheduleAllNotifications();
-  }, 60 * 60 * 1000);
+    void runPassGuarded();
+  }, PASS_INTERVAL_MS);
 }

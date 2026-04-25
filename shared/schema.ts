@@ -65,6 +65,12 @@ export const userProfiles = pgTable("user_profiles", {
   introSeen: boolean("intro_seen").notNull().default(false),
   onesignalPlayerId: text("onesignal_player_id"),
   onesignalRegisteredAt: timestamp("onesignal_registered_at"),
+  // Stable per-user alias surfaced to OneSignal via the wrapper's
+  // setExternalId. Mirrors the app user id so server-side
+  // pre-scheduling can target by alias and survive subscription
+  // (player) id rotation. Null until the wrapper bridge confirms
+  // the call landed; see /api/onesignal/external-id.
+  onesignalExternalId: text("onesignal_external_id"),
   deviceTimezone: text("device_timezone"),
   lastReengagementNotification: timestamp("last_reengagement_notification"),
   hasCreatedFirstWeeklyPlan: boolean("has_created_first_weekly_plan").notNull().default(false),
@@ -162,6 +168,35 @@ export const cycleHistory = pgTable("cycle_history", {
 export const insertCycleHistorySchema = createInsertSchema(cycleHistory).omit({ id: true, createdAt: true });
 export type InsertCycleHistory = z.infer<typeof insertCycleHistorySchema>;
 export type CycleHistoryRow = typeof cycleHistory.$inferSelect;
+
+// Pre-scheduling dedup table for OneSignal sends. One row per
+// (user, notification type, local-trigger calendar date in the
+// user's tz). The unique index is the on-disk guarantee that the
+// hourly scheduler pass never double-schedules the same trigger,
+// even across restarts and concurrent passes. We also persist the
+// OneSignal notification id returned by the POST so a follow-up
+// task can cancel a scheduled send when the user becomes
+// ineligible (e.g. logs glucose at 9 PM and the 10 PM check-in
+// should no longer fire).
+export const scheduledNotifications = pgTable("scheduled_notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  notificationType: varchar("notification_type").notNull(),
+  localTriggerDate: varchar("local_trigger_date").notNull(),
+  sendAtUtc: timestamp("send_at_utc").notNull(),
+  onesignalNotificationId: varchar("onesignal_notification_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userTypeDateUniq: uniqueIndex("scheduled_notifications_user_type_date_uniq").on(
+    table.userId,
+    table.notificationType,
+    table.localTriggerDate,
+  ),
+}));
+
+export const insertScheduledNotificationSchema = createInsertSchema(scheduledNotifications).omit({ id: true, createdAt: true });
+export type InsertScheduledNotification = z.infer<typeof insertScheduledNotificationSchema>;
+export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
 
 // Anonymous-RC-subscriber → Replit-user mapping. Persists what was previously
 // only an in-memory Map so that a server restart in the middle of a sandbox
