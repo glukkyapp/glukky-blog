@@ -65,11 +65,7 @@ export const userProfiles = pgTable("user_profiles", {
   introSeen: boolean("intro_seen").notNull().default(false),
   onesignalPlayerId: text("onesignal_player_id"),
   onesignalRegisteredAt: timestamp("onesignal_registered_at"),
-  // Stable per-user alias surfaced to OneSignal via the wrapper's
-  // setExternalId. Mirrors the app user id so server-side
-  // pre-scheduling can target by alias and survive subscription
-  // (player) id rotation. Null until the wrapper bridge confirms
-  // the call landed; see /api/onesignal/external-id.
+  // External ID sent to OneSignal for push targeting.
   onesignalExternalId: text("onesignal_external_id"),
   deviceTimezone: text("device_timezone"),
   lastReengagementNotification: timestamp("last_reengagement_notification"),

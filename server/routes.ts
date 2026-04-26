@@ -2210,13 +2210,6 @@ export async function registerRoutes(
     }
   });
 
-  // Read-only diagnostic: does the server have an RC API key configured?
-  // We never return the value — the dev panel only needs presence so the
-  // human can confirm the server can talk to RevenueCat at all.
-  app.get("/api/dev/revenuecat-config", isAuthenticated, isDevUser, async (_req: any, res) => {
-    res.json({ keyPresent: !!process.env.REVENUECAT_SECRET_API_KEY });
-  });
-
   app.get("/api/dev/check", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;

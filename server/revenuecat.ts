@@ -224,7 +224,7 @@ export interface RevenueCatWebhookBody {
   api_version?: string;
 }
 
-export function collectCandidateUserIds(event: RevenueCatWebhookEvent): string[] {
+function collectCandidateUserIds(event: RevenueCatWebhookEvent): string[] {
   const ids = new Set<string>();
   const push = (v?: string | null) => {
     if (typeof v === "string" && v.trim()) ids.add(v.trim());
@@ -246,19 +246,6 @@ function cancellationShouldRevoke(event: RevenueCatWebhookEvent): boolean {
   if (typeof exp === "number" && exp <= now) return true;
   // No expiry info → leave it to the next verifyEntitlement call (don't revoke).
   return false;
-}
-
-// Anonymous-id prefix RC stamps on subscribers that have not yet been
-// identified via `purchases.login(...)`. With the BN bridge's `login`
-// being called at auth resolve, every purchase is recorded against the
-// real Replit user id directly — but RC webhooks may still include
-// anonymous candidate ids alongside the real one (e.g. when RC merged
-// the subscribers behind the scenes). We filter those out so we never
-// attempt to set premium on a non-Replit user.
-const ANON_ID_PREFIX = "$RCAnonymousID:";
-
-function looksLikeAnonymousAppUserId(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith(ANON_ID_PREFIX) && value.length > ANON_ID_PREFIX.length;
 }
 
 export interface ApplyEventDeps {
@@ -294,7 +281,6 @@ export async function applyWebhookEvent(
 
   // Find the first candidate that maps to a known user.
   for (const userId of candidates) {
-    if (looksLikeAnonymousAppUserId(userId)) continue;
     invalidateEntitlementCache(userId);
 
     if (intent === "revoke") {
