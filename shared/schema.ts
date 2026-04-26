@@ -198,31 +198,6 @@ export const insertScheduledNotificationSchema = createInsertSchema(scheduledNot
 export type InsertScheduledNotification = z.infer<typeof insertScheduledNotificationSchema>;
 export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
 
-// Anonymous-RC-subscriber → Replit-user mapping. Persists what was previously
-// only an in-memory Map so that a server restart in the middle of a sandbox
-// session does not lose the link between an anonymous `$RCAnonymousID:…`
-// purchase and the signed-in user. The verifier reads this table when the
-// primary lookup against the Replit user id finds nothing on RevenueCat —
-// that is the self-healing path that lets a single successful capture of
-// the anonymous id unlock all future verifies.
-export const subscriptionAlias = pgTable("subscription_alias", {
-  anonymousAppUserId: varchar("anonymous_app_user_id").primaryKey(),
-  replitUserId: varchar("replit_user_id").notNull(),
-  // Telemetry only. Flips to true when RevenueCat's alias REST
-  // (or a matching webhook) independently confirms the merge.
-  // Does NOT gate self-healing reads — every persisted row drives
-  // unlock per the task #486 design. Cross-user safety is the
-  // first-writer-wins guard in `upsertSubscriptionAlias`.
-  verified: boolean("verified").notNull().default(false),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => ({
-  byReplitUser: index("subscription_alias_replit_user_idx").on(table.replitUserId),
-}));
-
-export const insertSubscriptionAliasSchema = createInsertSchema(subscriptionAlias).omit({ updatedAt: true });
-export type InsertSubscriptionAlias = z.infer<typeof insertSubscriptionAliasSchema>;
-export type SubscriptionAlias = typeof subscriptionAlias.$inferSelect;
-
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true });
 export const insertWeeklyPlanDaySchema = createInsertSchema(weeklyPlanDays).omit({ id: true });

@@ -11,11 +11,9 @@ import {
   type FoodCombo, type InsertFoodCombo,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
-  type SubscriptionAlias,
   type ScheduledNotification,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
-  subscriptionAlias,
   scheduledNotifications,
   users, sessions,
 } from "@shared/schema";
@@ -82,25 +80,6 @@ export interface IStorage {
   getFoodLabelByName(name: string): Promise<FoodLabel | null>;
   getFoodLabelByCombo(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodLabel | null>;
   saveFoodLabel(label: InsertFoodLabel): Promise<void>;
-
-  // Anonymous-RC-subscriber → Replit-user mapping. Persisted backstop for the
-  // self-healing entitlement verifier. Every persisted row drives
-  // unlock on the next verify, regardless of `verified` (Option A,
-  // task #486). `verified` is telemetry: false on first persist,
-  // flipped to true when RC's alias REST 2xx (or a matching
-  // webhook) confirms the merge. Cross-user safety is provided
-  // by the first-writer-wins atomic upsert below.
-  upsertSubscriptionAlias(
-    anonymousAppUserId: string,
-    replitUserId: string,
-    opts?: { verified?: boolean },
-  ): Promise<{ stored: boolean; reason: "ok_new" | "ok_same_owner" | "owner_mismatch" }>;
-  markSubscriptionAliasVerified(
-    anonymousAppUserId: string,
-    replitUserId: string,
-  ): Promise<{ updated: boolean }>;
-  getSubscriptionAliasIdsForUser(replitUserId: string): Promise<string[]>;
-  getReplitUserIdForAnonymous(anonymousAppUserId: string): Promise<string | null>;
 
   // Pre-scheduling dedup (task #500). Used by the OneSignal
   // pre-scheduler to record (and check) whether a given
@@ -665,23 +644,9 @@ export class DatabaseStorage implements IStorage {
     await db.insert(foodLabels).values(label).onConflictDoNothing();
   }
 
-  // Anonymous-RC-subscriber → Replit-user mapping. SECURITY: ownership
-  // is enforced atomically in a single SQL statement, race-safe even
-  // when two requests for the same anonymous id arrive concurrently.
-  //
-  // The statement:
-  //   - INSERTs when the row does not exist (ok_new)
-  //   - UPDATEs `updated_at` when the existing owner matches the
-  //     requested owner (ok_same_owner)
-  //   - SKIPs the UPDATE when the existing owner differs (the
-  //     `WHERE` predicate filters the conflict-resolution row)
-  //
-  // We then RETURN the stored `replit_user_id`. If that value equals
-  // the requested owner, the row was inserted or refreshed — `stored`
-  // is true. If RETURNING is empty, the conflict-resolution UPDATE
-  // was skipped because the existing owner differed — that's a
-  // rejected reassignment, `stored` is false. Either way, no stale
-  // ownership is recorded and no claim races the row.
+  /* removed alias machinery — RC identity is now established via
+     purchases.login(userId, email, cb) at auth resolve time, so no
+     anonymous-id capture or alias persistence is needed.
   async upsertSubscriptionAlias(
     anonymousAppUserId: string,
     replitUserId: string,
@@ -789,6 +754,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptionAlias.anonymousAppUserId, anonymousAppUserId));
     return row?.replitUserId ?? null;
   }
+  */
 
   async getScheduledNotification(
     userId: string,

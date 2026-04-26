@@ -27,14 +27,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
-import PaywallModal from "@/components/paywall-modal";
-import { ensureIdentified, ensureCustomerIdSet } from "@/lib/natively-purchases";
+import {
+  loginToRevenueCat,
+  presentPaywall,
+  presentPaywallIfNeeded,
+} from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
-import BuildDiagnosticBadge from "@/components/build-diagnostic-badge";
 
 preloadStage1Launch();
 
@@ -203,6 +205,7 @@ export function useGate() {
 
 function AuthenticatedApp() {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan, isLoading: planLoading } = useQuery({
     queryKey: ["/api/plan/current"],
@@ -218,111 +221,124 @@ function AuthenticatedApp() {
     queryKey: ["/api/dev/check"],
   });
 
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const [paywallLockApp, setPaywallLockApp] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
 
-  useEffect(() => {
-    setPaywallLockApp(isLocked);
-    if (isLocked && location !== "/profile") {
-      setLocation("/profile");
-      setPaywallOpen(true);
-    }
-  }, [isLocked, location, setLocation]);
-
-  const showPaywall = useCallback((onSuccess?: () => void) => {
-    pendingActionRef.current = onSuccess || null;
-    setPaywallOpen(true);
-  }, []);
-
-  const handlePurchaseSuccess = useCallback(async () => {
-    setPaywallOpen(false);
-    await refetchGate();
-    await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
-    if (pendingActionRef.current) {
-      const action = pendingActionRef.current;
-      pendingActionRef.current = null;
-      setTimeout(action, 100);
+  // Server is the source of truth — it asks RevenueCat directly via
+  // verifyEntitlement(replitUserId) and writes the verified result to
+  // profiles.is_premium. We never send a client-side premium flag.
+  // Declared BEFORE consumers (showPaywall callback, lockApp effect,
+  // refresh effect) so React's hook ordering stays consistent and the
+  // dependency arrays don't capture a stale closure.
+  const refreshPremiumThenRefetch = useCallback(async (force = false): Promise<boolean> => {
+    try {
+      const resp = await fetch("/api/refresh-premium-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(force ? { force: true } : {}),
+      });
+      if (!resp.ok) return false;
+      const data = await resp.json();
+      const verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
+      refetchGate();
+      queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+      return verified;
+    } catch (e) {
+      console.warn("[premium] refresh error:", e);
+      return false;
     }
   }, [refetchGate]);
 
-  useEffect(() => {
-    // Identify the user to RevenueCat as soon as we know their Replit
-    // user id. Without this, every purchase on iOS is recorded against
-    // an anonymous "$RCAnonymousID:…" record and the server's
-    // verifyEntitlement(replitUserId) always 404s. Safe + idempotent
-    // when the bridge is missing (web preview).
-    //
-    // Two paths fire here:
-    //   1) `setCustomerId` — Build Natively's documented `Set Customer
-    //      ID` action. PRIMARY path: tells the RC SDK who's buying
-    //      BEFORE the purchase, so the receipt lands on the right
-    //      subscriber from the start and the verifier returns
-    //      hasPremium=true on the first poll without aliasing.
-    //   2) `logIn` — older identity path kept for backwards compat on
-    //      wrappers that don't expose setCustomerId. No-op on bridges
-    //      where logIn is missing.
-    // The post-purchase server-side alias path remains as a dormant
-    // safety net for users who already purchased under an anonymous
-    // id before this fix shipped.
-    const userId = (profile as any)?.userId;
-    if (!userId) return;
-    ensureCustomerIdSet(userId);
-    ensureIdentified(userId);
+  // Trigger RC's hosted paywall via the BN bridge. The hosted paywall
+  // owns the StoreKit transaction; we re-verify with the server on a
+  // `purchased` / `restored` callback before unlocking UI. The callback
+  // is a hint, not proof — `refreshPremiumThenRefetch(true)` is.
+  const showPaywall = useCallback((onSuccess?: () => void) => {
+    pendingActionRef.current = onSuccess || null;
+    presentPaywall()
+      .then(async (result) => {
+        if (result.status === "BRIDGE_MISSING") {
+          console.warn(
+            "[paywall] BN bridge missing — web preview cannot present the hosted paywall.",
+          );
+          pendingActionRef.current = null;
+          return;
+        }
+        if (
+          result.status === "SUCCESS" &&
+          (result.message === "purchased" || result.message === "restored")
+        ) {
+          const verified = await refreshPremiumThenRefetch(true);
+          if (verified && pendingActionRef.current) {
+            const action = pendingActionRef.current;
+            pendingActionRef.current = null;
+            setTimeout(action, 100);
+          } else {
+            pendingActionRef.current = null;
+          }
+        } else {
+          pendingActionRef.current = null;
+        }
+      })
+      .catch((e) => {
+        console.warn("[paywall] present error:", e);
+        pendingActionRef.current = null;
+      });
+  }, [refreshPremiumThenRefetch]);
 
-    // Re-assert the customer id on app foreground — Build Natively
-    // wrappers have been observed to forget the SDK-side identity
-    // after the app has been backgrounded for a while. `force` bypasses
-    // the per-user idempotence cache so a previous `success` doesn't
-    // suppress the re-attempt.
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        ensureCustomerIdSet(userId, { force: true });
+  // Lock-app gate (e.g. Premium-only feature reached). RC's
+  // showPaywallIfNeeded skips presentation if the user already holds
+  // the Premium entitlement; otherwise it presents the hosted paywall
+  // without a close button so the user must subscribe or quit. We
+  // still anchor at /profile as a UX fallback for cases where
+  // presentation can't happen (web preview, bridge missing).
+  useEffect(() => {
+    if (!isLocked) return;
+    presentPaywallIfNeeded("Premium", { showCloseButton: false })
+      .then(async (result) => {
+        if (
+          result.status === "SUCCESS" &&
+          (result.message === "purchased" ||
+            result.message === "restored" ||
+            result.message === "not_presented")
+        ) {
+          await refreshPremiumThenRefetch(true);
+        }
+      })
+      .catch(() => {});
+    if (location !== "/profile") {
+      setLocation("/profile");
+    }
+  }, [isLocked, location, setLocation, refreshPremiumThenRefetch]);
+
+  // Identify the user to RevenueCat once their Replit auth resolves.
+  // Without this, every purchase is recorded against RC's anonymous
+  // customer and verifyEntitlement(replitUserId) 404s. The BN bridge's
+  // `login(userId, email, cb)` is the only RC identity surface we use —
+  // no anonymous-id capture, no alias, no self-heal.
+  useEffect(() => {
+    if (!user?.id) return;
+    loginToRevenueCat(user.id, user.email ?? "").then((result) => {
+      if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
+        console.warn(
+          `[rc] login result: status=${result.status}` +
+            (result.error ? ` error=${result.error}` : ""),
+        );
       }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [(profile as any)?.userId]);
+    });
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     if (!(profile as any)?.onboardingComplete) return;
-
-    // Ask the server to verify premium with RevenueCat. The server is the
-    // only source of truth — it may flip is_premium true OR false based on
-    // the verified entitlement (handles expired subs, account switches,
-    // etc.). We never send a client-side premium flag.
-    const refreshPremium = async () => {
-      try {
-        const resp = await fetch("/api/refresh-premium-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({}),
-        });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
-        if (verified !== Boolean((profile as any)?.isPremium)) {
-          refetchGate();
-          queryClient.refetchQueries({ queryKey: ["/api/profile"] });
-        }
-      } catch (e) {
-        console.warn("[premium] refresh error:", e);
-      }
-    };
-
-    // On boot.
-    refreshPremium();
-
-    // On app foreground (catches expired subs without a tap).
+    refreshPremiumThenRefetch();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") refreshPremium();
+      if (document.visibilityState === "visible") refreshPremiumThenRefetch();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [(profile as any)?.onboardingComplete, (profile as any)?.userId]);
+  }, [(profile as any)?.onboardingComplete, refreshPremiumThenRefetch]);
 
   useBounceScroll();
 
@@ -915,12 +931,6 @@ function AuthenticatedApp() {
           </div>
           <FloatingNavBar />
           <GlobalPiggyBankPopup />
-          <PaywallModal
-            open={paywallOpen}
-            onClose={() => { setPaywallOpen(false); pendingActionRef.current = null; }}
-            onPurchaseSuccess={handlePurchaseSuccess}
-            lockApp={paywallLockApp}
-          />
         </div>
       </GateContext.Provider>
     );
@@ -946,12 +956,6 @@ function AuthenticatedApp() {
         </div>
         <FloatingNavBar />
         <GlobalPiggyBankPopup />
-        <PaywallModal
-          open={paywallOpen}
-          onClose={() => { setPaywallOpen(false); pendingActionRef.current = null; }}
-          onPurchaseSuccess={handlePurchaseSuccess}
-          lockApp={paywallLockApp}
-        />
       </div>
     </GateContext.Provider>
   );
@@ -1033,7 +1037,6 @@ function App() {
     <TooltipProvider>
       <Toaster />
       <Router />
-      <BuildDiagnosticBadge />
       <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
         stage1Ready ? (
