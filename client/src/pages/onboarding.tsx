@@ -364,7 +364,7 @@ export default function Onboarding() {
         ) => (
           <button
             type="button"
-            onClick={() => { hapticTap("SOFT"); onClick(); }}
+            onClick={onClick}
             data-testid={testId}
             className="flex-1 flex flex-col items-center gap-3 transition-all"
             style={{

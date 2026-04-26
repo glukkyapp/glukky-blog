@@ -61,7 +61,7 @@ export default function FloatingNavBar() {
       showPaywall();
       return;
     }
-    hapticTap("SOFT");
+    hapticTap("LIGHT");
     setActivePath(path);
     setLocation(path);
   };

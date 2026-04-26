@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { Check } from "lucide-react";
-import { hapticTap } from "@/lib/haptics";
 
 const GREEN_DARK = "#214B36";
 const GREEN_DEEP = "#1f4a35";
@@ -107,7 +106,7 @@ export function PillOption({
     <button
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onClick(); }}
+      onClick={onClick}
       className={`${fullWidth ? "w-full" : ""} text-center px-4 py-3 transition-all`}
       style={{
         borderRadius: 999,
@@ -146,7 +145,7 @@ export function RowOption({
     <button
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onClick(); }}
+      onClick={onClick}
       className={`w-full flex items-center gap-3 pr-3 transition-all overflow-hidden ${image ? "py-0 pl-0" : "py-2.5 pl-3"}`}
       style={{
         borderRadius: ROW_RADIUS,
@@ -219,7 +218,7 @@ export function IconTileOption({
     <button
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onClick(); }}
+      onClick={onClick}
       className="flex flex-col items-center justify-center gap-2 p-3 transition-all"
       style={{
         borderRadius: 18,
@@ -280,7 +279,7 @@ export function PairedTile({
     <button
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onClick(); }}
+      onClick={onClick}
       className="flex-1 flex flex-col items-center gap-1 p-3 transition-all relative"
       style={{
         borderRadius: 18,
@@ -334,7 +333,7 @@ export function DarkInsetTile({
     <button
       type="button"
       data-testid={testId}
-      onClick={() => { hapticTap("SOFT"); onClick(); }}
+      onClick={onClick}
       className="w-full flex items-center gap-3 px-3 py-3 transition-all"
       style={{
         borderRadius: 16,

@@ -52,7 +52,7 @@ export default function Landing() {
   useGlobalLoading(isLoading);
 
   const slides = [
-    { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body") },
+    { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body"), objectPosition: "center 80%" },
     { image: slide2Img, headline: t("slides.s2_headline"), body: t("slides.s2_body") },
     { image: slide3Img, headline: t("slides.s3_headline"), body: t("slides.s3_body") },
   ];
@@ -204,7 +204,7 @@ export default function Landing() {
             key={slideIndex}
             src={slide.image}
             alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: slide.objectPosition ?? "center", display: "block" }}
           />
         </div>
 
