@@ -1,0 +1,23 @@
+1. Big one: 110 lines of commented-out alias code in server/storage.ts (lines 647–757)
+Four full method bodies wrapped in /* ... */: upsertSubscriptionAlias, markSubscriptionAliasVerified, getSubscriptionAliasIdsForUser, getReplitUserIdForAnonymous. They reference a subscriptionAlias table that no longer exists in shared/schema.ts and a database table that I already dropped. Pure clutter — every reference inside the block is dead. (Task #504 was originally created for exactly this and got cancelled.)
+
+2. /api/dev/revenuecat-config endpoint in server/routes.ts (line 2216)
+A diagnostic that returns { keyPresent: true|false }. The dev panel used to call it via the deleted RevenueCatDiagnosticsCard. Now nothing calls it — I confirmed with a project-wide grep. The isAuthenticated + isDevUser middleware is also still imported just for this route.
+
+3. looksLikeAnonymousAppUserId in server/revenuecat.ts
+I demoted it to a "webhook helper" during the cleanup, but a fresh search shows zero callers. It was originally there to detect $RCAnonymousID:… payloads. Since the BN bridge now logs in with the real Replit user ID, the webhook never sees anonymous IDs. Safe to delete.
+
+4. Stale comment block in shared/schema.ts (lines 67–73)
+The onesignalExternalId column has a doc comment that talks about "alias surfaced to OneSignal via the wrapper's setExternalId" — that's a different concern (OneSignal, not RevenueCat) but the wording leans on the alias mental model that no longer applies anywhere in this codebase. Cosmetic only, not unused code.
+
+5. Possibly unused: collectCandidateUserIds export visibility in server/revenuecat.ts
+It's used inside the file (by applyWebhookEvent), but no external file imports it. It's exported but doesn't need to be — could drop the export keyword. Minor.
+
+Things I checked and confirmed are still in use (NOT redundant):
+
+verifyEntitlement — called by refreshPremiumHandler and the webhook
+applyWebhookEvent — called by the RC webhook route
+invalidateEntitlementCache — called twice in routes.ts (refresh handler + webhook)
+presentPaywall, presentPaywallIfNeeded, restorePurchases, loginToRevenueCat, logoutFromRevenueCat, isNativelyAvailable — all wired into App.tsx, dev-panel.tsx, profile.tsx
+subscriptionAlias symbol no longer exists in shared/schema.ts — clean
+No dangling imports of the deleted files (paywall-modal, purchase-in-flight, build-diagnostic-badge, purchase-trace)
