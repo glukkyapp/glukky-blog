@@ -106,6 +106,12 @@ export interface IStorage {
   // gets a fresh attempt.
   setScheduledNotificationId(id: number, onesignalNotificationId: string | null): Promise<void>;
   deleteScheduledNotificationById(id: number): Promise<void>;
+  // Boot-time reconciliation (task #507). Returns every
+  // scheduled_notifications row whose send_at_utc is still in the
+  // future, joined with the user's CURRENT device_timezone so the
+  // reconciler can decide whether to cancel-and-requeue (real tz)
+  // or leave alone (tz still missing).
+  listFutureScheduledForReconciliation(now: Date): Promise<Array<ScheduledNotification & { deviceTimezone: string | null }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -702,6 +708,33 @@ export class DatabaseStorage implements IStorage {
   async deleteScheduledNotificationById(id: number): Promise<void> {
     await db.delete(scheduledNotifications)
       .where(eq(scheduledNotifications.id, id));
+  }
+
+  async listFutureScheduledForReconciliation(now: Date): Promise<Array<ScheduledNotification & { deviceTimezone: string | null }>> {
+    // LEFT JOIN: a row whose user_profile has been deleted is
+    // still surfaced (with deviceTimezone=null), and the
+    // reconciler can decide what to do with it. We only return
+    // rows whose send_at_utc is strictly future — past rows have
+    // either fired already or expired in OneSignal and there's
+    // nothing useful to do with them.
+    const rows = await db.select({
+      id: scheduledNotifications.id,
+      userId: scheduledNotifications.userId,
+      notificationType: scheduledNotifications.notificationType,
+      localTriggerDate: scheduledNotifications.localTriggerDate,
+      sendAtUtc: scheduledNotifications.sendAtUtc,
+      onesignalNotificationId: scheduledNotifications.onesignalNotificationId,
+      createdAt: scheduledNotifications.createdAt,
+      deviceTimezone: userProfiles.deviceTimezone,
+    })
+      .from(scheduledNotifications)
+      .leftJoin(userProfiles, eq(scheduledNotifications.userId, userProfiles.userId))
+      .where(gt(scheduledNotifications.sendAtUtc, now))
+      .orderBy(scheduledNotifications.id);
+    return rows.map((r) => ({
+      ...r,
+      deviceTimezone: r.deviceTimezone ?? null,
+    }));
   }
 }
 

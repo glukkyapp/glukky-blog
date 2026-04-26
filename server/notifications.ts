@@ -1,7 +1,7 @@
 import { db } from "./db";
-import { userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs } from "@shared/schema";
+import { userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, users } from "@shared/schema";
 import { eq, and, isNotNull, sql } from "drizzle-orm";
-import { sendPushNotification } from "./onesignal";
+import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
 import { storage } from "./storage";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { log } from "./index";
@@ -307,9 +307,39 @@ async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
       return { eligible: true };
     }
     case "reengagement": {
-      // Inactive (no daily_logs in last 3 days) + 3-day cooldown.
+      // Three independent guards, ALL must pass:
+      //   1. Account is at least 3 days old. A user who finished
+      //      onboarding today doesn't need a "We miss you!" push
+      //      tonight — they were here ten minutes ago. Without
+      //      this guard the inactivity check below trivially
+      //      passes for every brand-new account that hasn't logged
+      //      anything yet.
+      //   2. The user has logged SOMETHING ever. A user who has
+      //      never logged a single day cannot meaningfully be
+      //      "re-engaged" — there's nothing to re-engage with.
+      //   3. They have not logged anything in the last 3 days.
+      // Plus the existing 3-day cooldown so even an eligible user
+      // doesn't get a second push for at least 3 days.
       const profile = await storage.getProfile(ctx.user.userId);
       if (!profile) return { eligible: false, reason: "no_profile" };
+
+      const userRows = await db.select({ createdAt: users.createdAt })
+        .from(users)
+        .where(eq(users.id, ctx.user.userId))
+        .limit(1);
+      const accountCreatedAt = userRows[0]?.createdAt;
+      if (!accountCreatedAt) return { eligible: false, reason: "no_account_record" };
+      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+      if (ctx.now.getTime() - accountCreatedAt.getTime() < THREE_DAYS_MS) {
+        return { eligible: false, reason: "account_too_new" };
+      }
+
+      const everLogged = await db.select({ id: dailyLogs.id })
+        .from(dailyLogs)
+        .where(eq(dailyLogs.userId, ctx.user.userId))
+        .limit(1);
+      if (everLogged.length === 0) return { eligible: false, reason: "no_logs_ever" };
+
       if (profile.lastReengagementNotification) {
         const cooldownEnd = new Date(profile.lastReengagementNotification);
         cooldownEnd.setDate(cooldownEnd.getDate() + 3);
@@ -385,6 +415,11 @@ interface PassCounters {
   outOfWindow: number;
   noTargets: number;
   errored: number;
+  // Number of users skipped this pass because their
+  // device_timezone hasn't been captured yet (or is the unsafe
+  // "UTC" placeholder). Broken out from `errored` so the boot-time
+  // / first-app-open population is visible in pass-complete logs.
+  skippedNoTimezone: number;
 }
 
 async function lookupEmails(userIds: string[]): Promise<Map<string, string>> {
@@ -416,13 +451,36 @@ async function preScheduleAll(): Promise<void> {
     outOfWindow: 0,
     noTargets: 0,
     errored: 0,
+    skippedNoTimezone: 0,
   };
 
   for (const user of users) {
+    const emailForLog = emails.get(user.userId) ?? user.userId;
+
+    // Hard skip: a user whose device_timezone hasn't been
+    // captured yet (NULL) — or whose value is the unsafe "UTC"
+    // placeholder — is excluded from EVERY type for this pass.
+    // The bridge (`OneSignal.User.setLanguage` + tz capture) re-
+    // pushes the real tz on next app open, so the next pass
+    // picks them up correctly.
+    //
+    // Why treat literal "UTC" as missing: the cold-start path
+    // briefly writes "UTC" before the bridge resolves the real
+    // tz, and a real-UTC user (Iceland, parts of West Africa) is
+    // rare enough that one extra hour of "no notification" is a
+    // strictly better failure mode than firing a 22:00-UTC HK
+    // user at 06:00 HK. Revisit if real-UTC users complain.
     const tz = user.deviceTimezone && user.deviceTimezone !== "UTC"
       ? user.deviceTimezone
-      : "UTC";
-    const emailForLog = emails.get(user.userId) ?? user.userId;
+      : null;
+    if (!tz) {
+      counters.skippedNoTimezone++;
+      log(
+        `notif/skipped user=${emailForLog} reason=no_timezone device_timezone=${user.deviceTimezone ?? "null"}`,
+        "notifications",
+      );
+      continue;
+    }
 
     for (const type of ALL_TYPES) {
       try {
@@ -547,7 +605,124 @@ async function preScheduleAll(): Promise<void> {
   }
 
   log(
-    `notif/pass-complete window=${LOOKAHEAD_HOURS}h users=${users.length} queued=${counters.queued} already_scheduled=${counters.alreadyScheduled} ineligible=${counters.ineligible} out_of_window=${counters.outOfWindow} no_targets=${counters.noTargets} errored=${counters.errored}`,
+    `notif/pass-complete window=${LOOKAHEAD_HOURS}h users=${users.length} queued=${counters.queued} already_scheduled=${counters.alreadyScheduled} ineligible=${counters.ineligible} out_of_window=${counters.outOfWindow} no_targets=${counters.noTargets} skipped_no_timezone=${counters.skippedNoTimezone} errored=${counters.errored}`,
+    "notifications",
+  );
+}
+
+// Boot-time reconciliation (task #507).
+//
+// Why this exists: before the no-timezone skip rule landed, the
+// pre-scheduler treated NULL/`"UTC"` device_timezone as literal
+// UTC and queued sends accordingly. For users whose real tz was
+// captured on a later app open, those rows now sit in OneSignal
+// pointing at the WRONG wall-clock instant (e.g. an HK user's
+// 22:00 daily check-in goes out at HK 06:00). The skip rule
+// prevents new bad rows but cannot retroactively cancel the ones
+// already queued.
+//
+// Strategy: on every boot, walk every future scheduled_notifications
+// row. For users whose device_timezone is now real, cancel the
+// row in OneSignal AND delete it from our DB; the next hourly
+// pass requeues it at the correct local time. We deliberately
+// don't bother with a "drift check" — cancel-and-recreate is
+// cheap, and a row that was correct stays correct (the requeue
+// produces the same send_at_utc for the same trigger date).
+//
+// For rows whose user still has NULL/UTC tz, leave them alone:
+// we can't tell if they're wrong yet, and the skip rule prevents
+// adding new ones until tz arrives.
+//
+// Cancel-failure rule: if OneSignal returns non-2xx (or the
+// request throws), we KEEP the DB row and log loudly. Deleting
+// the row would orphan a live OneSignal notification that we no
+// longer have a handle to cancel. The next boot will retry.
+//
+// Pacing: 100ms between OneSignal cancel calls to stay well below
+// the documented 30 RPS rate limit even if a backlog of hundreds
+// of rows accumulates after a long bridge outage.
+async function reconcileBadlyScheduledRows(): Promise<void> {
+  const start = Date.now();
+  let rows;
+  try {
+    rows = await storage.listFutureScheduledForReconciliation(new Date());
+  } catch (e: any) {
+    log(`notif/reconcile-failed list error=${e?.message ?? e}`, "notifications");
+    return;
+  }
+
+  let leftAloneNoTz = 0;
+  let cancelled = 0;
+  let cancelFailed = 0;
+  let deletedOrphan = 0; // reserved-but-never-finalised (no notification id)
+
+  for (const row of rows) {
+    const tz = row.deviceTimezone && row.deviceTimezone !== "UTC"
+      ? row.deviceTimezone
+      : null;
+    if (!tz) {
+      leftAloneNoTz++;
+      continue;
+    }
+
+    if (!row.onesignalNotificationId) {
+      // Reservation with no OneSignal id — either a previous pass
+      // crashed between INSERT and POST, or POST failed and the
+      // rollback didn't finish. Safe to drop; next hourly pass
+      // will re-reserve and re-send.
+      try {
+        await storage.deleteScheduledNotificationById(row.id);
+        deletedOrphan++;
+        log(
+          `notif/reconcile-deleted-orphan id=${row.id} user=${row.userId} type=${row.notificationType} local_date=${row.localTriggerDate}`,
+          "notifications",
+        );
+      } catch (e: any) {
+        log(
+          `notif/reconcile-orphan-delete-failed id=${row.id} ${e?.message ?? e}`,
+          "notifications",
+        );
+      }
+      continue;
+    }
+
+    const result = await cancelOneSignalNotification(row.onesignalNotificationId);
+    if (!result.ok) {
+      // KEEP the DB row. We do NOT know whether OneSignal will
+      // still fire this notification, so deleting our record
+      // would lose all trace of it. Loud log so the operator can
+      // investigate manually if needed.
+      cancelFailed++;
+      log(
+        `notif/cancel-failed-leaving-row id=${row.id} user=${row.userId} type=${row.notificationType} onesignal_id=${row.onesignalNotificationId} status=${result.status ?? "null"}`,
+        "notifications",
+      );
+    } else {
+      try {
+        await storage.deleteScheduledNotificationById(row.id);
+        cancelled++;
+        log(
+          `notif/reconcile-cancelled id=${row.id} user=${row.userId} type=${row.notificationType} local_date=${row.localTriggerDate} onesignal_id=${row.onesignalNotificationId}`,
+          "notifications",
+        );
+      } catch (e: any) {
+        // OneSignal cancel succeeded but DB delete failed — the
+        // next pass will re-reserve a fresh row, see no live
+        // notification, and re-send. The leftover row has no
+        // notification id so it can't double-fire.
+        log(
+          `notif/reconcile-db-delete-failed id=${row.id} after_onesignal_cancel ${e?.message ?? e}`,
+          "notifications",
+        );
+      }
+    }
+
+    // Pacing: 100 ms between OneSignal calls.
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  log(
+    `notif/reconcile-complete future_rows=${rows.length} cancelled=${cancelled} cancel_failed=${cancelFailed} deleted_orphan=${deletedOrphan} left_no_tz=${leftAloneNoTz} duration_ms=${Date.now() - start}`,
     "notifications",
   );
 }
@@ -575,9 +750,20 @@ export function startNotificationScheduler() {
     "notifications",
   );
 
-  // Boot pass — gives every wakeup an immediate chance to queue
-  // anything the previous instance missed.
-  void runPassGuarded();
+  // Boot sequence: reconcile FIRST, then the immediate boot pass.
+  // Order matters — the reconciler cancels stale rows so the boot
+  // pass can re-reserve them at the correct local time without
+  // tripping the dedup unique index. The reconciler runs once per
+  // process; the hourly setInterval below only triggers
+  // runPassGuarded.
+  void (async () => {
+    try {
+      await reconcileBadlyScheduledRows();
+    } catch (e: any) {
+      log(`notif/reconcile-failed-uncaught ${e?.message ?? e}`, "notifications");
+    }
+    await runPassGuarded();
+  })();
 
   setInterval(() => {
     void runPassGuarded();

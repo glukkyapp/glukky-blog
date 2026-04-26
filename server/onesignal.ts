@@ -299,6 +299,44 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
   return { success: totalSuccess, notificationId: firstNotificationId };
 }
 
+// Cancel a previously scheduled OneSignal notification.
+// Returns `{ ok: true }` ONLY when OneSignal confirms cancellation
+// with an HTTP 2xx response. Any other outcome — non-2xx, network
+// throw, missing credentials — returns `{ ok: false, status }` so
+// the caller can decide whether to keep the local dedup row.
+//
+// Important: the pre-scheduler reconciler MUST keep the DB row
+// when this returns false. Deleting a dedup row whose OneSignal
+// notification is still live would let the bad notification
+// deliver silently with no trace on our side.
+export async function cancelOneSignalNotification(
+  notificationId: string,
+): Promise<{ ok: boolean; status: number | null }> {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
+    log("OneSignal credentials not configured, cannot cancel notification", "onesignal");
+    return { ok: false, status: null };
+  }
+  try {
+    const url = `https://api.onesignal.com/notifications/${encodeURIComponent(notificationId)}?app_id=${encodeURIComponent(ONESIGNAL_APP_ID)}`;
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Basic ${ONESIGNAL_REST_API_KEY}`,
+      },
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      log(`OneSignal cancel ${notificationId} HTTP ${response.status}: ${text}`, "onesignal");
+      return { ok: false, status: response.status };
+    }
+    log(`OneSignal cancel ${notificationId} OK: ${text}`, "onesignal");
+    return { ok: true, status: response.status };
+  } catch (e: any) {
+    log(`OneSignal cancel ${notificationId} failed: ${e?.message ?? e}`, "onesignal");
+    return { ok: false, status: null };
+  }
+}
+
 // Schema invariant: user_profiles.user_id is UNIQUE and
 // user_profiles.onesignal_player_id is a single varchar — there is
 // no way for one user to hold more than one active player_id.
