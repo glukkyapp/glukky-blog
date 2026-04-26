@@ -274,6 +274,7 @@ export const foodCombos = pgTable("food_combos", {
   defaultSauces: text("default_sauces").array().notNull().default(sql`'{}'::text[]`),
   defaultToppings: text("default_toppings").array().notNull().default(sql`'{}'::text[]`),
   caloriesEstimate: integer("calories_estimate"),
+  useCount: integer("use_count").notNull().default(0),
 });
 
 export const foodLabels = pgTable("food_labels", {

@@ -73,6 +73,8 @@ export interface IStorage {
 
   getFoodCombos(foodName: string): Promise<FoodCombo[]>;
   saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo>;
+  getFoodComboByFullCombo(foodName: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodCombo | null>;
+  bumpFoodComboUseCount(comboId: number): Promise<void>;
   getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]>;
   getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null>;
   saveIngredient(item: InsertIngredientVocabulary): Promise<IngredientVocabulary>;
@@ -532,12 +534,44 @@ export class DatabaseStorage implements IStorage {
           sql`lower(${foodCombos.foodNameEn}) = ${normalised}`,
           sql`${normalised} = ANY(SELECT lower(unnest(${foodCombos.foodNameAliases})))`
         )
-      );
+      )
+      .orderBy(desc(foodCombos.useCount), desc(foodCombos.id));
   }
 
   async saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo> {
     const [row] = await db.insert(foodCombos).values(combo).returning();
     return row;
+  }
+
+  async getFoodComboByFullCombo(
+    foodName: string,
+    portionId: string,
+    sauceIds: string[],
+    toppingIds: string[],
+  ): Promise<FoodCombo | null> {
+    const candidates = await this.getFoodCombos(foodName);
+    if (candidates.length === 0) return null;
+
+    const sortedSauces = [...sauceIds].sort();
+    const sortedToppings = [...toppingIds].sort();
+
+    const match = candidates.find(c => {
+      if ((c.defaultPortion ?? "") !== (portionId ?? "")) return false;
+      const cSauces = [...(c.defaultSauces ?? [])].sort();
+      const cToppings = [...(c.defaultToppings ?? [])].sort();
+      if (cSauces.length !== sortedSauces.length) return false;
+      if (cToppings.length !== sortedToppings.length) return false;
+      return cSauces.every((s, i) => s === sortedSauces[i]) &&
+        cToppings.every((t, i) => t === sortedToppings[i]);
+    });
+
+    return match ?? null;
+  }
+
+  async bumpFoodComboUseCount(comboId: number): Promise<void> {
+    await db.update(foodCombos)
+      .set({ useCount: sql`${foodCombos.useCount} + 1` })
+      .where(eq(foodCombos.id, comboId));
   }
 
   async getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]> {

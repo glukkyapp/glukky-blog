@@ -2605,40 +2605,17 @@ export async function registerRoutes(
 
       const isFirstSnap = !snapProfile?.hasTriedFirstFoodSnap;
 
-      const sharedNameRules = `MAIN-DISH vs TOPPINGS RULE (very important — applies to "name" and "extras"):
-- The "name" field must contain ONLY the main dish — that is, the 1 or at most 2 components with the largest visible portion in the photo.
-- Every other visible food component (smaller accompaniments, side toppings, garnishes) goes into "extras".
-- The same ingredient must NEVER appear in both "name" and "extras". If an ingredient is part of the main dish in "name", do NOT also list it in "extras". If an ingredient belongs in "extras", do NOT bake it into "name".
-- "portion" and "sauces" are independent of this rule and behave as normal.
-- Concrete example: a bowl of wonton noodles with a side of choi sum should be returned as EITHER
-    { "name": "Wonton noodles", "extras": "choi sum", ... }   (choi sum is a side topping)
-  OR
-    { "name": "Wonton noodles with choi sum", "extras": null, ... }   (choi sum is treated as part of the main dish)
-  but NEVER both at the same time (e.g. name "Wonton noodles with choi sum" together with extras "choi sum" is forbidden).
-
-CANONICAL NAMING (very important for the "name" field):
-- Prefer the standard, commonly used Hong Kong dish name for "name" — the name a local would use on a cha chaan teng / 茶記 / noodle shop menu.
+      const nameOnlyRules = `NAME RULES (very important for the "name" field):
+- The "name" must contain ONLY the main dish — the 1 or at most 2 components with the largest visible portion in the photo. Smaller side toppings or garnishes do NOT belong in the name.
+- Concrete example: a bowl of wonton noodles with a side of choi sum should be named EITHER "Wonton noodles" OR "Wonton noodles with choi sum" — both are acceptable.
+- Prefer the standard, commonly used Hong Kong dish name — the name a local would use on a cha chaan teng / 茶記 / noodle shop menu.
 - Use the most common spelling and singular/plural form so the same dish always comes back with the same wording (e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
 - Do NOT invent poetic phrasings or rare variations.`;
 
-      const baseSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
-{ "name": "<food name in ${responseLang}>", "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides or null>" }
+      const nameOnlyBaseSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
+{ "name": "<food name in ${responseLang}>" }
 
-All field values MUST be in ${responseLang}.
-
-Important:
-- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
-- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
-- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
-- If you cannot identify any food, return: {"error":"no_food"}
-- Return ONLY the JSON object. No prose, no markdown fences, no explanation.
-
-${sharedNameRules}`;
-
-      const firstSnapSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
-{ "name": "<descriptive, appetizing food name in ${responseLang}>", "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides or null>" }
-
-All field values MUST be in ${responseLang}.
+The "name" value MUST be in ${responseLang}.
 
 Important:
 - Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
@@ -2647,7 +2624,21 @@ Important:
 - If you cannot identify any food, return: {"error":"no_food"}
 - Return ONLY the JSON object. No prose, no markdown fences, no explanation.
 
-${sharedNameRules}
+${nameOnlyRules}`;
+
+      const nameOnlyFirstSnapSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
+{ "name": "<descriptive, appetizing food name in ${responseLang}>" }
+
+The "name" value MUST be in ${responseLang}.
+
+Important:
+- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
+- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
+- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
+- If you cannot identify any food, return: {"error":"no_food"}
+- Return ONLY the JSON object. No prose, no markdown fences, no explanation.
+
+${nameOnlyRules}
 
 NAME STYLE (very important for the "name" field, in addition to the rules above):
 - Start from the canonical Hong Kong dish name and then add a short descriptor — do NOT invent a brand-new name.
@@ -2656,15 +2647,28 @@ NAME STYLE (very important for the "name" field, in addition to the rules above)
 - Stay 100% truthful to the photo. Do NOT invent ingredients, toppings, or qualities you cannot see.
 - Avoid generic single-word names like "Rice", "Noodles", or "Soup" on their own.
 - Examples (English): "Sizzling wok-fried rice with scallions", "Crispy pan-seared char siu over rice", "Steamed shrimp dumplings with chive".
-- Do NOT mention prices, restaurants, or brand names.
-- The MAIN-DISH vs TOPPINGS rule above still applies — even a descriptive name must not duplicate an ingredient that is also listed in "extras".`;
+- Do NOT mention prices, restaurants, or brand names.`;
 
-      const activeBaseSystem = isFirstSnap ? firstSnapSystem : baseSystem;
-      const strictSystem = `${activeBaseSystem}
+      const labelsOnlySystem = (foodName: string) => `You are a food assistant for Hong Kong cuisine. The dish in the photo has already been identified as: "${foodName}".
+
+Look at the same photo and return ONLY a single JSON object with this exact shape:
+{ "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides not already in the dish name, or null>" }
+
+All field values MUST be in ${responseLang}.
+
+Rules for "extras":
+- Do NOT list any ingredient that is already part of the dish name "${foodName}". If an ingredient is in the name, it does NOT belong in extras.
+- Only list small accompaniments, side toppings, or garnishes that you can actually see in the photo.
+- If there are no additional toppings/sides, return null.
+
+Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
+
+      const activeNameSystem = isFirstSnap ? nameOnlyFirstSnapSystem : nameOnlyBaseSystem;
+      const strictNameSystem = `${activeNameSystem}
 
 CRITICAL: Respond with the JSON object only. No surrounding text. No code fences. No commentary.`;
 
-      const callClaude = async (system: string, maxTokens: number) =>
+      const callClaude = async (system: string, maxTokens: number, userText: string) =>
         anthropic.messages.create({
           model: "claude-sonnet-4-6",
           max_tokens: maxTokens,
@@ -2674,7 +2678,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             role: "user",
             content: [
               { type: "image", source: { type: "base64", media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: imageBase64 } },
-              { type: "text", text: "Identify this food and return the JSON object." }
+              { type: "text", text: userText }
             ]
           }]
         });
@@ -2687,40 +2691,37 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         return first.text.trim();
       };
 
-      let labelResponse = await callClaude(activeBaseSystem, 800);
-      let labelRaw = readText(labelResponse);
-      let labelParsed = extractJsonObject(labelRaw);
-      const truncated = labelResponse?.stop_reason === "max_tokens";
-      if (!labelParsed || truncated) {
+      // Step 1: name-only AI call.
+      let nameResponse = await callClaude(activeNameSystem, 200, "Identify this food and return the JSON object.");
+      let nameRaw = readText(nameResponse);
+      let nameParsed = extractJsonObject(nameRaw);
+      const nameTruncated = nameResponse?.stop_reason === "max_tokens";
+      if (!nameParsed || nameTruncated) {
         try {
-          labelResponse = await callClaude(strictSystem, 1200);
-          labelRaw = readText(labelResponse);
-          labelParsed = extractJsonObject(labelRaw);
+          nameResponse = await callClaude(strictNameSystem, 400, "Identify this food and return the JSON object.");
+          nameRaw = readText(nameResponse);
+          nameParsed = extractJsonObject(nameRaw);
         } catch (retryErr) {
-          console.error("Snap label retry error:", retryErr);
+          console.error("Snap label name retry error:", retryErr);
         }
       }
 
-      if (!labelParsed) {
+      if (!nameParsed) {
         return res.status(422).json({ code: "PARSE_FAILED", message: "Could not parse label response." });
       }
 
-      if (labelParsed.error) {
-        const errStr = String(labelParsed.error).toLowerCase();
+      if (nameParsed.error) {
+        const errStr = String(nameParsed.error).toLowerCase();
         if (errStr.includes("no_food") || errStr.includes("no food")) {
           return res.status(422).json({ code: "NO_FOOD", message: "No food detected" });
         }
-        return res.status(422).json({ code: "NO_FOOD", message: String(labelParsed.error) });
+        return res.status(422).json({ code: "NO_FOOD", message: String(nameParsed.error) });
       }
 
-      const foodName = sanitizeFoodName(labelParsed.name);
+      const foodName = sanitizeFoodName(nameParsed.name);
       if (!foodName) {
         return res.status(422).json({ code: "NO_FOOD", message: "No food detected" });
       }
-      const claudePortion = typeof labelParsed.portion === "string" ? labelParsed.portion.trim() || null : null;
-      const claudeSauces = typeof labelParsed.sauces === "string" ? labelParsed.sauces.trim() || null : null;
-      const rawExtras = typeof labelParsed.extras === "string" ? labelParsed.extras.trim() || null : null;
-      const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
       incrementDailyCount(snapLabelCount, userId);
 
@@ -2816,27 +2817,36 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         });
       }
 
-      if (!isFirstSnap) {
+      // Step 4: no library match → second AI call to fill in the 4 labels
+      // (portion, sauces, toppings) for this dish. The food library is NOT
+      // written here — that only happens at the end of the advice flow.
+      const labelsSystemFinal = labelsOnlySystem(foodName);
+      const strictLabelsSystem = `${labelsSystemFinal}
+
+CRITICAL: Respond with the JSON object only. No surrounding text. No code fences. No commentary.`;
+
+      let labelsResponse = await callClaude(labelsSystemFinal, 600, `The food has been identified as "${foodName}". Return the JSON with portion, sauces, and extras.`);
+      let labelsRaw = readText(labelsResponse);
+      let labelsParsed = extractJsonObject(labelsRaw);
+      const labelsTruncated = labelsResponse?.stop_reason === "max_tokens";
+      if (!labelsParsed || labelsTruncated) {
         try {
-          const sauceIds = await resolveToInternalIds(claudeSauces, "sauce");
-          const toppingIds = await resolveToInternalIds(claudeExtras, "topping");
-          const portionId = claudePortion ? ((await resolveToInternalIds(claudePortion, "portion"))[0] || "medium") : "medium";
-          const existing = await storage.getFoodCombos(foodName);
-          if (existing.length === 0) {
-            await storage.saveFoodCombo({
-              foodName,
-              foodNameEn: null,
-              foodNameAliases: [],
-              defaultPortion: portionId,
-              defaultSauces: sauceIds,
-              defaultToppings: toppingIds,
-              caloriesEstimate: null,
-            });
-          }
-        } catch (comboSaveErr) {
-          console.error("Combo save error (non-blocking):", comboSaveErr);
+          labelsResponse = await callClaude(strictLabelsSystem, 1000, `The food has been identified as "${foodName}". Return the JSON with portion, sauces, and extras.`);
+          labelsRaw = readText(labelsResponse);
+          labelsParsed = extractJsonObject(labelsRaw);
+        } catch (retryErr) {
+          console.error("Snap labels retry error:", retryErr);
         }
       }
+
+      if (!labelsParsed) {
+        return res.status(422).json({ code: "PARSE_FAILED", message: "Could not parse label response." });
+      }
+
+      const claudePortion = typeof labelsParsed.portion === "string" ? labelsParsed.portion.trim() || null : null;
+      const claudeSauces = typeof labelsParsed.sauces === "string" ? labelsParsed.sauces.trim() || null : null;
+      const rawExtras = typeof labelsParsed.extras === "string" ? labelsParsed.extras.trim() || null : null;
+      const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
       res.json({
         name: foodName,
@@ -2927,6 +2937,20 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
       if (label) {
+        // Step 6 of the FoodSnap flow: exact combo match in library check 2.
+        // Bump the matching food_combos row's useCount so popular combos
+        // rise to the top of step-3 lookups for future snaps. Non-blocking.
+        try {
+          const matchingCombo = await storage.getFoodComboByFullCombo(
+            name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds,
+          );
+          if (matchingCombo) {
+            await storage.bumpFoodComboUseCount(matchingCombo.id);
+          }
+        } catch (bumpErr) {
+          console.error("Combo useCount bump error (non-blocking):", bumpErr);
+        }
+
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
@@ -3071,8 +3095,13 @@ No explanation, just JSON.`,
           if (translations.zh && translations.zh !== foodName) aliases.push(translations.zh);
           if (translations.yue && translations.yue !== foodName && translations.yue !== translations.zh) aliases.push(translations.yue);
 
-          const comboExists = await storage.getFoodCombos(foodName);
-          if (comboExists.length === 0) {
+          // Full-combo dedupe: only insert when no existing food_combos row
+          // matches on (name + portion + sauces + toppings) together. This is
+          // the ONLY place during a snap where the food library is written.
+          const existingFullCombo = await storage.getFoodComboByFullCombo(
+            foodName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds,
+          );
+          if (!existingFullCombo) {
             await storage.saveFoodCombo({
               foodName: foodName,
               foodNameEn: foodNameEn,
@@ -3081,6 +3110,7 @@ No explanation, just JSON.`,
               defaultSauces: resolvedSauceIds,
               defaultToppings: resolvedToppingIds,
               caloriesEstimate: null,
+              useCount: 0,
             });
           }
         } catch (saveErr) {
