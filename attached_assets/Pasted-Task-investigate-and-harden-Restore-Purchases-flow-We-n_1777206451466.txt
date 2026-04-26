@@ -1,0 +1,113 @@
+Task: investigate and harden Restore Purchases flow
+We need to determine whether Restore Purchases is actually failing, and fix the identity / observability path without weakening server-side verification.
+
+Scope
+Please do all of the following:
+
+1) Instrument the full restore path
+Add logging for the full restore flow end-to-end:
+
+restore button tapped
+
+current authenticated Glukky user ID
+
+current RevenueCat App User ID (or best available bridge-side identity indicator)
+
+BN bridge restore call entered
+
+BN bridge restore callback result: success / error / timeout
+
+/api/refresh-premium-status request started
+
+server-side verify result
+
+final UI state: unlocked / still locked / error shown
+
+Requirements:
+
+add client logs
+
+add a server-side trace/log event so we can inspect restore attempts from deployment logs even without the dev panel open
+
+2) Confirm identity before calling restore
+Before restore is allowed to run:
+
+confirm the BN / RevenueCat bridge is already logged in to the current real Glukky user ID
+
+do not allow restore to proceed if bridge login has not actually succeeded
+
+investigate the current awaitLoginIfPending behavior, because if it swallows login errors, restore may run against an anonymous / wrong RC user and silently no-op
+
+If bridge missing or login failed:
+
+block restore
+
+show a clear user-facing error like: “Couldn’t reach the App Store — try again.”
+
+do not leave the current ambiguous “nothing happened” behavior
+
+3) Document required RC dashboard setting
+As part of the deliverable, document the required RevenueCat dashboard configuration:
+
+Restore Behavior = Transfer to new App User ID
+
+Add this note to replit.md.
+
+Also add a server-side warning log when a restore-related verify returns not_found, so we can quickly recognize the case where the RC dashboard setting is wrong or the subscription is still attached to another App User ID.
+
+4) Keep current safety model
+Do not weaken any of these:
+
+server remains source of truth
+
+client must not grant premium from a client-only restore signal
+
+restore success must still go through /api/refresh-premium-status verification
+
+Deliverable questions to answer
+Please report back with:
+
+At restore time, what RC App User ID is actually active?
+
+Is restore being attempted before bridge login succeeds?
+
+Are we still creating / falling back to an anonymous RC user anywhere in reinstall / re-register flow?
+
+Does the BN bridge restore call succeed, fail, or timeout?
+
+When restore appears to do nothing, is the failure point:
+
+bridge login,
+
+bridge restore call,
+
+RC identity mismatch,
+
+RC dashboard Restore Behavior,
+
+or server verify / UI update?
+
+Why this instruction is reasonable
+The part about “Transfer to new App User ID” is directly supported by RevenueCat docs. RevenueCat says this restore behavior is the default and is recommended even for apps that require account creation before purchase, because it helps users restore when they reinstall or lose access to the original account.
+
+The part about making sure RC is logged into the correct user before restore is also consistent with RevenueCat’s customer identity model, where custom App User IDs are what tie purchases to the right account.
+
+One small wording fix
+I would slightly soften this line:
+
+“On bridge missing / login failed, surface a clear ‘Couldn’t reach the App Store — try again’ error”
+
+because if login failed, that is not always an App Store reachability problem. A more accurate message would be:
+
+“We couldn’t verify your account for restore. Please try again.”
+
+If you want to distinguish cases:
+
+bridge missing / native error → “Couldn’t reach the App Store — try again.”
+
+login mismatch / identity not ready → “We couldn’t verify your account for restore — please try again.”
+
+That would be more truthful.
+
+If you want, I can make this even shorter and more “agent-ready” in a strict bullet/task format.
+

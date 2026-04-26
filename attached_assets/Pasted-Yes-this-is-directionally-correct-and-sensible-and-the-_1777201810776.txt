@@ -1,0 +1,44 @@
+Yes — this is directionally correct and sensible, and the cancel/reconcile part is supported by OneSignal’s docs. OneSignal explicitly documents a Cancel message API for scheduled or currently outgoing messages, especially for messages scheduled earlier with send_after, and the response from create gives you an id you store and later cancel if needed.
+
+What is clearly correct
+Patch 1 — skip users with no timezone
+This is the right fix. Treating “unknown timezone” as UTC is what created the +8 hour drift in the first place, so skipping instead of guessing is safer. That matches the general OneSignal guidance that timezone-based delivery depends on having the correct user timezone rather than inferring a wrong one.
+
+Patch 2 — re-engagement guard
+This is also correct as an app-level eligibility rule. OneSignal doesn’t decide your business eligibility; your server does. Your new logic fixes the false positive where “never started” looked like “inactive.” That is a product rule, not a OneSignal-specific rule, and it is a good one.
+
+Patch 3 — cancel orphaned future rows
+This is also valid. OneSignal documents canceling a scheduled message by storing the returned message id and later calling the cancel endpoint if it should not go out.
+
+Your row 8 example
+Your explanation of row 8 is logically correct:
+
+old row was scheduled with the wrong UTC time because timezone was missing,
+
+user timezone is now known as Asia/Hong_Kong,
+
+recomputed UTC differs by 8 hours,
+
+cancel old OneSignal schedule,
+
+delete bad DB row,
+
+next pass queues a corrected row.
+
+That is exactly the kind of reconciliation the stored OneSignal notification id makes possible.
+
+Two cautions
+1. deviceTimezone === "UTC" as “missing”
+This is a reasonable product assumption, but it is your app rule, not something OneSignal requires. If you truly never expect real UTC users, fine. If you may eventually have real UTC users, better to distinguish:
+
+missing / placeholder timezone, versus
+
+real UTC.
+
+So this is acceptable for Glukky right now, but it is a judgment call, not a universal rule.
+
+2. Rebuild from localTriggerDate must preserve the intended local weekday
+Your reconciliation logic depends on localTriggerDate already representing the intended local day, which seems true from your design. If that field was itself derived incorrectly during the bad UTC-fallback run, then reconciliation could preserve a wrong logical date. Based on your example, it sounds like localTriggerDate is the local date key you want, so this is probably fine — just worth checking once.
+
+One more practical note
+OneSignal also warns about API rate limits, and both POST /notifications and DELETE /notifications count toward limits, so your reconciliation should stay modest and not retry aggressively.

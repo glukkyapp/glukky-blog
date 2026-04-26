@@ -1,0 +1,54 @@
+1. UTC-as-missing
+For Glukky right now, option (a) is fine: treat null or "UTC" as missing, but document clearly that this is a temporary app assumption, not a OneSignal rule. OneSignal stores timezone in IANA format and treats timezone as user/subscription data, but it does not say "UTC" means “unknown”; that’s your app convention.
+
+So I’d ship:
+
+now: (null || "UTC") => missing
+
+later: add device_timezone_captured_at if you expect real UTC users.
+
+That is a practical MVP choice.
+
+2. Reconciliation strategy
+I agree with your simplified version even more than the drift-check version.
+
+Cancel every future row for users who now have a real timezone, then let the next hourly pass rebuild correctly. That is easier to reason about and avoids any false-positive “keep” decision caused by rebuild math.
+
+So yes, I would prefer your newer reconciliation approach:
+
+serial loop,
+
+cancel all future scheduled rows,
+
+delete row only if cancel succeeded,
+
+then let the next pass re-queue.
+
+That is operationally safer.
+
+3. Cancel failure behavior
+I agree with your updated judgment: do not delete the DB row if OneSignal cancel fails. OneSignal’s rate-limit docs explicitly warn about failure handling and avoiding duplicates; duplicate sends are worse than leaving one known-bad row in place.
+
+So this is the right rule:
+
+cancel succeeds → delete row
+
+cancel fails → keep row, log loudly, do not re-queue yet
+
+4. 100ms pacing
+This is conservative but fine. OneSignal’s documented create/cancel API limits are much higher than your current scale, so you are nowhere near the limit, but light pacing is harmless and makes boot reconciliation gentler.
+
+What I would approve
+So if I were reviewing this, I’d say:
+
+Approve Patch 1, with the comment documenting the "UTC" means missing for now assumption.
+
+Approve Patch 2 as written; that is a good product rule fix.
+
+Modify Patch 3 to use your simpler “cancel every future row with now-known tz” strategy.
+
+Keep DB row on cancel failure to avoid duplicates.
+
+One extra suggestion
+Because you are now relying more on external_id, make sure the wrapper sets it consistently on login, since OneSignal’s alias docs say external_id should be set first and used as the stable cross-device identity.
+

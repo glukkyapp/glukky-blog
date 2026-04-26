@@ -1,0 +1,141 @@
+Task: Fix RevenueCat restore flow for re-registered users
+We are assuming the current Restore Purchases flow is unreliable. Please investigate and fix it without weakening server-side premium verification.
+
+Goal
+When a user:
+
+previously subscribed,
+
+deletes their Glukky account,
+
+re-registers with a new account,
+
+taps Restore Purchases,
+
+the app should reliably recover the subscription if the Apple account on the device owns it.
+
+Important constraints
+Do not grant premium client-side only. Server remains source of truth.
+
+Do not remove existing verify/refresh safety logic.
+
+Do not assume the problem is only UI feedback; verify whether restore is truly reaching RC/backend.
+
+Keep the current SDK + REST architecture.
+
+What to check first
+1) RevenueCat project setting
+Check RC project setting:
+
+Project Settings → General → Restore Behavior
+
+Confirm it is set to Transfer to new App User ID. RevenueCat recommends this even for apps that require account creation before purchase, so users can restore after reinstall / lost account history.
+
+If it is not set correctly, document that clearly as a blocking configuration issue.
+
+2) App user identity flow
+Audit the BN / RevenueCat login flow and confirm:
+
+RC is always configured/logged in with the current Glukky user ID before restore is called.
+
+We are not accidentally calling RC restore under an anonymous or stale App User ID.
+
+We are not introducing a new anonymous RC user during reinstall / account switching unless unavoidable.
+
+Check whether any RC logout() path still exists, because RevenueCat says logout creates a new anonymous App User ID.
+
+3) Restore execution path
+Trace the exact restore path from button tap to final unlock:
+
+restore button tap
+
+BN/native restore bridge call
+
+RC SDK restore result / error
+
+/api/refresh-premium-status call
+
+server verify result
+
+UI unlock result
+
+Add temporary structured logs if needed.
+
+Required fixes
+A. Make restore debuggable
+Add clear logs for:
+
+restore button tapped
+
+current RC App User ID before restore
+
+restore started
+
+restore success / failure returned from BN/RC
+
+refresh-premium-status request sent
+
+verify result from server
+
+final UI state
+
+B. Make restore visible to the user
+While restore is in progress:
+
+disable repeat taps
+
+show button/loading state: Restoring…
+
+on success: show a visible success state/toast
+
+on failure: show a clear failure message, not silent no-op
+
+C. Ensure correct identity before restore
+Before calling restore:
+
+confirm current auth user exists
+
+ensure RC is logged in to that exact user ID
+
+if needed, explicitly wait for pending RC login before restore starts
+
+D. Keep verification strict
+After restore succeeds:
+
+continue using server-side refresh/verify
+
+do not set premium true from client hint only
+
+but make the polling/retry window robust enough that sandbox propagation does not look like a broken restore
+
+Questions to answer in the task output
+Please report back with:
+
+Was RC Restore Behavior already set to Transfer to new App User ID or not?
+
+At restore time, what App User ID is RC actually using?
+
+Is an anonymous RC ID still being created during reinstall / re-register flow?
+
+Does restore call succeed but server verify fail, or does restore itself fail?
+
+If restore fails, is it:
+
+RC config issue,
+
+wrong App User ID issue,
+
+BN bridge issue,
+
+or app UI/state issue?
+
+Expected outcome
+After the fix:
+
+a previously subscribed user who re-registers can tap Restore Purchases and recover access reliably,
+
+the app visibly shows restore progress,
+
+server remains the source of truth,
+
+and no silent “nothing happened” flow remains.
