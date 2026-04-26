@@ -610,6 +610,19 @@ async function preScheduleAll(): Promise<void> {
   );
 }
 
+// Parse a "YYYY-MM-DD" local-trigger date string into integer
+// year/month/day. Returns null on malformed input so the caller
+// can skip the row defensively.
+function parseLocalTriggerDate(s: string): { yy: number; mm: number; dd: number } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const yy = Number(m[1]);
+  const mm = Number(m[2]);
+  const dd = Number(m[3]);
+  if (!Number.isFinite(yy + mm + dd)) return null;
+  return { yy, mm, dd };
+}
+
 // Boot-time reconciliation (task #507).
 //
 // Why this exists: before the no-timezone skip rule landed, the
@@ -622,39 +635,62 @@ async function preScheduleAll(): Promise<void> {
 // already queued.
 //
 // Strategy: on every boot, walk every future scheduled_notifications
-// row. For users whose device_timezone is now real, cancel the
-// row in OneSignal AND delete it from our DB; the next hourly
-// pass requeues it at the correct local time. We deliberately
-// don't bother with a "drift check" — cancel-and-recreate is
-// cheap, and a row that was correct stays correct (the requeue
-// produces the same send_at_utc for the same trigger date).
+// row. For users whose device_timezone is now real, recompute
+// what `send_at_utc` SHOULD be — using exactly the same
+// `buildLocalTrigger` the pre-scheduler uses — and only cancel
+// rows whose stored `send_at_utc` differs. Equality check is
+// strict (millisecond getTime equality on Date instances), so a
+// row that was correct stays untouched and the boot reconcile
+// becomes a no-op once the cohort is healthy.
+//
+// We deliberately do this on every boot rather than as a
+// one-shot migration: it's also the right place to catch the
+// other failure mode (orphan reservations with NULL
+// notification_id from a crash between INSERT and POST), and
+// once the mismatch check is in place a clean cohort costs only
+// the SELECT.
 //
 // For rows whose user still has NULL/UTC tz, leave them alone:
-// we can't tell if they're wrong yet, and the skip rule prevents
-// adding new ones until tz arrives.
+// we can't tell if they're wrong yet, and the skip rule in the
+// hourly pass already prevents adding new ones until tz arrives.
 //
 // Cancel-failure rule: if OneSignal returns non-2xx (or the
 // request throws), we KEEP the DB row and log loudly. Deleting
 // the row would orphan a live OneSignal notification that we no
 // longer have a handle to cancel. The next boot will retry.
 //
-// Pacing: 100ms between OneSignal cancel calls to stay well below
-// the documented 30 RPS rate limit even if a backlog of hundreds
-// of rows accumulates after a long bridge outage.
+// DB-delete-failure-after-cancel rule: the OneSignal notification
+// is already gone. If the DB delete also fails, the row's stale
+// `onesignal_notification_id` AND the dedup unique index will
+// block the next hourly pass from re-reserving this trigger date,
+// silently losing the send. We retry the DELETE up to 3 times,
+// and on persistent failure log `notif/reconcile-stuck-row` so
+// an operator can drop the row by hand. In practice DELETE BY
+// PRIMARY KEY essentially never fails outside of connection
+// drops, so this path is rare but the loud log makes the rare
+// case fixable.
+//
+// Pacing: 100 ms between OneSignal cancel calls to stay well
+// below the documented 30 RPS rate limit even if a large backlog
+// accumulates after a long bridge outage.
 async function reconcileBadlyScheduledRows(): Promise<void> {
   const start = Date.now();
+  const now = new Date();
   let rows;
   try {
-    rows = await storage.listFutureScheduledForReconciliation(new Date());
+    rows = await storage.listFutureScheduledForReconciliation(now);
   } catch (e: any) {
     log(`notif/reconcile-failed list error=${e?.message ?? e}`, "notifications");
     return;
   }
 
   let leftAloneNoTz = 0;
+  let keptCorrect = 0;
   let cancelled = 0;
   let cancelFailed = 0;
-  let deletedOrphan = 0; // reserved-but-never-finalised (no notification id)
+  let stuckAfterCancel = 0;
+  let deletedOrphan = 0;       // reserved-but-never-finalised (no notification id)
+  let unparseableSkipped = 0;  // unknown type or malformed date — leave alone
 
   for (const row of rows) {
     const tz = row.deviceTimezone && row.deviceTimezone !== "UTC"
@@ -686,6 +722,63 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
       continue;
     }
 
+    // Mismatch check: re-derive what the pre-scheduler WOULD
+    // queue for this (user, type, local_date) given the user's
+    // current tz, then compare millisecond-equal against the
+    // stored sendAtUtc. Anything that already matches stays put.
+    const triggerHour = TRIGGER_HOUR_LOCAL[row.notificationType as NotificationType];
+    if (triggerHour === undefined) {
+      // Unknown notification type — not something this scheduler
+      // owns. Don't touch it.
+      unparseableSkipped++;
+      log(
+        `notif/reconcile-unknown-type id=${row.id} type=${row.notificationType} (left alone)`,
+        "notifications",
+      );
+      continue;
+    }
+    const parsed = parseLocalTriggerDate(row.localTriggerDate);
+    if (!parsed) {
+      unparseableSkipped++;
+      log(
+        `notif/reconcile-bad-date id=${row.id} local_date=${row.localTriggerDate} (left alone)`,
+        "notifications",
+      );
+      continue;
+    }
+    // weekday is required by buildLocalTrigger but isn't read
+    // when we only need sendAtUtc for the equality check; derive
+    // it anyway from a UTC-noon anchor on that calendar date so
+    // it's correct for the few cases where buildLocalTrigger
+    // future-evolves to consume it.
+    const anchor = new Date(Date.UTC(parsed.yy, parsed.mm - 1, parsed.dd, 12));
+    const weekday = anchor.getUTCDay();
+    const expected = buildLocalTrigger(now, tz, triggerHour, parsed.yy, parsed.mm, parsed.dd, weekday);
+    if (!expected) {
+      // tz resolve failed at this exact instant — extremely
+      // unlikely, but treat it the same as "no tz": leave alone.
+      leftAloneNoTz++;
+      log(
+        `notif/reconcile-tz-resolve-failed id=${row.id} tz=${tz} (left alone)`,
+        "notifications",
+      );
+      continue;
+    }
+    if (expected.sendAtUtc.getTime() === row.sendAtUtc.getTime()) {
+      // Already correct — leave the OneSignal notification and
+      // the dedup row exactly as they are. This is the steady
+      // state once the cohort is healthy: every boot's reconcile
+      // is essentially a SELECT plus this no-op branch.
+      keptCorrect++;
+      continue;
+    }
+
+    const drift = expected.sendAtUtc.getTime() - row.sendAtUtc.getTime();
+    log(
+      `notif/reconcile-mismatch id=${row.id} user=${row.userId} type=${row.notificationType} local_date=${row.localTriggerDate} stored=${row.sendAtUtc.toISOString()} expected=${expected.sendAtUtc.toISOString()} drift_ms=${drift}`,
+      "notifications",
+    );
+
     const result = await cancelOneSignalNotification(row.onesignalNotificationId);
     if (!result.ok) {
       // KEEP the DB row. We do NOT know whether OneSignal will
@@ -698,20 +791,28 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
         "notifications",
       );
     } else {
-      try {
-        await storage.deleteScheduledNotificationById(row.id);
+      // Retry DB delete — see comment above the function.
+      let deleted = false;
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 3 && !deleted; attempt++) {
+        try {
+          await storage.deleteScheduledNotificationById(row.id);
+          deleted = true;
+        } catch (e: any) {
+          lastErr = e;
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      if (deleted) {
         cancelled++;
         log(
           `notif/reconcile-cancelled id=${row.id} user=${row.userId} type=${row.notificationType} local_date=${row.localTriggerDate} onesignal_id=${row.onesignalNotificationId}`,
           "notifications",
         );
-      } catch (e: any) {
-        // OneSignal cancel succeeded but DB delete failed — the
-        // next pass will re-reserve a fresh row, see no live
-        // notification, and re-send. The leftover row has no
-        // notification id so it can't double-fire.
+      } else {
+        stuckAfterCancel++;
         log(
-          `notif/reconcile-db-delete-failed id=${row.id} after_onesignal_cancel ${e?.message ?? e}`,
+          `notif/reconcile-stuck-row id=${row.id} user=${row.userId} type=${row.notificationType} after_onesignal_cancel manual_intervention_required ${lastErr?.message ?? lastErr}`,
           "notifications",
         );
       }
@@ -722,7 +823,7 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
   }
 
   log(
-    `notif/reconcile-complete future_rows=${rows.length} cancelled=${cancelled} cancel_failed=${cancelFailed} deleted_orphan=${deletedOrphan} left_no_tz=${leftAloneNoTz} duration_ms=${Date.now() - start}`,
+    `notif/reconcile-complete future_rows=${rows.length} kept_correct=${keptCorrect} cancelled=${cancelled} cancel_failed=${cancelFailed} stuck_after_cancel=${stuckAfterCancel} deleted_orphan=${deletedOrphan} left_no_tz=${leftAloneNoTz} unparseable=${unparseableSkipped} duration_ms=${Date.now() - start}`,
     "notifications",
   );
 }
