@@ -37,12 +37,18 @@ interface RcSubscriberSubscription {
   period_type?: string;
 }
 
-interface RcSubscriberResponse {
+interface RcSubscriberAttribute {
+  value?: string;
+  updated_at_ms?: number;
+}
+
+export interface RcSubscriberResponse {
   subscriber?: {
     entitlements?: Record<string, RcSubscriberEntitlement>;
     subscriptions?: Record<string, RcSubscriberSubscription>;
     original_app_user_id?: string | null;
     management_url?: string | null;
+    subscriber_attributes?: Record<string, RcSubscriberAttribute>;
   };
 }
 
@@ -54,7 +60,7 @@ function isActiveExpiry(expiresDate: string | null | undefined): boolean {
   return ts > Date.now();
 }
 
-function evaluatePayload(payload: RcSubscriberResponse): boolean {
+export function evaluatePayload(payload: RcSubscriberResponse): boolean {
   const sub = payload?.subscriber;
   if (!sub) return false;
 
@@ -178,6 +184,84 @@ export async function verifyEntitlement(
 export function invalidateEntitlementCache(appUserId?: string): void {
   if (appUserId) cache.delete(appUserId);
   else cache.clear();
+}
+
+// Raw subscriber fetch for the delete-and-reinstall self-heal path.
+// Returns the parsed RC payload on a 2xx, null otherwise (404, 5xx,
+// no key, network error). Never throws — callers treat null as
+// "couldn't look up, fail-closed".
+export async function fetchSubscriberRaw(appUserId: string): Promise<RcSubscriberResponse | null> {
+  if (!appUserId) return null;
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return null;
+  }
+  try {
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(appUserId)}`;
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+    });
+    if (!resp.ok) {
+      console.warn(`[revenuecat] fetchSubscriberRaw HTTP ${resp.status} for ${appUserId}`);
+      return null;
+    }
+    return (await resp.json()) as RcSubscriberResponse;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[revenuecat] fetchSubscriberRaw error for ${appUserId}:`, msg);
+    return null;
+  }
+}
+
+export function getSubscriberEmail(payload: RcSubscriberResponse | null): string | null {
+  const raw = payload?.subscriber?.subscriber_attributes?.["$email"]?.value;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+// RC subscriber alias: merge `fromAppUserId` into `toAppUserId`. Used
+// by the delete-and-reinstall self-heal — when a fresh Replit account
+// has no RC subscriber but the device just reported a `customerId`
+// from the bridge that DOES have an active receipt and matching email,
+// we transfer the receipt over so the next verify unlocks the user.
+//
+// This is the same primitive RC's "Transfer to new App User ID"
+// dashboard knob uses; we call it directly as a defensive fallback in
+// case the dashboard knob is misconfigured.
+export async function aliasSubscriber(
+  fromAppUserId: string,
+  toAppUserId: string,
+): Promise<{ ok: boolean; status: number; error?: string }> {
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return { ok: false, status: 0, error: "no_key" };
+  }
+  try {
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(fromAppUserId)}/alias`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Platform": "ios",
+      },
+      body: JSON.stringify({ new_app_user_id: toAppUserId }),
+    });
+    if (resp.ok || resp.status === 201) return { ok: true, status: resp.status };
+    const text = await resp.text().catch(() => "");
+    return { ok: false, status: resp.status, error: text.slice(0, 200) };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, status: 0, error: msg };
+  }
 }
 
 

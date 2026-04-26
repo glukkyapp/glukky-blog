@@ -23,8 +23,10 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { hapticNotify } from "@/lib/haptics";
-import { isNativelyAvailable, restorePurchases } from "@/lib/natively-purchases";
-import { Crown, RotateCcw } from "lucide-react";
+import { isNativelyAvailable, restorePurchases, getCachedLoginState } from "@/lib/natively-purchases";
+import { Crown, RotateCcw, Loader2 } from "lucide-react";
+import { getInstallId, recordRestoreTrace } from "@/lib/restore-trace";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ProfileData {
   name: string | null;
@@ -402,6 +404,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const { user } = useAuth();
 
   const { data: profile, isLoading: profileLoading } = useQuery<ProfileData>({
     queryKey: ["/api/profile"],
@@ -517,48 +521,146 @@ export default function ProfilePage() {
             variant="outline"
             className="w-full"
             data-testid="button-restore-purchases"
+            disabled={restoreBusy}
             onClick={async () => {
+              if (restoreBusy) return;
+              setRestoreBusy(true);
               hapticNotify("SUCCESS");
-              const result = await restorePurchases();
-              // Server is source of truth — verify with RevenueCat regardless
-              // of what the device reports. This handles "no active sub",
-              // expired sub, and account-switch cases correctly.
-              let verified = false;
-              if (result.success) {
+              const replitUserId = user?.id ?? null;
+              const replitEmail = user?.email ?? null;
+              recordRestoreTrace("button_tap", { replitUserId });
+              // Snapshot the RC login gate BEFORE we touch the bridge
+              // so a server-side trace can tell whether the restore
+              // ran against an already-settled RC subscriber, an
+              // in-flight login, or no login at all (the
+              // `NO_LOGIN_PENDING` race we just closed below).
+              const preLoginState = getCachedLoginState();
+              recordRestoreTrace("pre_restore_login_state", {
+                rcUserId: preLoginState.userId,
+                pending: preLoginState.pending,
+                lastLoginStatus: preLoginState.result?.status ?? null,
+                lastLoginCustomerId: preLoginState.result?.customerId ?? null,
+                replitUserId,
+              });
+              try {
+                // Bridge wrapper enforces a stricter login gate (8s
+                // bounded wait for `loginToRevenueCat` to actually
+                // return SUCCESS) for the restore path only — paywall
+                // present calls keep the looser best-effort gate so a
+                // transient login hiccup doesn't break new purchases.
+                // Pass the Replit identity so the wrapper can
+                // self-initiate `loginToRevenueCat` if the App.tsx
+                // identity effect hasn't run yet (closes the
+                // `NO_LOGIN_PENDING` race when Restore is tapped in
+                // the same tick as a fresh sign-in).
+                const result = await restorePurchases({
+                  userId: replitUserId ?? undefined,
+                  email: replitEmail ?? undefined,
+                });
+                recordRestoreTrace("bridge_result", {
+                  success: result.success,
+                  reason: result.reason ?? null,
+                  customerId: result.customerId ?? null,
+                  error: result.error ?? null,
+                });
+
+                // Identity / login problems must surface a different
+                // toast than App Store / bridge problems — otherwise
+                // "Restore does nothing" gets misattributed every time.
+                if (!result.success) {
+                  hapticNotify("ERROR");
+                  if (
+                    result.reason === "LOGIN_FAILED" ||
+                    result.reason === "LOGIN_TIMEOUT" ||
+                    result.reason === "NO_LOGIN_PENDING"
+                  ) {
+                    toast({
+                      title: t("paywall.restore_identity_title"),
+                      description: t("paywall.restore_identity_desc"),
+                      variant: "destructive",
+                    });
+                  } else if (
+                    result.reason === "BRIDGE_MISSING" ||
+                    result.reason === "BRIDGE_TIMEOUT" ||
+                    result.reason === "BRIDGE_ERROR"
+                  ) {
+                    toast({
+                      title: t("paywall.restore_bridge_title"),
+                      description: t("paywall.restore_bridge_desc"),
+                      variant: "destructive",
+                    });
+                  } else {
+                    toast({
+                      title: t("paywall.restore_none_title"),
+                      description: t("paywall.restore_none_desc"),
+                      variant: "destructive",
+                    });
+                  }
+                  return;
+                }
+
+                // Bridge said SUCCESS — verify against the server with
+                // the bridge-reported customerId, which lets the server
+                // self-heal a delete-and-reinstall when the RC dashboard
+                // Restore Behavior knob is misconfigured.
+                let verified = false;
+                let selfHealOutcome: string | undefined;
+                let verificationSource: string | undefined;
                 try {
+                  const body: Record<string, unknown> = { force: true };
+                  if (result.customerId) body.customerId = result.customerId;
                   const resp = await fetch("/api/refresh-premium-status", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
-                    body: JSON.stringify({ force: true }),
+                    body: JSON.stringify(body),
                   });
                   if (resp.ok) {
                     const data = await resp.json();
                     verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
+                    selfHealOutcome = data?.selfHealOutcome;
+                    verificationSource = data?.verificationSource;
                   }
-                } catch {}
-              }
-              if (verified) {
-                queryClient.refetchQueries({ queryKey: ["/api/profile"] });
-                queryClient.refetchQueries({ queryKey: ["/api/gate-status"] });
-                hapticNotify("SUCCESS");
-                toast({
-                  title: t("paywall.restore_success_title", { defaultValue: "Subscription restored" }),
+                } catch (e) {
+                  console.warn("[restore] verify error:", e);
+                }
+                recordRestoreTrace("verify_result", {
+                  verified,
+                  verificationSource: verificationSource ?? null,
+                  selfHealOutcome: selfHealOutcome ?? null,
                 });
-              } else {
-                hapticNotify("ERROR");
-                toast({
-                  title: t("paywall.restore_none_title", { defaultValue: "No active subscription found" }),
-                  description: t("paywall.restore_none_desc", {
-                    defaultValue: "We couldn't find an active Glukky subscription on this Apple ID.",
-                  }),
-                  variant: "destructive",
-                });
+
+                if (verified) {
+                  queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+                  queryClient.refetchQueries({ queryKey: ["/api/gate-status"] });
+                  hapticNotify("SUCCESS");
+                  toast({
+                    title: t("paywall.restore_success_title"),
+                  });
+                } else {
+                  hapticNotify("ERROR");
+                  toast({
+                    title: t("paywall.restore_none_title"),
+                    description: t("paywall.restore_none_desc"),
+                    variant: "destructive",
+                  });
+                }
+              } finally {
+                setRestoreBusy(false);
               }
             }}
           >
-            <RotateCcw className="w-4 h-4" />
-            {t("paywall.restore")}
+            {restoreBusy ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t("paywall.restore_in_progress")}
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4" />
+                {t("paywall.restore")}
+              </>
+            )}
           </Button>
         </div>
       )}

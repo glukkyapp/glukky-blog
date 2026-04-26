@@ -251,6 +251,10 @@ function AuthenticatedApp() {
 
   // Branded overlay shown immediately after the paywall returns purchased/restored, until the server-side verify resolves.
   const [unlockingOverlay, setUnlockingOverlay] = useState(false);
+  // Background re-verify poller for the "Apple sheet says success, RC propagation is slow" case.
+  // After the fast 3-retry burst (~4.5s) gives up, this keeps polling every 3s for up to 60s
+  // so the user reliably unlocks without having to close and reopen the app.
+  const verifyPollerRef = useRef<{ cancel: () => void } | null>(null);
 
   const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
 
@@ -258,7 +262,7 @@ function AuthenticatedApp() {
   // Post-purchase callers pass retries (RC entitlement propagation can lag StoreKit by a few seconds).
   const refreshPremiumThenRefetch = useCallback(async (
     force = false,
-    opts: { retries?: number; backoffMs?: number } = {},
+    opts: { retries?: number; backoffMs?: number; customerId?: string } = {},
   ): Promise<boolean> => {
     const retries = Math.max(0, opts.retries ?? 0);
     const backoffMs = Math.max(0, opts.backoffMs ?? 1500);
@@ -267,11 +271,14 @@ function AuthenticatedApp() {
     let verified = false;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
+        const body: Record<string, unknown> = {};
+        if (force) body.force = true;
+        if (opts.customerId) body.customerId = opts.customerId;
         const resp = await fetch("/api/refresh-premium-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify(force ? { force: true } : {}),
+          body: JSON.stringify(body),
         });
         if (resp.ok) {
           const data = await resp.json();
@@ -293,35 +300,131 @@ function AuthenticatedApp() {
     return verified;
   }, [refetchGate]);
 
-  // Wraps the verify+refetch in the branded overlay; on stalled verify, surfaces a non-blocking retry toast.
-  const verifyWithOverlay = useCallback(async (): Promise<boolean> => {
+  // Cancel any in-flight background verify poll. Safe to call repeatedly.
+  const cancelBackgroundVerifyPoller = useCallback(() => {
+    verifyPollerRef.current?.cancel();
+    verifyPollerRef.current = null;
+  }, []);
+
+  // Long-tail background poller. Used after the fast 3-retry burst gives
+  // up — RC sandbox propagation can take 30-60s longer than the 4.5s
+  // burst window and historically the only thing that rescued the user
+  // was the next foreground refresh ("close the app and reopen"). This
+  // keeps the unlocking overlay up and polls verify every few seconds
+  // for up to 60s so the user reliably unlocks without manual recovery.
+  // Single-flight: any prior poller is cancelled when a new one starts.
+  const startBackgroundVerifyPoller = useCallback(() => {
+    cancelBackgroundVerifyPoller();
+    let cancelled = false;
+    const handle = { cancel: () => { cancelled = true; } };
+    verifyPollerRef.current = handle;
+
+    const POLL_INTERVAL_MS = 3_000;
+    const MAX_DURATION_MS = 60_000;
+    const startedAt = Date.now();
+    const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
     setUnlockingOverlay(true);
+    (async () => {
+      try {
+        while (!cancelled && Date.now() - startedAt < MAX_DURATION_MS) {
+          await wait(POLL_INTERVAL_MS);
+          if (cancelled) return;
+          const verified = await refreshPremiumThenRefetch(true);
+          if (verified) {
+            console.log(`[premium] background poller verified after ${Date.now() - startedAt}ms`);
+            return;
+          }
+        }
+        if (!cancelled) {
+          console.warn(`[premium] background poller hit ${MAX_DURATION_MS}ms cap without verify`);
+        }
+      } finally {
+        // Skip clearing the overlay ONLY if a newer poller has
+        // taken ownership (ref is a different non-null handle) —
+        // that newer run will manage the overlay itself, and
+        // clearing here would hide its in-flight unlocking UI.
+        // If the ref is this handle (still current) OR null
+        // (cancelled by logout / visibility-hidden / verifyWithOverlay
+        // takeover), clear so the overlay doesn't get stuck up.
+        const current = verifyPollerRef.current;
+        if (current === handle || current === null) {
+          if (current === handle) verifyPollerRef.current = null;
+          setUnlockingOverlay(false);
+        }
+      }
+    })();
+  }, [cancelBackgroundVerifyPoller, refreshPremiumThenRefetch]);
+
+  // Cancel the background poller on logout/page-hide so we don't poll
+  // indefinitely against a backgrounded app or a signed-out session.
+  useEffect(() => {
+    const onVisChange = () => {
+      if (document.visibilityState === "hidden") cancelBackgroundVerifyPoller();
+    };
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => document.removeEventListener("visibilitychange", onVisChange);
+  }, [cancelBackgroundVerifyPoller]);
+  useEffect(() => {
+    if (!user?.id) cancelBackgroundVerifyPoller();
+  }, [user?.id, cancelBackgroundVerifyPoller]);
+
+  // Wraps the verify+refetch in the branded overlay. After the fast
+  // 3-retry burst gives up, optionally hands off to the background
+  // poller (`backgroundPollOnFail`) so a slow RC propagation still
+  // self-heals within ~60s instead of leaving the user stuck. The
+  // toast fallback is reserved for callers that DON'T background-poll
+  // (manual retry surface).
+  const verifyWithOverlay = useCallback(async (
+    opts: { backgroundPollOnFail?: boolean; customerId?: string } = {},
+  ): Promise<boolean> => {
+    cancelBackgroundVerifyPoller();
+    setUnlockingOverlay(true);
+    let verified = false;
+    let pollerStarted = false;
     try {
-      const verified = await refreshPremiumThenRefetch(true, {
+      verified = await refreshPremiumThenRefetch(true, {
         retries: 2,
         backoffMs: 1500,
+        customerId: opts.customerId,
       });
       if (!verified) {
-        toast({
-          title: t("paywall.unlocking_stalled_title"),
-          description: t("paywall.unlocking_stalled_desc"),
-          duration: 8000,
-          action: (
-            <ToastAction
-              altText={t("paywall.unlocking_stalled_action")}
-              onClick={() => { void verifyWithOverlay(); }}
-              data-testid="button-unlocking-retry"
-            >
-              {t("paywall.unlocking_stalled_action")}
-            </ToastAction>
-          ),
-        });
+        if (opts.backgroundPollOnFail) {
+          // Hand off to the background poller — it manages the overlay
+          // and will keep polling for up to 60s. Don't show the stalled
+          // toast in this branch; the overlay communicates progress.
+          startBackgroundVerifyPoller();
+          pollerStarted = true;
+        } else {
+          toast({
+            title: t("paywall.unlocking_stalled_title"),
+            description: t("paywall.unlocking_stalled_desc"),
+            duration: 8000,
+            action: (
+              <ToastAction
+                altText={t("paywall.unlocking_stalled_action")}
+                onClick={() => { void verifyWithOverlay(opts); }}
+                data-testid="button-unlocking-retry"
+              >
+                {t("paywall.unlocking_stalled_action")}
+              </ToastAction>
+            ),
+          });
+        }
       }
       return verified;
     } finally {
-      setUnlockingOverlay(false);
+      // Only clear overlay when we're not handing off to the poller —
+      // the poller takes ownership of the overlay state.
+      if (!pollerStarted) setUnlockingOverlay(false);
     }
-  }, [refreshPremiumThenRefetch, toast, t]);
+  }, [
+    refreshPremiumThenRefetch,
+    toast,
+    t,
+    cancelBackgroundVerifyPoller,
+    startBackgroundVerifyPoller,
+  ]);
 
   // The BN bridge owns the StoreKit transaction; the purchased/restored callback is a hint — server verify is proof.
   const showPaywall = useCallback((onSuccess?: () => void) => {
@@ -339,7 +442,10 @@ function AuthenticatedApp() {
           result.status === "SUCCESS" &&
           (result.message === "purchased" || result.message === "restored")
         ) {
-          const verified = await verifyWithOverlay();
+          // Bridge confirmed purchase/restore — keep polling in the
+          // background past the fast burst so a slow RC propagation
+          // still unlocks the user without a force-quit.
+          const verified = await verifyWithOverlay({ backgroundPollOnFail: true });
           if (verified && pendingActionRef.current) {
             const action = pendingActionRef.current;
             pendingActionRef.current = null;
@@ -395,14 +501,22 @@ function AuthenticatedApp() {
     }
     if (lockedPaywallShownRef.current) return;
     lockedPaywallShownRef.current = true;
+    // Note: the BN bridge wrapper holds a single-paywall mutex so this
+    // call and any concurrent `presentPaywall()` (from the floating nav
+    // bar, snap, weekly-planner, etc) can't stack two hosted paywalls
+    // on top of each other. The double-paywall race that used to be
+    // possible here pre-dates the dead-code cleanup in #506; the mutex
+    // structurally fixes it regardless of which call site fires first.
     presentPaywallIfNeeded("Premium", { showCloseButton: false })
       .then(async (result) => {
-        if (
-          result.status === "SUCCESS" &&
-          (result.message === "purchased" ||
-            result.message === "restored" ||
-            result.message === "not_presented")
-        ) {
+        if (result.status !== "SUCCESS") return;
+        if (result.message === "purchased" || result.message === "restored") {
+          // Real transaction — background-poll so a slow RC propagation
+          // still unlocks the user without a force-quit.
+          await verifyWithOverlay({ backgroundPollOnFail: true });
+        } else if (result.message === "not_presented") {
+          // RC already considers the user entitled — single verify is
+          // enough; no need to keep polling for 60s.
           await verifyWithOverlay();
         }
       })

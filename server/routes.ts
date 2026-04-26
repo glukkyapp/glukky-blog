@@ -28,6 +28,10 @@ import {
   verifyEntitlement,
   invalidateEntitlementCache,
   applyWebhookEvent,
+  fetchSubscriberRaw,
+  evaluatePayload,
+  getSubscriberEmail,
+  aliasSubscriber,
   type RevenueCatWebhookBody,
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
@@ -3158,6 +3162,8 @@ No explanation, just JSON.`,
       let verifiedPremium: boolean;
       let source: string;
       let transient = false;
+      let selfHealAttempted = false;
+      let selfHealOutcome: string | undefined;
       if (isComp) {
         verifiedPremium = true;
         source = "comp";
@@ -3176,6 +3182,81 @@ No explanation, just JSON.`,
         verifiedPremium = result.hasPremium;
         source = result.source;
         transient = result.transient;
+
+        // Delete-and-reinstall self-heal. When verify comes back
+        // `not_found` for the new Replit user id but the device's BN
+        // bridge just reported a `customerId` from a restore call that
+        // belongs to a real RC subscriber with an active receipt AND a
+        // matching email, transfer the subscriber over so the next
+        // verify unlocks the user. This is a defensive fallback for
+        // when the RC dashboard's "Restore Behavior" knob is not set
+        // to "Transfer to new App User ID" — the dashboard knob is the
+        // primary mechanism, this server-side path catches misconfig.
+        // Fail-closed: only proceed when both the active-sub AND
+        // matching-email checks pass; weak / ambiguous matches abort.
+        const force = req.body?.force === true;
+        const bridgeCustomerId =
+          typeof req.body?.customerId === "string" ? req.body.customerId.trim() : "";
+        if (result.source === "not_found") {
+          console.warn(
+            `[premium/refresh] not_found user=${userId} bridgeCustomerId=${bridgeCustomerId || "(none)"} ` +
+              `force=${force} — RC dashboard Restore Behavior may be misconfigured`,
+          );
+        }
+        if (
+          force &&
+          !verifiedPremium &&
+          result.source === "not_found" &&
+          bridgeCustomerId &&
+          bridgeCustomerId !== userId
+        ) {
+          selfHealAttempted = true;
+          try {
+            const authUser = await authStorage.getUser(userId);
+            const userEmail = (authUser?.email || "").toLowerCase().trim();
+            const sourcePayload = await fetchSubscriberRaw(bridgeCustomerId);
+            if (!sourcePayload) {
+              selfHealOutcome = "source_not_found";
+              console.warn(
+                `[premium/refresh] self-heal aborted user=${userId} from=${bridgeCustomerId} reason=${selfHealOutcome}`,
+              );
+            } else {
+              const isPremiumOnSource = evaluatePayload(sourcePayload);
+              const subEmail = getSubscriberEmail(sourcePayload);
+              const emailMatches = !!userEmail && !!subEmail && subEmail === userEmail;
+              if (!isPremiumOnSource || !emailMatches) {
+                selfHealOutcome = `weak_match isPremium=${isPremiumOnSource} emailMatches=${emailMatches}`;
+                console.warn(
+                  `[premium/refresh] self-heal aborted user=${userId} from=${bridgeCustomerId} ${selfHealOutcome}`,
+                );
+              } else {
+                console.log(
+                  `[premium/refresh] self-heal transfer attempt user=${userId} from=${bridgeCustomerId} email=${userEmail}`,
+                );
+                const aliasResult = await aliasSubscriber(bridgeCustomerId, userId);
+                if (!aliasResult.ok) {
+                  selfHealOutcome = `transfer_failed status=${aliasResult.status} error=${aliasResult.error ?? ""}`;
+                  console.warn(
+                    `[premium/refresh] self-heal transfer failed user=${userId} ${selfHealOutcome}`,
+                  );
+                } else {
+                  invalidateEntitlementCache(userId);
+                  const reverify = await verifyEntitlement(userId, { bypassCache: true });
+                  verifiedPremium = reverify.hasPremium;
+                  source = reverify.hasPremium ? "self_heal_transfer" : reverify.source;
+                  transient = reverify.transient;
+                  selfHealOutcome = `transfer_ok verifiedAfter=${verifiedPremium}`;
+                  console.log(
+                    `[premium/refresh] self-heal ${selfHealOutcome} user=${userId} from=${bridgeCustomerId}`,
+                  );
+                }
+              }
+            }
+          } catch (e: any) {
+            selfHealOutcome = `error ${e?.message ?? String(e)}`;
+            console.warn(`[premium/refresh] self-heal error user=${userId}:`, e);
+          }
+        }
       }
 
       let profile = existing;
@@ -3185,7 +3266,8 @@ No explanation, just JSON.`,
       }
 
       console.log(
-        `[premium/refresh] user=${userId} verified=${verifiedPremium} source=${source} stored=${profile.isPremium}`,
+        `[premium/refresh] user=${userId} verified=${verifiedPremium} source=${source} stored=${profile.isPremium}` +
+          (selfHealAttempted ? ` selfHeal=${selfHealOutcome ?? "?"}` : ""),
       );
 
       res.json({
@@ -3193,12 +3275,43 @@ No explanation, just JSON.`,
         verifiedPremium,
         verificationSource: source,
         transient,
+        selfHealAttempted,
+        selfHealOutcome,
       });
     } catch (error: any) {
       console.error("Error refreshing premium status:", error);
       res.status(500).json({ message: "Failed to refresh premium status" });
     }
   };
+
+  // Lightweight client-mirrored trace endpoint. Posts from the restore
+  // flow land here so the entire restore path (button tap → bridge →
+  // verify → outcome) is reconstructable from deployment logs alone,
+  // not just from a developer with the dev panel open. Body shape is
+  // intentionally loose; we just stamp it with userId and console.log.
+  app.post("/api/diag/restore-trace", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = req.body || {};
+      const event = typeof body.event === "string" ? body.event : "unknown";
+      const installId = typeof body.installId === "string" ? body.installId.slice(0, 64) : "";
+      // Strip anything heavy / sensitive before logging.
+      const { event: _evt, installId: _iid, ...data } = body;
+      let payload = "";
+      try {
+        payload = JSON.stringify(data).slice(0, 800);
+      } catch {
+        payload = "(unserializable)";
+      }
+      console.log(
+        `[restore-trace] user=${userId} install=${installId || "(none)"} event=${event} ${payload}`,
+      );
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.warn("[restore-trace] error:", error?.message || error);
+      res.status(200).json({ ok: false });
+    }
+  });
 
   app.post("/api/update-premium-status", isAuthenticated, refreshPremiumHandler);
   app.post("/api/refresh-premium-status", isAuthenticated, refreshPremiumHandler);
