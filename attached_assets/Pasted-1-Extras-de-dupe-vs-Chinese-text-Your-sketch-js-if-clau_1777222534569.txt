@@ -1,0 +1,110 @@
+1. Extras de‑dupe vs Chinese text
+Your sketch
+
+js
+if (claudeExtras) {
+  const nameLc = foodName.toLowerCase();
+  const cleaned = claudeExtras
+    .split(/[,，、;；]/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0 && !nameLc.includes(t.toLowerCase()));
+  claudeExtras = cleaned.length > 0 ? cleaned.join(", ") : null;
+}
+My concern
+
+nameLc.includes(t.toLowerCase()) is fine in English, but too aggressive for Chinese.
+
+In CJK, single characters are reused everywhere, so a token in extras can share one character with the dish name but still be a completely different ingredient.
+
+Example:
+
+name = "叉燒炒飯", extras = "燒賣"
+
+.includes("燒賣") is false, but if any implementation ever degraded to per‑char matching (or if the token is short), you risk removing valid toppings just because a character overlaps.
+
+Principle of my fix
+
+Keep the “never duplicate between name and extras” guarantee, but avoid accidentally deleting legitimate toppings — especially short CJK words.
+
+Use stricter matching (word boundary for Latin, full token check for Chinese) rather than blind substring tests.
+
+2. Stripping “配/加/和 …” in name normalisation
+Your sketch
+
+js
+.replace(/[配加和](?:.+)$/u, "");
+My concern
+
+和 is part of many actual dish names, not just a connector.
+Example: 和牛拉麵, 日式和牛飯.
+
+That regex strips anything from the first occurrence of 配/加/和 to the end of the string. For 和牛拉麵, that can turn a valid name into an empty or wrong base.
+
+This harms name normalisation: different dishes might collapse to the same “base”, or a valid base becomes empty and the fallback lookup breaks.
+
+Principle of my fix
+
+Only strip when the character is clearly acting as a connector (“with”), not when it’s part of a word.
+
+Be conservative: it’s better to miss a merge than to merge different dishes incorrectly.
+
+So I suggested:
+
+Either:
+
+Strip only 配 and 加 (they’re rarely inside a dish name),
+
+Or require clear separators around 和 (e.g. space before + text after) so you don’t hit 和牛 or similar.
+
+3. First‑snap appetising name vs name‑only call
+Your sketch
+
+Name‑only call used a single generic system prompt for all snaps, including the first snap.
+
+My concern
+
+The spec says first snap should still use an “appetising name” mode (slightly more descriptive) but also converge on the canonical dish.
+
+If you reuse the same “plain canonical name” prompt for first snap, you’ve effectively removed that extra flavour.
+
+Principle of my fix
+
+Keep two variants of the name‑only prompt:
+
+First‑snap: a bit more descriptive, friendlier wording.
+
+Later snaps: purely canonical HK dish name.
+
+Both still return a single {"name": "..."} JSON.
+
+4. Daily cap & error handling in the new two‑call flow
+These weren’t bugs yet, just places to be explicit:
+
+With two AI calls, you must be clear which one counts against the daily snap limit and how you behave when the second call fails.
+
+The label‑only call had the existing JSON‑parse + retry scaffolding; the new 4‑label call in the sketch didn’t show that yet.
+
+Principle of my fix
+
+Keep the accounting semantics identical to today:
+
+One snap = one “label attempt”, regardless of whether the second call is needed.
+
+Apply the same defensive parsing pattern to the new 4‑label call as to the name‑only call so you don’t introduce new failure modes.
+
+5. useCount migration
+Your sketch
+
+ts
+useCount: integer("use_count").notNull().default(0),
+My concern
+
+That’s correct at a schema level, but you also need to remember:
+
+Existing rows will all start at 0; popularity will only become meaningful once you start bumping.
+
+Depending on your migration workflow, you must generate and apply a migration — it won’t “just exist”.
+
+Principle of my fix
+
+Call out that you need a schema migration step and that initial ordering will be arbitrary until some traffic accumulates.
