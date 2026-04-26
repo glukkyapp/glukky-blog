@@ -58,8 +58,32 @@ declare global {
 
 const CALL_TIMEOUT_MS = 30_000;
 
+// Identity gate. The bridge's `showPaywall` / `showPaywallIfNeeded`
+// register the StoreKit transaction against whatever RC customer is
+// currently active. If the paywall is presented before `login(userId)`
+// finishes, the receipt is recorded against an `$RCAnonymousID:…`
+// subscriber and `verifyEntitlement(replitUserId)` 404s. We keep an
+// in-flight login promise here and force every paywall / restore
+// entry-point to await it before touching the bridge. Cleared on
+// `logoutFromRevenueCat()` so a session switch can't leak a previous
+// user's identity into the next purchase.
+let pendingLogin: Promise<LoginResult> | null = null;
+let loggedInUserId: string | null = null;
+
 export function isNativelyAvailable(): boolean {
   return typeof window !== "undefined" && typeof window.NativelyPurchases === "function";
+}
+
+async function awaitLoginIfPending(): Promise<void> {
+  if (!pendingLogin) return;
+  try {
+    await pendingLogin;
+  } catch {
+    // login failures don't block the paywall — we still want the
+    // user to see something rather than hang indefinitely. The
+    // server-side verifyEntitlement will catch a mis-attributed
+    // purchase on the next refresh.
+  }
 }
 
 function getInstance(): NativelyPurchasesInstance | null {
@@ -99,25 +123,45 @@ function callWithCallback<T>(
   });
 }
 
-export async function loginToRevenueCat(
+export function loginToRevenueCat(
   userId: string,
   email: string,
 ): Promise<LoginResult> {
+  // If we're already (or in the middle of) logging in this exact user,
+  // reuse the existing promise — otherwise a re-render that re-fires
+  // the identity effect could race two `login(...)` calls.
+  if (loggedInUserId === userId && pendingLogin) return pendingLogin;
+
   const inst = getInstance();
   if (!inst || typeof inst.login !== "function") {
-    return { status: "BRIDGE_MISSING", error: "NativelyPurchases.login not available" };
+    return Promise.resolve({
+      status: "BRIDGE_MISSING",
+      error: "NativelyPurchases.login not available",
+    });
   }
-  try {
-    const result = await callWithCallback<LoginResult>("login", (cb) =>
-      inst.login!(userId, email ?? "", cb),
-    );
-    return result ?? { status: "EMPTY_RESULT" };
-  } catch (err) {
-    return { status: "ERROR", error: err instanceof Error ? err.message : String(err) };
-  }
+
+  // Assigned synchronously so any paywall call dispatched in the same
+  // tick sees a non-null `pendingLogin` and waits.
+  loggedInUserId = userId;
+  pendingLogin = (async (): Promise<LoginResult> => {
+    try {
+      const result = await callWithCallback<LoginResult>("login", (cb) =>
+        inst.login!(userId, email ?? "", cb),
+      );
+      return result ?? { status: "EMPTY_RESULT" };
+    } catch (err) {
+      return { status: "ERROR", error: err instanceof Error ? err.message : String(err) };
+    }
+  })();
+  return pendingLogin;
 }
 
 export async function logoutFromRevenueCat(): Promise<void> {
+  // Drop the identity gate first so a paywall presented during a
+  // sign-out → sign-in transition does not still await the previous
+  // user's pending login.
+  pendingLogin = null;
+  loggedInUserId = null;
   const inst = getInstance();
   if (!inst || typeof inst.logout !== "function") return;
   try {
@@ -135,6 +179,7 @@ export interface PaywallOptions {
 }
 
 export async function presentPaywall(opts: PaywallOptions = {}): Promise<PaywallResult> {
+  await awaitLoginIfPending();
   const inst = getInstance();
   if (!inst || typeof inst.showPaywall !== "function") {
     return {
@@ -156,6 +201,7 @@ export async function presentPaywallIfNeeded(
   entitlementId: string,
   opts: PaywallOptions = {},
 ): Promise<PaywallResult> {
+  await awaitLoginIfPending();
   const inst = getInstance();
   if (!inst || typeof inst.showPaywallIfNeeded !== "function") {
     return {
@@ -174,6 +220,7 @@ export async function presentPaywallIfNeeded(
 }
 
 export async function restorePurchases(): Promise<RestoreResult> {
+  await awaitLoginIfPending();
   const inst = getInstance();
   if (!inst || typeof inst.restore !== "function") {
     return { success: false, error: "NativelyPurchases.restore not available" };

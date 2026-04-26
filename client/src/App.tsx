@@ -29,6 +29,7 @@ import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import {
   loginToRevenueCat,
+  logoutFromRevenueCat,
   presentPaywall,
   presentPaywallIfNeeded,
 } from "@/lib/natively-purchases";
@@ -231,24 +232,47 @@ function AuthenticatedApp() {
   // Declared BEFORE consumers (showPaywall callback, lockApp effect,
   // refresh effect) so React's hook ordering stays consistent and the
   // dependency arrays don't capture a stale closure.
-  const refreshPremiumThenRefetch = useCallback(async (force = false): Promise<boolean> => {
-    try {
-      const resp = await fetch("/api/refresh-premium-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(force ? { force: true } : {}),
-      });
-      if (!resp.ok) return false;
-      const data = await resp.json();
-      const verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
-      refetchGate();
-      queryClient.refetchQueries({ queryKey: ["/api/profile"] });
-      return verified;
-    } catch (e) {
-      console.warn("[premium] refresh error:", e);
-      return false;
+  const refreshPremiumThenRefetch = useCallback(async (
+    force = false,
+    opts: { retries?: number; backoffMs?: number } = {},
+  ): Promise<boolean> => {
+    // RC sees the new entitlement asynchronously after Apple finalises
+    // the StoreKit transaction, so a single verify right after the
+    // hosted paywall returns "purchased" can race the propagation and
+    // come back hasPremium=false. Post-purchase / restore callers pass
+    // `retries: 2, backoffMs: 1500` so we attempt up to 3 times before
+    // declaring the unlock failed (≈4.5 s max, well under the user's
+    // patience budget). Routine refreshes (boot, foreground, /me hits)
+    // pass no retries to keep them snappy.
+    const retries = Math.max(0, opts.retries ?? 0);
+    const backoffMs = Math.max(0, opts.backoffMs ?? 1500);
+    const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+    let verified = false;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const resp = await fetch("/api/refresh-premium-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(force ? { force: true } : {}),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          verified = Boolean(data?.verifiedPremium ?? data?.isPremium);
+          if (verified) break;
+        }
+      } catch (e) {
+        console.warn(`[premium] refresh error (attempt ${attempt + 1}/${retries + 1}):`, e);
+      }
+      if (attempt < retries) await wait(backoffMs);
     }
+
+    // Always refetch local caches even on a verified=false outcome —
+    // gate-status / profile may still have changed (e.g. cancellation).
+    refetchGate();
+    queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+    return verified;
   }, [refetchGate]);
 
   // Trigger RC's hosted paywall via the BN bridge. The hosted paywall
@@ -270,7 +294,10 @@ function AuthenticatedApp() {
           result.status === "SUCCESS" &&
           (result.message === "purchased" || result.message === "restored")
         ) {
-          const verified = await refreshPremiumThenRefetch(true);
+          const verified = await refreshPremiumThenRefetch(true, {
+            retries: 2,
+            backoffMs: 1500,
+          });
           if (verified && pendingActionRef.current) {
             const action = pendingActionRef.current;
             pendingActionRef.current = null;
@@ -288,6 +315,44 @@ function AuthenticatedApp() {
       });
   }, [refreshPremiumThenRefetch]);
 
+  // Identify the user to RevenueCat once their Replit auth resolves.
+  // Without this, every purchase is recorded against RC's anonymous
+  // customer and verifyEntitlement(replitUserId) 404s. The BN bridge's
+  // `login(userId, email, cb)` is the only RC identity surface we use —
+  // no anonymous-id capture, no alias, no self-heal.
+  //
+  // Declared BEFORE the isLocked / paywall effect so on first render
+  // React fires the login useEffect first; `loginToRevenueCat` sets
+  // its in-flight promise synchronously, and the paywall awaits it
+  // before touching the bridge. That ordering is what guarantees a
+  // purchase is never recorded against an anonymous RC subscriber.
+  //
+  // Also flips to `logoutFromRevenueCat()` when auth transitions away
+  // (sign-out / session switch on a shared device) so the next user's
+  // purchase cannot be merged into the previous user's RC customer.
+  const lastRcUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentId = user?.id ?? null;
+    const previousId = lastRcUserIdRef.current;
+
+    if (previousId && previousId !== currentId) {
+      logoutFromRevenueCat().catch((e) => console.warn("[rc] logout failed:", e));
+    }
+
+    if (currentId) {
+      loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
+        if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
+          console.warn(
+            `[rc] login result: status=${result.status}` +
+              (result.error ? ` error=${result.error}` : ""),
+          );
+        }
+      });
+    }
+
+    lastRcUserIdRef.current = currentId;
+  }, [user?.id, user?.email]);
+
   // Lock-app gate (e.g. Premium-only feature reached). RC's
   // showPaywallIfNeeded skips presentation if the user already holds
   // the Premium entitlement; otherwise it presents the hosted paywall
@@ -304,7 +369,7 @@ function AuthenticatedApp() {
             result.message === "restored" ||
             result.message === "not_presented")
         ) {
-          await refreshPremiumThenRefetch(true);
+          await refreshPremiumThenRefetch(true, { retries: 2, backoffMs: 1500 });
         }
       })
       .catch(() => {});
@@ -312,23 +377,6 @@ function AuthenticatedApp() {
       setLocation("/profile");
     }
   }, [isLocked, location, setLocation, refreshPremiumThenRefetch]);
-
-  // Identify the user to RevenueCat once their Replit auth resolves.
-  // Without this, every purchase is recorded against RC's anonymous
-  // customer and verifyEntitlement(replitUserId) 404s. The BN bridge's
-  // `login(userId, email, cb)` is the only RC identity surface we use —
-  // no anonymous-id capture, no alias, no self-heal.
-  useEffect(() => {
-    if (!user?.id) return;
-    loginToRevenueCat(user.id, user.email ?? "").then((result) => {
-      if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
-        console.warn(
-          `[rc] login result: status=${result.status}` +
-            (result.error ? ` error=${result.error}` : ""),
-        );
-      }
-    });
-  }, [user?.id, user?.email]);
 
   useEffect(() => {
     if (!(profile as any)?.onboardingComplete) return;
