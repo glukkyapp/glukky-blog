@@ -359,8 +359,25 @@ function AuthenticatedApp() {
   // without a close button so the user must subscribe or quit. We
   // still anchor at /profile as a UX fallback for cases where
   // presentation can't happen (web preview, bridge missing).
+  //
+  // The `presented` ref is a one-shot guard for the current locked
+  // session: route changes (e.g. wouter pushing the user to /profile
+  // below) re-fire this effect, and without the guard we'd re-call
+  // the bridge and the user could see the hosted paywall stack /
+  // re-animate. The guard is reset the moment isLocked flips false
+  // (purchase verified, comp granted, etc.), so a future lock
+  // transition will present again.
+  const lockedPaywallShownRef = useRef(false);
   useEffect(() => {
-    if (!isLocked) return;
+    if (!isLocked) {
+      lockedPaywallShownRef.current = false;
+      return;
+    }
+    if (location !== "/profile") {
+      setLocation("/profile");
+    }
+    if (lockedPaywallShownRef.current) return;
+    lockedPaywallShownRef.current = true;
     presentPaywallIfNeeded("Premium", { showCloseButton: false })
       .then(async (result) => {
         if (
@@ -373,9 +390,6 @@ function AuthenticatedApp() {
         }
       })
       .catch(() => {});
-    if (location !== "/profile") {
-      setLocation("/profile");
-    }
   }, [isLocked, location, setLocation, refreshPremiumThenRefetch]);
 
   useEffect(() => {

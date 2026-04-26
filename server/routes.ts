@@ -3210,15 +3210,12 @@ No explanation, just JSON.`,
   app.post("/api/update-premium-status", isAuthenticated, refreshPremiumHandler);
   app.post("/api/refresh-premium-status", isAuthenticated, refreshPremiumHandler);
 
-  // Attach an anonymous RevenueCat subscriber id (`$RCAnonymousID:…`) to the
-  // signed-in Replit user id by calling RC's REST alias endpoint server-side.
-  // This is the supported path on Build Natively wrappers that don't expose
-  // the `Set Customer ID` capability — the client posts the
-  // `customerInfo.original_app_user_id` it got back from purchase / restore,
   // RevenueCat → server webhook. Configured in the RC dashboard with a shared
   // secret in the Authorization header so we can flip is_premium the moment
-  // RC observes a billing/refund/expiration event, even if the user never
-  // re-opens the app.
+  // RC observes a billing / refund / expiration event, even if the user never
+  // re-opens the app. RC identity is established via purchases.login(userId)
+  // in the BN bridge, so webhook payloads carry the real Replit user id
+  // directly — no anonymous-id alias resolution is needed here.
   app.post("/api/revenuecat/webhook", async (req, res) => {
     try {
       const expected = process.env.REVENUECAT_WEBHOOK_AUTH_HEADER;
