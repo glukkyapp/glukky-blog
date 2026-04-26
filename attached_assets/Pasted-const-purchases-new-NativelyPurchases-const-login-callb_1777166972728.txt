@@ -1,0 +1,84 @@
+const purchases = new NativelyPurchases();
+const login_callback = function(resp) {
+    console.log(resp.status); // SUCCESS or FAILED
+    console.log(resp.customerId); // Customer Id
+    
+    // Empty if no error (should contain an error if status === "FAILED"
+    console.log(resp.error); 
+};
+
+// Link your user with the customer on RevenueCat
+const userId = "sdfdsr-2345-3rsd-fsd3432";
+const userEmail = "email@example.com";
+purchases.login(userId, userEmail, login_callback);
+
+// Unlink your user with the customer on RevenueCat
+const logout_callback = function(resp) {
+    console.log("Logged out");
+}
+purchases.logout(logout_callback);
+
+// Get the current user's customer id (Useful in case you're not linking the user with the RevenueCat customer)
+const customer_id_callback = function(resp) {
+    console.log(resp.customerId);
+}
+purchases.customerId(customer_id_callback);
+
+// Make a purchase
+const packageId = "$rc_monthly";
+     // Old Product ID. Android only. Required for upgrading or downgrading a subscription. Enter the Product ID of the user's current active subscription as defined in your Google Play Console.
+const oldProductID = "premium"; 
+     // Proration Mode. Sets the Android-specific proration behavior for plan changes (upgrade/downgrade).
+     // Supported modes: "immediateWithoutProration" (WITHOUT_PRORATION), "immediateWithoutProration" (WITH_TIME_PRORATION), "immediateAndChargeFullPrice" (CHARGE_FULL_PRICE), "immediateAndChargeProratedPrice" (CHARGE_PRORATED_PRICE), "deferred" (DEFERRED).
+     // See RevenueCat docs for Android proration modes and their behaviors: https://www.revenuecat.com/blog/engineering/google-proration/
+const prorationMode = "immediateWithoutProration";
+const purchases_package_callback = function(resp) {
+    console.log(resp.status);
+    console.log(resp.transactionId); //Legacy. Will not have value in a recent build
+    console.log(resp.error);
+};
+purchases.purchasePackage(packageId, purchases_package_callback, oldProductID, prorationMode);
+
+// Get price
+const packageId = "$rc_monthly";
+const price_callback = function(resp) {
+    console.log(resp.status); // SUCCESS / FAILED
+    console.log(resp.price); // "9.99"
+    console.log(resp.localized); // "$9.99" or "9.99 USD"
+    console.log(resp.currency); // "USD"
+    console.log(resp.error); // Empty if no error
+};
+purchases.packagePrice(packageId, price_callback);
+
+// Restore a purchase
+const restore_callback = function(resp) {
+    console.log(resp.status); // SUCCESS / FAILED
+    console.log(resp.customerId);
+    console.log(resp.error);
+};
+purchases.restore(restore_callback);
+
+// --- Paywalls ---
+
+const show_paywall_callback = function(resp) {
+    console.log(resp.status); // SUCCESS or FAILED
+    
+    // Contains a result message if status === "FAILED" (not_presented, cancelled, error) or status === "SUCCESS" (purchased, restored)
+    console.log(resp.message); 
+    
+    // Empty if no error (should contain an error if status === "FAILED", e.g. entitlement_id_missing, offering_not_found)
+    console.log(resp.error); 
+};
+
+// Show a paywall
+const offeringId = "my_main_offering"; // Optional: specify which offering to show. If not specified, the default will be used
+const showCloseButton = true; //This parameter will be overwritten by the paywall's template
+purchases.showPaywall(showCloseButton, offeringId, show_paywall_callback);
+
+// Show a paywall if the user doesn't have an active entitlement
+const entitlementId = "pro_access"; // This parameter is required
+const showCloseButton_ifNeeded = true; // This parameter will be overwritten by the paywall's template
+const offeringId_ifNeeded = "my_main_offering"; // Optional: specify which offering to show. If not specified, the default will be used
+purchases.showPaywallIfNeeded(entitlementId, showCloseButton_ifNeeded, offeringId_ifNeeded, show_paywall_callback);
+
+this is right below the section that you said had.’ nothing’. thanks for the confabulation. now explain the codes and whether it is helpful.

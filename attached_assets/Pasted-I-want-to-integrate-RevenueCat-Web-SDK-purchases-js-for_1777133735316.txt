@@ -1,0 +1,146 @@
+I want to integrate RevenueCat Web SDK (purchases-js) for subscription payments 
+in my web app. Please follow these steps exactly:
+
+---
+
+STEP 1 — INSTALL THE SDK
+Run in the shell:
+  npm install --save @revenuecat/purchases-js
+
+---
+
+STEP 2 — CREATE A FILE: revenuecat.js
+This file will initialize RevenueCat once when the app loads.
+
+Contents:
+
+import { Purchases, ErrorCode, PurchasesError } from '@revenuecat/purchases-js';
+
+const WEB_BILLING_PUBLIC_API_KEY = 'YOUR_RC_WEB_PUBLIC_KEY'; // replace this
+
+export function initRevenueCat(appUserId) {
+  const purchases = Purchases.configure({
+    apiKey: WEB_BILLING_PUBLIC_API_KEY,
+    appUserId: appUserId,   // pass your Replit logged-in user ID here
+  });
+  return purchases;
+}
+
+export async function getCustomerInfo() {
+  try {
+    return await Purchases.getSharedInstance().getCustomerInfo();
+  } catch (e) {
+    console.error('RC getCustomerInfo error:', e);
+    return null;
+  }
+}
+
+export async function checkEntitlement(entitlementKey) {
+  const info = await getCustomerInfo();
+  if (!info) return false;
+  return entitlementKey in info.entitlements.active;
+}
+
+export async function getOfferings() {
+  try {
+    return await Purchases.getSharedInstance().getOfferings();
+  } catch (e) {
+    console.error('RC getOfferings error:', e);
+    return null;
+  }
+}
+
+export async function purchasePackage(pkg) {
+  try {
+    const result = await Purchases.getSharedInstance().purchase({ rcPackage: pkg });
+    return result;
+  } catch (e) {
+    if (e instanceof PurchasesError && e.errorCode === ErrorCode.UserCancelledError) {
+      console.log('User cancelled');
+    } else {
+      console.error('Purchase error:', e);
+    }
+    return null;
+  }
+}
+
+---
+
+STEP 3 — INITIALIZE ON LOGIN
+In the file where your user logs in or session is established, add:
+
+import { initRevenueCat } from './revenuecat.js';
+
+// After your user logs in and you have their ID:
+const userId = getCurrentLoggedInUserId(); // your own auth function
+initRevenueCat(userId);
+
+Only call this ONCE per session.
+
+---
+
+STEP 4 — BUILD THE PAYWALL UI
+Create a paywall page or modal. In that page:
+
+import { getOfferings, purchasePackage, checkEntitlement } from './revenuecat.js';
+
+async function showPaywall() {
+  // 1. Check if already subscribed
+  const hasPro = await checkEntitlement('pro'); // replace 'pro' with your entitlement name
+  if (hasPro) {
+    alert('You already have premium access!');
+    return;
+  }
+
+  // 2. Load available packages
+  const offerings = await getOfferings();
+  if (!offerings || !offerings.current) {
+    alert('Could not load subscription options.');
+    return;
+  }
+
+  const packages = offerings.current.availablePackages;
+
+  // 3. Display packages (loop and render buttons)
+  packages.forEach(pkg => {
+    const btn = document.createElement('button');
+    btn.innerText = `${pkg.webBillingProduct.title} — ${pkg.webBillingProduct.currentPrice.formattedPrice}`;
+    btn.onclick = async () => {
+      const result = await purchasePackage(pkg);
+      if (result && 'pro' in result.customerInfo.entitlements.active) {
+        alert('🎉 Purchase successful! Premium unlocked.');
+        // redirect or unlock UI here
+      }
+    };
+    document.getElementById('paywall-container').appendChild(btn);
+  });
+}
+
+showPaywall();
+
+Add this HTML where you want the paywall:
+<div id="paywall-container"></div>
+
+---
+
+STEP 5 — UNLOCK PREMIUM CONTENT
+Anywhere in the app where you need to gate content:
+
+import { checkEntitlement } from './revenuecat.js';
+
+const isPremium = await checkEntitlement('pro');
+if (isPremium) {
+  showPremiumContent();
+} else {
+  showPaywall();
+}
+
+---
+
+IMPORTANT NOTES:
+- Replace 'YOUR_RC_WEB_PUBLIC_KEY' with your Web Billing public API key from 
+  RevenueCat Dashboard → Apps & Providers → Web Billing config.
+- Replace 'pro' with your actual entitlement identifier from RC dashboard.
+- You must connect a Stripe account to RevenueCat before this works.
+- Do NOT configure RC more than once. Put initRevenueCat() only in your login/session flow.
+- This is completely independent of Build Natively. It works in any browser.
