@@ -52,3 +52,88 @@ export function extractJsonObject(raw: string): any | null {
   }
   return null;
 }
+
+/**
+ * Normalise a food name so two slightly-different wordings of the same dish
+ * have a chance of matching (e.g. "Wonton noodles" vs "Wonton noodle").
+ *
+ * Steps:
+ * - lowercase, trim
+ * - strip punctuation (keep CJK characters and word characters)
+ * - strip common trailing modifiers that usually describe toppings rather
+ *   than the dish itself: English `with …`, Chinese `配 …` / `加 …` / `和 …`
+ * - collapse whitespace
+ *
+ * Conservative on purpose — when in doubt, returns a longer string so that
+ * containment matching does not over-merge.
+ */
+export function normalizeFoodNameForMatch(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  let s = raw.trim().toLowerCase();
+  if (!s) return "";
+
+  s = s.replace(/\s+with\s+.+$/i, "");
+  s = s.replace(/[配加和](?![\s\S]*[配加和]).+$/u, "");
+
+  s = s.replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/g, " ");
+  s = s.replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, (ch) => {
+    if (/[\u4e00-\u9fff\uF900-\uFAFF]/.test(ch)) return ch;
+    return " ";
+  });
+
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+/**
+ * Two food names match if their normalised forms are identical, or if one
+ * fully contains the other. Conservative: requires a minimum length on both
+ * sides so very short strings don't false-match.
+ */
+export function foodNamesMatch(a: string, b: string): boolean {
+  const na = normalizeFoodNameForMatch(a);
+  const nb = normalizeFoodNameForMatch(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const minLen = (s: string) => /[\u4e00-\u9fff]/.test(s) ? 2 : 3;
+  if (na.length < minLen(na) || nb.length < minLen(nb)) return false;
+  if (!(na.includes(nb) || nb.includes(na))) return false;
+  const shorter = na.length <= nb.length ? na : nb;
+  const longer = na.length <= nb.length ? nb : na;
+  if (shorter.length / longer.length < 0.6) return false;
+  return true;
+}
+
+/**
+ * Strip from the `extras` (toppings) string any token that already appears
+ * in `name` (case-insensitive, both English and Chinese). Pure in-memory
+ * string operation — no DB / API calls. Returns null when nothing remains.
+ */
+export function stripExtrasContainedInName(name: string, extras: unknown): string | null {
+  if (typeof extras !== "string") return null;
+  const trimmed = extras.trim();
+  if (!trimmed) return null;
+  if (typeof name !== "string" || !name.trim()) return trimmed || null;
+
+  const haystack = name.toLowerCase();
+
+  const tokens = trimmed
+    .split(/[,，、/／&]|\s+and\s+|\s+及\s+|\s+和\s+|\s+加\s+|\s+配\s+/i)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (tokens.length === 0) return null;
+
+  const seen = new Set<string>();
+  const remaining: string[] = [];
+  for (const token of tokens) {
+    const tl = token.toLowerCase();
+    if (seen.has(tl)) continue;
+    seen.add(tl);
+    if (haystack.includes(tl)) continue;
+    remaining.push(token);
+  }
+
+  if (remaining.length === 0) return null;
+  return remaining.join(", ");
+}

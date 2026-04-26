@@ -34,7 +34,7 @@ import {
   aliasSubscriber,
   type RevenueCatWebhookBody,
 } from "./revenuecat";
-import { sanitizeFoodName, extractJsonObject } from "./snap-parse";
+import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
 import { BUILD_INFO } from "./build-info";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
@@ -2605,6 +2605,22 @@ export async function registerRoutes(
 
       const isFirstSnap = !snapProfile?.hasTriedFirstFoodSnap;
 
+      const sharedNameRules = `MAIN-DISH vs TOPPINGS RULE (very important — applies to "name" and "extras"):
+- The "name" field must contain ONLY the main dish — that is, the 1 or at most 2 components with the largest visible portion in the photo.
+- Every other visible food component (smaller accompaniments, side toppings, garnishes) goes into "extras".
+- The same ingredient must NEVER appear in both "name" and "extras". If an ingredient is part of the main dish in "name", do NOT also list it in "extras". If an ingredient belongs in "extras", do NOT bake it into "name".
+- "portion" and "sauces" are independent of this rule and behave as normal.
+- Concrete example: a bowl of wonton noodles with a side of choi sum should be returned as EITHER
+    { "name": "Wonton noodles", "extras": "choi sum", ... }   (choi sum is a side topping)
+  OR
+    { "name": "Wonton noodles with choi sum", "extras": null, ... }   (choi sum is treated as part of the main dish)
+  but NEVER both at the same time (e.g. name "Wonton noodles with choi sum" together with extras "choi sum" is forbidden).
+
+CANONICAL NAMING (very important for the "name" field):
+- Prefer the standard, commonly used Hong Kong dish name for "name" — the name a local would use on a cha chaan teng / 茶記 / noodle shop menu.
+- Use the most common spelling and singular/plural form so the same dish always comes back with the same wording (e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
+- Do NOT invent poetic phrasings or rare variations.`;
+
       const baseSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
 { "name": "<food name in ${responseLang}>", "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides or null>" }
 
@@ -2615,7 +2631,9 @@ Important:
 - 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
 - Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
 - If you cannot identify any food, return: {"error":"no_food"}
-- Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
+- Return ONLY the JSON object. No prose, no markdown fences, no explanation.
+
+${sharedNameRules}`;
 
       const firstSnapSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
 { "name": "<descriptive, appetizing food name in ${responseLang}>", "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides or null>" }
@@ -2629,15 +2647,17 @@ Important:
 - If you cannot identify any food, return: {"error":"no_food"}
 - Return ONLY the JSON object. No prose, no markdown fences, no explanation.
 
-NAME STYLE (very important for the "name" field):
-- Make the name descriptive and appetizing, like a thoughtful menu item — not a plain one-word label.
-- Include the cooking method when visible (e.g. wok-fried, stir-fried, steamed, grilled, braised, pan-seared, deep-fried, slow-cooked).
-- Add ONE key descriptor that matches what you actually see (e.g. sizzling, crispy, golden, fragrant, tender, glazed, silky).
+${sharedNameRules}
+
+NAME STYLE (very important for the "name" field, in addition to the rules above):
+- Start from the canonical Hong Kong dish name and then add a short descriptor — do NOT invent a brand-new name.
+- A light cooking method or one truthful descriptor is welcome (e.g. wok-fried, steamed, grilled, braised, sizzling, crispy, golden, fragrant, tender, glazed, silky), as long as you can actually see it in the photo.
 - Keep it concise: roughly 4 to 8 words in English, or the natural equivalent in ${responseLang}.
 - Stay 100% truthful to the photo. Do NOT invent ingredients, toppings, or qualities you cannot see.
 - Avoid generic single-word names like "Rice", "Noodles", or "Soup" on their own.
 - Examples (English): "Sizzling wok-fried rice with scallions", "Crispy pan-seared char siu over rice", "Steamed shrimp dumplings with chive".
-- Do NOT mention prices, restaurants, or brand names.`;
+- Do NOT mention prices, restaurants, or brand names.
+- The MAIN-DISH vs TOPPINGS rule above still applies — even a descriptive name must not duplicate an ingredient that is also listed in "extras".`;
 
       const activeBaseSystem = isFirstSnap ? firstSnapSystem : baseSystem;
       const strictSystem = `${activeBaseSystem}
@@ -2648,6 +2668,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         anthropic.messages.create({
           model: "claude-sonnet-4-6",
           max_tokens: maxTokens,
+          temperature: 0,
           system,
           messages: [{
             role: "user",
@@ -2698,7 +2719,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       }
       const claudePortion = typeof labelParsed.portion === "string" ? labelParsed.portion.trim() || null : null;
       const claudeSauces = typeof labelParsed.sauces === "string" ? labelParsed.sauces.trim() || null : null;
-      const claudeExtras = typeof labelParsed.extras === "string" ? labelParsed.extras.trim() || null : null;
+      const rawExtras = typeof labelParsed.extras === "string" ? labelParsed.extras.trim() || null : null;
+      const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
       incrementDailyCount(snapLabelCount, userId);
 
