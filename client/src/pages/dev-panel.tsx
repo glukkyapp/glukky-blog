@@ -358,6 +358,8 @@ export default function DevPanel() {
 
       <BuildInfoCard />
 
+      <ColdLaunchTimingCard />
+
       <TriggerPaywallTestCard />
 
       <Card className="border-blue-200 dark:border-blue-900">
@@ -481,6 +483,50 @@ function TriggerPaywallTestCard() {
         >
           {busy ? "Presenting…" : "Present Paywall"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Cold-launch readout: nativelyOnLoad → cube mount → Stage 1 preload deltas, captured on real devices.
+function ColdLaunchTimingCard() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  void tick;
+  const bnAt = typeof window !== "undefined" ? window.__bnLoadedAt : undefined;
+  const cubeAt = typeof window !== "undefined" ? window.__cubeMountedAt : undefined;
+  const stage1At = typeof window !== "undefined" ? window.__stage1ReadyAt : undefined;
+  const fmt = (ms: number | undefined) => (typeof ms === "number" ? `${ms} ms` : "—");
+  const delta = (a?: number, b?: number) =>
+    typeof a === "number" && typeof b === "number" ? `${b - a} ms` : "—";
+  return (
+    <Card className="border-emerald-200 dark:border-emerald-900">
+      <CardContent className="pt-4 space-y-2">
+        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Cold-launch timing</p>
+        <p className="text-xs text-muted-foreground">
+          BN dismisses its native splash on the WebView's "page loaded" event.
+          Smaller deltas here = our cube takes over faster. Refresh the dev
+          panel after a fresh app launch to capture new numbers.
+        </p>
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 space-y-1 text-xs font-mono">
+          <p data-testid="text-cold-launch-bn">nativelyOnLoad: {fmt(bnAt)}</p>
+          <p data-testid="text-cold-launch-cube">cube mounted: {fmt(cubeAt)}</p>
+          <p data-testid="text-cold-launch-stage1">stage1 ready: {fmt(stage1At)}</p>
+          <p className="pt-1 border-t border-emerald-200 dark:border-emerald-900">
+            <span className="text-emerald-700 dark:text-emerald-400">BN → cube: </span>
+            <span data-testid="text-cold-launch-bn-to-cube">{delta(bnAt, cubeAt)}</span>
+          </p>
+          <p>
+            <span className="text-emerald-700 dark:text-emerald-400">cube → stage1: </span>
+            <span data-testid="text-cold-launch-cube-to-stage1">{delta(cubeAt, stage1At)}</span>
+          </p>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {bnAt == null ? "nativelyOnLoad has not fired (web preview, or BN bridge missing)" : "All timestamps are absolute Date.now() values."}
+        </p>
       </CardContent>
     </Card>
   );

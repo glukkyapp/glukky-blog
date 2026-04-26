@@ -962,6 +962,10 @@
     "cup_of_coffee": "Costs less than a cup of coffee!",
     "legal_disclosure": "By subscribing, you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>. Auto-renews monthly. Cancel anytime in App Store settings.",
     "legal_terms_link": "Terms of Use",
-    "legal_privacy_link": "Privacy Policy"
+    "legal_privacy_link": "Privacy Policy",
+    "unlocking_caption": "Unlocking your subscription…",
+    "unlocking_stalled_title": "Still finalising",
+    "unlocking_stalled_desc": "Apple is taking longer than usual to confirm your purchase.",
+    "unlocking_stalled_action": "Tap to retry"
   }
 }

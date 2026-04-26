@@ -6,25 +6,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnimatedPageWrapper } from "@/components/page-transition";
 import { useAuth } from "@/hooks/use-auth";
 import FloatingNavBar from "@/components/floating-nav-bar";
-import Landing from "@/pages/landing";
-import Onboarding from "@/pages/onboarding";
-import WeeklyPlanner from "@/pages/weekly-planner";
-import Home from "@/pages/home";
-import Roadmap from "@/pages/roadmap";
-import Profile from "@/pages/profile";
-import MonthlyReport from "@/pages/monthly-report";
-import Snap from "@/pages/snap";
-import HealthInfo from "@/pages/health-info";
-import AppIntro from "@/pages/app-intro";
-import DevPanel from "@/pages/dev-panel";
-import NotFound from "@/pages/not-found";
-import { useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
+import { lazy, Suspense, useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ToastAction } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import {
@@ -34,12 +24,45 @@ import {
   presentPaywallIfNeeded,
 } from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
-import { preloadStage1Launch, getStage1Promise } from "@/lib/preload-assets";
+import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
+import UnlockingOverlay from "@/components/unlocking-overlay";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
-preloadStage1Launch();
+declare global {
+  interface Window {
+    __bnLoadedAt?: number;
+    __cubeMountedAt?: number;
+    __stage1ReadyAt?: number;
+  }
+}
+
+// Routes are React.lazy so the cold-launch bundle stays small; the cube overlay or #F3EAE5 background covers the Suspense fallback.
+const Landing = lazy(() => import("@/pages/landing"));
+const Onboarding = lazy(() => import("@/pages/onboarding"));
+const WeeklyPlanner = lazy(() => import("@/pages/weekly-planner"));
+const Home = lazy(() => import("@/pages/home"));
+const Roadmap = lazy(() => import("@/pages/roadmap"));
+const Profile = lazy(() => import("@/pages/profile"));
+const MonthlyReport = lazy(() => import("@/pages/monthly-report"));
+const Snap = lazy(() => import("@/pages/snap"));
+const HealthInfo = lazy(() => import("@/pages/health-info"));
+const AppIntro = lazy(() => import("@/pages/app-intro"));
+const DevPanel = lazy(() => import("@/pages/dev-panel"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+
+const RouteFallback = () => (
+  <div
+    aria-hidden="true"
+    style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "#F3EAE5",
+      pointerEvents: "none",
+    }}
+  />
+);
 
 interface PiggyBankData {
   coins: number;
@@ -207,6 +230,8 @@ export function useGate() {
 function AuthenticatedApp() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
   const { data: currentPlan, isLoading: planLoading } = useQuery({
     queryKey: ["/api/plan/current"],
@@ -224,26 +249,17 @@ function AuthenticatedApp() {
 
   const pendingActionRef = useRef<(() => void) | null>(null);
 
+  // Branded overlay shown immediately after the paywall returns purchased/restored, until the server-side verify resolves.
+  const [unlockingOverlay, setUnlockingOverlay] = useState(false);
+
   const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
 
-  // Server is the source of truth — it asks RevenueCat directly via
-  // verifyEntitlement(replitUserId) and writes the verified result to
-  // profiles.is_premium. We never send a client-side premium flag.
-  // Declared BEFORE consumers (showPaywall callback, lockApp effect,
-  // refresh effect) so React's hook ordering stays consistent and the
-  // dependency arrays don't capture a stale closure.
+  // Server is the source of truth via verifyEntitlement(replitUserId); we never send a client-side premium flag.
+  // Post-purchase callers pass retries (RC entitlement propagation can lag StoreKit by a few seconds).
   const refreshPremiumThenRefetch = useCallback(async (
     force = false,
     opts: { retries?: number; backoffMs?: number } = {},
   ): Promise<boolean> => {
-    // RC sees the new entitlement asynchronously after Apple finalises
-    // the StoreKit transaction, so a single verify right after the
-    // hosted paywall returns "purchased" can race the propagation and
-    // come back hasPremium=false. Post-purchase / restore callers pass
-    // `retries: 2, backoffMs: 1500` so we attempt up to 3 times before
-    // declaring the unlock failed (≈4.5 s max, well under the user's
-    // patience budget). Routine refreshes (boot, foreground, /me hits)
-    // pass no retries to keep them snappy.
     const retries = Math.max(0, opts.retries ?? 0);
     const backoffMs = Math.max(0, opts.backoffMs ?? 1500);
     const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -268,17 +284,46 @@ function AuthenticatedApp() {
       if (attempt < retries) await wait(backoffMs);
     }
 
-    // Always refetch local caches even on a verified=false outcome —
-    // gate-status / profile may still have changed (e.g. cancellation).
-    refetchGate();
-    queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+    // Always refetch local caches even when verified=false (gate/profile may have changed for other reasons).
+    // Awaited so the overlay stays up through full cache propagation, not just the verify call.
+    await Promise.all([
+      refetchGate(),
+      queryClient.refetchQueries({ queryKey: ["/api/profile"] }),
+    ]);
     return verified;
   }, [refetchGate]);
 
-  // Trigger RC's hosted paywall via the BN bridge. The hosted paywall
-  // owns the StoreKit transaction; we re-verify with the server on a
-  // `purchased` / `restored` callback before unlocking UI. The callback
-  // is a hint, not proof — `refreshPremiumThenRefetch(true)` is.
+  // Wraps the verify+refetch in the branded overlay; on stalled verify, surfaces a non-blocking retry toast.
+  const verifyWithOverlay = useCallback(async (): Promise<boolean> => {
+    setUnlockingOverlay(true);
+    try {
+      const verified = await refreshPremiumThenRefetch(true, {
+        retries: 2,
+        backoffMs: 1500,
+      });
+      if (!verified) {
+        toast({
+          title: t("paywall.unlocking_stalled_title"),
+          description: t("paywall.unlocking_stalled_desc"),
+          duration: 8000,
+          action: (
+            <ToastAction
+              altText={t("paywall.unlocking_stalled_action")}
+              onClick={() => { void verifyWithOverlay(); }}
+              data-testid="button-unlocking-retry"
+            >
+              {t("paywall.unlocking_stalled_action")}
+            </ToastAction>
+          ),
+        });
+      }
+      return verified;
+    } finally {
+      setUnlockingOverlay(false);
+    }
+  }, [refreshPremiumThenRefetch, toast, t]);
+
+  // The BN bridge owns the StoreKit transaction; the purchased/restored callback is a hint — server verify is proof.
   const showPaywall = useCallback((onSuccess?: () => void) => {
     pendingActionRef.current = onSuccess || null;
     presentPaywall()
@@ -294,10 +339,7 @@ function AuthenticatedApp() {
           result.status === "SUCCESS" &&
           (result.message === "purchased" || result.message === "restored")
         ) {
-          const verified = await refreshPremiumThenRefetch(true, {
-            retries: 2,
-            backoffMs: 1500,
-          });
+          const verified = await verifyWithOverlay();
           if (verified && pendingActionRef.current) {
             const action = pendingActionRef.current;
             pendingActionRef.current = null;
@@ -313,23 +355,10 @@ function AuthenticatedApp() {
         console.warn("[paywall] present error:", e);
         pendingActionRef.current = null;
       });
-  }, [refreshPremiumThenRefetch]);
+  }, [verifyWithOverlay]);
 
-  // Identify the user to RevenueCat once their Replit auth resolves.
-  // Without this, every purchase is recorded against RC's anonymous
-  // customer and verifyEntitlement(replitUserId) 404s. The BN bridge's
-  // `login(userId, email, cb)` is the only RC identity surface we use —
-  // no anonymous-id capture, no alias, no self-heal.
-  //
-  // Declared BEFORE the isLocked / paywall effect so on first render
-  // React fires the login useEffect first; `loginToRevenueCat` sets
-  // its in-flight promise synchronously, and the paywall awaits it
-  // before touching the bridge. That ordering is what guarantees a
-  // purchase is never recorded against an anonymous RC subscriber.
-  //
-  // Also flips to `logoutFromRevenueCat()` when auth transitions away
-  // (sign-out / session switch on a shared device) so the next user's
-  // purchase cannot be merged into the previous user's RC customer.
+  // Identify the user to RC once Replit auth resolves; flips to logout on auth-away so the next user's purchase isn't merged.
+  // Declared before the lock/paywall effect so login starts before any paywall presentation.
   const lastRcUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     const currentId = user?.id ?? null;
@@ -353,20 +382,8 @@ function AuthenticatedApp() {
     lastRcUserIdRef.current = currentId;
   }, [user?.id, user?.email]);
 
-  // Lock-app gate (e.g. Premium-only feature reached). RC's
-  // showPaywallIfNeeded skips presentation if the user already holds
-  // the Premium entitlement; otherwise it presents the hosted paywall
-  // without a close button so the user must subscribe or quit. We
-  // still anchor at /profile as a UX fallback for cases where
-  // presentation can't happen (web preview, bridge missing).
-  //
-  // The `presented` ref is a one-shot guard for the current locked
-  // session: route changes (e.g. wouter pushing the user to /profile
-  // below) re-fire this effect, and without the guard we'd re-call
-  // the bridge and the user could see the hosted paywall stack /
-  // re-animate. The guard is reset the moment isLocked flips false
-  // (purchase verified, comp granted, etc.), so a future lock
-  // transition will present again.
+  // Lock-app gate: present the hosted paywall (no close button) and anchor /profile as a fallback when presentation fails.
+  // The ref is a one-shot guard so route changes don't re-present; reset on isLocked=false.
   const lockedPaywallShownRef = useRef(false);
   useEffect(() => {
     if (!isLocked) {
@@ -386,11 +403,11 @@ function AuthenticatedApp() {
             result.message === "restored" ||
             result.message === "not_presented")
         ) {
-          await refreshPremiumThenRefetch(true, { retries: 2, backoffMs: 1500 });
+          await verifyWithOverlay();
         }
       })
       .catch(() => {});
-  }, [isLocked, location, setLocation, refreshPremiumThenRefetch]);
+  }, [isLocked, location, setLocation, verifyWithOverlay]);
 
   useEffect(() => {
     if (!(profile as any)?.onboardingComplete) return;
@@ -962,15 +979,27 @@ function AuthenticatedApp() {
     new URLSearchParams(window.location.search).get("preview") === "1";
 
   if (isOnboardingPreview && devCheck?.isDev) {
-    return <Onboarding />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <Onboarding />
+      </Suspense>
+    );
   }
 
   if (!profile || !(profile as any).onboardingComplete) {
-    return <Onboarding />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <Onboarding />
+      </Suspense>
+    );
   }
 
   if (!(profile as any).introSeen && (profile as any).currentWeek <= 1) {
-    return <AppIntro />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <AppIntro />
+      </Suspense>
+    );
   }
 
   const gateCtx: GateContextType = {
@@ -985,14 +1014,17 @@ function AuthenticatedApp() {
       <GateContext.Provider value={gateCtx}>
         <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
           <div id={BOUNCE_WRAPPER_ID}>
-            <Switch>
-              <Route path="/profile" component={Profile} />
-              <Route path="/health-info" component={HealthInfo} />
-              <Route component={WeeklyPlanner} />
-            </Switch>
+            <Suspense fallback={<RouteFallback />}>
+              <Switch>
+                <Route path="/profile" component={Profile} />
+                <Route path="/health-info" component={HealthInfo} />
+                <Route component={WeeklyPlanner} />
+              </Switch>
+            </Suspense>
           </div>
           <FloatingNavBar />
           <GlobalPiggyBankPopup />
+          {unlockingOverlay && <UnlockingOverlay />}
         </div>
       </GateContext.Provider>
     );
@@ -1003,21 +1035,24 @@ function AuthenticatedApp() {
       <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
         <div id={BOUNCE_WRAPPER_ID}>
           <AnimatedPageWrapper>
-            <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/roadmap" component={Roadmap} />
-              <Route path="/plan" component={WeeklyPlanner} />
-              <Route path="/snap" component={Snap} />
-              <Route path="/health-info" component={HealthInfo} />
-              <Route path="/profile" component={Profile} />
-              <Route path="/monthly" component={MonthlyReport} />
-              <Route path="/dev" component={DevPanel} />
-              <Route component={NotFound} />
-            </Switch>
+            <Suspense fallback={<RouteFallback />}>
+              <Switch>
+                <Route path="/" component={Home} />
+                <Route path="/roadmap" component={Roadmap} />
+                <Route path="/plan" component={WeeklyPlanner} />
+                <Route path="/snap" component={Snap} />
+                <Route path="/health-info" component={HealthInfo} />
+                <Route path="/profile" component={Profile} />
+                <Route path="/monthly" component={MonthlyReport} />
+                <Route path="/dev" component={DevPanel} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
           </AnimatedPageWrapper>
         </div>
         <FloatingNavBar />
         <GlobalPiggyBankPopup />
+        {unlockingOverlay && <UnlockingOverlay />}
       </div>
     </GateContext.Provider>
   );
@@ -1049,18 +1084,19 @@ function Router() {
   }
 
   if (!user) {
-    return <Landing />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <Landing />
+      </Suspense>
+    );
   }
 
   return <AuthenticatedApp />;
 }
 
 function App() {
-  // Cube cold-launch overlay. Only shown when no session hint exists in
-  // localStorage at boot — i.e. the user is logged out. Captured once at
-  // mount so login mid-screen doesn't dismiss it early; logout doesn't
-  // re-trigger it (no remount). Three gates: Stage 1 preload done +
-  // auth check resolved + minimum 14s elapsed.
+  // Cube cold-launch overlay shown only on logged-out boot; captured once at mount and gated by stage1+auth+min 14s.
+  // Rendered immediately so first paint is the cube (not a #F3EAE5 placeholder); Stage 1 preload fires from its mount effect.
   const [showCube] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SESSION_HINT_KEY) == null;
@@ -1071,9 +1107,15 @@ function App() {
 
   useEffect(() => {
     if (!showCube) return;
+    if (typeof window !== "undefined") {
+      window.__cubeMountedAt = Date.now();
+    }
     let alive = true;
     getStage1Promise().then(() => {
       if (alive) setStage1Ready(true);
+      if (typeof window !== "undefined") {
+        window.__stage1ReadyAt = Date.now();
+      }
     });
     return () => {
       alive = false;
@@ -1101,23 +1143,11 @@ function App() {
       <Router />
       <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
-        stage1Ready ? (
-          <CubeLoadingScreen
-            authReady={!authLoading}
-            preloadReady={stage1Ready}
-            onDismiss={() => setCubeDismissed(true)}
-          />
-        ) : (
-          <div
-            data-testid="cube-loading-placeholder"
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "#F3EAE5",
-              zIndex: 9999,
-            }}
-          />
-        )
+        <CubeLoadingScreen
+          authReady={!authLoading}
+          preloadReady={stage1Ready}
+          onDismiss={() => setCubeDismissed(true)}
+        />
       )}
     </TooltipProvider>
   );

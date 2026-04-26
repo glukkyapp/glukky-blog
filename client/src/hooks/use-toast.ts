@@ -139,7 +139,9 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+type ToastWithDuration = Toast & { duration?: number }
+
+function toast({ duration, ...props }: ToastWithDuration) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -161,9 +163,11 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // Honor caller-supplied duration (e.g. retry-action toasts that need
+  // to stay long enough for the user to tap). Falls back to 2s default.
   setTimeout(() => {
     dismiss()
-  }, 2000)
+  }, typeof duration === "number" && duration > 0 ? duration : 2000)
 
   return {
     id: id,

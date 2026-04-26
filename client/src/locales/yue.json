@@ -966,6 +966,10 @@
     "cup_of_coffee": "平過一杯咖啡！",
     "legal_disclosure": "訂閱即代表你同意我哋嘅<terms>使用條款</terms>同<privacy>私隱政策</privacy>。每月自動續訂，隨時可以喺 App Store 設定中取消。",
     "legal_terms_link": "使用條款",
-    "legal_privacy_link": "私隱政策"
+    "legal_privacy_link": "私隱政策",
+    "unlocking_caption": "正喺度解鎖你嘅訂閱…",
+    "unlocking_stalled_title": "仲喺處理緊",
+    "unlocking_stalled_desc": "Apple 確認你嘅購買比平時耐咗少少。",
+    "unlocking_stalled_action": "㩒一下再試"
   }
 }

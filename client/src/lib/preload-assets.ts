@@ -2,7 +2,8 @@
 // fire when their consumers mount, so we don't burn the user's
 // bandwidth on images they may never see.
 //
-// Stage 1 — launch + landing slides, fires at App.tsx module load.
+// Stage 1 — launch + landing slides, fires from the cube cold-launch
+//           overlay's mount effect (App.tsx) so the cube paints first.
 // Stage 2 — 18 onboarding question illustrations, fires from the
 //           landing/launch surface so it overlaps with the user
 //           reading + signing in.
