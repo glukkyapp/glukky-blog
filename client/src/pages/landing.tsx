@@ -52,7 +52,7 @@ export default function Landing() {
   useGlobalLoading(isLoading);
 
   const slides = [
-    { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body"), objectPosition: "center 80%" },
+    { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body"), objectPosition: "center 30%" },
     { image: slide2Img, headline: t("slides.s2_headline"), body: t("slides.s2_body") },
     { image: slide3Img, headline: t("slides.s3_headline"), body: t("slides.s3_body") },
   ];
