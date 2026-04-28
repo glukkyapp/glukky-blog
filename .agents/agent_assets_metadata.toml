@@ -29,3 +29,9 @@ id = "ZEEMyI2jcWw8BJVkYtSsQ"
 uri = "file://attached_assets/screenshots/paywall_en.png"
 type = "image"
 title = "Glukky Paywall — EN mockup"
+
+[[outputs]]
+id = "hwGTU9xgHkErepioQeqDJ"
+uri = "file://downloads/glukky-source-20260428-043446.zip"
+type = "unspecified"
+title = "Glukky full source (April 28, 2026)"

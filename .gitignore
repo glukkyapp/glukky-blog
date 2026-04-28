@@ -4,5 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+*.zip
 test-results/
 .notification-scheduled-date
+downloads/
