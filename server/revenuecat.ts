@@ -186,6 +186,50 @@ export function invalidateEntitlementCache(appUserId?: string): void {
   else cache.clear();
 }
 
+// Best-effort delete of a subscriber from RevenueCat. Called from
+// the account-deletion path so RC has no stale record for the
+// deleted user. Uses DELETE /v1/subscribers/{app_user_id}, which
+// removes the subscriber and all their associated data.
+//
+// Best-effort: never throws, only logs. The caller
+// (deleteUserCompletely) must NOT block the local DB delete on
+// failure here. A short-lived race where this delete completes
+// after a re-registration with the same email is acceptable: RC
+// creates a fresh subscriber the moment the next purchase or
+// purchases.login(newUserId) call arrives.
+export async function deleteSubscriber(
+  appUserId: string,
+): Promise<{ ok: boolean; status: number | null }> {
+  if (!appUserId) return { ok: false, status: null };
+  const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!apiKey) {
+    warnMissingKeyOnce();
+    return { ok: false, status: null };
+  }
+  try {
+    const url = `${RC_BASE}/subscribers/${encodeURIComponent(appUserId)}`;
+    const resp = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+    });
+    cache.delete(appUserId);
+    if (resp.ok || resp.status === 404) {
+      console.log(`[revenuecat] delete subscriber ${appUserId} HTTP ${resp.status}`);
+      return { ok: true, status: resp.status };
+    }
+    const text = await resp.text().catch(() => "");
+    console.warn(`[revenuecat] delete subscriber ${appUserId} failed HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    return { ok: false, status: resp.status };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[revenuecat] delete subscriber ${appUserId} error:`, msg);
+    return { ok: false, status: null };
+  }
+}
+
 // Raw subscriber fetch for the delete-and-reinstall self-heal path.
 // Returns the parsed RC payload on a 2xx, null otherwise (404, 5xx,
 // no key, network error). Never throws — callers treat null as

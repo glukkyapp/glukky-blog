@@ -337,6 +337,80 @@ export async function cancelOneSignalNotification(
   }
 }
 
+// Best-effort delete of a user from OneSignal. Called from the
+// account-deletion path so push notifications stop firing for a
+// deleted user. Tries the User Model API by external_id first
+// (preferred: it removes the OneSignal user and all their
+// subscriptions). Falls back to the legacy Players API by
+// player_id (subscription id) if no external_id is known.
+//
+// Both calls are best-effort: never throws, only logs. The caller
+// (deleteUserCompletely) must NOT block the local DB delete on
+// failure here. A short-lived race where the external delete
+// completes after a re-registration with the same email is
+// acceptable: registration creates a fresh subscriber and
+// external_id from scratch.
+export async function deleteOneSignalUser(opts: {
+  externalId?: string | null;
+  playerId?: string | null;
+}): Promise<{ ok: boolean; via: string; status: number | null }> {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
+    log("OneSignal credentials not configured, skipping delete", "onesignal");
+    return { ok: false, via: "no_creds", status: null };
+  }
+  const externalId = (opts.externalId ?? "").trim();
+  const playerId = (opts.playerId ?? "").trim();
+  if (!externalId && !playerId) {
+    return { ok: false, via: "no_ids", status: null };
+  }
+
+  if (externalId) {
+    try {
+      const url = `https://api.onesignal.com/apps/${encodeURIComponent(ONESIGNAL_APP_ID)}/users/by/external_id/${encodeURIComponent(externalId)}`;
+      const resp = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+          Accept: "application/json",
+        },
+      });
+      if (resp.ok || resp.status === 404) {
+        log(`OneSignal delete user external_id=${externalId} HTTP ${resp.status}`, "onesignal");
+        return { ok: true, via: "external_id", status: resp.status };
+      }
+      const text = await resp.text().catch(() => "");
+      log(`OneSignal delete user external_id=${externalId} failed HTTP ${resp.status}: ${text.slice(0, 200)}`, "onesignal");
+    } catch (e: any) {
+      log(`OneSignal delete user external_id=${externalId} error: ${e?.message ?? e}`, "onesignal");
+    }
+  }
+
+  if (playerId) {
+    try {
+      const url = `https://api.onesignal.com/players/${encodeURIComponent(playerId)}?app_id=${encodeURIComponent(ONESIGNAL_APP_ID)}`;
+      const resp = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+          Accept: "application/json",
+        },
+      });
+      if (resp.ok || resp.status === 404) {
+        log(`OneSignal delete player_id=${playerId} HTTP ${resp.status}`, "onesignal");
+        return { ok: true, via: "player_id", status: resp.status };
+      }
+      const text = await resp.text().catch(() => "");
+      log(`OneSignal delete player_id=${playerId} failed HTTP ${resp.status}: ${text.slice(0, 200)}`, "onesignal");
+      return { ok: false, via: "player_id", status: resp.status };
+    } catch (e: any) {
+      log(`OneSignal delete player_id=${playerId} error: ${e?.message ?? e}`, "onesignal");
+      return { ok: false, via: "player_id", status: null };
+    }
+  }
+
+  return { ok: false, via: "external_id", status: null };
+}
+
 // Schema invariant: user_profiles.user_id is UNIQUE and
 // user_profiles.onesignal_player_id is a single varchar — there is
 // no way for one user to hold more than one active player_id.

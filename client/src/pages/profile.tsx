@@ -732,6 +732,27 @@ export default function ProfilePage() {
                       credentials: "include",
                     });
                     if (!res.ok) throw new Error("Failed");
+                    // Atomic client-side cleanup: drop every cached query
+                    // result, then wipe every glukky_* key from local and
+                    // session storage, BEFORE the redirect. This stops a
+                    // briefly-rendered authenticated UI on the new page
+                    // and prevents stale flags (session hint, OneSignal
+                    // player id, language pref, info-card-seen markers)
+                    // from leaking across to the next account that signs
+                    // in on this same browser/device.
+                    try { queryClient.clear(); } catch {}
+                    const wipeStorage = (store: Storage) => {
+                      try {
+                        const keys: string[] = [];
+                        for (let i = 0; i < store.length; i++) {
+                          const k = store.key(i);
+                          if (k && k.startsWith("glukky_")) keys.push(k);
+                        }
+                        for (const k of keys) store.removeItem(k);
+                      } catch {}
+                    };
+                    wipeStorage(localStorage);
+                    wipeStorage(sessionStorage);
                     toast({ title: t("profile.delete_account.toast_success") });
                     setTimeout(() => {
                       window.location.assign("/");

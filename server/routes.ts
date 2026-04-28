@@ -100,6 +100,13 @@ export async function registerRoutes(
     res.json(BUILD_INFO);
   });
 
+  // Admin-only wipe endpoint. ALL account-deletion paths (this admin
+  // wipe AND the user-facing /api/auth/delete-account below) MUST go
+  // through storage.deleteUserCompletely(). That function is the single
+  // source of truth for cleanup, including external-service teardown
+  // (OneSignal player + RevenueCat subscriber) and atomic session
+  // invalidation. Do not add raw delete logic here or push notifications
+  // and RC records will silently survive.
   app.post("/api/admin/wipe-user", async (req, res) => {
     try {
       const adminSecret = process.env.ADMIN_WIPE_SECRET;

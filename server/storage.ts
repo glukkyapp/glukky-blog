@@ -20,6 +20,8 @@ import {
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
 import { normalizeFoodNameForMatch, foodNamesMatch } from "./snap-parse";
+import { deleteOneSignalUser } from "./onesignal";
+import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -482,6 +484,72 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserCompletely(userId: string): Promise<Record<string, number>> {
+    // Step 1: capture external service IDs BEFORE the delete transaction
+    // runs. The transaction below deletes user_profiles, so by the time
+    // we try to call OneSignal/RevenueCat the rows would already be gone.
+    // If the profile lookup fails, we still proceed with the local delete:
+    // external cleanup is best-effort and must not block deletion.
+    let onesignalPlayerId: string | null = null;
+    let onesignalExternalId: string | null = null;
+    try {
+      const [p] = await db
+        .select({
+          playerId: userProfiles.onesignalPlayerId,
+          externalId: userProfiles.onesignalExternalId,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId));
+      if (p) {
+        onesignalPlayerId = p.playerId ?? null;
+        onesignalExternalId = p.externalId ?? null;
+      }
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] external-id lookup failed for ${userId}: ${e?.message ?? e}`);
+    }
+
+    // Step 2: best-effort external cleanup (OneSignal + RevenueCat). Both
+    // calls swallow their own errors and never throw. The RC app_user_id
+    // is the Replit user id (purchases.login(userId, ...) is called at
+    // auth resolve), so we pass userId directly.
+    //
+    // Ordering note: external cleanup races any immediate re-registration
+    // with the same email. That is acceptable - external services are
+    // best-effort and registration/login creates fresh subscriber and
+    // OneSignal records from scratch, so a re-register would not inherit
+    // any deleted state.
+    let onesignalResult: { ok: boolean; via: string; status: number | null } = {
+      ok: false,
+      via: "skipped",
+      status: null,
+    };
+    if (onesignalPlayerId || onesignalExternalId) {
+      try {
+        onesignalResult = await deleteOneSignalUser({
+          externalId: onesignalExternalId,
+          playerId: onesignalPlayerId,
+        });
+      } catch (e: any) {
+        console.warn(`[deleteUserCompletely] OneSignal delete threw for ${userId}: ${e?.message ?? e}`);
+      }
+    }
+    let rcResult: { ok: boolean; status: number | null } = { ok: false, status: null };
+    try {
+      rcResult = await deleteRevenueCatSubscriber(userId);
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] RevenueCat delete threw for ${userId}: ${e?.message ?? e}`);
+    }
+    console.log(
+      `[deleteUserCompletely] external cleanup user=${userId} ` +
+        `onesignal={ok=${onesignalResult.ok},via=${onesignalResult.via},status=${onesignalResult.status}} ` +
+        `revenuecat={ok=${rcResult.ok},status=${rcResult.status}}`,
+    );
+
+    // Step 3: atomic local delete. Every user-scoped table is wiped
+    // inside a single transaction so the row in `users` only disappears
+    // once everything tied to it (including the live session row) is
+    // gone. Sessions are deleted INSIDE this transaction so that, the
+    // moment the transaction commits, any cached session cookie on
+    // another browser/device is dead server-side.
     return await db.transaction(async (tx) => {
       const counts: Record<string, number> = {};
 
@@ -500,6 +568,14 @@ export class DatabaseStorage implements IStorage {
       const cycles = await tx.delete(cycleHistory).where(eq(cycleHistory.userId, userId)).returning({ id: cycleHistory.id });
       counts.cycle_history = cycles.length;
 
+      // Cancel any pre-scheduled push notifications. Without this,
+      // ghost notifications keep firing after the user is gone.
+      const scheduled = await tx
+        .delete(scheduledNotifications)
+        .where(eq(scheduledNotifications.userId, userId))
+        .returning({ id: scheduledNotifications.id });
+      counts.scheduled_notifications = scheduled.length;
+
       const planRows = await tx.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
       const planIds = planRows.map(p => p.id);
       if (planIds.length > 0) {
@@ -515,6 +591,13 @@ export class DatabaseStorage implements IStorage {
       const profiles = await tx.delete(userProfiles).where(eq(userProfiles.userId, userId)).returning({ id: userProfiles.id });
       counts.user_profiles = profiles.length;
 
+      // Atomic session invalidation. connect-pg-simple stores the
+      // session payload as JSON in `sess`; the userId is embedded
+      // there as `{"userId":"<uuid>"}`. The LIKE over the JSON text
+      // catches every live session row for this user, and runs in
+      // the same transaction as the `users` delete, so a token
+      // cached on another device cannot make authenticated requests
+      // the instant the commit lands.
       const sess = await tx.delete(sessions).where(sql`${sessions.sess}::text LIKE ${'%' + userId + '%'}`).returning({ sid: sessions.sid });
       counts.sessions = sess.length;
 
@@ -524,6 +607,7 @@ export class DatabaseStorage implements IStorage {
       return counts;
     });
   }
+
 
   async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
     const normalised = foodName.trim().toLowerCase();
