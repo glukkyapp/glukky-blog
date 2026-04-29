@@ -3353,6 +3353,15 @@ No explanation, just JSON.`,
                   verifiedPremium = reverify.hasPremium;
                   source = reverify.hasPremium ? "self_heal_transfer" : reverify.source;
                   transient = reverify.transient;
+                  // After a successful self-heal transfer the new
+                  // RC subscriber for this userId carries the
+                  // bridge customerId we just verified above. Pick
+                  // it up so the trusted-customerId persist below
+                  // catches it in the same request, instead of
+                  // waiting for the next refresh.
+                  if (reverify.originalAppUserId) {
+                    trustedCustomerId = reverify.originalAppUserId;
+                  }
                   selfHealOutcome = `transfer_ok verifiedAfter=${verifiedPremium}`;
                   console.log(
                     `[premium/refresh] self-heal ${selfHealOutcome} user=${userId} from=${bridgeCustomerId}`,
