@@ -2939,24 +2939,19 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       if (!profile) return res.status(404).json({ message: "Profile not found" });
       const adviceQuotaKey = resolveSnapQuotaKey(userId, profile);
 
-      // Advice shares the snap counter — same key, same daily cap.
-      // We DO NOT increment here (advice never increments; only label
-      // does), but we DO enforce the cap so a client that calls
-      // /api/snap/advice directly without first hitting label cannot
-      // bypass the limit and run up Anthropic spend.
-      if (
-        !UNLIMITED_SNAP_USER_IDS.has(userId) &&
-        getDailyCount(snapLabelCount, adviceQuotaKey.key) >= SNAP_LABEL_DAILY_LIMIT
-      ) {
-        console.log(
-          `[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${SNAP_LABEL_DAILY_LIMIT}/${SNAP_LABEL_DAILY_LIMIT} -> 429 daily cap`,
-        );
-        return res.status(429).json({
-          message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`,
-          adviceLimit: SNAP_LABEL_DAILY_LIMIT,
-          adviceUsedToday: SNAP_LABEL_DAILY_LIMIT,
-        });
-      }
+      // No daily cap is enforced here. Advice is downstream of a
+      // successful /api/snap/label that already enforced the cap and
+      // incremented snapLabelCount. Re-checking >= cap here would 429
+      // the advice for the user's last admitted snap of the day (e.g.
+      // snap #2 of 2), since label has already incremented the
+      // counter to the cap by the time advice runs. We deliberately
+      // accept that a determined authenticated client could call
+      // /api/snap/advice directly without going through label — the
+      // bound on that abuse is the per-call Claude spend and the
+      // foodName/combo cache lookup, not a per-day counter. If direct
+      // advice spam ever becomes a real problem, the right fix is a
+      // signed one-shot token from label → advice, not a counter
+      // (which can never tell the two flows apart).
 
       const gateCheck = canUseFeature(profile, "food_snap_advice");
       if (!gateCheck.allowed) {
