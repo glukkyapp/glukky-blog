@@ -27,6 +27,7 @@ export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
   createProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
+  setRcCustomerId(userId: string, rcCustomerId: string): Promise<void>;
 
   getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined>;
   getWeeklyPlanById(planId: number): Promise<WeeklyPlan | undefined>;
@@ -133,6 +134,18 @@ export class DatabaseStorage implements IStorage {
   async updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
     const [updated] = await db.update(userProfiles).set(data).where(eq(userProfiles.userId, userId)).returning();
     return updated;
+  }
+
+  // Idempotent setter for the bridge-reported RevenueCat customerId.
+  // Reads first and skips the write when the value is unchanged so we
+  // don't churn user_profiles on every login refresh. Trims and rejects
+  // empty strings — caller is expected to pass a non-empty value.
+  async setRcCustomerId(userId: string, rcCustomerId: string): Promise<void> {
+    const trimmed = rcCustomerId.trim();
+    if (!trimmed) return;
+    const existing = await this.getProfile(userId);
+    if (!existing || existing.rcCustomerId === trimmed) return;
+    await db.update(userProfiles).set({ rcCustomerId: trimmed }).where(eq(userProfiles.userId, userId));
   }
 
   async getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined> {

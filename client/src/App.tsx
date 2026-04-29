@@ -249,6 +249,13 @@ function AuthenticatedApp() {
 
   const pendingActionRef = useRef<(() => void) | null>(null);
 
+  // Latest RevenueCat customerId reported by the native bridge after
+  // login/restore. We attach this to every refreshPremiumThenRefetch
+  // call so the server can persist it on the user profile and key the
+  // shared daily snap quota by App Store subscription instead of by
+  // Glukky userId. Lives in a ref because it's not used for rendering.
+  const bridgeCustomerIdRef = useRef<string | null>(null);
+
   // Branded overlay shown immediately after the paywall returns purchased/restored, until the server-side verify resolves.
   const [unlockingOverlay, setUnlockingOverlay] = useState(false);
   // Background re-verify poller for the "Apple sheet says success, RC propagation is slow" case.
@@ -273,7 +280,12 @@ function AuthenticatedApp() {
       try {
         const body: Record<string, unknown> = {};
         if (force) body.force = true;
-        if (opts.customerId) body.customerId = opts.customerId;
+        // Default the customerId from the most recent bridge login result
+        // when the caller didn't explicitly pass one. This makes EVERY
+        // refresh (boot, foreground, gate check) participate in the
+        // shared-quota mechanism, not just the post-purchase path.
+        const effectiveCustomerId = opts.customerId ?? bridgeCustomerIdRef.current ?? undefined;
+        if (effectiveCustomerId) body.customerId = effectiveCustomerId;
         const resp = await fetch("/api/refresh-premium-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -472,10 +484,21 @@ function AuthenticatedApp() {
 
     if (previousId && previousId !== currentId) {
       logoutFromRevenueCat().catch((e) => console.warn("[rc] logout failed:", e));
+      // Drop the previous user's customerId immediately so the brief
+      // gap before the new login completes can't accidentally attach
+      // the old subscription's id to the new account's refresh.
+      bridgeCustomerIdRef.current = null;
     }
 
     if (currentId) {
       loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
+        // Capture the bridge-reported customerId so every subsequent
+        // refreshPremiumThenRefetch attaches it. Stable across the
+        // session — RC re-aliases anon → userId after login but the
+        // customerId returned here is already the post-login one.
+        if (result.customerId) {
+          bridgeCustomerIdRef.current = result.customerId;
+        }
         if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
           console.warn(
             `[rc] login result: status=${result.status}` +
@@ -483,6 +506,9 @@ function AuthenticatedApp() {
           );
         }
       });
+    } else {
+      // Full logout — clear the ref so the next user starts fresh.
+      bridgeCustomerIdRef.current = null;
     }
 
     lastRcUserIdRef.current = currentId;

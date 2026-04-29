@@ -1974,31 +1974,58 @@ export async function registerRoutes(
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
 
+  // One single daily snap cap per App Store subscription. The advice
+  // endpoint no longer keeps its own counter — advice is always
+  // downstream of a successful snap, so the snap counter is the single
+  // source of truth. The advice endpoint reads the snap counter to
+  // populate its existing adviceUsedToday/adviceLimit response fields
+  // for backward client compatibility.
   const SNAP_LABEL_DAILY_LIMIT = 2;
-  const SNAP_ADVICE_DAILY_LIMIT = 2;
   const snapLabelCount = new Map<string, { date: string; count: number }>();
-  const snapAdviceCount = new Map<string, { date: string; count: number }>();
   // Internal/test allowlist: these user IDs bypass the snap/label and snap/advice daily caps.
   const UNLIMITED_SNAP_USER_IDS = new Set<string>([
     "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
     "770c837e-10bc-4ec1-b891-0683cdc07a96", // cynthiayuyu@hotmail.com
   ]);
 
-  function getDailyCount(map: Map<string, { date: string; count: number }>, userId: string): number {
-    const today = new Date().toISOString().slice(0, 10);
-    const entry = map.get(userId);
+  // Daily window resets at midnight Hong Kong time so the cap aligns
+  // with the user's local "new day" rather than UTC. en-CA yields
+  // YYYY-MM-DD, which sorts correctly as a date string.
+  function todayHKT(): string {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
+  }
+
+  function getDailyCount(map: Map<string, { date: string; count: number }>, key: string): number {
+    const today = todayHKT();
+    const entry = map.get(key);
     if (!entry || entry.date !== today) return 0;
     return entry.count;
   }
 
-  function incrementDailyCount(map: Map<string, { date: string; count: number }>, userId: string): void {
-    const today = new Date().toISOString().slice(0, 10);
-    const entry = map.get(userId);
+  function incrementDailyCount(map: Map<string, { date: string; count: number }>, key: string): void {
+    const today = todayHKT();
+    const entry = map.get(key);
     if (!entry || entry.date !== today) {
-      map.set(userId, { date: today, count: 1 });
+      map.set(key, { date: today, count: 1 });
     } else {
       entry.count += 1;
     }
+  }
+
+  // Resolve the daily-quota key for snap requests. When the user has a
+  // RevenueCat customerId on file (set on /api/refresh-premium-status
+  // by the native bridge), every Glukky account on the same App Store
+  // subscription shares one quota — that closes the multi-account abuse
+  // vector where one paying device could spawn N free accounts. When
+  // no rcCustomerId is on file (web, dev, bridge offline) we fall back
+  // to the Glukky userId, preserving today's per-account behavior.
+  function resolveSnapQuotaKey(
+    userId: string,
+    profile: { rcCustomerId?: string | null } | null | undefined,
+  ): { key: string; source: "rc" | "user" } {
+    const rcId = (profile?.rcCustomerId || "").trim();
+    if (rcId) return { key: rcId, source: "rc" };
+    return { key: userId, source: "user" };
   }
 
   const isDevUser = async (req: any, res: any, next: any) => {
@@ -2589,7 +2616,9 @@ export async function registerRoutes(
         }
       }
 
-      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapLabelCount, userId) >= SNAP_LABEL_DAILY_LIMIT) {
+      const labelQuotaKey = resolveSnapQuotaKey(userId, snapProfile);
+      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapLabelCount, labelQuotaKey.key) >= SNAP_LABEL_DAILY_LIMIT) {
+        console.log(`[snap/label] user=${userId} quotaKey=${labelQuotaKey.key} source=${labelQuotaKey.source} usedToday=${SNAP_LABEL_DAILY_LIMIT}/${SNAP_LABEL_DAILY_LIMIT} -> 429 daily cap`);
         return res.status(429).json({ message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`, snapsLimit: SNAP_LABEL_DAILY_LIMIT, snapsUsedToday: SNAP_LABEL_DAILY_LIMIT });
       }
 
@@ -2730,7 +2759,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         return res.status(422).json({ code: "NO_FOOD", message: "No food detected" });
       }
 
-      incrementDailyCount(snapLabelCount, userId);
+      incrementDailyCount(snapLabelCount, labelQuotaKey.key);
+      console.log(`[snap/label] user=${userId} quotaKey=${labelQuotaKey.key} source=${labelQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, labelQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
       {
         const snapProfile = await storage.getProfile(userId);
@@ -2766,7 +2796,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           comboSource: "database",
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
           toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
-          snapsUsedToday: getDailyCount(snapLabelCount, userId),
+          snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
           snapsLimit: SNAP_LABEL_DAILY_LIMIT,
         });
       }
@@ -2819,7 +2849,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           portionIdMap: Object.keys(portionIdMap).length > 1 ? portionIdMap : undefined,
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
           toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
-          snapsUsedToday: getDailyCount(snapLabelCount, userId),
+          snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
           snapsLimit: SNAP_LABEL_DAILY_LIMIT,
         });
       }
@@ -2861,7 +2891,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         sauces: claudeSauces,
         extras: claudeExtras,
         comboSource: "claude",
-        snapsUsedToday: getDailyCount(snapLabelCount, userId),
+        snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
         snapsLimit: SNAP_LABEL_DAILY_LIMIT,
       });
     } catch (error: any) {
@@ -2902,15 +2932,18 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      if (!UNLIMITED_SNAP_USER_IDS.has(userId) && getDailyCount(snapAdviceCount, userId) >= SNAP_ADVICE_DAILY_LIMIT) {
-        return res.status(429).json({ message: `Daily limit of ${SNAP_ADVICE_DAILY_LIMIT} advice requests reached. Try again tomorrow.`, adviceLimit: SNAP_ADVICE_DAILY_LIMIT, adviceUsedToday: SNAP_ADVICE_DAILY_LIMIT });
-      }
+      // Advice no longer has its own daily counter — it's downstream of
+      // a successful /api/snap/label which already enforced the cap. We
+      // still surface adviceUsedToday/adviceLimit in the response so the
+      // existing client UI keeps working unchanged, populated from the
+      // shared snap counter.
 
       const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const adviceQuotaKey = resolveSnapQuotaKey(userId, profile);
 
       const gateCheck = canUseFeature(profile, "food_snap_advice");
       if (!gateCheck.allowed) {
@@ -2961,12 +2994,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
-          incrementDailyCount(snapAdviceCount, userId);
           return res.json({
             advice: cachedAdvice,
             focusPanelData,
-            adviceUsedToday: getDailyCount(snapAdviceCount, userId),
-            adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+            adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+            adviceLimit: SNAP_LABEL_DAILY_LIMIT,
             adviceSource: "cache",
           });
         }
@@ -2975,12 +3007,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const existingCachedAdvice = !label ? await storage.getCachedAdvice(activeComboKey, lang) : null;
       if (existingCachedAdvice) {
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId);
-        incrementDailyCount(snapAdviceCount, userId);
         return res.json({
           advice: existingCachedAdvice,
           focusPanelData,
-          adviceUsedToday: getDailyCount(snapAdviceCount, userId),
-          adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+          adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+          adviceLimit: SNAP_LABEL_DAILY_LIMIT,
           adviceSource: "cache",
         });
       }
@@ -3131,13 +3162,13 @@ No explanation, just JSON.`,
 
       const userAdvice = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
 
-      incrementDailyCount(snapAdviceCount, userId);
+      console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
       res.json({
         advice: userAdvice,
         focusPanelData,
-        adviceUsedToday: getDailyCount(snapAdviceCount, userId),
-        adviceLimit: SNAP_ADVICE_DAILY_LIMIT,
+        adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+        adviceLimit: SNAP_LABEL_DAILY_LIMIT,
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
       });
     } catch (error: any) {
@@ -3215,6 +3246,23 @@ No explanation, just JSON.`,
       const userId = req.user.claims.sub;
       const existing = await storage.getProfile(userId);
       if (!existing) return res.status(404).json({ message: "Profile not found" });
+
+      // Persist the bridge-reported RevenueCat customerId so the daily
+      // snap quota can be enforced per Apple subscription instead of
+      // per Glukky account. The native bridge attaches this on every
+      // login/foreground refresh; web/dev callers omit it. Best-effort
+      // and idempotent — never fail the refresh because of this.
+      const bridgeReportedCustomerId =
+        typeof req.body?.customerId === "string" ? req.body.customerId.trim() : "";
+      if (bridgeReportedCustomerId) {
+        try {
+          await storage.setRcCustomerId(userId, bridgeReportedCustomerId);
+        } catch (e: any) {
+          console.warn(
+            `[premium/refresh] setRcCustomerId failed user=${userId}: ${e?.message ?? e}`,
+          );
+        }
+      }
 
       // Comp users (e.g. App Store reviewer, internal accounts) are always premium.
       const isComp = await isCompUserId(userId);

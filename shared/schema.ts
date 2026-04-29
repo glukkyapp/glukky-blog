@@ -73,6 +73,13 @@ export const userProfiles = pgTable("user_profiles", {
   hasTriedFirstFoodSnap: boolean("has_tried_first_food_snap").notNull().default(false),
   hasReachedPaywall: boolean("has_reached_paywall").notNull().default(false),
   isPremium: boolean("is_premium").notNull().default(false),
+  // RevenueCat customer id for the App Store subscription this Glukky
+  // account is currently signed in to. One Apple subscription → one
+  // rcCustomerId, shared across every Glukky account that signs in on
+  // the same device, so the daily snap quota can be enforced per Apple
+  // sub instead of per Glukky user. Nullable: web/dev users with no
+  // bridge stay null and fall through to the userId-keyed quota.
+  rcCustomerId: text("rc_customer_id"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
