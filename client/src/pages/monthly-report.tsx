@@ -11,6 +11,7 @@ import {
   Sparkles, Activity, CircleMinus, Zap,
 } from "lucide-react";
 import { hapticTap, hapticPattern } from "@/lib/haptics";
+import { track } from "@/lib/posthog";
 
 interface DietDetail {
   struggle: string;
@@ -356,6 +357,14 @@ export default function MonthlyReportPage() {
     if (data && data.weeksAnalyzed >= 4 && !patternFiredRef.current) {
       patternFiredRef.current = true;
       hapticPattern("..oO-Oo..", 80);
+    }
+  }, [data]);
+
+  const monthlyViewedRef = useRef(false);
+  useEffect(() => {
+    if (data && !monthlyViewedRef.current) {
+      monthlyViewedRef.current = true;
+      track("monthly_report_viewed", { weeksAnalyzed: data.weeksAnalyzed });
     }
   }, [data]);
 

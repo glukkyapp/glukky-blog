@@ -28,6 +28,7 @@ import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
+import { identifyUser, resetUser, track } from "@/lib/posthog";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
 declare global {
@@ -441,12 +442,14 @@ function AuthenticatedApp() {
   // The BN bridge owns the StoreKit transaction; the purchased/restored callback is a hint — server verify is proof.
   const showPaywall = useCallback((onSuccess?: () => void) => {
     pendingActionRef.current = onSuccess || null;
+    track("paywall_shown");
     presentPaywall()
       .then(async (result) => {
         if (result.status === "BRIDGE_MISSING") {
           console.warn(
             "[paywall] BN bridge missing — web preview cannot present the hosted paywall.",
           );
+          track("paywall_dismissed", { reason: "bridge_missing" });
           pendingActionRef.current = null;
           return;
         }
@@ -454,10 +457,14 @@ function AuthenticatedApp() {
           result.status === "SUCCESS" &&
           (result.message === "purchased" || result.message === "restored")
         ) {
+          track("paywall_purchase_attempt", { outcome: result.message });
           // Bridge confirmed purchase/restore — keep polling in the
           // background past the fast burst so a slow RC propagation
           // still unlocks the user without a force-quit.
           const verified = await verifyWithOverlay({ backgroundPollOnFail: true });
+          track(verified ? "paywall_purchase_verified" : "paywall_purchase_unverified", {
+            outcome: result.message,
+          });
           if (verified && pendingActionRef.current) {
             const action = pendingActionRef.current;
             pendingActionRef.current = null;
@@ -466,11 +473,13 @@ function AuthenticatedApp() {
             pendingActionRef.current = null;
           }
         } else {
+          track("paywall_dismissed", { status: result.status, message: result.message });
           pendingActionRef.current = null;
         }
       })
       .catch((e) => {
         console.warn("[paywall] present error:", e);
+        track("paywall_error", { message: e instanceof Error ? e.message : String(e) });
         pendingActionRef.current = null;
       });
   }, [verifyWithOverlay]);
@@ -483,6 +492,7 @@ function AuthenticatedApp() {
     const previousId = lastRcUserIdRef.current;
 
     if (previousId && previousId !== currentId) {
+      resetUser();
       logoutFromRevenueCat().catch((e) => console.warn("[rc] logout failed:", e));
       // Drop the previous user's customerId immediately so the brief
       // gap before the new login completes can't accidentally attach
@@ -491,6 +501,10 @@ function AuthenticatedApp() {
     }
 
     if (currentId) {
+      identifyUser(currentId, {
+        email: user?.email ?? undefined,
+        is_premium: gateStatus?.isPremium ?? undefined,
+      });
       loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
         // Capture the bridge-reported customerId so every subsequent
         // refreshPremiumThenRefetch attaches it. Stable across the

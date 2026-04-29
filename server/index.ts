@@ -6,6 +6,7 @@ import { setupAuth } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { startNotificationScheduler } from "./notifications";
 import { cleanupDuplicatePlayerIds } from "./onesignal";
+import { captureException, shutdownPostHog } from "./posthog";
 
 const app = express();
 const httpServer = createServer(app);
@@ -87,11 +88,22 @@ app.use((req, res, next) => {
   registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
     console.error("Internal Server Error:", err);
+
+    try {
+      const userId = (req as any)?.user?.claims?.sub as string | undefined;
+      captureException(err, userId, {
+        path: req.path,
+        method: req.method,
+        status,
+      });
+    } catch (e) {
+      console.warn("[posthog] error-mw captureException failed:", e);
+    }
 
     if (res.headersSent) {
       return next(err);
@@ -121,3 +133,12 @@ app.use((req, res, next) => {
     },
   );
 })();
+
+const gracefulShutdown = (signal: string) => {
+  console.log(`[server] received ${signal}, flushing analytics…`);
+  shutdownPostHog().finally(() => {
+    process.exit(0);
+  });
+};
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

@@ -71,3 +71,4 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
+POSTHOG_API_KEY = "phc_qkCN6RruzAijf52kVtWqf4aWBrf7Ar5NawNC5PBiTAyq"

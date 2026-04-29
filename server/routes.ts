@@ -36,6 +36,7 @@ import {
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
 import { BUILD_INFO } from "./build-info";
+import { trackServer, captureException } from "./posthog";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -1549,9 +1550,12 @@ export async function registerRoutes(
       const updated = await storage.updateWeeklyPlanDay(id, { dinnerLabel: label });
       if (!updated) return res.status(404).json({ message: "Plan day not found" });
 
+      trackServer(userId, "dinner_label_set_server", { planDayId: id, label });
+
       res.json(updated);
     } catch (error) {
       console.error("Error setting dinner label:", error);
+      captureException(error, req.user?.claims?.sub, { route: "/api/plan/dinner-label", method: "POST" });
       res.status(500).json({ message: "Failed to set dinner label" });
     }
   });
@@ -1673,9 +1677,19 @@ export async function registerRoutes(
         console.error("Daily achievement evaluation error:", achErr);
       }
 
+      trackServer(userId, "daily_log_recorded", {
+        date,
+        isBackfill: logIsBackfill,
+        coinsAwarded,
+        dinnerSuccess: finalLog.dinnerSuccess ?? null,
+        walkCompleted: finalLog.walkCompleted ?? null,
+        dietResponse: finalLog.dietResponse ?? null,
+      });
+
       res.json({ ...result, nextDayAdjustment, isBackfill: logIsBackfill, coinsAwarded });
     } catch (error) {
       console.error("Error creating log:", error);
+      captureException(error, req.user?.claims?.sub, { route: "/api/log", method: "POST" });
       res.status(500).json({ message: "Failed to create log" });
     }
   });
@@ -2795,6 +2809,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const sauceOptions = sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
         const toppingOptions = toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
 
+        trackServer(userId, "snap_label_succeeded_server", { source: "food_label", foodName, isFirstSnap });
+
         return res.json({
           name: foodName,
           canonicalName: foodLabel.internalId,
@@ -2846,6 +2862,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
         const first = resolvedCombos[0];
 
+        trackServer(userId, "snap_label_succeeded_server", { source: "combos", foodName, isFirstSnap });
+
         return res.json({
           name: foodName,
           canonicalName: combos[0].foodName,
@@ -2896,6 +2914,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const rawExtras = typeof labelsParsed.extras === "string" ? labelsParsed.extras.trim() || null : null;
       const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
+      trackServer(userId, "snap_label_succeeded_server", { source: "claude", foodName, isFirstSnap });
+
       res.json({
         name: foodName,
         portion: claudePortion,
@@ -2907,6 +2927,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       });
     } catch (error: any) {
       console.error("Snap label error:", error);
+      captureException(error, req.user?.claims?.sub, { route: "/api/snap/label", method: "POST" });
       res.status(500).json({ message: "Food identification failed. Please try again." });
     }
   });
@@ -3210,6 +3231,12 @@ No explanation, just JSON.`,
 
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
+      trackServer(userId, "snap_advice_succeeded_server", {
+        struggle,
+        adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
+        adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+      });
+
       res.json({
         advice: userAdvice,
         focusPanelData,
@@ -3219,6 +3246,7 @@ No explanation, just JSON.`,
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);
+      captureException(error, req.user?.claims?.sub, { route: "/api/snap/advice", method: "POST" });
       res.status(500).json({ message: "Diet advice generation failed. Please try again." });
     }
   });
@@ -3415,9 +3443,15 @@ No explanation, just JSON.`,
       }
 
       let profile = existing;
-      if (existing.isPremium !== verifiedPremium) {
+      const premiumChanged = existing.isPremium !== verifiedPremium;
+      if (premiumChanged) {
         const updated = await storage.updateProfile(userId, { isPremium: verifiedPremium });
         if (updated) profile = updated;
+        trackServer(userId, "premium_status_changed_server", {
+          from: existing.isPremium,
+          to: verifiedPremium,
+          source,
+        });
       }
 
       // Persist the SERVER-TRUSTED RC subscriber id (from the verify
@@ -3458,6 +3492,7 @@ No explanation, just JSON.`,
       });
     } catch (error: any) {
       console.error("Error refreshing premium status:", error);
+      captureException(error, req.user?.claims?.sub, { route: "/api/refresh-premium-status", method: "POST" });
       res.status(500).json({ message: "Failed to refresh premium status" });
     }
   };
@@ -3539,9 +3574,15 @@ No explanation, just JSON.`,
           (result.userId ? ` user=${result.userId}` : ""),
       );
 
+      trackServer(result.userId ?? null, "revenuecat_webhook_processed", {
+        type: result.type ?? event.type ?? null,
+        outcome: result.outcome,
+      });
+
       return res.status(200).json({ ok: true, ...result });
     } catch (error: any) {
       console.error("[revenuecat/webhook] error:", error?.message || error);
+      captureException(error, null, { route: "/api/revenuecat/webhook", method: "POST" });
       // Return 500 so RevenueCat retries the delivery. Transient DB / network
       // issues should not silently drop entitlement-changing events.
       return res.status(500).json({ ok: false, error: "internal_error" });

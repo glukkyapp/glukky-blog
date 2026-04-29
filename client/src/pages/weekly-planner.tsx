@@ -33,6 +33,7 @@ import calendarBg from "@assets/cyucyu_a_clean_calendar_page_with_an_upward_prog
 import calendarHeadingIcon from "@assets/938a212f-9f09-4432-b49a-cf6f61738040_removalai_preview_1776612699943.png";
 import { useTranslation } from "react-i18next";
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
+import { track, trackException } from "@/lib/posthog";
 import { AutoFocusPopup, useAutoFocusPopup } from "@/components/auto-focus-popup";
 import { EatOutCommitmentPrompt, useEatOutCommitmentPrompt } from "@/components/eat-out-commitment-prompt";
 import { hapticTap, hapticNotify, hapticPattern } from "@/lib/haptics";
@@ -579,11 +580,17 @@ export default function WeeklyPlanner() {
     },
     onSuccess: (data: any) => {
       if (data?.showPaywall) {
+        track("plan_create_blocked", { feature: data.feature });
         refetchGate();
         showPaywall();
         return;
       }
       const wasFirstPlan = wasFirstPlanRef.current;
+      track("plan_created", {
+        wasFirstPlan,
+        eatOutAutoAdded: !!data?.eatOutAutoAdded,
+        sugaryAutoAdded: !!data?.sugaryAutoAdded,
+      });
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
@@ -610,6 +617,8 @@ export default function WeeklyPlanner() {
     onError: (error: Error) => {
       hapticNotify("ERROR");
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      track("plan_create_failed", { message: error.message });
+      trackException(error, { phase: "plan_create" });
     },
   });
 

@@ -9,6 +9,7 @@ import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_i
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
+import { track, trackException } from "@/lib/posthog";
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -231,6 +232,7 @@ export default function Snap() {
     setPreviewUrl(URL.createObjectURL(file));
     setError(null);
     setStep("labeling");
+    track("snap_started", { language: i18n.language });
 
     try {
       const { base64, mimeType } = await compressImage(file);
@@ -247,6 +249,7 @@ export default function Snap() {
         hapticNotify("ERROR");
         setError(t("snap.error_limit_label", { limit }));
         setStep("upload");
+        track("snap_label_failed", { reason: "rate_limited", limit });
         return;
       }
 
@@ -262,6 +265,7 @@ export default function Snap() {
           setError((data as { message?: string }).message ?? t("snap.error_no_food"));
         }
         setStep("upload");
+        track("snap_label_failed", { reason: code || "unprocessable" });
         return;
       }
 
@@ -269,6 +273,7 @@ export default function Snap() {
         hapticNotify("ERROR");
         setError(t("snap.error_generic"));
         setStep("upload");
+        track("snap_label_failed", { reason: "http_error", status: res.status });
         return;
       }
 
@@ -276,6 +281,7 @@ export default function Snap() {
       if (rawData.showPaywall) {
         setStep("upload");
         refetchGate();
+        track("snap_label_blocked", { feature: rawData.feature });
         showPaywall();
         return;
       }
@@ -299,10 +305,16 @@ export default function Snap() {
         toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
       });
       setStep("review");
-    } catch {
+      track("snap_label_succeeded", {
+        comboSource: data.comboSource,
+        hasName: !!data.name,
+      });
+    } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));
       setStep("upload");
+      track("snap_label_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_label" });
     }
   }
 
@@ -435,6 +447,7 @@ export default function Snap() {
   async function callAdviceApi(sauceRes?: TokenResolution[], toppingRes?: TokenResolution[]) {
     setStep("advising");
     setAdvicePanel(0);
+    track("snap_advice_started", { foodName: form.name || null });
 
     const finalSauceResolutions = sauceRes || form.sauceResolutions;
     const finalToppingResolutions = toppingRes || form.toppingResolutions;
@@ -463,6 +476,7 @@ export default function Snap() {
         hapticNotify("ERROR");
         setError(t("snap.error_limit_advice", { limit }));
         setStep("review");
+        track("snap_advice_failed", { reason: "rate_limited", limit });
         return;
       }
 
@@ -470,6 +484,7 @@ export default function Snap() {
         hapticNotify("ERROR");
         setError(t("snap.error_generic"));
         setStep("review");
+        track("snap_advice_failed", { reason: "http_error", status: res.status });
         return;
       }
 
@@ -478,6 +493,7 @@ export default function Snap() {
       if (data.showPaywall) {
         setStep("review");
         refetchGate();
+        track("snap_advice_blocked", { feature: data.feature });
         showPaywall(() => {
           callAdviceApi(sauceRes, toppingRes);
         });
@@ -487,10 +503,13 @@ export default function Snap() {
       hapticNotify("SUCCESS");
       setAdviceResult(data as AdviceResult);
       setStep("advice");
-    } catch {
+      track("snap_advice_succeeded", { adviceSource: data.adviceSource });
+    } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));
       setStep("review");
+      track("snap_advice_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_advice" });
     }
   }
 

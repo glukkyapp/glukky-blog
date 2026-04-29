@@ -13,6 +13,7 @@ import i18n from "@/i18n";
 import { Bed, Moon, Clock, Sunset, Check, Eye, X } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
+import { track, trackException } from "@/lib/posthog";
 import {
   OnboardingCard,
   PillOption,
@@ -67,6 +68,10 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false);
   useGlobalLoading(submitting);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
+
+  useEffect(() => {
+    track("onboarding_step_viewed", { step });
+  }, [step]);
 
   const [userName, setUserName] = useState("");
   const [userGoal, setUserGoal] = useState("");
@@ -128,6 +133,15 @@ export default function Onboarding() {
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       hapticNotify("SUCCESS");
+      track("onboarding_completed", {
+        struggles: selectedStruggles,
+        sleepPattern,
+        eatingOutFrequency,
+        walkOption,
+        hasName: !!userName.trim(),
+        hasGoal: !!userGoal.trim(),
+        referralSource: referralSource || null,
+      });
       setLocation("/plan");
     } catch (error: unknown) {
       hapticNotify("ERROR");
@@ -136,6 +150,8 @@ export default function Onboarding() {
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
+      track("onboarding_submit_failed");
+      trackException(error, { phase: "onboarding_submit" });
     } finally {
       setSubmitting(false);
     }
