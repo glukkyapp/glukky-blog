@@ -40,13 +40,11 @@ export default function FloatingNavBar() {
     if (key === "profile") return false;
     if (isLocked) return true;
     if (!gate) return false;
-    if (
-      !gate.isPremium &&
-      gate.hasCreatedFirstWeeklyPlan &&
-      !gate.hasReachedPaywall &&
-      key !== "snap"
-    ) {
-      return true;
+    if (!gate.isPremium && !gate.hasReachedPaywall) {
+      if (!gate.hasCreatedFirstWeeklyPlan) {
+        return key !== "planner";
+      }
+      return key !== "snap";
     }
     const featureKey = NAV_FEATURE_MAP[key];
     if (!featureKey) return false;
