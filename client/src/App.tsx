@@ -502,9 +502,13 @@ function AuthenticatedApp() {
           // this session. Without this, the boot-time refresh that
           // fires on onboardingComplete can race ahead of bridge login
           // and the first session's snaps would be keyed by userId
-          // until the next foreground refresh. Fire-and-forget — the
-          // refresh handler treats this as best-effort.
-          void refreshPremiumThenRefetch(false, { customerId: result.customerId });
+          // until the next foreground refresh. force=true bypasses
+          // the 30s entitlement cache server-side so the verify
+          // actually re-fetches RC and surfaces the authoritative
+          // originalAppUserId for persistence — without it, an earlier
+          // cached `not_found` would short-circuit the persist.
+          // Fire-and-forget; treated as best-effort by the handler.
+          void refreshPremiumThenRefetch(true, { customerId: result.customerId });
         }
         if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
           console.warn(

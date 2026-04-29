@@ -1982,6 +1982,17 @@ export async function registerRoutes(
   // for backward client compatibility.
   const SNAP_LABEL_DAILY_LIMIT = 2;
   const snapLabelCount = new Map<string, { date: string; count: number }>();
+  // Backstop counter for /api/snap/advice. The label cap above
+  // already bounds normal-flow advice (advice runs after an admitted
+  // label, and label is capped at SNAP_LABEL_DAILY_LIMIT/day per
+  // shared quota key). This counter exists ONLY to bound the cost
+  // of direct /api/snap/advice spam that bypasses /label — it
+  // increments once per advice request that actually hit Claude
+  // (i.e. at least one locale was a cache miss). Cache-hit advice
+  // does NOT increment, so a normal user re-viewing previously
+  // generated advice is unaffected. Capped at the same daily limit
+  // as label, keyed by the same shared quota key.
+  const snapAdviceClaudeCount = new Map<string, { date: string; count: number }>();
   // Internal/test allowlist: these user IDs bypass the snap/label and snap/advice daily caps.
   const UNLIMITED_SNAP_USER_IDS = new Set<string>([
     "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
@@ -3063,9 +3074,36 @@ Always reply in this format:
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (🩸, ⚡, 📝).
 If there is a genuine concern, output all 4 lines.${includeTagLine ? tagInstruction : ""}`;
 
+      // Pre-check cache for all locales BEFORE any Claude call so we
+      // know whether this advice request would actually hit Claude.
+      // The advice-Claude backstop counter is only checked/incremented
+      // when there is at least one miss. This keeps cache-hit advice
+      // (e.g. re-viewing previous advice for the same combo) free of
+      // any cap impact while still bounding direct-call cost abuse.
+      const cachedAdvicePerLocale = await Promise.all(
+        allLocales.map(async (locale) => ({
+          locale,
+          existing: await storage.getCachedAdvice(activeComboKey, locale),
+        }))
+      );
+      const anyAdviceCacheMiss = cachedAdvicePerLocale.some(c => !c.existing);
+      if (anyAdviceCacheMiss && !UNLIMITED_SNAP_USER_IDS.has(userId)) {
+        const adviceClaudeUsed = getDailyCount(snapAdviceClaudeCount, adviceQuotaKey.key);
+        if (adviceClaudeUsed >= SNAP_LABEL_DAILY_LIMIT) {
+          console.log(`[snap/advice] Claude cap hit user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${adviceClaudeUsed}/${SNAP_LABEL_DAILY_LIMIT}`);
+          return res.status(429).json({
+            error: "Daily snap limit reached",
+            adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+            adviceLimit: SNAP_LABEL_DAILY_LIMIT,
+            snapsUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
+            snapsLimit: SNAP_LABEL_DAILY_LIMIT,
+          });
+        }
+        incrementDailyCount(snapAdviceClaudeCount, adviceQuotaKey.key);
+      }
+
       const adviceResults = await Promise.all(
-        allLocales.map(async (locale) => {
-          const existing = await storage.getCachedAdvice(activeComboKey, locale);
+        cachedAdvicePerLocale.map(async ({ locale, existing }) => {
           if (existing) return { locale, advice: existing, fromCache: true };
           const includeTagLine = needTags && locale === "en";
           const response = await anthropic.messages.create({
