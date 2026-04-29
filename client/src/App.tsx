@@ -498,6 +498,13 @@ function AuthenticatedApp() {
         // customerId returned here is already the post-login one.
         if (result.customerId) {
           bridgeCustomerIdRef.current = result.customerId;
+          // Force a refresh now to push the customerId to the server in
+          // this session. Without this, the boot-time refresh that
+          // fires on onboardingComplete can race ahead of bridge login
+          // and the first session's snaps would be keyed by userId
+          // until the next foreground refresh. Fire-and-forget — the
+          // refresh handler treats this as best-effort.
+          void refreshPremiumThenRefetch(false, { customerId: result.customerId });
         }
         if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
           console.warn(
