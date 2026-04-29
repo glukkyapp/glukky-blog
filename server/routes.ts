@@ -2932,18 +2932,31 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      // Advice no longer has its own daily counter — it's downstream of
-      // a successful /api/snap/label which already enforced the cap. We
-      // still surface adviceUsedToday/adviceLimit in the response so the
-      // existing client UI keeps working unchanged, populated from the
-      // shared snap counter.
-
       const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
       const adviceQuotaKey = resolveSnapQuotaKey(userId, profile);
+
+      // Advice shares the snap counter — same key, same daily cap.
+      // We DO NOT increment here (advice never increments; only label
+      // does), but we DO enforce the cap so a client that calls
+      // /api/snap/advice directly without first hitting label cannot
+      // bypass the limit and run up Anthropic spend.
+      if (
+        !UNLIMITED_SNAP_USER_IDS.has(userId) &&
+        getDailyCount(snapLabelCount, adviceQuotaKey.key) >= SNAP_LABEL_DAILY_LIMIT
+      ) {
+        console.log(
+          `[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${SNAP_LABEL_DAILY_LIMIT}/${SNAP_LABEL_DAILY_LIMIT} -> 429 daily cap`,
+        );
+        return res.status(429).json({
+          message: `Daily limit of ${SNAP_LABEL_DAILY_LIMIT} photo analyses reached. Try again tomorrow.`,
+          adviceLimit: SNAP_LABEL_DAILY_LIMIT,
+          adviceUsedToday: SNAP_LABEL_DAILY_LIMIT,
+        });
+      }
 
       const gateCheck = canUseFeature(profile, "food_snap_advice");
       if (!gateCheck.allowed) {
@@ -3247,23 +3260,6 @@ No explanation, just JSON.`,
       const existing = await storage.getProfile(userId);
       if (!existing) return res.status(404).json({ message: "Profile not found" });
 
-      // Persist the bridge-reported RevenueCat customerId so the daily
-      // snap quota can be enforced per Apple subscription instead of
-      // per Glukky account. The native bridge attaches this on every
-      // login/foreground refresh; web/dev callers omit it. Best-effort
-      // and idempotent — never fail the refresh because of this.
-      const bridgeReportedCustomerId =
-        typeof req.body?.customerId === "string" ? req.body.customerId.trim() : "";
-      if (bridgeReportedCustomerId) {
-        try {
-          await storage.setRcCustomerId(userId, bridgeReportedCustomerId);
-        } catch (e: any) {
-          console.warn(
-            `[premium/refresh] setRcCustomerId failed user=${userId}: ${e?.message ?? e}`,
-          );
-        }
-      }
-
       // Comp users (e.g. App Store reviewer, internal accounts) are always premium.
       const isComp = await isCompUserId(userId);
       let verifiedPremium: boolean;
@@ -3271,6 +3267,13 @@ No explanation, just JSON.`,
       let transient = false;
       let selfHealAttempted = false;
       let selfHealOutcome: string | undefined;
+      // Server-trusted RC subscriber id, surfaced from verifyEntitlement.
+      // We do NOT trust req.body.customerId for this — that path was
+      // spoofable: any authenticated client could rotate fake ids to
+      // reset their snap counter. By deriving it from the RC fetch we
+      // guarantee the customerId is the one RC actually has on file
+      // for this Replit userId.
+      let trustedCustomerId: string | null = null;
       if (isComp) {
         verifiedPremium = true;
         source = "comp";
@@ -3289,6 +3292,9 @@ No explanation, just JSON.`,
         verifiedPremium = result.hasPremium;
         source = result.source;
         transient = result.transient;
+        if (result.originalAppUserId) {
+          trustedCustomerId = result.originalAppUserId;
+        }
 
         // Delete-and-reinstall self-heal. When verify comes back
         // `not_found` for the new Replit user id but the device's BN
@@ -3372,8 +3378,31 @@ No explanation, just JSON.`,
         if (updated) profile = updated;
       }
 
+      // Persist the SERVER-TRUSTED RC subscriber id (from the verify
+      // response above) so the daily snap quota can be enforced per
+      // App Store subscription instead of per Glukky account. This
+      // closes the multi-account abuse vector (Task #522). We
+      // intentionally ignore req.body.customerId here — that value is
+      // unauthenticated client input and a malicious user could
+      // rotate fake ids to reset their counter. setRcCustomerId is
+      // idempotent and best-effort — never fail the refresh.
+      if (trustedCustomerId) {
+        try {
+          await storage.setRcCustomerId(userId, trustedCustomerId);
+          if (profile.rcCustomerId !== trustedCustomerId) {
+            const refreshed = await storage.getProfile(userId);
+            if (refreshed) profile = refreshed;
+          }
+        } catch (e: any) {
+          console.warn(
+            `[premium/refresh] setRcCustomerId failed user=${userId}: ${e?.message ?? e}`,
+          );
+        }
+      }
+
       console.log(
         `[premium/refresh] user=${userId} verified=${verifiedPremium} source=${source} stored=${profile.isPremium}` +
+          ` rcCustomerId=${profile.rcCustomerId ? "set" : "(none)"}` +
           (selfHealAttempted ? ` selfHeal=${selfHealOutcome ?? "?"}` : ""),
       );
 

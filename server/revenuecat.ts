@@ -12,7 +12,7 @@
 const RC_BASE = "https://api.revenuecat.com/v1";
 const CACHE_TTL_MS = 30_000;
 
-type CacheEntry = { hasPremium: boolean; expiresAt: number };
+type CacheEntry = { hasPremium: boolean; expiresAt: number; originalAppUserId?: string | null };
 const cache = new Map<string, CacheEntry>();
 
 let warnedMissingKey = false;
@@ -84,6 +84,13 @@ export interface VerifyResult {
   // on retry (5xx, 429, network/parse). False when the answer is
   // authoritative (200 from RC, 404 from RC, comp user, no key).
   transient: boolean;
+  // Authoritative RC subscriber id (the one RC first saw on this
+  // device, before any aliasing to userId). Surfaced so callers can
+  // persist a SERVER-TRUSTED customerId for shared-quota keying
+  // instead of trusting whatever the client sent in the request body.
+  // Populated on cache hits AND fresh fetches whenever RC has a
+  // subscriber for this user (200 OK). null on 404 / errors / no_key.
+  originalAppUserId?: string | null;
 }
 
 export async function verifyEntitlement(
@@ -100,7 +107,12 @@ export async function verifyEntitlement(
   if (!options?.bypassCache) {
     const cached = cache.get(appUserId);
     if (cached && cached.expiresAt > Date.now()) {
-      return { hasPremium: cached.hasPremium, source: "cache", transient: false };
+      return {
+        hasPremium: cached.hasPremium,
+        source: "cache",
+        transient: false,
+        originalAppUserId: cached.originalAppUserId ?? null,
+      };
     }
   } else {
     // Drop any stale entry up-front so the caller can't accidentally
@@ -127,8 +139,8 @@ export async function verifyEntitlement(
 
     if (resp.status === 404) {
       // Subscriber unknown to RC = definitely not premium. Authoritative.
-      cache.set(appUserId, { hasPremium: false, expiresAt: Date.now() + CACHE_TTL_MS });
-      return { hasPremium: false, source: "not_found", transient: false };
+      cache.set(appUserId, { hasPremium: false, expiresAt: Date.now() + CACHE_TTL_MS, originalAppUserId: null });
+      return { hasPremium: false, source: "not_found", transient: false, originalAppUserId: null };
     }
 
     if (resp.status === 429 || resp.status >= 500) {
@@ -171,8 +183,9 @@ export async function verifyEntitlement(
     } catch {
       // logging must never break verification
     }
-    cache.set(appUserId, { hasPremium, expiresAt: Date.now() + CACHE_TTL_MS });
-    return { hasPremium, source: "revenuecat", transient: false };
+    const originalAppUserId = payload?.subscriber?.original_app_user_id ?? null;
+    cache.set(appUserId, { hasPremium, expiresAt: Date.now() + CACHE_TTL_MS, originalAppUserId });
+    return { hasPremium, source: "revenuecat", transient: false, originalAppUserId };
   } catch (err: unknown) {
     // Network-level failure (fetch threw) — retryable.
     const msg = err instanceof Error ? err.message : String(err);
