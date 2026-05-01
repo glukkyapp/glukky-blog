@@ -259,6 +259,10 @@ export default function Snap() {
 
     try {
       const { base64, mimeType } = await compressImage(file);
+      // Stash the compressed payload so we can re-POST after a paywall
+      // unlock without making the user re-take the photo. Single-shot:
+      // resumeFoodSnapAfterUnlock clears it as soon as it consumes it.
+      pendingLabelImageRef.current = { base64, mimeType };
       const res = await timedFetch("/api/snap/label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -306,7 +310,9 @@ export default function Snap() {
         setStep("upload");
         refetchGate();
         track("snap_label_blocked", { feature: rawData.feature });
-        showPaywall();
+        showPaywall(() => {
+          resumeFoodSnapAfterUnlock();
+        });
         return;
       }
 
@@ -384,6 +390,11 @@ export default function Snap() {
     sauceResolutions: TokenResolution[];
     toppingResolutions: TokenResolution[];
   }>({ sauceResolutions: [], toppingResolutions: [] });
+
+  // Stashed image payload for the label-step paywall auto-resume.
+  // Populated just before the /api/snap/label POST in handleFileSelect.
+  // Cleared (single-shot) at the start of resumeFoodSnapAfterUnlock.
+  const pendingLabelImageRef = useRef<{ base64: string; mimeType: string } | null>(null);
 
   async function handleGetAdvice() {
     if (!form.name.trim()) return;
@@ -473,10 +484,27 @@ export default function Snap() {
     sauceRes?: TokenResolution[],
     toppingRes?: TokenResolution[],
     isRetryAfterUnlock = false,
+    // Optional snapshot of just-fetched values, used by the label-step
+    // paywall auto-resume (see resumeFoodSnapAfterUnlock). Existing
+    // callers omit this and continue to read from React state.
+    overrides?: {
+      name?: string;
+      canonicalName?: string | null;
+      portion?: string | null;
+      sauces?: string | null;
+      extras?: string | null;
+      portionId?: string | null;
+    },
   ) {
     setStep("advising");
     setAdvicePanel(0);
-    track("snap_advice_started", { foodName: form.name || null });
+    const reqName = overrides?.name ?? form.name;
+    const reqCanonical = overrides?.canonicalName ?? labelResult?.canonicalName ?? null;
+    const reqPortion = overrides?.portion ?? form.portion;
+    const reqSauces = overrides?.sauces ?? form.sauces;
+    const reqExtras = overrides?.extras ?? form.extras;
+    const reqPortionId = overrides?.portionId ?? form.portionId;
+    track("snap_advice_started", { foodName: reqName || null });
 
     const finalSauceResolutions = sauceRes || form.sauceResolutions;
     const finalToppingResolutions = toppingRes || form.toppingResolutions;
@@ -487,12 +515,12 @@ export default function Snap() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          name: form.name,
-          canonicalName: labelResult?.canonicalName || undefined,
-          portion: form.portion || null,
-          sauces: form.sauces || null,
-          extras: form.extras || null,
-          portionId: form.portionId || null,
+          name: reqName,
+          canonicalName: reqCanonical || undefined,
+          portion: reqPortion || null,
+          sauces: reqSauces || null,
+          extras: reqExtras || null,
+          portionId: reqPortionId || null,
           sauceResolutions: finalSauceResolutions.length > 0 ? finalSauceResolutions : undefined,
           toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
           locale: i18n.language,
@@ -537,7 +565,7 @@ export default function Snap() {
         refetchGate();
         track("snap_advice_blocked", { feature: data.feature });
         showPaywall(() => {
-          callAdviceApi(sauceRes, toppingRes, true);
+          callAdviceApi(sauceRes, toppingRes, true, overrides);
         });
         return;
       }
@@ -553,6 +581,114 @@ export default function Snap() {
       setStep("review");
       track("snap_advice_failed", { reason: "exception" });
       trackException(err, { phase: "snap_advice" });
+    }
+  }
+
+  // Auto-resume Foodsnap after the user subscribes via the label-step
+  // paywall. Re-POSTs /api/snap/label with the stashed image, populates
+  // labelResult + form, then calls callAdviceApi directly so the user
+  // lands on the advice screen without seeing the review step again
+  // (they already saw and confirmed it before the paywall fired).
+  // Loop guard: if the resumed label call still returns showPaywall,
+  // surface a generic error and do NOT re-open the paywall.
+  async function resumeFoodSnapAfterUnlock() {
+    const stashed = pendingLabelImageRef.current;
+    pendingLabelImageRef.current = null;
+    if (!stashed) {
+      track("snap_label_resume_failed", { reason: "no_stashed_image" });
+      return;
+    }
+
+    setError(null);
+    setStep("labeling");
+    track("snap_label_resume_started", { language: i18n.language });
+
+    try {
+      const res = await timedFetch("/api/snap/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          imageBase64: stashed.base64,
+          mimeType: stashed.mimeType,
+          language: i18n.language,
+        }),
+        timeoutMs: SNAP_TIMEOUT_MS,
+      });
+
+      if (!res.ok) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("upload");
+        track("snap_label_resume_failed", {
+          reason: "http_error",
+          status: res.status,
+        });
+        return;
+      }
+
+      const rawData = await res.json();
+
+      // Loop guard: server still gating us. Surface a friendly error
+      // instead of re-opening the paywall — that would loop.
+      if (rawData.showPaywall) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("upload");
+        refetchGate();
+        track("snap_label_resume_still_blocked", { feature: rawData.feature });
+        return;
+      }
+
+      hapticNotify("SUCCESS");
+      const data: LabelResult = rawData;
+      setLabelResult(data);
+      const sIds = data.sauceIds ?? [];
+      const tIds = data.toppingIds ?? [];
+      const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+      const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+      const sauceResolutions: TokenResolution[] = sauceParts.map((text, i) => ({
+        text,
+        resolvedId: sIds[i] ?? null,
+      }));
+      const toppingResolutions: TokenResolution[] = extraParts.map((text, i) => ({
+        text,
+        resolvedId: tIds[i] ?? null,
+      }));
+      setForm({
+        name: data.name ?? "",
+        portion: data.portion ?? "",
+        portionId: data.portionId ?? null,
+        sauces: data.sauces ?? "",
+        sauceIds: sIds,
+        sauceResolutions,
+        extras: data.extras ?? "",
+        toppingIds: tIds,
+        toppingResolutions,
+      });
+      track("snap_label_resumed_after_unlock", {
+        comboSource: data.comboSource,
+        hasName: !!data.name,
+      });
+      // Skip the review screen — the user already confirmed it before
+      // the paywall fired. Hand the just-fetched resolutions AND the
+      // just-fetched fields directly to callAdviceApi (overrides) since
+      // the setForm/setLabelResult above haven't flushed to the closure
+      // yet within this same event tick.
+      await callAdviceApi(sauceResolutions, toppingResolutions, false, {
+        name: data.name ?? "",
+        canonicalName: data.canonicalName ?? null,
+        portion: data.portion ?? null,
+        sauces: data.sauces ?? null,
+        extras: data.extras ?? null,
+        portionId: data.portionId ?? null,
+      });
+    } catch (err) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      track("snap_label_resume_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_label_resume" });
     }
   }
 
