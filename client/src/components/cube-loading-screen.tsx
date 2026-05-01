@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import i18n from "@/i18n";
-import cubeGif from "@assets/gif_new_1777628252274.gif";
+import cubeGif from "@assets/gif_new_v2_1777639983811.gif";
 
 const TIPS_EN = [
   "Blood sugar swings can affect your mood and energy throughout the day.",
