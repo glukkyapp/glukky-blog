@@ -547,6 +547,7 @@ function AuthenticatedApp() {
   // Centralised dismiss-routing for the soft paywall. Decides where
   // the user should land based on activation milestones:
   //   • premium                       → no-op
+  //   • hardLockedAfterAdviceDismiss  → /profile (lock-app re-presents)
   //   • !hasCreatedFirstWeeklyPlan    → /plan (so they finish onboarding)
   //   • !hasTriedFirstFoodSnap        → /snap (so they finish activation)
   //   • both done                     → POST hard-lock {optedOut:true}
@@ -556,8 +557,26 @@ function AuthenticatedApp() {
   //                                     lock-app effect can still surface
   //                                     the hard RC paywall, instead of
   //                                     stranding the user on /snap.
+  //
+  // We AWAIT a fresh refetchGate() at the top so milestone flips that
+  // happened while the RC sheet was on screen (e.g. the second
+  // snap-advice attempt that just set hasTriedFirstFoodSnap=true on
+  // the server) are visible here. The closed-over `gateStatus` is the
+  // graceful fallback if the refetch errors — we degrade to the last
+  // known state instead of throwing past the user.
   const handlePaywallDismiss = useCallback(async (originalOnSuccess?: () => void) => {
-    const g = gateStatus;
+    let g: GateStatus | undefined = gateStatus;
+    let gateStatusSource: "fresh" | "stale_fallback" = "stale_fallback";
+    try {
+      const refreshed = await refetchGate();
+      if (refreshed.data) {
+        g = refreshed.data;
+        gateStatusSource = "fresh";
+      }
+    } catch {
+      // Fall through with the closed-over gateStatus.
+    }
+
     if (g?.isPremium) return;
 
     // Hard lock B: user already opted out once. They cannot de-escalate
@@ -568,6 +587,8 @@ function AuthenticatedApp() {
     if (g?.hardLockedAfterAdviceDismiss) {
       track("paywall_dismiss_route", {
         destination: "/profile",
+        reason: "hard_lock",
+        gateStatusSource,
         hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
         hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
         hardLockedAfterAdviceDismiss: true,
@@ -581,6 +602,7 @@ function AuthenticatedApp() {
     if (!g?.hasCreatedFirstWeeklyPlan) {
       track("paywall_dismiss_route", {
         destination: PLANNER_ROUTE,
+        gateStatusSource,
         hasCreatedFirstWeeklyPlan: g?.hasCreatedFirstWeeklyPlan ?? false,
         hasTriedFirstFoodSnap: g?.hasTriedFirstFoodSnap ?? false,
         hardLockedAfterAdviceDismiss: g?.hardLockedAfterAdviceDismiss ?? false,
@@ -594,6 +616,7 @@ function AuthenticatedApp() {
     if (!g.hasTriedFirstFoodSnap) {
       track("paywall_dismiss_route", {
         destination: "/snap",
+        gateStatusSource,
         hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
         hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
         hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
@@ -606,6 +629,7 @@ function AuthenticatedApp() {
 
     track("paywall_dismiss_route", {
       destination: "exit_warning",
+      gateStatusSource,
       hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
       hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
       hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
@@ -618,16 +642,28 @@ function AuthenticatedApp() {
       await apiRequest("POST", "/api/profile/hard-lock", { optedOut: true });
       exitWarningOnSuccessRef.current = originalOnSuccess || null;
       setExitWarningOpen(true);
-      track("paywall_exit_warning_shown");
+      track("paywall_exit_warning_shown", {
+        hadStashedOnSuccess: !!originalOnSuccess,
+      });
     } catch (e) {
-      track("paywall_exit_warning_error", { message: String(e) });
+      // apiRequest throws Error(`${status}: ${text}`) — parse the
+      // leading status so the dashboard can distinguish 4xx (bad
+      // body) from 5xx (server crash) from network errors (NaN).
+      const message = e instanceof Error ? e.message : String(e);
+      const statusMatch = /^(\d{3}):/.exec(message);
+      const status = statusMatch ? Number(statusMatch[1]) : null;
+      track("paywall_exit_warning_post_failed", {
+        status,
+        message,
+        hadStashedOnSuccess: !!originalOnSuccess,
+      });
       // Spec'd fallback: clear pending resume and route to /profile so
       // the existing hard-paywall path takes over (avoids ambiguous
       // soft-A state with no popup surfaced).
       pendingActionRef.current = null;
       if (location !== "/profile") setLocation("/profile");
     }
-  }, [gateStatus, location, setLocation]);
+  }, [gateStatus, refetchGate, location, setLocation]);
 
   // The BN bridge owns the StoreKit transaction; the purchased/restored callback is a hint — server verify is proof.
   // Sets `paywallInFlightRef` for the duration of the RC sheet so the

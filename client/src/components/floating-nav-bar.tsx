@@ -62,17 +62,38 @@ export default function FloatingNavBar() {
     if (key === "profile") return false;
     if (isLocked) return true;
     if (!gate) return false;
+
+    // Premium → fall through to per-feature gating below.
+    if (gate.isPremium) {
+      const featureKey = NAV_FEATURE_MAP[key];
+      if (!featureKey) return false;
+      const feature = gate.features[featureKey];
+      if (!feature) return false;
+      return !feature.allowed && !!feature.showPaywall;
+    }
+
     // Hard lock B — both milestones done AND user opted out of the
     // snap-advice paywall via the exit-warning popup. Lock everything
     // except profile until they subscribe.
-    if (!gate.isPremium && gate.hardLockedAfterAdviceDismiss) return true;
-    // Soft lock A — non-premium and at least one activation milestone
-    // remaining. Keep planner + snap unlocked so they can complete the
-    // funnel; lock the rest. (When both milestones are done, fall
-    // through to per-feature gating below.)
-    if (!gate.isPremium && !(gate.hasCreatedFirstWeeklyPlan && gate.hasTriedFirstFoodSnap)) {
-      return key !== "planner" && key !== "snap";
+    if (gate.hardLockedAfterAdviceDismiss) return true;
+
+    // Soft lock A, funnel step 1 — no first plan yet. Only the
+    // planner tab is reachable so the user finishes their first plan
+    // before being handed off to the snap funnel.
+    if (!gate.hasCreatedFirstWeeklyPlan) {
+      return key !== "planner";
     }
+
+    // Soft lock A, funnel step 2 — first plan done, no first snap
+    // yet. Only the snap tab is reachable so the user takes their
+    // first snap and sees the conversion moment.
+    if (!gate.hasTriedFirstFoodSnap) {
+      return key !== "snap";
+    }
+
+    // Both activation milestones done, not premium, not hard-locked.
+    // Nav is fully unlocked — paywalls now fire from API actions
+    // (snap-advice on the second snap, etc.), not from nav taps.
     const featureKey = NAV_FEATURE_MAP[key];
     if (!featureKey) return false;
     const feature = gate.features[featureKey];
@@ -83,6 +104,11 @@ export default function FloatingNavBar() {
   const handleNavClick = (path: string, key: string) => {
     if (isNavLocked(key)) {
       hapticNotify("WARNING");
+      // No `onSuccess` callback is intentional — nav-tapped paywalls
+      // have no per-action resume to perform. After purchase the gate
+      // refresh unlocks the tab and the user retaps it normally. If
+      // you ever wire a callback here, also handle the exit-warning
+      // popup's Stay → re-present path so it doesn't drop the resume.
       showPaywall();
       return;
     }

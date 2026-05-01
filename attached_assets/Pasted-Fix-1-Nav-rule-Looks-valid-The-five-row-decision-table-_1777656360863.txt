@@ -1,0 +1,25 @@
+Fix 1 — Nav rule
+Looks valid. The five-row decision table is correctly implemented.
+
+One thing to double-check:
+
+The isLocked variable (line 3 of the new code) comes from somewhere above in the component. Confirm it maps to gate?.hardLockedAfterAdviceDismiss && !gate?.isPremium — because if isLocked still reads from the old hasReachedPaywall-based logic from before #558, the if (isLocked) return true line early in the function would re-introduce the old trap. The if (gate.hardLockedAfterAdviceDismiss) return true line below it correctly covers Hard Lock B, but only if isLocked doesn't shadow it with wrong data.
+
+Fix 2 — handlePaywallDismiss
+Looks valid. The four-way branch is clean and the gateStatusSource fallback chain is correct.
+
+Three specific things to verify:
+
+1. PLANNER_ROUTE constant is defined and matches the actual route
+The code references PLANNER_ROUTE in two places but never defines it in the snippet. Make sure the executor defines it somewhere visible:
+
+ts
+const PLANNER_ROUTE = "/weekly-planner"; // or "/plan" — match your router
+If it's undefined, TypeScript will catch it — but worth flagging explicitly.
+
+2. paywallInFlight must stay true while this entire function runs
+handlePaywallDismiss is await-ed inside showPaywall's .then(). The .finally() that sets paywallInFlight = false must come after the await handlePaywallDismiss(...) call, not before. The note says "No other call sites change" which implies .finally() position is unchanged — confirm this is still the case in the actual file. If .finally() was accidentally moved up during #558's edit, the lock-app effect could fire midway through the dismiss handler's await refetchGate().
+
+3. Hard Lock B branch clears pendingActionRef
+The hardLockedAfterAdviceDismiss branch correctly calls pendingActionRef.current = null and routes to /profile. Good. Just confirm the other three branches that call setLocation(...) all also clear pendingActionRef.current = null before navigating — they do in the snippet, but double-check nothing was missed during any editing.
+
