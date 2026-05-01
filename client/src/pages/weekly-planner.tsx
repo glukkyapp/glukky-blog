@@ -550,10 +550,12 @@ export default function WeeklyPlanner() {
     setNegotiationInitialized(true);
   }, [reflection, isStretchMode, isFirstWeek, negotiationInitialized]);
 
-  const wasFirstPlanRef = useRef(false);
+  const postPlanTargetRef = useRef<string>("/");
+  const postPlanWasFirstRef = useRef<boolean>(false);
+  const gateLoadedAtMutationStartRef = useRef<boolean>(false);
   const createPlanMutation = useMutation({
     mutationFn: async () => {
-      wasFirstPlanRef.current = gate?.hasCreatedFirstWeeklyPlan === false;
+      gateLoadedAtMutationStartRef.current = gate !== undefined && gate !== null;
       const effectiveWalkDays = isEmptyWeekStretch ? stretchDays : walkDays;
       const durationsPayload: Record<string, number> = {};
       for (const d of effectiveWalkDays) {
@@ -578,23 +580,29 @@ export default function WeeklyPlanner() {
       });
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       if (data?.showPaywall) {
         track("plan_create_blocked", { feature: data.feature });
         refetchGate();
         showPaywall();
         return;
       }
-      const wasFirstPlan = wasFirstPlanRef.current;
+      const wasFirstPlan = !!data?.wasFirstPlan;
+      const target = wasFirstPlan ? "/snap" : "/";
+      postPlanWasFirstRef.current = wasFirstPlan;
+      postPlanTargetRef.current = target;
       track("plan_created", {
         wasFirstPlan,
         eatOutAutoAdded: !!data?.eatOutAutoAdded,
         sugaryAutoAdded: !!data?.sugaryAutoAdded,
+        gateLoadedAtMutationStart: gateLoadedAtMutationStartRef.current,
+        navigationTarget: target,
       });
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/gate-status"] });
       if (data?.eatOutAutoAdded) {
         autoFocusSheet.openSheet({
           title: t("planner.auto_focus_eat_out_title"),
@@ -607,11 +615,14 @@ export default function WeeklyPlanner() {
           title: t(titleKey),
           body: <p className="text-sm text-muted-foreground">{t(bodyKey)}</p>,
         });
-      } else if (wasFirstPlan) {
-        refetchGate();
-        setLocation("/snap");
       } else {
-        setLocation("/");
+        try {
+          if (wasFirstPlan) await refetchGate();
+        } catch (e) {
+          track("first_plan_refetch_gate_error", { message: String(e) });
+        } finally {
+          setLocation(target);
+        }
       }
     },
     onError: (error: Error) => {
@@ -621,6 +632,18 @@ export default function WeeklyPlanner() {
       trackException(error, { phase: "plan_create" });
     },
   });
+
+  const handleAutoFocusSheetDismiss = async () => {
+    autoFocusSheet.closeSheet();
+    const target = postPlanTargetRef.current;
+    try {
+      if (postPlanWasFirstRef.current) await refetchGate();
+    } catch (e) {
+      track("first_plan_refetch_gate_error", { message: String(e) });
+    } finally {
+      setLocation(target);
+    }
+  };
 
   function addOneWalkDay() {
     const days = [...walkDays];
@@ -2829,7 +2852,7 @@ export default function WeeklyPlanner() {
     <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
     <InfoSheet
       open={autoFocusSheet.open}
-      onClose={() => { autoFocusSheet.closeSheet(); setLocation("/"); }}
+      onClose={handleAutoFocusSheetDismiss}
       config={autoFocusSheet.config ? {
         title: autoFocusSheet.config.title,
         body: (
@@ -2838,7 +2861,7 @@ export default function WeeklyPlanner() {
             <Button
               className="w-full mt-2"
               data-testid="button-auto-focus-got-it"
-              onClick={() => { autoFocusSheet.closeSheet(); setLocation("/"); }}
+              onClick={handleAutoFocusSheetDismiss}
             >
               {t("planner.auto_focus_got_it")}
             </Button>

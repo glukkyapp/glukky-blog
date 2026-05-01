@@ -1,11 +1,12 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Home, TrendingUp, CalendarDays, User, Camera, Lightbulb, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
+import { track } from "@/lib/posthog";
 
 const NAV_TAP = { scale: 0.82 };
 const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
@@ -23,6 +24,24 @@ export default function FloatingNavBar() {
   const [activePath, setActivePath] = useState(location || "/");
   const isMobile = useIsMobile();
   const { gate, isLocked, showPaywall } = useGate();
+
+  const handoffLockedFiredRef = useRef(false);
+  useEffect(() => {
+    if (location !== "/snap") return;
+    if (!gate) return;
+    if (gate.hasCreatedFirstWeeklyPlan) return;
+    if (handoffLockedFiredRef.current) return;
+    const timer = window.setTimeout(() => {
+      if (handoffLockedFiredRef.current) return;
+      handoffLockedFiredRef.current = true;
+      track("first_plan_handoff_locked", {
+        hasCreatedFirstWeeklyPlan: gate.hasCreatedFirstWeeklyPlan,
+        isPremium: gate.isPremium,
+        hasReachedPaywall: gate.hasReachedPaywall,
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [location, gate]);
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },

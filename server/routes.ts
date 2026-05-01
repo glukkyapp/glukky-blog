@@ -1214,6 +1214,8 @@ export async function registerRoutes(
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
 
+      const wasFirstPlan = !profile.hasCreatedFirstWeeklyPlan;
+
       const planGate = canUseFeature(profile, "weekly_plan_create");
       if (!planGate.allowed) {
         return res.json({
@@ -1524,7 +1526,7 @@ export async function registerRoutes(
         }
       }
 
-      res.json({ ...result, eatOutAutoAdded, sugaryAutoAdded, sugaryAlongsideEatOut });
+      res.json({ ...result, eatOutAutoAdded, sugaryAutoAdded, sugaryAlongsideEatOut, wasFirstPlan });
     } catch (error: any) {
       console.error("Error creating weekly plan:", error);
       res.status(500).json({ message: error.message || "Failed to create plan" });
