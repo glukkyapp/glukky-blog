@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import cubeLogoDataUrl from "@assets/cube.png?inline";
 
-const CUBE_LOGO_URL = "/cube.png";
+const CUBE_LOGO_URL = cubeLogoDataUrl;
 
 export default function OfflineScreen() {
   const { t } = useTranslation();
