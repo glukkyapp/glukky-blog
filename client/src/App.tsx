@@ -1350,10 +1350,10 @@ function App() {
     };
   }, [showCube]);
 
-  // Defer PostHog init until the WebView is idle. Nothing tracked or
-  // identified before the cube screen dismisses, so this loses no events
-  // but keeps /decide + recorder.js off the BN-splash critical path on
-  // first install. Mirrors the Typeform idle-load pattern in index.html.
+  // Defer PostHog init until the WebView is idle so /decide + recorder.js
+  // stay off the BN-splash critical path on first install. Nothing is
+  // tracked or identified before the cube screen dismisses, so this loses
+  // no events.
   useEffect(() => {
     let cancelled = false;
     const start = () => { if (!cancelled) initPostHog(); };

@@ -1912,9 +1912,6 @@ export default function Home() {
     <InfoCardPopup visible={cardDinnerTactics.visible} onDismiss={cardDinnerTactics.dismiss} icon={UtensilsCrossed} titleKey="info_card.dinner_tactics.title" panelKeys={["info_card.dinner_tactics.p1","info_card.dinner_tactics.p2","info_card.dinner_tactics.p3"]} testId="dialog-card-dinner-tactics" />
     <FoodSwitchPopup visible={foodSwitchPopup.visible} onDismiss={foodSwitchPopup.dismiss} />
     <InfoSheet open={tacticInfoSheet.open} onClose={tacticInfoSheet.closeSheet} config={tacticInfoSheet.config} />
-    {((profile?.currentWeek as number) || 1) >= 2 && (
-      <div data-tf-live="01KMT9YTNXX0J1QWCN07GQRTNZ" />
-    )}
     </>
   );
 }

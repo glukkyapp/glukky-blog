@@ -49,23 +49,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Typeform embed loaded on idle so it doesn't delay the WebView's "page loaded" event. -->
-    <script>
-      (function(){
-        function loadTypeform(){
-          if (document.getElementById("__tf_embed_script__")) return;
-          var s = document.createElement("script");
-          s.id = "__tf_embed_script__";
-          s.src = "//embed.typeform.com/next/embed.js";
-          s.async = true;
-          document.head.appendChild(s);
-        }
-        if (typeof window.requestIdleCallback === "function") {
-          window.requestIdleCallback(loadTypeform, { timeout: 4000 });
-        } else {
-          setTimeout(loadTypeform, 2500);
-        }
-      })();
-    </script>
   </body>
 </html>
