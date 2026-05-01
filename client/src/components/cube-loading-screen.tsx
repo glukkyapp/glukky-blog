@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import i18n from "@/i18n";
-import cubeGif from "@assets/1775145092706x746350477677953000_cyucyu_httpss.mj.rund0RUe8hVs_1776915386428.gif";
+import cubeGif from "@assets/gif_new_1777628252274.gif";
 
 const TIPS_EN = [
   "Blood sugar swings can affect your mood and energy throughout the day.",
@@ -105,7 +105,7 @@ export default function CubeLoadingScreen({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "#F3EAE5",
+        backgroundColor: "#FAF8EF",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

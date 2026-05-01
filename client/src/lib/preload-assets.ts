@@ -20,7 +20,7 @@ import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
-import cubeGif from "@assets/1775145092706x746350477677953000_cyucyu_httpss.mj.rund0RUe8hVs_1776915386428.gif";
+import cubeGif from "@assets/gif_new_1777628252274.gif";
 
 // Stage 2 — onboarding question illustrations
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";

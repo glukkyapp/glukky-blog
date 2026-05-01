@@ -12,7 +12,7 @@ export default function OfflineScreen() {
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "#F3EAE5",
+        backgroundColor: "#FDFBED",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
