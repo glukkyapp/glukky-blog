@@ -43,7 +43,7 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
     };
   }
 
-  if (profile.hasReachedPaywall) {
+  if (profile.hardLockedAfterAdviceDismiss) {
     return {
       allowed: false,
       showPaywall: true,
@@ -88,7 +88,7 @@ export function getGateStatus(profile: UserProfile) {
     isPremium: profile.isPremium,
     hasCreatedFirstWeeklyPlan: profile.hasCreatedFirstWeeklyPlan,
     hasTriedFirstFoodSnap: profile.hasTriedFirstFoodSnap,
-    hasReachedPaywall: profile.hasReachedPaywall,
+    hardLockedAfterAdviceDismiss: profile.hardLockedAfterAdviceDismiss,
     features: {
       homepage: canUseFeature(profile, "homepage"),
       weekly_plan_create: canUseFeature(profile, "weekly_plan_create"),

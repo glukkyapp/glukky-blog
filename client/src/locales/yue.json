@@ -975,7 +975,11 @@
     "unlocking_caption": "正喺度解鎖你嘅訂閱…",
     "unlocking_stalled_title": "仲喺處理緊",
     "unlocking_stalled_desc": "Apple 確認你嘅購買比平時耐咗少少。",
-    "unlocking_stalled_action": "㩒一下再試"
+    "unlocking_stalled_action": "㩒一下再試",
+    "exit_warning_title": "唔睇呢張相嘅飲食建議？",
+    "exit_warning_body": "而家走嘅話，啱啱上傳嗰張相就無飲食建議喇。要再試嘅話就要重新影過。",
+    "exit_warning_stay": "繼續",
+    "exit_warning_leave": "離開"
   },
   "offline_title": "冇網絡連線",
   "offline_body": "請檢查你嘅網絡連線，然後再試吓。",

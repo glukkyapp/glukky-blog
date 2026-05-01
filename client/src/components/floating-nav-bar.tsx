@@ -37,7 +37,7 @@ export default function FloatingNavBar() {
       track("first_plan_handoff_locked", {
         hasCreatedFirstWeeklyPlan: gate.hasCreatedFirstWeeklyPlan,
         isPremium: gate.isPremium,
-        hasReachedPaywall: gate.hasReachedPaywall,
+        hardLockedAfterAdviceDismiss: gate.hardLockedAfterAdviceDismiss,
       });
     }, 500);
     return () => window.clearTimeout(timer);
@@ -56,14 +56,22 @@ export default function FloatingNavBar() {
     path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
 
   const isNavLocked = (key: string): boolean => {
+    // Profile is always reachable so the user can access settings,
+    // restore purchases, sign out, and (in hard lock B) see the
+    // hosted no-close paywall presented by the lock-app effect.
     if (key === "profile") return false;
     if (isLocked) return true;
     if (!gate) return false;
-    if (!gate.isPremium && !gate.hasReachedPaywall) {
-      if (!gate.hasCreatedFirstWeeklyPlan) {
-        return key !== "planner";
-      }
-      return key !== "snap";
+    // Hard lock B — both milestones done AND user opted out of the
+    // snap-advice paywall via the exit-warning popup. Lock everything
+    // except profile until they subscribe.
+    if (!gate.isPremium && gate.hardLockedAfterAdviceDismiss) return true;
+    // Soft lock A — non-premium and at least one activation milestone
+    // remaining. Keep planner + snap unlocked so they can complete the
+    // funnel; lock the rest. (When both milestones are done, fall
+    // through to per-feature gating below.)
+    if (!gate.isPremium && !(gate.hasCreatedFirstWeeklyPlan && gate.hasTriedFirstFoodSnap)) {
+      return key !== "planner" && key !== "snap";
     }
     const featureKey = NAV_FEATURE_MAP[key];
     if (!featureKey) return false;

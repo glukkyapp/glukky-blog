@@ -975,7 +975,11 @@
     "unlocking_caption": "正在解鎖您的訂閱…",
     "unlocking_stalled_title": "仍在處理中",
     "unlocking_stalled_desc": "Apple 確認您的購買比平常需要更長時間。",
-    "unlocking_stalled_action": "點按重試"
+    "unlocking_stalled_action": "點按重試",
+    "exit_warning_title": "放棄這次的飲食建議？",
+    "exit_warning_body": "如果現在離開，剛剛上傳的相片就不會獲得飲食建議。你需要重新拍照才能再試一次。",
+    "exit_warning_stay": "繼續",
+    "exit_warning_leave": "離開"
   },
   "offline_title": "沒有網絡連線",
   "offline_body": "請檢查您的網絡連線，然後再試一次。",

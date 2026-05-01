@@ -72,6 +72,7 @@ export const userProfiles = pgTable("user_profiles", {
   hasCreatedFirstWeeklyPlan: boolean("has_created_first_weekly_plan").notNull().default(false),
   hasTriedFirstFoodSnap: boolean("has_tried_first_food_snap").notNull().default(false),
   hasReachedPaywall: boolean("has_reached_paywall").notNull().default(false),
+  hardLockedAfterAdviceDismiss: boolean("hard_locked_after_advice_dismiss").notNull().default(false),
   isPremium: boolean("is_premium").notNull().default(false),
   // RevenueCat customer id for the App Store subscription this Glukky
   // account is currently signed in to. One Apple subscription → one

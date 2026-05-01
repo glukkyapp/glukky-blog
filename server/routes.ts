@@ -486,6 +486,25 @@ export async function registerRoutes(
     }
   });
 
+  const hardLockBodySchema = z.object({ optedOut: z.boolean() });
+  app.post("/api/profile/hard-lock", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const parsed = hardLockBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid body. Expected { optedOut: boolean }" });
+      }
+      const profile = await storage.updateProfile(userId, {
+        hardLockedAfterAdviceDismiss: parsed.data.optedOut,
+      });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json({ hardLockedAfterAdviceDismiss: profile.hardLockedAfterAdviceDismiss });
+    } catch (error) {
+      console.error("Error updating hard-lock:", error);
+      res.status(500).json({ message: "Failed to update hard-lock" });
+    }
+  });
+
   // OneSignal subscription IDs are UUIDv4-shaped (with dashes). We
   // accept the canonical form only — anything else is "garbage" we
   // do not want silently stored, because a stored-but-unreachable
@@ -3014,9 +3033,6 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const gateCheck = canUseFeature(profile, "food_snap_advice");
       if (!gateCheck.allowed) {
-        if (!profile.hasReachedPaywall) {
-          await storage.updateProfile(userId, { hasReachedPaywall: true });
-        }
         return res.json({
           success: false,
           showPaywall: true,

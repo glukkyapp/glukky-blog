@@ -971,7 +971,11 @@
     "unlocking_caption": "Unlocking your subscription…",
     "unlocking_stalled_title": "Still finalising",
     "unlocking_stalled_desc": "Apple is taking longer than usual to confirm your purchase.",
-    "unlocking_stalled_action": "Tap to retry"
+    "unlocking_stalled_action": "Tap to retry",
+    "exit_warning_title": "Lose this snap's advice?",
+    "exit_warning_body": "If you leave now, the photo you uploaded won't get its diet advice. You'll need to take a new snap to try again.",
+    "exit_warning_stay": "Stay",
+    "exit_warning_leave": "Leave anyway"
   },
   "offline_title": "No internet connection",
   "offline_body": "Please check your connection and try again.",

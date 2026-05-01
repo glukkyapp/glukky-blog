@@ -29,6 +29,7 @@ import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
+import PaywallExitWarning from "@/components/paywall-exit-warning";
 import { identifyUser, resetUser, track, initPostHog } from "@/lib/posthog";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
@@ -202,12 +203,18 @@ function GlobalPiggyBankPopup() {
   );
 }
 
+// Single source of truth for the planner route — used by the lock-app
+// effect, the dismiss-routing helper, and any other call site that
+// needs to redirect the user back to onboarding. Reusing this constant
+// means a future route rename can't silently 404 the dismiss redirect.
+const PLANNER_ROUTE = "/plan";
+
 interface GateStatus {
   gateMode: string;
   isPremium: boolean;
   hasCreatedFirstWeeklyPlan: boolean;
   hasTriedFirstFoodSnap: boolean;
-  hasReachedPaywall: boolean;
+  hardLockedAfterAdviceDismiss: boolean;
   features: Record<string, { allowed: boolean; showPaywall?: boolean; lockApp?: boolean; isFreeAction?: boolean }>;
 }
 
@@ -264,6 +271,23 @@ function AuthenticatedApp() {
   // After the fast 3-retry burst (~4.5s) gives up, this keeps polling every 3s for up to 60s
   // so the user reliably unlocks without having to close and reopen the app.
   const verifyPollerRef = useRef<{ cancel: () => void } | null>(null);
+
+  // Defense-in-depth freeze flag: while the RC paywall sheet is on
+  // screen we don't want the lock-app redirect or the route-change-
+  // cancel effect to fire. We MUST use a ref (not useState) because
+  // both gating effects read this flag in their bodies and adding it
+  // to their dep arrays would re-fire the effect on the true → false
+  // transition — at that exact moment a fire-and-forget background
+  // poller may have just taken over, and pendingActionRef.current
+  // still holds the snap-advice resume callback. The route-change-
+  // cancel effect would then nuke the callback (the ggg regression
+  // we are fixing). A ref bypasses the dep array entirely.
+  const paywallInFlightRef = useRef(false);
+
+  // Exit-warning popup state — shown after the snap-advice paywall is
+  // dismissed by a user with both activation milestones already done.
+  const [exitWarningOpen, setExitWarningOpen] = useState(false);
+  const exitWarningOnSuccessRef = useRef<(() => void) | null>(null);
 
   const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
 
@@ -378,7 +402,16 @@ function AuthenticatedApp() {
               track("snap_advice_resumed_via_background_poller", {
                 elapsedMs: Date.now() - startedAt,
               });
+              track("paywall_advice_resume_fired", {
+                source: "background_poller",
+                elapsedMs: Date.now() - startedAt,
+              });
               setTimeout(action, 100);
+            } else {
+              track("paywall_advice_resume_skipped", {
+                source: "background_poller",
+                reason: "no_pending_action",
+              });
             }
             return;
           }
@@ -386,6 +419,13 @@ function AuthenticatedApp() {
         if (!cancelled) {
           console.warn(`[premium] background poller hit ${MAX_DURATION_MS}ms cap without verify`);
           // 60s timeout — no verify, so the resume must not fire.
+          if (pendingActionRef.current) {
+            track("paywall_advice_resume_skipped", {
+              source: "background_poller",
+              reason: "timeout",
+              elapsedMs: Date.now() - startedAt,
+            });
+          }
           pendingActionRef.current = null;
         }
       } finally {
@@ -427,8 +467,21 @@ function AuthenticatedApp() {
   // programmatic navigation, deep link), drop them so the resume can't
   // fire into a different page than where the user originally hit the
   // gate.
+  //
+  // Freeze guard: while the RC paywall sheet is in flight, skip this
+  // entire body. Read the flag via REF (not state, not in deps) so a
+  // true → false transition in showPaywall's finally block can't cause
+  // this effect to re-fire and clear pendingActionRef just as the
+  // background poller is taking over (the ggg regression).
   useEffect(() => {
+    if (paywallInFlightRef.current) return;
     if (verifyPollerRef.current || pendingActionRef.current) {
+      if (pendingActionRef.current) {
+        track("paywall_advice_resume_skipped", {
+          source: "route_change_cancel",
+          reason: "route_changed",
+        });
+      }
       cancelBackgroundVerifyPoller({ clearPending: true });
       pendingActionRef.current = null;
     }
@@ -491,9 +544,97 @@ function AuthenticatedApp() {
     startBackgroundVerifyPoller,
   ]);
 
+  // Centralised dismiss-routing for the soft paywall. Decides where
+  // the user should land based on activation milestones:
+  //   • premium                       → no-op
+  //   • !hasCreatedFirstWeeklyPlan    → /plan (so they finish onboarding)
+  //   • !hasTriedFirstFoodSnap        → /snap (so they finish activation)
+  //   • both done                     → POST hard-lock {optedOut:true}
+  //                                     and surface our exit-warning
+  //                                     AlertDialog. If the POST fails
+  //                                     we fall back to /profile so the
+  //                                     lock-app effect can still surface
+  //                                     the hard RC paywall, instead of
+  //                                     stranding the user on /snap.
+  const handlePaywallDismiss = useCallback(async (originalOnSuccess?: () => void) => {
+    const g = gateStatus;
+    if (g?.isPremium) return;
+
+    // Hard lock B: user already opted out once. They cannot de-escalate
+    // back through the popup — every dismiss anchors them on /profile so
+    // the lock-app effect re-presents the (closable, profile-only) hard
+    // paywall via the existing path. Do NOT show the exit-warning popup
+    // here, do NOT POST {optedOut:false}.
+    if (g?.hardLockedAfterAdviceDismiss) {
+      track("paywall_dismiss_route", {
+        destination: "/profile",
+        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
+        hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
+        hardLockedAfterAdviceDismiss: true,
+        isPremium: g.isPremium,
+      });
+      pendingActionRef.current = null;
+      if (location !== "/profile") setLocation("/profile");
+      return;
+    }
+
+    if (!g?.hasCreatedFirstWeeklyPlan) {
+      track("paywall_dismiss_route", {
+        destination: PLANNER_ROUTE,
+        hasCreatedFirstWeeklyPlan: g?.hasCreatedFirstWeeklyPlan ?? false,
+        hasTriedFirstFoodSnap: g?.hasTriedFirstFoodSnap ?? false,
+        hardLockedAfterAdviceDismiss: g?.hardLockedAfterAdviceDismiss ?? false,
+        isPremium: g?.isPremium ?? false,
+      });
+      pendingActionRef.current = null;
+      if (location !== PLANNER_ROUTE) setLocation(PLANNER_ROUTE);
+      return;
+    }
+
+    if (!g.hasTriedFirstFoodSnap) {
+      track("paywall_dismiss_route", {
+        destination: "/snap",
+        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
+        hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
+        hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
+        isPremium: g.isPremium,
+      });
+      pendingActionRef.current = null;
+      if (location !== "/snap") setLocation("/snap");
+      return;
+    }
+
+    track("paywall_dismiss_route", {
+      destination: "exit_warning",
+      hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
+      hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
+      hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
+      isPremium: g.isPremium,
+    });
+
+    try {
+      // Persist hard-lock BEFORE showing the popup so closing the app
+      // or losing connection mid-popup still ends up in hard lock B.
+      await apiRequest("POST", "/api/profile/hard-lock", { optedOut: true });
+      exitWarningOnSuccessRef.current = originalOnSuccess || null;
+      setExitWarningOpen(true);
+      track("paywall_exit_warning_shown");
+    } catch (e) {
+      track("paywall_exit_warning_error", { message: String(e) });
+      // Spec'd fallback: clear pending resume and route to /profile so
+      // the existing hard-paywall path takes over (avoids ambiguous
+      // soft-A state with no popup surfaced).
+      pendingActionRef.current = null;
+      if (location !== "/profile") setLocation("/profile");
+    }
+  }, [gateStatus, location, setLocation]);
+
   // The BN bridge owns the StoreKit transaction; the purchased/restored callback is a hint — server verify is proof.
+  // Sets `paywallInFlightRef` for the duration of the RC sheet so the
+  // lock-app and route-change-cancel effects don't fire mid-paywall.
   const showPaywall = useCallback((onSuccess?: () => void) => {
     pendingActionRef.current = onSuccess || null;
+    paywallInFlightRef.current = true;
     track("paywall_shown");
     presentPaywall()
       .then(async (result) => {
@@ -522,7 +663,13 @@ function AuthenticatedApp() {
             if (pendingActionRef.current) {
               const action = pendingActionRef.current;
               pendingActionRef.current = null;
+              track("paywall_advice_resume_fired", { source: "fast_burst" });
               setTimeout(action, 100);
+            } else {
+              track("paywall_advice_resume_skipped", {
+                source: "fast_burst",
+                reason: "no_pending_action",
+              });
             }
           } else if (verifyPollerRef.current) {
             // Fast burst gave up but the background poller has taken
@@ -533,19 +680,64 @@ function AuthenticatedApp() {
             // Verify failed and no poller is running (shouldn't happen
             // on this branch since backgroundPollOnFail is true, but
             // keep the safe default so we don't leak a stale resume).
+            if (pendingActionRef.current) {
+              track("paywall_advice_resume_skipped", {
+                source: "fast_burst",
+                reason: "verify_failed_no_poller",
+              });
+            }
             pendingActionRef.current = null;
           }
         } else {
           track("paywall_dismissed", { status: result.status, message: result.message });
+          // Stash the resume callback BEFORE we clear pendingActionRef
+          // so the dismiss-routing helper can hand it to the exit-
+          // warning popup (the user may click Stay → re-present → buy).
+          const stashedOnSuccess = pendingActionRef.current;
           pendingActionRef.current = null;
+          await handlePaywallDismiss(stashedOnSuccess || undefined);
         }
       })
       .catch((e) => {
         console.warn("[paywall] present error:", e);
         track("paywall_error", { message: e instanceof Error ? e.message : String(e) });
         pendingActionRef.current = null;
+      })
+      .finally(() => {
+        paywallInFlightRef.current = false;
       });
-  }, [verifyWithOverlay]);
+  }, [verifyWithOverlay, handlePaywallDismiss]);
+
+  // Stay → re-POST {optedOut:false}, refetch gate, close the dialog,
+  // then re-present the RC paywall after a short delay so the Radix
+  // exit animation has time to clear (avoids RC sheet appearing behind
+  // the still-animating dialog on some iOS versions).
+  const handleExitWarningStay = useCallback(async () => {
+    track("paywall_exit_warning_stay");
+    try {
+      await apiRequest("POST", "/api/profile/hard-lock", { optedOut: false });
+    } catch (e) {
+      track("paywall_exit_warning_stay_error", { message: String(e) });
+    }
+    try { await refetchGate(); } catch {}
+    setExitWarningOpen(false);
+    const onSuccess = exitWarningOnSuccessRef.current;
+    exitWarningOnSuccessRef.current = null;
+    setTimeout(() => showPaywall(onSuccess || undefined), 250);
+  }, [refetchGate, showPaywall]);
+
+  // Leave (or backdrop tap) → keep hard-lock flag set, drop any
+  // pending resume, refetch gate (so isLocked becomes true), and
+  // route to /profile where the lock-app effect re-presents the
+  // hard RC paywall.
+  const handleExitWarningLeave = useCallback(async () => {
+    track("paywall_exit_warning_leave");
+    pendingActionRef.current = null;
+    exitWarningOnSuccessRef.current = null;
+    setExitWarningOpen(false);
+    try { await refetchGate(); } catch {}
+    if (location !== "/profile") setLocation("/profile");
+  }, [refetchGate, location, setLocation]);
 
   // Identify the user to RC once Replit auth resolves; flips to logout on auth-away so the next user's purchase isn't merged.
   // Declared before the lock/paywall effect so login starts before any paywall presentation.
@@ -604,8 +796,15 @@ function AuthenticatedApp() {
 
   // Lock-app gate: present the hosted paywall (no close button) and anchor /profile as a fallback when presentation fails.
   // The ref is a one-shot guard so route changes don't re-present; reset on isLocked=false.
+  //
+  // Freeze guard: while the RC paywall sheet is in flight, skip the
+  // entire body so we don't redirect mid-purchase. Read via REF (not
+  // state, not deps) — adding the flag to deps would re-fire on the
+  // true → false transition and could double-present the hard paywall
+  // if isLocked flipped during the in-flight window.
   const lockedPaywallShownRef = useRef(false);
   useEffect(() => {
+    if (paywallInFlightRef.current) return;
     if (!isLocked) {
       lockedPaywallShownRef.current = false;
       return;
@@ -1253,6 +1452,11 @@ function AuthenticatedApp() {
           <FloatingNavBar />
           <GlobalPiggyBankPopup />
           {unlockingOverlay && <UnlockingOverlay />}
+          <PaywallExitWarning
+            open={exitWarningOpen}
+            onStay={handleExitWarningStay}
+            onLeave={handleExitWarningLeave}
+          />
         </div>
       </GateContext.Provider>
     );
@@ -1281,6 +1485,11 @@ function AuthenticatedApp() {
         <FloatingNavBar />
         <GlobalPiggyBankPopup />
         {unlockingOverlay && <UnlockingOverlay />}
+        <PaywallExitWarning
+          open={exitWarningOpen}
+          onStay={handleExitWarningStay}
+          onLeave={handleExitWarningLeave}
+        />
       </div>
     </GateContext.Provider>
   );
