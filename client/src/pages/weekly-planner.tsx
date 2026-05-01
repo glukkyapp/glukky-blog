@@ -40,9 +40,15 @@ import { hapticTap, hapticNotify, hapticPattern } from "@/lib/haptics";
 
 export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { gate, showPaywall, refetchGate } = useGate();
+  // Belt-and-suspenders: the safety-net timer below reads location from
+  // this ref (not its captured closure) so a stale location can never
+  // trigger a redundant force-nav. The effect cleanup also clears the
+  // timer on every location change, so this is defense-in-depth.
+  const locationRef = useRef(location);
+  useEffect(() => { locationRef.current = location; }, [location]);
   const DAY_NAMES = [t("day_short.mon"), t("day_short.tue"), t("day_short.wed"), t("day_short.thu"), t("day_short.fri"), t("day_short.sat"), t("day_short.sun")];
   const STRUGGLE_NAMES: Record<string, string> = {
     sugary_food_drink: t("struggle.sugary_food_drink"),
@@ -603,6 +609,35 @@ export default function WeeklyPlanner() {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/plan/reflection"] });
       queryClient.invalidateQueries({ queryKey: ["/api/gate-status"] });
+
+      if (wasFirstPlan) {
+        // First-plan path: navigate to /snap IMMEDIATELY and SKIP the
+        // auto-focus info popup entirely. The popup (`<InfoSheet>`) is
+        // page-scoped to weekly-planner — it would unmount the moment
+        // we navigate away, and trying to defer navigation to its
+        // dismiss handler is exactly the bug we're fixing (the popup
+        // becomes a fragile single-point-of-failure bridge between
+        // /plan and /snap). The auto-added focus area is already
+        // persisted on the server; we accept losing the one-time
+        // explanation popup on this milestone in exchange for
+        // guaranteed navigation.
+        //
+        // refetchGate() is fire-and-forget so the redirect isn't
+        // blocked. Tradeoff: the floating nav bar may render one
+        // frame with Snap still showing the locked icon until the
+        // gate refetch completes (~100-300ms). If this flash is
+        // visible in practice, follow up by reading from the cached
+        // gate optimistically inside the nav bar component.
+        refetchGate();
+        track("first_plan_navigation_fired", { path: "immediate" });
+        setLocation(target);
+        return;
+      }
+
+      // Non-first-plan path: preserve the existing popup-then-defer
+      // behavior. The auto-focus sheet's dismiss handler will route to
+      // `target` (/), and because we're staying on the planner page the
+      // sheet won't unmount mid-flow.
       if (data?.eatOutAutoAdded) {
         autoFocusSheet.openSheet({
           title: t("planner.auto_focus_eat_out_title"),
@@ -616,13 +651,7 @@ export default function WeeklyPlanner() {
           body: <p className="text-sm text-muted-foreground">{t(bodyKey)}</p>,
         });
       } else {
-        try {
-          if (wasFirstPlan) await refetchGate();
-        } catch (e) {
-          track("first_plan_refetch_gate_error", { message: String(e) });
-        } finally {
-          setLocation(target);
-        }
+        setLocation(target);
       }
     },
     onError: (error: Error) => {
@@ -636,14 +665,54 @@ export default function WeeklyPlanner() {
   const handleAutoFocusSheetDismiss = async () => {
     autoFocusSheet.closeSheet();
     const target = postPlanTargetRef.current;
+    // After step 1's first-plan fast-path, this handler should only run
+    // for NON-first-plan flows (target = "/"). The wasFirstPlan branch
+    // below stays as a defensive guard in case the fast-path is ever
+    // reverted — if it does fire, telemetry tags the event so we can
+    // see it in PostHog.
     try {
-      if (postPlanWasFirstRef.current) await refetchGate();
+      if (postPlanWasFirstRef.current) {
+        track("first_plan_navigation_fired", { path: "deferred_via_sheet_dismiss" });
+        await refetchGate();
+      }
     } catch (e) {
       track("first_plan_refetch_gate_error", { message: String(e) });
     } finally {
       setLocation(target);
     }
   };
+
+  // Safety-net: if the user is stranded on /plan after their first
+  // weekly plan was successfully created (gate flipped
+  // hasCreatedFirstWeeklyPlan true) and they haven't yet activated
+  // Snap, force-navigate to /snap after a short delay. This catches
+  // any path where step 1's immediate setLocation didn't take effect
+  // (e.g. a future regression that re-introduces a popup-defer in the
+  // success handler). The cleanup function clears the timer on every
+  // dependency change so a successful navigation to /snap during the
+  // wait cancels the redundant force-nav. The timer body reads
+  // location from `locationRef` (not the captured closure) as belt-
+  // and-suspenders against stale-closure edge cases.
+  const firstPlanFlippedRef = useRef<boolean>(!!gate?.hasCreatedFirstWeeklyPlan);
+  useEffect(() => {
+    const hasFirstPlan = !!gate?.hasCreatedFirstWeeklyPlan;
+    const hasFirstSnap = !!gate?.hasTriedFirstFoodSnap;
+    const isPremium = !!gate?.isPremium;
+    const justFlipped = !firstPlanFlippedRef.current && hasFirstPlan;
+    firstPlanFlippedRef.current = hasFirstPlan;
+
+    if (!justFlipped) return;
+    if (hasFirstSnap) return;
+    if (isPremium) return;
+    if (location !== "/plan") return;
+
+    const timer = window.setTimeout(() => {
+      if (locationRef.current !== "/plan") return;
+      track("first_plan_navigation_fired", { path: "safety_net" });
+      setLocation("/snap");
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [gate?.hasCreatedFirstWeeklyPlan, gate?.hasTriedFirstFoodSnap, gate?.isPremium, location, setLocation]);
 
   function addOneWalkDay() {
     const days = [...walkDays];
