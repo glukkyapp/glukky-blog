@@ -42,7 +42,7 @@ export default function WeeklyPlanner() {
   const { t, i18n } = useTranslation();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const { gate, showPaywall, refetchGate } = useGate();
+  const { gate, showPaywall, refetchGate, isPaywallInFlight } = useGate();
   // Belt-and-suspenders: the safety-net timer below reads location from
   // this ref (not its captured closure) so a stale location can never
   // trigger a redundant force-nav. The effect cleanup also clears the
@@ -697,22 +697,44 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     const hasFirstPlan = !!gate?.hasCreatedFirstWeeklyPlan;
     const hasFirstSnap = !!gate?.hasTriedFirstFoodSnap;
-    const isPremium = !!gate?.isPremium;
     const justFlipped = !firstPlanFlippedRef.current && hasFirstPlan;
     firstPlanFlippedRef.current = hasFirstPlan;
 
-    if (!justFlipped) return;
-    if (hasFirstSnap) return;
-    if (isPremium) return;
-    if (location !== "/plan") return;
+    if (!justFlipped) {
+      return;
+    }
+    if (hasFirstSnap) {
+      track("first_plan_navigation_skipped", { reason: "already_tried_first_snap" });
+      return;
+    }
+    if (location !== "/plan") {
+      track("first_plan_navigation_skipped", { reason: "not_on_plan" });
+      return;
+    }
+    if (isPaywallInFlight()) {
+      track("first_plan_navigation_skipped", { reason: "paywall_in_flight" });
+      return;
+    }
 
     const timer = window.setTimeout(() => {
-      if (locationRef.current !== "/plan") return;
+      if (locationRef.current !== "/plan") {
+        track("first_plan_navigation_skipped", { reason: "left_plan_during_wait" });
+        return;
+      }
+      if (isPaywallInFlight()) {
+        track("first_plan_navigation_skipped", { reason: "paywall_opened_during_wait" });
+        return;
+      }
       track("first_plan_navigation_fired", { path: "safety_net" });
       setLocation("/snap");
     }, 1500);
     return () => window.clearTimeout(timer);
-  }, [gate?.hasCreatedFirstWeeklyPlan, gate?.hasTriedFirstFoodSnap, gate?.isPremium, location, setLocation]);
+    // isPaywallInFlight is intentionally OUT of deps — it's a ref-based
+    // getter (not reactive). We re-check it inside the effect body and
+    // again inside the timer callback, which is the correct pattern for
+    // a non-reactive signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate?.hasCreatedFirstWeeklyPlan, gate?.hasTriedFirstFoodSnap, location, setLocation]);
 
   function addOneWalkDay() {
     const days = [...walkDays];

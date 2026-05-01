@@ -223,6 +223,12 @@ interface GateContextType {
   isLocked: boolean;
   showPaywall: (onSuccess?: () => void) => void;
   refetchGate: () => void;
+  // Returns the current value of App-level `paywallInFlightRef`. We
+  // expose this as a getter (not a value) because the underlying
+  // signal is a ref — components that need to read it from inside an
+  // effect or timer body should call this on demand. It is NOT
+  // reactive: don't put it in a dep array.
+  isPaywallInFlight: () => boolean;
 }
 
 const GateContext = createContext<GateContextType>({
@@ -230,6 +236,7 @@ const GateContext = createContext<GateContextType>({
   isLocked: false,
   showPaywall: () => {},
   refetchGate: () => {},
+  isPaywallInFlight: () => false,
 });
 
 export function useGate() {
@@ -1470,6 +1477,7 @@ function AuthenticatedApp() {
     isLocked,
     showPaywall,
     refetchGate: () => { refetchGate(); },
+    isPaywallInFlight: () => paywallInFlightRef.current,
   };
 
   if (!currentPlan) {
