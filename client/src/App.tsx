@@ -24,6 +24,7 @@ import {
   presentPaywallIfNeeded,
 } from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
+import { OfflineProvider } from "@/contexts/offline-context";
 import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
@@ -1348,9 +1349,11 @@ function App() {
 function AppWithProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LoadingOverlayProvider>
-        <App />
-      </LoadingOverlayProvider>
+      <OfflineProvider>
+        <LoadingOverlayProvider>
+          <App />
+        </LoadingOverlayProvider>
+      </OfflineProvider>
     </QueryClientProvider>
   );
 }

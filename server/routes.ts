@@ -101,6 +101,11 @@ export async function registerRoutes(
     res.json(BUILD_INFO);
   });
 
+  app.get("/api/health", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true });
+  });
+
   // Admin-only wipe endpoint. ALL account-deletion paths (this admin
   // wipe AND the user-facing /api/auth/delete-account below) MUST go
   // through storage.deleteUserCompletely(). That function is the single

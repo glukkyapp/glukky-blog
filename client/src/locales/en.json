@@ -972,5 +972,8 @@
     "unlocking_stalled_title": "Still finalising",
     "unlocking_stalled_desc": "Apple is taking longer than usual to confirm your purchase.",
     "unlocking_stalled_action": "Tap to retry"
-  }
+  },
+  "offline_title": "No internet connection",
+  "offline_body": "Please check your connection and try again.",
+  "offline_button": "Reload"
 }

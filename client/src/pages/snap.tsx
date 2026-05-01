@@ -10,6 +10,9 @@ import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import { track, trackException } from "@/lib/posthog";
+import { timedFetch } from "@/lib/queryClient";
+
+const SNAP_TIMEOUT_MS = 45000;
 
 type Step = "upload" | "labeling" | "review" | "advising" | "advice";
 
@@ -236,11 +239,12 @@ export default function Snap() {
 
     try {
       const { base64, mimeType } = await compressImage(file);
-      const res = await fetch("/api/snap/label", {
+      const res = await timedFetch("/api/snap/label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ imageBase64: base64, mimeType, language: i18n.language }),
+        timeoutMs: SNAP_TIMEOUT_MS,
       });
 
       if (res.status === 429) {
@@ -330,11 +334,12 @@ export default function Snap() {
     const ambiguous: DisambigItem[] = [];
     for (const part of parts) {
       try {
-        const res = await fetch("/api/snap/disambiguate", {
+        const res = await timedFetch("/api/snap/disambiguate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ text: part, field, locale: i18n.language }),
+          timeoutMs: SNAP_TIMEOUT_MS,
         });
         if (res.ok) {
           const data = await res.json();
@@ -453,7 +458,7 @@ export default function Snap() {
     const finalToppingResolutions = toppingRes || form.toppingResolutions;
 
     try {
-      const res = await fetch("/api/snap/advice", {
+      const res = await timedFetch("/api/snap/advice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -468,6 +473,7 @@ export default function Snap() {
           toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
           locale: i18n.language,
         }),
+        timeoutMs: SNAP_TIMEOUT_MS,
       });
 
       if (res.status === 429) {

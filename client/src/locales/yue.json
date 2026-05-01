@@ -976,5 +976,8 @@
     "unlocking_stalled_title": "仲喺處理緊",
     "unlocking_stalled_desc": "Apple 確認你嘅購買比平時耐咗少少。",
     "unlocking_stalled_action": "㩒一下再試"
-  }
+  },
+  "offline_title": "冇網絡連線",
+  "offline_body": "請檢查你嘅網絡連線，然後再試吓。",
+  "offline_button": "重新載入"
 }
