@@ -628,7 +628,18 @@ export default function WeeklyPlanner() {
         // gate refetch completes (~100-300ms). If this flash is
         // visible in practice, follow up by reading from the cached
         // gate optimistically inside the nav bar component.
-        refetchGate();
+        // The .catch keeps observability consistent with the
+        // deferred-via-sheet path which also captures refetch errors.
+        try {
+          const r = refetchGate();
+          if (r && typeof (r as any).catch === "function") {
+            (r as unknown as Promise<unknown>).catch((e: unknown) => {
+              track("first_plan_refetch_gate_error", { message: String(e) });
+            });
+          }
+        } catch (e) {
+          track("first_plan_refetch_gate_error", { message: String(e) });
+        }
         track("first_plan_navigation_fired", { path: "immediate" });
         setLocation(target);
         return;
