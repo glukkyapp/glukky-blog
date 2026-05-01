@@ -2016,6 +2016,7 @@ export async function registerRoutes(
   const UNLIMITED_SNAP_USER_IDS = new Set<string>([
     "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
     "770c837e-10bc-4ec1-b891-0683cdc07a96", // cynthiayuyu@hotmail.com
+    "e6a689aa-3092-488b-adcc-ef9d68315cbd", // bbb@gmail.com
   ]);
 
   // Daily window resets at midnight Hong Kong time so the cap aligns
