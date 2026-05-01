@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { hapticNotify } from "@/lib/haptics";
+import { syncOneSignalLanguage } from "@/lib/onesignal-language";
 import { isNativelyAvailable, restorePurchases, getCachedLoginState } from "@/lib/natively-purchases";
 import { Crown, RotateCcw, Loader2 } from "lucide-react";
 import { getInstallId, recordRestoreTrace } from "@/lib/restore-trace";
@@ -211,9 +212,10 @@ function LanguageCard({ currentLang }: { currentLang: string }) {
       const res = await apiRequest("PATCH", "/api/profile/language", { preferredLanguage: lang });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, lang) => {
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      syncOneSignalLanguage(lang);
     },
     onError: () => {
       hapticNotify("ERROR");
