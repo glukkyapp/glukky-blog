@@ -469,7 +469,11 @@ export default function Snap() {
     }
   }
 
-  async function callAdviceApi(sauceRes?: TokenResolution[], toppingRes?: TokenResolution[]) {
+  async function callAdviceApi(
+    sauceRes?: TokenResolution[],
+    toppingRes?: TokenResolution[],
+    isRetryAfterUnlock = false,
+  ) {
     setStep("advising");
     setAdvicePanel(0);
     track("snap_advice_started", { foodName: form.name || null });
@@ -517,11 +521,23 @@ export default function Snap() {
       const data = await res.json();
 
       if (data.showPaywall) {
+        if (isRetryAfterUnlock) {
+          // Post-unlock auto-retry came back still gated (rare server
+          // gate lag). Don't re-open the paywall — that would loop.
+          // Surface the standard error/retry surface on the review
+          // screen and emit an event so we can see how often this
+          // edge case actually happens.
+          hapticNotify("ERROR");
+          setError(t("snap.error_generic"));
+          setStep("review");
+          track("snap_advice_resume_still_blocked", { feature: data.feature });
+          return;
+        }
         setStep("review");
         refetchGate();
         track("snap_advice_blocked", { feature: data.feature });
         showPaywall(() => {
-          callAdviceApi(sauceRes, toppingRes);
+          callAdviceApi(sauceRes, toppingRes, true);
         });
         return;
       }

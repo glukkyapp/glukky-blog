@@ -315,10 +315,24 @@ function AuthenticatedApp() {
   }, [refetchGate]);
 
   // Cancel any in-flight background verify poll. Safe to call repeatedly.
-  const cancelBackgroundVerifyPoller = useCallback(() => {
-    verifyPollerRef.current?.cancel();
-    verifyPollerRef.current = null;
-  }, []);
+  // When `clearPending` is true and a poller was actually running, also
+  // drop any pending resume action so it can't fire later (used by the
+  // terminal cancellations: logout, visibility-hidden, supersession,
+  // and route change). The default (false) preserves pendingActionRef
+  // so that verifyWithOverlay's preparatory cancel — which happens in
+  // the middle of a live showPaywall flow — doesn't lose the resume
+  // we just queued.
+  const cancelBackgroundVerifyPoller = useCallback(
+    (opts: { clearPending?: boolean } = {}) => {
+      const wasRunning = verifyPollerRef.current !== null;
+      verifyPollerRef.current?.cancel();
+      verifyPollerRef.current = null;
+      if (wasRunning && opts.clearPending) {
+        pendingActionRef.current = null;
+      }
+    },
+    [],
+  );
 
   // Long-tail background poller. Used after the fast 3-retry burst gives
   // up — RC sandbox propagation can take 30-60s longer than the 4.5s
@@ -328,7 +342,12 @@ function AuthenticatedApp() {
   // for up to 60s so the user reliably unlocks without manual recovery.
   // Single-flight: any prior poller is cancelled when a new one starts.
   const startBackgroundVerifyPoller = useCallback(() => {
-    cancelBackgroundVerifyPoller();
+    // Supersession: if a previous poller is still running, treat this
+    // as a hard cancel and drop its pending resume so the prior flow
+    // can't fire into a newer/unrelated session. In normal showPaywall
+    // flows this is a no-op (verifyWithOverlay's preparatory cancel
+    // already cleared the poller); this is defense-in-depth.
+    cancelBackgroundVerifyPoller({ clearPending: true });
     let cancelled = false;
     const handle = { cancel: () => { cancelled = true; } };
     verifyPollerRef.current = handle;
@@ -347,11 +366,27 @@ function AuthenticatedApp() {
           const verified = await refreshPremiumThenRefetch(true);
           if (verified) {
             console.log(`[premium] background poller verified after ${Date.now() - startedAt}ms`);
+            // Fire the resume action carried over from the showPaywall
+            // flow (e.g. retry the snap-advice call that originally
+            // tripped the gate). Single-shot: clear the ref before
+            // scheduling so a later run can't double-fire it. The
+            // ~100ms delay matches the fast-burst path so the
+            // unlocking overlay clears first.
+            const action = pendingActionRef.current;
+            if (action) {
+              pendingActionRef.current = null;
+              track("snap_advice_resumed_via_background_poller", {
+                elapsedMs: Date.now() - startedAt,
+              });
+              setTimeout(action, 100);
+            }
             return;
           }
         }
         if (!cancelled) {
           console.warn(`[premium] background poller hit ${MAX_DURATION_MS}ms cap without verify`);
+          // 60s timeout — no verify, so the resume must not fire.
+          pendingActionRef.current = null;
         }
       } finally {
         // Skip clearing the overlay ONLY if a newer poller has
@@ -370,18 +405,34 @@ function AuthenticatedApp() {
     })();
   }, [cancelBackgroundVerifyPoller, refreshPremiumThenRefetch]);
 
-  // Cancel the background poller on logout/page-hide so we don't poll
-  // indefinitely against a backgrounded app or a signed-out session.
+  // Cancel the background poller on logout/page-hide/route-change so
+  // we don't poll indefinitely against a backgrounded app, a signed-out
+  // session, or a page the user has moved on from. Each of these also
+  // drops any pending resume action (e.g. snap-advice retry) via
+  // `clearPending: true` so it can't fire later into a stale context.
   useEffect(() => {
     const onVisChange = () => {
-      if (document.visibilityState === "hidden") cancelBackgroundVerifyPoller();
+      if (document.visibilityState === "hidden") {
+        cancelBackgroundVerifyPoller({ clearPending: true });
+      }
     };
     document.addEventListener("visibilitychange", onVisChange);
     return () => document.removeEventListener("visibilitychange", onVisChange);
   }, [cancelBackgroundVerifyPoller]);
   useEffect(() => {
-    if (!user?.id) cancelBackgroundVerifyPoller();
+    if (!user?.id) cancelBackgroundVerifyPoller({ clearPending: true });
   }, [user?.id, cancelBackgroundVerifyPoller]);
+  // Defense-in-depth: the unlocking overlay normally blocks navigation,
+  // but if the route changes while a poller/resume is in flight (e.g.
+  // programmatic navigation, deep link), drop them so the resume can't
+  // fire into a different page than where the user originally hit the
+  // gate.
+  useEffect(() => {
+    if (verifyPollerRef.current || pendingActionRef.current) {
+      cancelBackgroundVerifyPoller({ clearPending: true });
+      pendingActionRef.current = null;
+    }
+  }, [location, cancelBackgroundVerifyPoller]);
 
   // Wraps the verify+refetch in the branded overlay. After the fast
   // 3-retry burst gives up, optionally hands off to the background
@@ -466,11 +517,22 @@ function AuthenticatedApp() {
           track(verified ? "paywall_purchase_verified" : "paywall_purchase_unverified", {
             outcome: result.message,
           });
-          if (verified && pendingActionRef.current) {
-            const action = pendingActionRef.current;
-            pendingActionRef.current = null;
-            setTimeout(action, 100);
+          if (verified) {
+            // Fast-burst happy path — fire resume immediately (single-shot).
+            if (pendingActionRef.current) {
+              const action = pendingActionRef.current;
+              pendingActionRef.current = null;
+              setTimeout(action, 100);
+            }
+          } else if (verifyPollerRef.current) {
+            // Fast burst gave up but the background poller has taken
+            // over. Keep pendingActionRef alive — the poller will fire
+            // it on success, or clear it on its terminal states (60s
+            // timeout, logout, visibility-hidden).
           } else {
+            // Verify failed and no poller is running (shouldn't happen
+            // on this branch since backgroundPollOnFail is true, but
+            // keep the safe default so we don't leak a stale resume).
             pendingActionRef.current = null;
           }
         } else {
