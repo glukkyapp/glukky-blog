@@ -40,7 +40,7 @@ declare global {
   }
 }
 
-// Routes are React.lazy so the cold-launch bundle stays small; the cube overlay or #F3EAE5 background covers the Suspense fallback.
+// Routes are React.lazy so the cold-launch bundle stays small; the cube overlay or #FDFBED background covers the Suspense fallback.
 const Landing = lazy(() => import("@/pages/landing"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
 const WeeklyPlanner = lazy(() => import("@/pages/weekly-planner"));
@@ -60,7 +60,7 @@ const RouteFallback = () => (
     style={{
       position: "fixed",
       inset: 0,
-      backgroundColor: "#F3EAE5",
+      backgroundColor: "#FDFBED",
       pointerEvents: "none",
     }}
   />
@@ -1262,7 +1262,7 @@ function Router() {
 
 function App() {
   // Cube cold-launch overlay shown only on logged-out boot; captured once at mount and gated by stage1+auth+min 14s.
-  // Rendered immediately so first paint is the cube (not a #F3EAE5 placeholder); Stage 1 preload fires from its mount effect.
+  // Rendered immediately so first paint is the cube (not a #FDFBED placeholder); Stage 1 preload fires from its mount effect.
   const [showCube] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SESSION_HINT_KEY) == null;

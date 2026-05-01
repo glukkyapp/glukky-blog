@@ -671,7 +671,7 @@ export default function Snap() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                           isActive
                             ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background text-muted-foreground border-input hover:bg-muted"
+                            : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
                         }`}
                         data-testid={`chip-portion-${opt.key}`}
                       >
@@ -723,7 +723,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-input hover:bg-muted"
+                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
                           }`}
                           data-testid={`chip-sauce-${opt.id}`}
                         >
@@ -781,7 +781,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-input hover:bg-muted"
+                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
                           }`}
                           data-testid={`chip-topping-${opt.id}`}
                         >
@@ -837,7 +837,7 @@ export default function Snap() {
                   <button
                     key={m.internalId}
                     onClick={() => handleDisambigSelect(m.internalId)}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-background border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#F4EBE4] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
                     data-testid={`chip-disambig-${m.internalId}`}
                   >
                     {m.label}

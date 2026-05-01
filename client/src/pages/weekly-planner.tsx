@@ -1648,7 +1648,7 @@ export default function WeeklyPlanner() {
                             className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                               currentDur === dur
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-background text-muted-foreground hover:bg-primary/10"
+                                : "bg-[#F4EBE4] text-muted-foreground hover:bg-primary/10"
                             }`}
                             data-testid={`button-duration-${day}-${dur}`}
                           >

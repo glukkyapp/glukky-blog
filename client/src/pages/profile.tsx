@@ -241,7 +241,7 @@ function LanguageCard({ currentLang }: { currentLang: string }) {
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
                 currentLang === code
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                  : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
               }`}
             >
               {label}
@@ -284,7 +284,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "small"
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
             }`}
           >
             {t("profile.font_small")}
@@ -295,7 +295,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "large"
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
             }`}
           >
             {t("profile.font_large")}
