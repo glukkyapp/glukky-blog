@@ -40,6 +40,30 @@ export function syncOneSignalLanguage(appLang: string): void {
     console.warn("[onesignal] OneSignalDeferred push error:", e?.message ?? e);
   }
 
+  // (a2) Legacy OneSignal Web SDK shape — only fires if the older
+  //      flat `OneSignal.setLanguage` is exposed and we're NOT in v16
+  //      (v16 also defines `OneSignal.User.setLanguage`, which the
+  //      OneSignalDeferred path above already covers — calling both
+  //      would be a redundant write but harmless either way).
+  try {
+    const OS = w.OneSignal;
+    if (OS && typeof OS.setLanguage === "function" && !OS?.User?.setLanguage) {
+      try {
+        const r = OS.setLanguage(lang);
+        if (r && typeof r.then === "function") {
+          r.catch((e: any) =>
+            console.warn("[onesignal] legacy OneSignal.setLanguage rejected:", e?.message ?? e),
+          );
+        }
+        console.log(`[onesignal] setLanguage via legacy OneSignal.setLanguage: ${lang}`);
+      } catch (e: any) {
+        console.warn("[onesignal] legacy OneSignal.setLanguage error:", e?.message ?? e);
+      }
+    }
+  } catch (e: any) {
+    console.warn("[onesignal] legacy OneSignal probe error:", e?.message ?? e);
+  }
+
   // (b) BN/Natively wrapper — NativelyNotifications bridge.
   try {
     if (w.NativelyNotifications) {
