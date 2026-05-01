@@ -7,10 +7,10 @@ export const modules: ModuleMap = {
   "./components/mockups/food-snap/AdviceStateZhHant.tsx": () => import("../components/mockups/food-snap/AdviceStateZhHant.tsx"),
   "./components/mockups/food-snap/ReviewState.tsx": () => import("../components/mockups/food-snap/ReviewState.tsx"),
   "./components/mockups/food-snap/ReviewStateZhHant.tsx": () => import("../components/mockups/food-snap/ReviewStateZhHant.tsx"),
-  "./components/mockups/health-info/DietTipDetail.tsx": () => import("../components/mockups/health-info/DietTipDetail.tsx"),
-  "./components/mockups/health-info/DietTipDetailZhHant.tsx": () => import("../components/mockups/health-info/DietTipDetailZhHant.tsx"),
   "./components/mockups/home/HomeTired.tsx": () => import("../components/mockups/home/HomeTired.tsx"),
   "./components/mockups/home/HomeTiredZhHant.tsx": () => import("../components/mockups/home/HomeTiredZhHant.tsx"),
+  "./components/mockups/health-info/DietTipDetail.tsx": () => import("../components/mockups/health-info/DietTipDetail.tsx"),
+  "./components/mockups/health-info/DietTipDetailZhHant.tsx": () => import("../components/mockups/health-info/DietTipDetailZhHant.tsx"),
   "./components/mockups/paywall/PaywallScreen.tsx": () => import("../components/mockups/paywall/PaywallScreen.tsx"),
   "./components/mockups/splash-slides/Slide1.tsx": () => import("../components/mockups/splash-slides/Slide1.tsx")
 };
