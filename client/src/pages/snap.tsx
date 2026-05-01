@@ -595,6 +595,9 @@ export default function Snap() {
     const stashed = pendingLabelImageRef.current;
     pendingLabelImageRef.current = null;
     if (!stashed) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
       track("snap_label_resume_failed", { reason: "no_stashed_image" });
       return;
     }
