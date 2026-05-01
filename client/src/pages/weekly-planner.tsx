@@ -693,12 +693,23 @@ export default function WeeklyPlanner() {
   // wait cancels the redundant force-nav. The timer body reads
   // location from `locationRef` (not the captured closure) as belt-
   // and-suspenders against stale-closure edge cases.
-  const firstPlanFlippedRef = useRef<boolean>(!!gate?.hasCreatedFirstWeeklyPlan);
+  // Sentinel `null` means "we have never observed a defined gate yet".
+  // We deliberately distinguish unknown→true from an actually observed
+  // false→true transition: if the gate was undefined on first render
+  // and loads in as true (e.g. an existing user opening the app after
+  // their first plan was created in a prior session), that is NOT a
+  // just-flipped event and must not trigger a force-nav or pollute the
+  // skipped-reason telemetry. Only a real false→true transition counts.
+  const firstPlanFlippedRef = useRef<boolean | null>(
+    gate ? !!gate.hasCreatedFirstWeeklyPlan : null
+  );
   useEffect(() => {
-    const hasFirstPlan = !!gate?.hasCreatedFirstWeeklyPlan;
-    const hasFirstSnap = !!gate?.hasTriedFirstFoodSnap;
-    const justFlipped = !firstPlanFlippedRef.current && hasFirstPlan;
+    if (!gate) return; // wait for first defined gate snapshot
+    const hasFirstPlan = !!gate.hasCreatedFirstWeeklyPlan;
+    const hasFirstSnap = !!gate.hasTriedFirstFoodSnap;
+    const prev = firstPlanFlippedRef.current;
     firstPlanFlippedRef.current = hasFirstPlan;
+    const justFlipped = prev === false && hasFirstPlan === true;
 
     if (!justFlipped) {
       return;
