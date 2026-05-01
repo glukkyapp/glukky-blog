@@ -1,0 +1,89 @@
+Task #563 — Issues
+1. Safety-net effect has a stale location closure problem
+
+The timer inside the useEffect:
+
+ts
+const timer = setTimeout(() => {
+  if (firstPlanSafetyFiredRef.current) return;
+  if (location !== "/plan") return;  // ← stale closure
+  firstPlanSafetyFiredRef.current = true;
+  track("first_plan_navigation_fired", { path: "safety_net" });
+  setLocation("/snap");
+}, 1500);
+location inside setTimeout is captured at the time the effect ran, not 1500ms later. If the user navigated away from /plan during those 1500ms via the immediate setLocation in onSuccess, the inner if (location !== "/plan") return check reads the stale closure value — not the current location. The setLocation guard could incorrectly pass.
+
+The outer useEffect dependency on location helps (the effect re-runs and clears the timer if location changes), but the timer fires from the closure — it doesn't re-read from the dependency. Use a ref for the location check inside the timer instead:
+
+ts
+const locationRef = useRef(location);
+useEffect(() => { locationRef.current = location; }, [location]);
+
+// inside the timer:
+if (locationRef.current !== "/plan") return;
+Or simply rely only on firstPlanSafetyFiredRef.current as the guard (since onSuccess doesn't set that ref), and trust that the dependency array [location] will cancel and re-run the effect when location changes.
+
+2. Auto-focus sheet overlay on /snap may close on navigation
+
+When wasFirstPlan is true, setLocation("/snap") fires immediately, then the auto-focus sheet is already open (or opening). If your sheet implementation unmounts when its parent page unmounts, navigating to /snap while on /plan will close the sheet before the user sees it.
+
+The fix assumes the sheet is managed at App-level (not page-level) state — that it persists across route changes. If autoFocusSheet is scoped to weekly-planner.tsx, it will unmount when you navigate away and the overlay will never appear on /snap. Confirm autoFocusSheet is managed at App-level or in a shared context before relying on this behavior.
+
+3. refetchGate().catch() fires-and-forgets, but the nav rule depends on fresh gate
+
+ts
+if (wasFirstPlan) {
+  refetchGate().catch((e) => track("first_plan_refetch_gate_error", { message: String(e) }));
+  track("first_plan_navigation_fired", { path: "immediate" });
+  setLocation(target);
+  return;
+}
+The nav bar on /snap (funnel step 2) requires gate.hasCreatedFirstWeeklyPlan: true to show Snap unlocked. Since refetchGate() is fire-and-forget here, the nav bar might paint one frame with the stale gate showing Snap as locked (since hasCreatedFirstWeeklyPlan was still false in the cache). The queryClient.invalidateQueries above this call will trigger a background refetch, which should race-resolve quickly — but there may be a brief flash of the locked nav icon.
+
+This is the same issue fixed in #557 step 3 ("await refetchGate before setLocation"). The plan says "Do not await — move to fire-and-forget alongside setLocation." That's a deliberate choice, but it means accepting a possible brief flash. Worth a code comment noting the tradeoff.
+
+Task #564 — Issues
+4. handleExitWarningStay rewrite drops the refetchGate + hard-lock POST { optedOut: false } calls
+
+The original handleExitWarningStay from #558 was:
+
+ts
+await apiRequest("POST", "/api/profile/hard-lock", { optedOut: false });
+await refetchGate();
+setExitWarningOpen(false);
+showPaywall(onSuccess || undefined);
+The new version in #564:
+
+ts
+setExitWarningOpen(false);
+const onSuccess = exitWarningOnSuccessRef.current;
+exitWarningOnSuccessRef.current = null;
+setTimeout(() => showPaywall(onSuccess || undefined), 250);
+setTimeout(() => setExitWarningBackdropOpen(false), 600);
+The apiRequest("POST", "/api/profile/hard-lock", { optedOut: false }) call is gone. This means when the user taps "Stay", the hardLockedAfterAdviceDismiss flag stays true in the database. If the Apple sheet re-presents and the user subscribes — great, no issue. But if they dismiss the Apple sheet again, handlePaywallDismiss will now read hardLockedAfterAdviceDismiss: true (since the flag was never cleared), skip the exit-warning popup, and route silently to /profile. The "Stay" flow becomes a one-shot — after one "Stay + dismiss again" the user is hard-locked.
+
+The await apiRequest("POST", "/api/profile/hard-lock", { optedOut: false }) call must be kept before re-presenting the paywall.
+
+5. Scrim z-index may still appear above the AlertDialog on some iOS WebView configs
+
+The plan places the scrim at z-40 and assumes Radix AlertDialog is at z-50. Radix's default overlay is z-50, but the AlertDialog content is also z-50 — both the overlay and content render at the same level. The scrim at z-40 should sit below both. However, if your alert-dialog.tsx has been customized (e.g. z-[100] or similar), z-40 may need updating. Verify the actual z-index in client/src/components/ui/alert-dialog.tsx before shipping.
+
+6. Defensive cleanup effect fires on every re-render where exitWarningOpen is false
+
+ts
+useEffect(() => {
+  if (!exitWarningOpen && exitWarningBackdropOpen) {
+    setExitWarningBackdropOpen(false);
+    track("paywall_exit_warning_backdrop_hidden", { reason: "cleanup" });
+  }
+}, [exitWarningOpen, exitWarningBackdropOpen]);
+This fires whenever either dependency changes, including on the initial render when both are false. The if (!exitWarningOpen && exitWarningBackdropOpen) guard prevents any action in that case, so it's safe — but it also means you'll get unnecessary effect runs. Low impact, but worth noting: the exitWarningBackdropOpen dependency means this effect re-runs every time the scrim is shown/hidden, which is already handled by the explicit setExitWarningBackdropOpen(false) calls in handleExitWarningStay and handleExitWarningLeave. The cleanup effect is pure defense and won't cause bugs, but it will log a spurious paywall_exit_warning_backdrop_hidden: cleanup event every time the dialog closes normally. Add a comment explaining it's only for abnormal paths.
+
+Summary table
+#	Task	Severity	Issue
+1	#563	Medium	Safety-net timer reads stale location closure
+2	#563	High	Auto-focus sheet may unmount when navigating away if it's page-scoped
+3	#563	Low	Fire-and-forget refetchGate may cause brief flash of locked Snap nav icon
+4	#564	Critical	handleExitWarningStay drops the hard-lock { optedOut: false } reversal
+5	#564	Medium	Scrim z-40 must be verified against actual AlertDialog z-index
+6	#564	Low	Cleanup effect fires spurious telemetry on normal dialog close paths
