@@ -7,6 +7,7 @@ import { AnimatedPageWrapper } from "@/components/page-transition";
 import { useAuth } from "@/hooks/use-auth";
 import FloatingNavBar from "@/components/floating-nav-bar";
 import { lazy, Suspense, useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
+import { createPortal } from "react-dom";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
@@ -299,6 +300,18 @@ function AuthenticatedApp() {
   // dismissed by a user with both activation milestones already done.
   const [exitWarningOpen, setExitWarningOpen] = useState(false);
   const exitWarningOnSuccessRef = useRef<(() => void) | null>(null);
+
+  // Visual continuity scrim shown the instant the RC native paywall
+  // closes (in the both-milestones-done branch) so the user does not
+  // see a flash of the underlying app screen between the native
+  // sheet's close animation and the AlertDialog mounting on top.
+  // Rendered at z-40 (the AlertDialog overlay+content live at z-50
+  // per alert-dialog.tsx — one tier above the scrim). True
+  // "popup on top of the native paywall" is infeasible with the
+  // BuildNatively bridge (RC paywall is a native iOS modal sheet
+  // outside the WebView; BN exposes no native dialog primitive),
+  // so this perceptual masking is the user-approved next-best.
+  const [exitWarningBackdropOpen, setExitWarningBackdropOpen] = useState(false);
 
   const isLocked = !!(gateStatus && !gateStatus.isPremium && Object.values(gateStatus.features).some((f) => f.lockApp));
 
@@ -647,6 +660,14 @@ function AuthenticatedApp() {
       isPremium: g.isPremium,
     });
 
+    // Drop the visual continuity scrim immediately — BEFORE the
+    // awaited hard-lock POST — so the bare app screen is never
+    // visible between the native paywall close and the AlertDialog
+    // mount. The POST below takes ~50-300ms and used to be the
+    // primary source of the flash the user complained about.
+    setExitWarningBackdropOpen(true);
+    track("paywall_exit_warning_backdrop_shown");
+
     try {
       // Persist hard-lock BEFORE showing the popup so closing the app
       // or losing connection mid-popup still ends up in hard lock B.
@@ -672,6 +693,10 @@ function AuthenticatedApp() {
       // the existing hard-paywall path takes over (avoids ambiguous
       // soft-A state with no popup surfaced).
       pendingActionRef.current = null;
+      // Hide the scrim — the dialog will never mount on this branch,
+      // and /profile's hard paywall takes over the screen on its own.
+      setExitWarningBackdropOpen(false);
+      track("paywall_exit_warning_backdrop_hidden", { reason: "post_failed" });
       if (location !== "/profile") setLocation("/profile");
     }
   }, [gateStatus, refetchGate, location, setLocation]);
@@ -771,6 +796,14 @@ function AuthenticatedApp() {
     const onSuccess = exitWarningOnSuccessRef.current;
     exitWarningOnSuccessRef.current = null;
     setTimeout(() => showPaywall(onSuccess || undefined), 250);
+    // Keep the scrim up across the dialog→paywall handoff so the bare
+    // app screen never reappears between the AlertDialog close and
+    // the native RC sheet taking over (~250ms re-present + a buffer
+    // for the sheet's open animation). 600ms covers both comfortably.
+    setTimeout(() => {
+      setExitWarningBackdropOpen(false);
+      track("paywall_exit_warning_backdrop_hidden", { reason: "stay" });
+    }, 600);
   }, [refetchGate, showPaywall]);
 
   // Leave (or backdrop tap) → keep hard-lock flag set, drop any
@@ -782,9 +815,30 @@ function AuthenticatedApp() {
     pendingActionRef.current = null;
     exitWarningOnSuccessRef.current = null;
     setExitWarningOpen(false);
+    // Drop the scrim immediately — the user is being routed to
+    // /profile and the lock-app effect will re-present the hard
+    // paywall there. Holding the scrim would only delay the visual
+    // handoff to /profile.
+    setExitWarningBackdropOpen(false);
+    track("paywall_exit_warning_backdrop_hidden", { reason: "leave" });
     try { await refetchGate(); } catch {}
     if (location !== "/profile") setLocation("/profile");
   }, [refetchGate, location, setLocation]);
+
+  // Defensive cleanup: if the dialog ever closes via a path that
+  // doesn't go through Stay/Leave (future programmatic close, Radix
+  // edge case, etc.), make sure the scrim can never get stuck on
+  // screen. The Stay handler intentionally keeps the scrim up for
+  // 600ms after closing the dialog, so this watchdog uses a 1s grace
+  // period to avoid racing it.
+  useEffect(() => {
+    if (exitWarningOpen || !exitWarningBackdropOpen) return;
+    const t = setTimeout(() => {
+      setExitWarningBackdropOpen(false);
+      track("paywall_exit_warning_backdrop_hidden", { reason: "cleanup" });
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [exitWarningOpen, exitWarningBackdropOpen]);
 
   // Identify the user to RC once Replit auth resolves; flips to logout on auth-away so the next user's purchase isn't merged.
   // Declared before the lock/paywall effect so login starts before any paywall presentation.
@@ -1500,6 +1554,21 @@ function AuthenticatedApp() {
           <FloatingNavBar />
           <GlobalPiggyBankPopup />
           {unlockingOverlay && <UnlockingOverlay />}
+          {exitWarningBackdropOpen && createPortal(
+            <div
+              data-testid="overlay-paywall-exit-warning-backdrop"
+              aria-hidden="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 40,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backdropFilter: "blur(4px)",
+                WebkitBackdropFilter: "blur(4px)",
+              }}
+            />,
+            document.body,
+          )}
           <PaywallExitWarning
             open={exitWarningOpen}
             onStay={handleExitWarningStay}
@@ -1533,6 +1602,21 @@ function AuthenticatedApp() {
         <FloatingNavBar />
         <GlobalPiggyBankPopup />
         {unlockingOverlay && <UnlockingOverlay />}
+        {exitWarningBackdropOpen && createPortal(
+          <div
+            data-testid="overlay-paywall-exit-warning-backdrop"
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 40,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          />,
+          document.body,
+        )}
         <PaywallExitWarning
           open={exitWarningOpen}
           onStay={handleExitWarningStay}
