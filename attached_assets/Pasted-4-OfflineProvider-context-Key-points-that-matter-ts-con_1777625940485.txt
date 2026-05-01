@@ -1,0 +1,102 @@
+4. OfflineProvider / context
+Key points that matter:
+
+ts
+const PING_DELAYS_MS = [0, 1000, 2000, 4000];
+const PING_TIMEOUT_MS = 5000;
+This means: try /api/health immediately, then after 1s, 2s, 4s — and each ping itself times out after 5s.
+
+Worst case: ~0+5 + 1+5 + 2+5 + 4+5 ≈ 27 s before falling back to reload anyway. That’s acceptable but on the long side; your UX tolerance may be closer to ~10–15 s total for auto‑recovery.
+
+ts
+const [isOffline, setIsOffline] = useState(
+  typeof navigator !== "undefined" && navigator.onLine === false,
+);
+Safe use of navigator (guards for SSR) — good.
+
+ts
+const [recovering, setRecovering] = useState(false);
+This is intended to prevent starting multiple recoverWithPing() calls. However, the way you use it has a subtle issue (see below).
+
+Subtle bug: recovering in the effect dependency
+ts
+useEffect(() => {
+  const onOffline = () => setOffline(true);
+  const onOnline = () => {
+    if (recovering) return;
+    setRecovering(true);
+    void recoverWithPing();
+  };
+  window.addEventListener("offline", onOffline);
+  window.addEventListener("online", onOnline);
+  return () => {
+    window.removeEventListener("offline", onOffline);
+    window.removeEventListener("online", onOnline);
+  };
+}, [recovering, setOffline]);
+Because recovering is in the dependency array, every time recovering changes, you:
+
+tear down and re‑add onOnline / onOffline listeners,
+
+closing over a new recovering value.
+
+In practice this is not catastrophic, but it’s unnecessary and can lead to confusing behaviour, because:
+
+onOnline uses the recovering value from the closure. You don’t need it to track updates, you just need to lock once when the first online event fires.
+
+Fix (simpler and safer):
+
+Remove recovering from the dependencies and use a ref instead.
+
+Example:
+
+ts
+const recoveringRef = useRef(false);
+
+useEffect(() => {
+  const onOffline = () => setOffline(true);
+  const onOnline = () => {
+    if (recoveringRef.current) return;
+    recoveringRef.current = true;
+    void recoverWithPing();
+  };
+
+  window.addEventListener("offline", onOffline);
+  window.addEventListener("online", onOnline);
+  return () => {
+    window.removeEventListener("offline", onOffline);
+    window.removeEventListener("online", onOnline);
+  };
+}, [setOffline]);
+You can then remove recovering from state entirely unless you need it for UI.
+
+Or, if you keep state:
+If you keep recovering as state, change the effect to:
+
+ts
+useEffect(() => {
+  const onOffline = () => setOffline(true);
+  const onOnline = () => {
+    setRecovering(prev => {
+      if (prev) return prev;
+      void recoverWithPing();
+      return true;
+    });
+  };
+  window.addEventListener("offline", onOffline);
+  window.addEventListener("online", onOnline);
+  return () => {
+    window.removeEventListener("offline", onOffline);
+    window.removeEventListener("online", onOnline);
+  };
+}, [setOffline]);
+Here, the closure doesn’t depend on recovering; instead the state updater handles the “only run once” logic.
+
+Everything else in OfflineProvider looks correct:
+
+registerOfflineNotifier(() => setOffline(true)); on mount is correct.
+
+Cleanup re‑registers null — good.
+
+{children}{isOffline && <OfflineScreen />} ensures overlay sits above all content.
+

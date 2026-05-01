@@ -1,0 +1,27 @@
+1. online event → immediate window.location.reload() is aggressive
+The spec fires online when the OS says a network interface is up — not when your backend is actually reachable again. So the auto-reload may fire, your app reloads, /api/auth/user still fails because the backend needs another second or two to accept connections, and the offline screen reappears instantly.
+
+Suggested fix: Add a 1–2 second delay before reload, or do a quick /api/health ping first and only reload on success. Either way is better than naked window.location.reload() on the online event.
+
+js
+window.addEventListener('online', () => {
+  setTimeout(() => window.location.reload(), 1500);
+});
+2. notifyNetworkFailure() on every TypeError may be too broad
+TypeError: Failed to fetch is the browser's network error, but TypeError also covers things like bad JSON, wrong argument types, and other non-network bugs. If any of those slip through the catch block, you'll show the offline screen when the user is actually online.
+
+Suggested fix: In the catch block, check specifically for AbortError (timeout) and TypeError where err.message.includes('fetch'), not all TypeErrors.
+
+js
+if (err.name === 'AbortError' || 
+   (err instanceof TypeError && err.message.toLowerCase().includes('fetch'))) {
+  notifyNetworkFailure();
+}
+3. The 25 s timeout catches hung APIs but adds latency to non-hung ones
+If a request takes 26 s on a genuinely slow connection (not broken, just slow), the user sees the offline screen even though the request was about to succeed. For normal API calls 25 s is very generous so this is unlikely, but worth knowing.
+
+4. Where is notifyNetworkFailure() called for getQueryFn vs apiRequest?
+Both Step 6 and Step 7 add the same behaviour. If both wrap the same underlying fetch, you could end up calling notifyNetworkFailure() twice for one failed request. Depending on how the idempotency check is implemented (setting true when already true is a no-op, as specified), this is harmless but worth confirming the de-duplication is actually in place.
+
+5. isOffline never goes back to false — is that intentional?
+The ticket says: online event calls window.location.reload() — no need to set false. That's correct for the auto-recovery path. But if window.location.reload() fails or is blocked for any reason, the user is stuck on the offline screen with no way to get back except tapping Reload manually. That's fine as a fallback — just be aware there's no "soft recovery" without a full reload.
