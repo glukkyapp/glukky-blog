@@ -28,7 +28,7 @@ import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
-import { identifyUser, resetUser, track } from "@/lib/posthog";
+import { identifyUser, resetUser, track, initPostHog } from "@/lib/posthog";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
 declare global {
@@ -1286,6 +1286,33 @@ function App() {
       alive = false;
     };
   }, [showCube]);
+
+  // Defer PostHog init until the WebView is idle. Nothing tracked or
+  // identified before the cube screen dismisses, so this loses no events
+  // but keeps /decide + recorder.js off the BN-splash critical path on
+  // first install. Mirrors the Typeform idle-load pattern in index.html.
+  useEffect(() => {
+    let cancelled = false;
+    const start = () => { if (!cancelled) initPostHog(); };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    if (typeof w.requestIdleCallback === "function") {
+      idleHandle = w.requestIdleCallback(start, { timeout: 4000 });
+    } else {
+      timeoutHandle = window.setTimeout(start, 1500);
+    }
+    return () => {
+      cancelled = true;
+      if (idleHandle != null && typeof w.cancelIdleCallback === "function") {
+        w.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle != null) window.clearTimeout(timeoutHandle);
+    };
+  }, []);
 
   useEffect(() => {
     const updateFontClass = (lang: string) => {
