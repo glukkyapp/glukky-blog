@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import cubeLogo from "@assets/logo_new_1777623254972.png";
+
+const CUBE_LOGO_URL = "/cube.png";
 
 export default function OfflineScreen() {
   const { t } = useTranslation();
@@ -24,7 +25,7 @@ export default function OfflineScreen() {
       }}
     >
       <img
-        src={cubeLogo}
+        src={CUBE_LOGO_URL}
         alt="Glukky"
         data-testid="img-offline-cube"
         style={{
