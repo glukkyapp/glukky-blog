@@ -3110,7 +3110,16 @@ Important rules:
 - Your advice must not contradict the user's current weekly tip: "${tip}"
 - Never use the word "diabetes" in any form.
 
-Always reply in this format:
+Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
+- If the food items together suggest a recognizable cultural meal-type — Hong Kong 常餐 / 茶餐廳早餐 / 套餐, dim sum brunch, afternoon tea, English breakfast, Japanese bento, Korean BBQ set, mezze spread, charcuterie board, etc. — open the advice with ONE single-sentence cultural note in the user's locale, then continue with the normal health/dietary advice on the next line.
+- If the photo shows a single dish (e.g. just wonton noodles, just a pineapple bun) or the items don't clearly fit a known meal-type, SKIP this opening line entirely and start directly with the 🩸 line.
+- The cultural opener is plain prose (no emoji prefix, no label) and stays to ONE sentence.
+- Worked examples (use whichever locale matches your reply language):
+  - en → "This looks like a classic Hong Kong cha chaan teng breakfast set."
+  - zh-Hant → "這看起來是茶餐廳常餐。"
+  - yue → "呢個望落係茶餐廳常餐。"
+
+Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the 🩸 line):
 
 🩸 Blood sugar impact: [High / Medium / Low]
 ⚠️ Watch out: [the single biggest GI or sugar risk — 1 concise sentence]
