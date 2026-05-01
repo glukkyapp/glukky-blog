@@ -11,6 +11,7 @@ import { useGate } from "@/App";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import { track, trackException } from "@/lib/posthog";
 import { timedFetch } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 const SNAP_TIMEOUT_MS = 45000;
 
@@ -189,9 +190,28 @@ interface DisambigItem {
 
 export default function Snap() {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
   const { showPaywall, refetchGate } = useGate();
+
+  function handleSnapCompleted() {
+    if (!user?.id) return;
+
+    const key = `glukky_snap_completed_count_${user.id}`;
+    const prev = Number(localStorage.getItem(key) ?? "0");
+    const next = Number.isFinite(prev) ? prev + 1 : 1;
+    localStorage.setItem(key, String(next));
+
+    if (next === 2) {
+      const lang = i18n.language;
+      if (lang === "en") {
+        track("snap_completed_2_en");
+      } else if (lang === "zh-Hant" || lang === "yue") {
+        track("snap_completed_2_zh");
+      }
+    }
+  }
 
   const [step, setStep] = useState<Step>("upload");
   const [error, setError] = useState<string | null>(null);
@@ -510,6 +530,7 @@ export default function Snap() {
       setAdviceResult(data as AdviceResult);
       setStep("advice");
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
+      handleSnapCompleted();
     } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));
