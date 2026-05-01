@@ -116,6 +116,47 @@ export function OfflineProvider({ children }: OfflineProviderProps) {
     };
   }, []);
 
+  // Foreground-return detection: when the WebView resumes (visibilitychange /
+  // focus / pageshow incl. bfcache restore), if we're offline at resume time
+  // flip the overlay immediately so users mid-upload don't wait for the full
+  // 25s/45s AbortController timeout to fire. Mobile WebView lifecycles vary,
+  // so we listen to all three and dedupe.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    let lastResumeAt = 0;
+    const RESUME_DEDUPE_MS = 750;
+
+    const handleResume = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastResumeAt < RESUME_DEDUPE_MS) return;
+      lastResumeAt = now;
+      if (isOfflineRef.current) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        isOfflineRef.current = true;
+        setIsOfflineState(true);
+      }
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      // bfcache restore (e.persisted) is the most important case here, but we
+      // also handle normal pageshow since iOS Safari can restore without
+      // firing visibilitychange.
+      void e;
+      handleResume();
+    };
+
+    document.addEventListener("visibilitychange", handleResume);
+    window.addEventListener("focus", handleResume);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", handleResume);
+      window.removeEventListener("focus", handleResume);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
+
   return (
     <OfflineContext.Provider value={{ isOffline, setOffline }}>
       {children}
