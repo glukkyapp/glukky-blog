@@ -222,7 +222,11 @@ interface GateContextType {
   gate: GateStatus | null;
   isLocked: boolean;
   showPaywall: (onSuccess?: () => void) => void;
-  refetchGate: () => void;
+  // Returns the underlying TanStack Query refetch promise. Consumers
+  // can `await` it (handleAutoFocusSheetDismiss does), attach `.catch`
+  // for fire-and-forget telemetry (first-plan immediate path does), or
+  // ignore the return value entirely (snap.tsx call sites).
+  refetchGate: () => Promise<unknown>;
   // Returns the current value of App-level `paywallInFlightRef`. We
   // expose this as a getter (not a value) because the underlying
   // signal is a ref — components that need to read it from inside an
@@ -235,7 +239,7 @@ const GateContext = createContext<GateContextType>({
   gate: null,
   isLocked: false,
   showPaywall: () => {},
-  refetchGate: () => {},
+  refetchGate: () => Promise.resolve(),
   isPaywallInFlight: () => false,
 });
 
@@ -1476,7 +1480,7 @@ function AuthenticatedApp() {
     gate: gateStatus || null,
     isLocked,
     showPaywall,
-    refetchGate: () => { refetchGate(); },
+    refetchGate,
     isPaywallInFlight: () => paywallInFlightRef.current,
   };
 

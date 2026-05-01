@@ -630,16 +630,9 @@ export default function WeeklyPlanner() {
         // gate optimistically inside the nav bar component.
         // The .catch keeps observability consistent with the
         // deferred-via-sheet path which also captures refetch errors.
-        try {
-          const r = refetchGate();
-          if (r && typeof (r as any).catch === "function") {
-            (r as unknown as Promise<unknown>).catch((e: unknown) => {
-              track("first_plan_refetch_gate_error", { message: String(e) });
-            });
-          }
-        } catch (e) {
+        refetchGate().catch((e: unknown) => {
           track("first_plan_refetch_gate_error", { message: String(e) });
-        }
+        });
         track("first_plan_navigation_fired", { path: "immediate" });
         setLocation(target);
         return;
