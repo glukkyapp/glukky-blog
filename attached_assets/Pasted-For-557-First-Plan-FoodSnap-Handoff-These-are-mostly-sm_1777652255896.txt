@@ -1,0 +1,154 @@
+For #557 – First Plan → FoodSnap Handoff
+These are mostly small but important safety tweaks.
+
+1) Make the auto-focus sheet onClose truly async
+What to change
+
+In weekly-planner.tsx, wherever the auto-focus sheet’s onClose (and primary button) handler calls refetchGate() and then setLocation(target), make the handler async and actually await refetchGate().
+
+Why
+
+Your plan relies on await refetchGate() so that by the time you navigate to /snap, the gate cache has hasCreatedFirstWeeklyPlan: true, and the floating nav bar shows FoodSnap unlocked immediately.
+
+If the handler isn’t async, the await becomes fire-and-forget and the bug (stale gate when navbar renders) can come back.
+
+2) Add a fallback if refetchGate() fails
+What to change
+
+Wrap await refetchGate() in a try { ... } catch { ... } and always call setLocation(target) in a finally block.
+
+Why
+
+On a slow network or temporary failure, you don’t want the user stuck on the planner after tapping “Confirm and start week”.
+
+Better behavior: even if gate refetch fails, still navigate to /snap (first-plan) or / (later plans); they just might see the lock icon briefly until gate eventually refetches.
+
+For #558 – Milestone-aware paywall dismiss routing
+These have real bug potential, especially around the snap-advice auto-resume.
+
+3) Fix the route-change cancel effect so it doesn’t clear the success callback
+What to change
+
+Current (simplified):
+
+ts
+useEffect(() => {
+  if (paywallInFlight) return;
+  if (pendingActionRef.current || verifyPollerRef.current) {
+    cancelBackgroundVerifyPoller({ clearPending: true });
+  }
+}, [location, paywallInFlight, cancelBackgroundVerifyPoller]);
+Change to:
+
+ts
+useEffect(() => {
+  if (paywallInFlight) return; // still acts as a guard
+  if (pendingActionRef.current || verifyPollerRef.current) {
+    cancelBackgroundVerifyPoller({ clearPending: true });
+  }
+}, [location, cancelBackgroundVerifyPoller]); // remove paywallInFlight from deps
+Why
+
+With paywallInFlight in the dependency list, the effect re-runs when the paywall finishes (goes from true → false).
+
+At that moment, pendingActionRef.current may still hold the snap-advice resume callback. The effect then calls cancelBackgroundVerifyPoller({ clearPending: true }) and nukes it.
+
+That reintroduces exactly the “paid but no advice resume” bug you’re trying to fix.
+
+You still read paywallInFlight as a guard, just don’t let its transitions re-fire the effect.
+
+4) Use the correct route string for the planner ("/weekly-planner" vs "/plan")
+What to change
+
+In handlePaywallDismiss:
+
+ts
+if (!planDone) {
+  pendingActionRef.current = null;
+  if (location !== "/plan") setLocation("/plan");
+  track("paywall_dismiss_route", { destination: "/plan" });
+  return;
+}
+Change /plan and the tracked destination to whatever your real planner route is (from your router and #557 spec), e.g.:
+
+ts
+const PLANNER_ROUTE = "/weekly-planner";
+
+if (!planDone) {
+  pendingActionRef.current = null;
+  if (location !== PLANNER_ROUTE) setLocation(PLANNER_ROUTE);
+  track("paywall_dismiss_route", { destination: PLANNER_ROUTE });
+  return;
+}
+Why
+
+The textual spec uses /weekly-planner for the first milestone, while this snippet uses /plan. If your actual route is /weekly-planner, routing to /plan will 404 / fall back — silent but nasty.
+
+This mismatch is one of those bugs that only shows up at runtime, so better to unify now.
+
+5) Add error handling around /api/profile/hard-lock before showing the exit-warning popup
+What to change
+
+In handlePaywallDismiss when both milestones are done:
+
+ts
+await apiRequest("POST", "/api/profile/hard-lock", { optedOut: true });
+exitWarningOnSuccessRef.current = originalOnSuccess || null;
+setExitWarningOpen(true);
+Wrap with:
+
+ts
+try {
+  await apiRequest("POST", "/api/profile/hard-lock", { optedOut: true });
+  exitWarningOnSuccessRef.current = originalOnSuccess || null;
+  setExitWarningOpen(true);
+  track("paywall_exit_warning_shown");
+} catch (e) {
+  track("paywall_exit_warning_error", { message: String(e) });
+  // Fallback: behave like today's hard-paywall — route to /profile
+  pendingActionRef.current = null;
+  if (location !== "/profile") setLocation("/profile");
+}
+Why
+
+If the hard-lock write fails (network error, 500), the dialog never opens and the user gets no feedback.
+
+A small catch + fallback keeps the user from being stuck in a ghost state.
+
+6) Avoid re-presenting the Apple sheet before the warning dialog fully closes
+What to change
+
+In handleExitWarningStay:
+
+ts
+setExitWarningOpen(false);
+track("paywall_exit_warning_stay");
+const onSuccess = exitWarningOnSuccessRef.current;
+exitWarningOnSuccessRef.current = null;
+showPaywall(onSuccess || undefined);  // re-present Apple sheet
+Change to something like:
+
+ts
+setExitWarningOpen(false);
+track("paywall_exit_warning_stay");
+const onSuccess = exitWarningOnSuccessRef.current;
+exitWarningOnSuccessRef.current = null;
+
+// Let the dialog fully close before showing Apple sheet again
+setTimeout(() => {
+  showPaywall(onSuccess || undefined);
+}, 250);
+Why
+
+Without a small delay, the Apple sheet can appear while the dialog is mid-dismiss, which sometimes puts the sheet behind the dialog or causes flicker on real devices.
+
+7) Clean up all remaining hasReachedPaywall client references
+What to change
+
+After removing hasReachedPaywall from shared/schema.ts and getGateStatus, search the client for any use of gate.hasReachedPaywall or gateStatus?.hasReachedPaywall and delete/replace them.
+
+Why
+
+With the field gone from types, any leftover uses will fail TypeScript and/or keep old logic alive by mistake.
+
+Your new logic should rely only on hasCreatedFirstWeeklyPlan, hasTriedFirstFoodSnap, isPremium, and the new hardLockedAfterAdviceDismiss.
