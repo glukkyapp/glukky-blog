@@ -22,7 +22,7 @@ import {
   evaluateWeeklyAchievements,
   awardStruggleGraduationCoin,
 } from "./achievements";
-import { canUseFeature, getGateStatus } from "./gate";
+import { canUseFeature, getGateStatus, computePremiumRefreshUpdate } from "./gate";
 import { ensureCompPremium, isCompUserId } from "./comp-emails";
 import {
   verifyEntitlement,
@@ -3521,15 +3521,23 @@ No explanation, just JSON.`,
       }
 
       let profile = existing;
-      const premiumChanged = existing.isPremium !== verifiedPremium;
-      if (premiumChanged) {
-        const updated = await storage.updateProfile(userId, { isPremium: verifiedPremium });
+      const update = computePremiumRefreshUpdate(existing, verifiedPremium);
+      if (update) {
+        const updated = await storage.updateProfile(
+          userId,
+          update as Partial<InsertUserProfile>,
+        );
         if (updated) profile = updated;
-        trackServer(userId, "premium_status_changed_server", {
-          from: existing.isPremium,
-          to: verifiedPremium,
-          source,
-        });
+        if (update.isPremium !== undefined) {
+          trackServer(userId, "premium_status_changed_server", {
+            from: existing.isPremium,
+            to: verifiedPremium,
+            source,
+          });
+        }
+        if (update.hardLockedAfterAdviceDismiss === false) {
+          trackServer(userId, "hard_lock_flag_cleared_on_verify", { source });
+        }
       }
 
       // Persist the SERVER-TRUSTED RC subscriber id (from the verify

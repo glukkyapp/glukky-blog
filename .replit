@@ -54,12 +54,12 @@ waitForPort = 5000
 name = "week1-gate-check"
 author = "agent"
 
-[workflows.workflow.metadata]
-isValidation = true
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx playwright test tests/week1-gate.spec.ts --reporter=list && node tests/week1-gate.test.mjs"
+args = "npx playwright test tests/week1-gate.spec.ts tests/paywall-leave-anyway-unlock.spec.ts --reporter=list && node tests/week1-gate.test.mjs && npx tsx tests/paywall-leave-anyway-unlock.test.mts"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.0", "javascript_anthropic_ai_integrations:2.0.0"]

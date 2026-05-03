@@ -81,6 +81,36 @@ export function canUseFeature(profile: UserProfile, feature: FeatureKey): GateRe
   return { allowed: true };
 }
 
+// Decides which fields the premium-refresh handler must write back
+// when verifyEntitlement settles. Returns null when no write is
+// needed. Exported so the decision can be unit-tested directly
+// (server/routes.ts inlines the call, tests import this helper).
+//
+// Two cases trigger a write:
+//   - premium status flipped (either direction)
+//   - user is now verified-premium but the soft-paywall hard-lock
+//     flag is still true from a prior dismissal — a paid unlock
+//     must clear it, otherwise a later subscription lapse would
+//     re-trip the hard lock with no dismissal in the new cycle.
+export type PremiumRefreshUpdate = {
+  isPremium?: boolean;
+  hardLockedAfterAdviceDismiss?: boolean;
+} | null;
+
+export function computePremiumRefreshUpdate(
+  existing: Pick<UserProfile, "isPremium" | "hardLockedAfterAdviceDismiss">,
+  verifiedPremium: boolean,
+): PremiumRefreshUpdate {
+  const premiumChanged = existing.isPremium !== verifiedPremium;
+  const lockFlagDirty =
+    verifiedPremium && existing.hardLockedAfterAdviceDismiss === true;
+  if (!premiumChanged && !lockFlagDirty) return null;
+  const update: NonNullable<PremiumRefreshUpdate> = {};
+  if (premiumChanged) update.isPremium = verifiedPremium;
+  if (lockFlagDirty) update.hardLockedAfterAdviceDismiss = false;
+  return update;
+}
+
 export function getGateStatus(profile: UserProfile) {
   const mode = getGateMode();
   return {

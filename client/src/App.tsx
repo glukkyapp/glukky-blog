@@ -355,9 +355,12 @@ function AuthenticatedApp() {
 
     // Always refetch local caches even when verified=false (gate/profile may have changed for other reasons).
     // Awaited so the overlay stays up through full cache propagation, not just the verify call.
+    // currentPlan is refetched so the gated tree has fresh plan data
+    // the instant `isLocked` flips false.
     await Promise.all([
       refetchGate(),
       queryClient.refetchQueries({ queryKey: ["/api/profile"] }),
+      queryClient.refetchQueries({ queryKey: ["/api/plan/current"] }),
     ]);
     return verified;
   }, [refetchGate]);
@@ -915,26 +918,53 @@ function AuthenticatedApp() {
     }
     if (lockedPaywallShownRef.current) return;
     lockedPaywallShownRef.current = true;
-    // Note: the BN bridge wrapper holds a single-paywall mutex so this
-    // call and any concurrent `presentPaywall()` (from the floating nav
-    // bar, snap, weekly-planner, etc) can't stack two hosted paywalls
-    // on top of each other. The double-paywall race that used to be
-    // possible here pre-dates the dead-code cleanup in #506; the mutex
-    // structurally fixes it regardless of which call site fires first.
+    // Own the in-flight window like `showPaywall` does so the
+    // route-change-cancel effect and this effect itself can't re-fire
+    // mid-verify. Cleared in `finally` once verify settles. The hard
+    // paywall has no pre-paywall stash to return to — the user is
+    // already on /profile and stays there after unlock.
+    paywallInFlightRef.current = true;
+    track("paywall_lockapp_present");
     presentPaywallIfNeeded("Premium", { showCloseButton: false })
       .then(async (result) => {
-        if (result.status !== "SUCCESS") return;
+        if (result.status !== "SUCCESS") {
+          track("paywall_lockapp_dismissed", {
+            status: result.status,
+            message: result.message,
+          });
+          return;
+        }
         if (result.message === "purchased" || result.message === "restored") {
-          // Real transaction — background-poll so a slow RC propagation
-          // still unlocks the user without a force-quit.
-          await verifyWithOverlay({ backgroundPollOnFail: true });
+          track("paywall_lockapp_purchase_attempt", { outcome: result.message });
+          const verified = await verifyWithOverlay({ backgroundPollOnFail: true });
+          track(
+            verified
+              ? "paywall_lockapp_purchase_verified"
+              : "paywall_lockapp_purchase_unverified",
+            { outcome: result.message },
+          );
+          // Reset the one-shot guard so a later re-lock cycle in the
+          // same session can re-present.
+          if (verified) lockedPaywallShownRef.current = false;
         } else if (result.message === "not_presented") {
-          // RC already considers the user entitled — single verify is
-          // enough; no need to keep polling for 60s.
-          await verifyWithOverlay();
+          track("paywall_lockapp_not_presented");
+          const verified = await verifyWithOverlay();
+          track(
+            verified
+              ? "paywall_lockapp_not_presented_verified"
+              : "paywall_lockapp_not_presented_unverified",
+          );
+          if (verified) lockedPaywallShownRef.current = false;
         }
       })
-      .catch(() => {});
+      .catch((e) => {
+        track("paywall_lockapp_error", {
+          message: e instanceof Error ? e.message : String(e),
+        });
+      })
+      .finally(() => {
+        paywallInFlightRef.current = false;
+      });
   }, [isLocked, location, setLocation, verifyWithOverlay]);
 
   useEffect(() => {
