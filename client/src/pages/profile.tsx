@@ -38,7 +38,6 @@ interface ProfileData {
   sleepPattern: string;
   eatingOutFrequency: string;
   struggles: string[];
-  currentStruggle: string | null;
   hasLateDinner: boolean;
   dinnerMastered: boolean;
   notificationEmail: string;

@@ -319,7 +319,7 @@ function AuthenticatedApp() {
   // Post-purchase callers pass retries (RC entitlement propagation can lag StoreKit by a few seconds).
   const refreshPremiumThenRefetch = useCallback(async (
     force = false,
-    opts: { retries?: number; backoffMs?: number; customerId?: string } = {},
+    opts: { retries?: number; backoffMs?: number; customerId?: string; recentPurchase?: boolean } = {},
   ): Promise<boolean> => {
     const retries = Math.max(0, opts.retries ?? 0);
     const backoffMs = Math.max(0, opts.backoffMs ?? 1500);
@@ -330,6 +330,11 @@ function AuthenticatedApp() {
       try {
         const body: Record<string, unknown> = {};
         if (force) body.force = true;
+        // #581: post-purchase verifies opt into a server-side single
+        // retry that handles RC entitlement propagation lag. Routine
+        // refreshes (boot, foreground, gate checks) leave it off so
+        // they never pay the 1.5s wait.
+        if (opts.recentPurchase) body.recentPurchase = true;
         // Default the customerId from the most recent bridge login result
         // when the caller didn't explicitly pass one. This makes EVERY
         // refresh (boot, foreground, gate check) participate in the
@@ -532,6 +537,10 @@ function AuthenticatedApp() {
         retries: 2,
         backoffMs: 1500,
         customerId: opts.customerId,
+        // #581: this is the explicit post-purchase verify. Flag the
+        // server so the first attempt also gets a single propagation
+        // retry, on top of the client-side retries here.
+        recentPurchase: true,
       });
       if (!verified) {
         if (opts.backgroundPollOnFail) {

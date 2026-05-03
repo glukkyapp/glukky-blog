@@ -8,12 +8,11 @@ import {
   type PiggyBankEvent, type InsertPiggyBankEvent,
   type CycleHistoryRow, type InsertCycleHistory,
   type IngredientVocabulary, type InsertIngredientVocabulary,
-  type FoodCombo, type InsertFoodCombo,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   type ScheduledNotification,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
-  ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache,
+  ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
   users, sessions,
 } from "@shared/schema";
@@ -73,10 +72,7 @@ export interface IStorage {
   saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow>;
   getCycleHistory(userId: string): Promise<CycleHistoryRow[]>;
 
-  getFoodCombos(foodName: string): Promise<FoodCombo[]>;
-  saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo>;
-  getFoodComboByFullCombo(foodName: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodCombo | null>;
-  bumpFoodComboUseCount(comboId: number): Promise<void>;
+  getFoodLabelsByName(foodName: string): Promise<FoodLabel[]>;
   getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]>;
   getIngredientByInternalId(internalId: string): Promise<IngredientVocabulary | null>;
   saveIngredient(item: InsertIngredientVocabulary): Promise<IngredientVocabulary>;
@@ -455,7 +451,6 @@ export class DatabaseStorage implements IStorage {
       sleepPattern: "regular_10_6",
       eatingOutFrequency: "0",
       struggles: [],
-      currentStruggle: null,
       hasLateDinner: false,
       restDay: null,
       onboardingComplete: false,
@@ -463,11 +458,9 @@ export class DatabaseStorage implements IStorage {
       isStretchMode: false,
       stretchSuccessWeeks: 0,
       dinnerMastered: false,
-      dinnerSuccessWeeks: 0,
       dinnerExitType: null,
       tipCycleStartWeek: 0,
       tipStayCycles: 0,
-      currentTipIndex: 0,
       masteredStruggles: [],
       triedBeforeStruggles: [],
       skippedStruggles: [],
@@ -622,53 +615,18 @@ export class DatabaseStorage implements IStorage {
   }
 
 
-  async getFoodCombos(foodName: string): Promise<FoodCombo[]> {
+  async getFoodLabelsByName(foodName: string): Promise<FoodLabel[]> {
     const normalised = foodName.trim().toLowerCase();
-    return await db.select().from(foodCombos)
+    if (!normalised) return [];
+    return await db.select().from(foodLabels)
       .where(
         or(
-          sql`lower(${foodCombos.foodName}) = ${normalised}`,
-          sql`lower(${foodCombos.foodNameEn}) = ${normalised}`,
-          sql`${normalised} = ANY(SELECT lower(unnest(${foodCombos.foodNameAliases})))`
+          sql`lower(${foodLabels.foodNameEn}) = ${normalised}`,
+          sql`lower(${foodLabels.foodNameZhHant}) = ${normalised}`,
+          sql`lower(${foodLabels.foodNameYue}) = ${normalised}`,
         )
       )
-      .orderBy(desc(foodCombos.useCount), desc(foodCombos.id));
-  }
-
-  async saveFoodCombo(combo: InsertFoodCombo): Promise<FoodCombo> {
-    const [row] = await db.insert(foodCombos).values(combo).returning();
-    return row;
-  }
-
-  async getFoodComboByFullCombo(
-    foodName: string,
-    portionId: string,
-    sauceIds: string[],
-    toppingIds: string[],
-  ): Promise<FoodCombo | null> {
-    const candidates = await this.getFoodCombos(foodName);
-    if (candidates.length === 0) return null;
-
-    const sortedSauces = [...sauceIds].sort();
-    const sortedToppings = [...toppingIds].sort();
-
-    const match = candidates.find(c => {
-      if ((c.defaultPortion ?? "") !== (portionId ?? "")) return false;
-      const cSauces = [...(c.defaultSauces ?? [])].sort();
-      const cToppings = [...(c.defaultToppings ?? [])].sort();
-      if (cSauces.length !== sortedSauces.length) return false;
-      if (cToppings.length !== sortedToppings.length) return false;
-      return cSauces.every((s, i) => s === sortedSauces[i]) &&
-        cToppings.every((t, i) => t === sortedToppings[i]);
-    });
-
-    return match ?? null;
-  }
-
-  async bumpFoodComboUseCount(comboId: number): Promise<void> {
-    await db.update(foodCombos)
-      .set({ useCount: sql`${foodCombos.useCount} + 1` })
-      .where(eq(foodCombos.id, comboId));
+      .orderBy(desc(foodLabels.useCount), desc(foodLabels.id));
   }
 
   async getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]> {
@@ -730,9 +688,8 @@ export class DatabaseStorage implements IStorage {
     if (!normalised) return null;
 
     // STRICT exact-match-only lookup (case-insensitive on the three
-    // name columns). The previous fuzzy fallback (foodNamesMatch +
-    // normalizeFoodNameForMatch with `with …` / 配/加/和 stripping)
-    // was removed because it conflated materially different dishes:
+    // name columns). The previous fuzzy fallback was removed because
+    // it conflated materially different dishes:
     // e.g. "Wonton noodles with shrimp" vs "Wonton noodles with choi
     // sum" both stripped to "wonton noodles" and silently swapped one
     // library row's portion / sauces / advice onto the other dish's

@@ -1,5 +1,5 @@
 import { db } from "../server/db";
-import { ingredientVocabulary, foodCombos, foodLabels, foodAdviceCache } from "../shared/schema";
+import { ingredientVocabulary, foodLabels, foodAdviceCache } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import XLSX from "xlsx";
 import { fileURLToPath } from "url";
@@ -207,33 +207,8 @@ async function seedOneFile(label: string, xlsxPath: string) {
     console.log(`  + ${foodId} → ${comboId} (3 locales)`);
   }
 
-  console.log("\nBackfilling food_combos...");
-  for (const row of sheet1) {
-    const foodName = row.food_name_en;
-    const [existing] = await db.select().from(foodCombos)
-      .where(eq(foodCombos.foodName, foodName));
-    if (!existing) {
-      const portionId = PORTION_MAP[row.portion_en] || "medium";
-      const sauceIds = parseEnglishIds(row.sauces_en);
-      const toppingIds = parseEnglishIds(row.toppings_en);
-      const aliases: string[] = [];
-      if (row.food_name_zh_hant) aliases.push(row.food_name_zh_hant);
-      if (row.food_name_yue && row.food_name_yue !== row.food_name_zh_hant) aliases.push(row.food_name_yue);
-
-      await db.insert(foodCombos).values({
-        foodName,
-        foodNameEn: foodName,
-        foodNameAliases: aliases,
-        defaultPortion: portionId,
-        defaultSauces: sauceIds,
-        defaultToppings: toppingIds,
-        caloriesEstimate: null,
-      });
-      console.log(`  + ${foodName}`);
-    } else {
-      console.log(`  = ${foodName} (exists)`);
-    }
-  }
+  // #578: food_combos backfill removed with the table. food_labels (seeded
+  // above) is now the single source of food-name lookup defaults.
 
   console.log(`\nDone with ${label}!`);
 }

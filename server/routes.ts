@@ -179,7 +179,6 @@ export async function registerRoutes(
         struggles: sortedStruggles,
         hasLateDinner,
         dinnerMastered: false,
-        dinnerSuccessWeeks: 0,
         onboardingComplete: true,
         notificationEmail: notificationEmail || null,
         preferredLanguage: preferredLanguage || "en",
@@ -933,7 +932,9 @@ export async function registerRoutes(
         }
       }
 
-      // Task 4: at week 6 of eat_out focus with no resolution, force moved_on directly
+      // Task 4: at week 6 of eat_out focus with no resolution, force moved_on directly.
+      // Task 4 (#577): also at week 3 if eat_out is the sole unresolved struggle and
+      // mastery/skip evaluation didn't already resolve it — prevents users getting stuck.
       if (
         currentCycle === 1 &&
         currentStruggleForReflection === "eat_out" &&
@@ -950,7 +951,7 @@ export async function registerRoutes(
           const allOthersResolved = nonEatOutStruggles.every(s => eatOutMastered.includes(s) || eatOutSkipped.includes(s) || eatOutDifficult.includes(s));
           if (allOthersResolved) {
             const eatOutFocusWeekCount = await storage.countEatOutFocusWeeks(userId);
-            if (eatOutFocusWeekCount === 6) {
+            if (eatOutFocusWeekCount === 6 || eatOutFocusWeekCount === 3) {
               await storage.updateProfile(userId, {
                 difficultStruggles: [...eatOutDifficult, "eat_out"],
               });
@@ -968,6 +969,19 @@ export async function registerRoutes(
       if (currentCycle === 1 && !(profileBeforeMastery?.repickPending)) {
         const repickResult = await checkRepickCondition(userId);
         if (repickResult.conditionMet) {
+          // Bug 4 A1 fix (#577): if eat_out was picked but never scheduled in cycle 1,
+          // write it to skippedStruggles before saving cycle history so it lands in the
+          // moved-on bucket instead of being silently dropped at the cycle transition.
+          if (repickResult.eatOutPickedButNeverScheduled) {
+            const latestProfileForSkip = await storage.getProfile(userId);
+            const skippedForA1 = (latestProfileForSkip?.skippedStruggles as string[]) || [];
+            if (!skippedForA1.includes("eat_out")) {
+              await storage.updateProfile(userId, {
+                skippedStruggles: [...skippedForA1, "eat_out"],
+              });
+            }
+          }
+
           const latestProfileForHistory = await storage.getProfile(userId);
           const cycle1Skipped = (latestProfileForHistory?.skippedStruggles as string[]) || [];
           const cycle1Difficult = (latestProfileForHistory?.difficultStruggles as string[]) || [];
@@ -1232,6 +1246,19 @@ export async function registerRoutes(
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      // #576: server-side repick gate. A stale client (e.g. a planner page
+      // open from before a cycle transition) can submit a plan POST while
+      // the user still owes a repick; without this gate the plan would be
+      // created using the pre-transition struggle list, baking the wrong
+      // diet focus into the new week. The repick endpoints
+      // (/api/profile/repick, /repick3) clear this flag on success.
+      if (profile.repickPending === true) {
+        return res.status(409).json({
+          message: "Repick is pending — choose your struggles before planning.",
+          code: "repick_pending",
+        });
+      }
 
       const wasFirstPlan = !profile.hasCreatedFirstWeeklyPlan;
 
@@ -2330,7 +2357,7 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const fields = req.body;
       const allowed = ["walkDuration", "walksPerWeek",
-        "dinnerMastered", "hasLateDinner", "dinnerSuccessWeeks", "restDay", "dinnerTime"];
+        "dinnerMastered", "hasLateDinner", "restDay", "dinnerTime"];
       const update: any = {};
       for (const key of allowed) {
         if (fields[key] !== undefined) update[key] = fields[key];
@@ -2450,8 +2477,8 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const allowed = [
-        "walkDuration", "walksPerWeek", "dinnerMastered", "hasLateDinner", "dinnerSuccessWeeks",
-        "restDay", "dinnerTime", "struggles", "currentStruggle", "currentTipIndex",
+        "walkDuration", "walksPerWeek", "dinnerMastered", "hasLateDinner",
+        "restDay", "dinnerTime", "struggles",
         "masteredStruggles", "skippedStruggles", "difficultStruggles", "triedBeforeStruggles",
         "currentWeek", "tipCycleStartWeek", "tipStayCycles", "isStretchMode", "stretchSuccessWeeks",
         "currentStruggleCycle", "repickPending", "struggles2", "masteredStruggles2",
@@ -2893,21 +2920,22 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         });
       }
 
-      const combos = isFirstSnap ? [] : await storage.getFoodCombos(foodName);
+      // #578: food lookup now reads from food_labels only (food_combos table dropped).
+      const combos = isFirstSnap ? [] : await storage.getFoodLabelsByName(foodName);
 
       if (combos.length > 0) {
-        const resolvedCombos = await Promise.all(combos.map(async (combo) => {
-          const portionVocab = combo.defaultPortion
-            ? await storage.getIngredientByInternalId(combo.defaultPortion) : null;
+        const resolvedCombos = await Promise.all(combos.map(async (label) => {
+          const portionVocab = label.defaultPortionId
+            ? await storage.getIngredientByInternalId(label.defaultPortionId) : null;
           const sauceVocabs = await Promise.all(
-            (combo.defaultSauces ?? []).map(id => storage.getIngredientByInternalId(id))
+            (label.defaultSauces ?? []).map(id => storage.getIngredientByInternalId(id))
           );
           const toppingVocabs = await Promise.all(
-            (combo.defaultToppings ?? []).map(id => storage.getIngredientByInternalId(id))
+            (label.defaultToppings ?? []).map(id => storage.getIngredientByInternalId(id))
           );
           return {
             portion: portionVocab ? getIngredientLabel(portionVocab, locale) : null,
-            portionId: combo.defaultPortion,
+            portionId: label.defaultPortionId,
             sauces: sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) })),
             toppings: toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) })),
           };
@@ -2931,7 +2959,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
         return res.json({
           name: foodName,
-          canonicalName: combos[0].foodName,
+          canonicalName: combos[0].foodNameEn,
           portion: first.portion,
           portionId: first.portionId,
           sauces: first.sauces.map(s => s.label).join(", ") || null,
@@ -3080,19 +3108,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       if (label) {
         // Step 6 of the FoodSnap flow: exact combo match in library check 2.
-        // Bump the matching food_combos row's useCount so popular combos
-        // rise to the top of step-3 lookups for future snaps. Non-blocking.
-        try {
-          const matchingCombo = await storage.getFoodComboByFullCombo(
-            name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds,
-          );
-          if (matchingCombo) {
-            await storage.bumpFoodComboUseCount(matchingCombo.id);
-          }
-        } catch (bumpErr) {
-          console.error("Combo useCount bump error (non-blocking):", bumpErr);
-        }
-
+        // food_labels.useCount is already bumped inside getFoodLabelByCombo above
+        // (#578: previous parallel food_combos bump removed with the table).
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
@@ -3265,32 +3282,10 @@ No explanation, just JSON.`,
             isSnack: claudeTags?.isSnack ?? false,
             useCount: 0,
           });
-
-          const aliases: string[] = [];
-          if (translations.en && translations.en !== foodName) aliases.push(translations.en);
-          if (translations.zh && translations.zh !== foodName) aliases.push(translations.zh);
-          if (translations.yue && translations.yue !== foodName && translations.yue !== translations.zh) aliases.push(translations.yue);
-
-          // Full-combo dedupe: only insert when no existing food_combos row
-          // matches on (name + portion + sauces + toppings) together. This is
-          // the ONLY place during a snap where the food library is written.
-          const existingFullCombo = await storage.getFoodComboByFullCombo(
-            foodName, resolvedPortionId, resolvedSauceIds, resolvedToppingIds,
-          );
-          if (!existingFullCombo) {
-            await storage.saveFoodCombo({
-              foodName: foodName,
-              foodNameEn: foodNameEn,
-              foodNameAliases: [...new Set(aliases)],
-              defaultPortion: resolvedPortionId,
-              defaultSauces: resolvedSauceIds,
-              defaultToppings: resolvedToppingIds,
-              caloriesEstimate: null,
-              useCount: 0,
-            });
-          }
+          // #578: food_combos table dropped — saveFoodLabel above is the only
+          // place during a snap where the food library is written.
         } catch (saveErr) {
-          console.error("Food label/combo save error (non-blocking):", saveErr);
+          console.error("Food label save error (non-blocking):", saveErr);
         }
       }
 
@@ -3420,7 +3415,19 @@ No explanation, just JSON.`,
         // auth resolve, so the receipt is recorded against the Replit
         // user id directly — a single direct verify is the source of
         // truth. No anon-id walks, no alias machinery.
-        const result = await verifyEntitlement(userId);
+        let result = await verifyEntitlement(userId);
+        // #581: post-purchase propagation retry. RC's CDN occasionally
+        // lags StoreKit by a couple of seconds after a successful
+        // purchase, so the first verify can return "not premium" and
+        // bounce the user back to the paywall. When the caller flags
+        // the request as a post-purchase verification, wait briefly
+        // and re-verify once with cache bypass; the second call sees
+        // the propagated entitlement. Non-purchase refreshes (boot,
+        // foreground, gate checks) do NOT retry — flag is opt-in.
+        if (!result.hasPremium && req.body?.recentPurchase === true) {
+          await new Promise((r) => setTimeout(r, 1500));
+          result = await verifyEntitlement(userId, { bypassCache: true });
+        }
         verifiedPremium = result.hasPremium;
         source = result.source;
         transient = result.transient;

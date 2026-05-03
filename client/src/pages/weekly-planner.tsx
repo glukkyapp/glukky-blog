@@ -1345,14 +1345,13 @@ export default function WeeklyPlanner() {
       ? [...mastered1, reflStruggle] : mastered1;
 
     // Use reflection.dietStruggle as the current active struggle indicator.
-    // profile.currentStruggle is always null in modern code so this is the only reliable source.
     // Guard: if the struggle was just resolved (in effectiveSkipped1/effectiveDifficult1), leave it
     // in movedOn rather than promoting it to "Currently Practicing."
     const reflDietStruggle = reflection?.dietStruggle as string | null;
     const isReflStruggleAlreadyResolved = !!(reflDietStruggle && (
       effectiveSkipped1.includes(reflDietStruggle) || effectiveDifficult1.includes(reflDietStruggle)
     ));
-    const currentActive = (!isReflStruggleAlreadyResolved ? reflDietStruggle : null) || (profile?.currentStruggle as string | null);
+    const currentActive = !isReflStruggleAlreadyResolved ? reflDietStruggle : null;
     const eatingOutFreq = profile?.eatingOutFrequency as string | undefined;
     const isEatOutActive = struggles1.includes("eat_out") || (!!eatingOutFreq && eatingOutFreq !== "0");
     const dietPool = (STRUGGLE_PRIORITY as readonly string[]).filter(s => {

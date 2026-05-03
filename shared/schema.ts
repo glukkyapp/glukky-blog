@@ -22,11 +22,8 @@ export const userProfiles = pgTable("user_profiles", {
   sleepPattern: sleepPatternEnum("sleep_pattern").notNull().default("regular_10_6"),
   eatingOutFrequency: text("eating_out_frequency").notNull().default("0"),
   struggles: text("struggles").array().notNull().default(sql`'{}'::text[]`),
-  currentStruggle: text("current_struggle"),
-  currentTipIndex: integer("current_tip_index").notNull().default(0),
   hasLateDinner: boolean("has_late_dinner").notNull().default(false),
   dinnerMastered: boolean("dinner_mastered").notNull().default(false),
-  dinnerSuccessWeeks: integer("dinner_success_weeks").notNull().default(0),
   onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   notificationEmail: text("notification_email"),
   restDay: integer("rest_day"),
@@ -273,18 +270,6 @@ export const ingredientVocabulary = pgTable("ingredient_vocabulary", {
   aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
 });
 
-export const foodCombos = pgTable("food_combos", {
-  id: serial("id").primaryKey(),
-  foodName: text("food_name").notNull(),
-  foodNameEn: text("food_name_en"),
-  foodNameAliases: text("food_name_aliases").array().notNull().default(sql`'{}'::text[]`),
-  defaultPortion: varchar("default_portion"),
-  defaultSauces: text("default_sauces").array().notNull().default(sql`'{}'::text[]`),
-  defaultToppings: text("default_toppings").array().notNull().default(sql`'{}'::text[]`),
-  caloriesEstimate: integer("calories_estimate"),
-  useCount: integer("use_count").notNull().default(0),
-});
-
 export const foodLabels = pgTable("food_labels", {
   id: serial("id").primaryKey(),
   internalId: varchar("internal_id").unique().notNull(),
@@ -314,14 +299,11 @@ export const foodAdviceCache = pgTable("food_advice_cache", {
 }));
 
 export const insertIngredientVocabularySchema = createInsertSchema(ingredientVocabulary).omit({ id: true });
-export const insertFoodComboSchema = createInsertSchema(foodCombos).omit({ id: true });
 export const insertFoodLabelSchema = createInsertSchema(foodLabels).omit({ id: true });
 export const insertFoodAdviceCacheSchema = createInsertSchema(foodAdviceCache).omit({ id: true, createdAt: true });
 
 export type IngredientVocabulary = typeof ingredientVocabulary.$inferSelect;
 export type InsertIngredientVocabulary = z.infer<typeof insertIngredientVocabularySchema>;
-export type FoodCombo = typeof foodCombos.$inferSelect;
-export type InsertFoodCombo = z.infer<typeof insertFoodComboSchema>;
 export type FoodLabel = typeof foodLabels.$inferSelect;
 export type InsertFoodLabel = z.infer<typeof insertFoodLabelSchema>;
 export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;

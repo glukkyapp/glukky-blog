@@ -1,4 +1,7 @@
 import { storage } from "./storage";
+import { db } from "./db";
+import { weeklyPlans, weeklyPlanDays, userProfiles } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { awardDinnerGraduationCoin } from "./achievements";
 import {
   STRUGGLE_PRIORITY, DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS,
@@ -409,27 +412,40 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
     ? 2
     : (walkDayDurationsForGoal.length > 0 ? Math.max(...walkDayDurationsForGoal) : walkDuration);
 
-  const plan = await storage.createWeeklyPlan({
-    userId: input.userId,
-    weekNumber,
-    startDate,
-    walkFrequencyGoal: walkFrequency,
-    walkDurationGoal: walkDayMaxDuration,
-    dietStruggle,
-    dietTip,
-    isDinnerFocus,
-    isStretchWeek: !!input.isStretchMode,
-    planStruggleCycle: profile.currentStruggleCycle,
-  });
+  // #576: wrap the plan insert + plan-days insert + walkDuration profile
+  // update in a single Drizzle transaction so a partial failure can never
+  // leave behind an orphaned weekly_plan row with no plan-days (or vice
+  // versa). The post-creation profile/struggle/firstActiveDay updates in
+  // the route handler remain outside this transaction — they all run
+  // against the just-committed plan and are individually idempotent on
+  // retry, so a mid-flight failure leaves a usable plan, not an orphan.
+  const { plan, days } = await db.transaction(async (tx) => {
+    const [createdPlan] = await tx.insert(weeklyPlans).values({
+      userId: input.userId,
+      weekNumber,
+      startDate,
+      walkFrequencyGoal: walkFrequency,
+      walkDurationGoal: walkDayMaxDuration,
+      dietStruggle,
+      dietTip,
+      isDinnerFocus,
+      isStretchWeek: !!input.isStretchMode,
+      planStruggleCycle: profile.currentStruggleCycle,
+    }).returning();
 
-  for (const entry of dayEntries) {
-    entry.weeklyPlanId = plan.id;
-  }
+    for (const entry of dayEntries) {
+      entry.weeklyPlanId = createdPlan.id;
+    }
 
-  const days = await storage.createWeeklyPlanDays(dayEntries);
+    const createdDays = dayEntries.length === 0
+      ? []
+      : await tx.insert(weeklyPlanDays).values(dayEntries).returning();
 
-  await storage.updateProfile(input.userId, {
-    walkDuration: walkDayMaxDuration,
+    await tx.update(userProfiles)
+      .set({ walkDuration: walkDayMaxDuration })
+      .where(eq(userProfiles.userId, input.userId));
+
+    return { plan: createdPlan, days: createdDays };
   });
 
   return { plan, days };
@@ -1275,12 +1291,14 @@ export async function checkRepickCondition(userId: string): Promise<{
     .every(s => mastered.includes(s) || skipped.includes(s) || difficult.includes(s));
 
   // eatOutLastStruggleNeedsActivation: all other struggles resolved, eat_out has 0 focus weeks,
-  // but there is at least 1 historically scheduled eat-out day → must give it a proper week
-  const historicalEatOutDays = (eatOutPickedInList && hasOtherStruggles && (eatOutFocusWeeks === 0 || eatOutFocusWeeks === 3) && allOtherResolved)
+  // but there is at least 1 historically scheduled eat-out day → must give it a proper week.
+  // Note: previously also fired at eatOutFocusWeeks === 3, but that conflicts with the new
+  // 3-week sole-unresolved cap in routes.ts which auto-resolves eat_out at exactly 3 weeks.
+  const historicalEatOutDays = (eatOutPickedInList && hasOtherStruggles && eatOutFocusWeeks === 0 && allOtherResolved)
     ? await storage.countHistoricalEatOutDays(userId)
     : 0;
   const eatOutLastStruggleNeedsActivation = eatOutPickedInList && hasOtherStruggles
-    && (eatOutFocusWeeks === 0 || eatOutFocusWeeks === 3)
+    && eatOutFocusWeeks === 0
     && allOtherResolved
     && historicalEatOutDays >= 1
     && !eatOutResolved;
