@@ -13,7 +13,7 @@ import i18n from "@/i18n";
 import { Bed, Moon, Clock, Sunset, Check, Eye, X } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
-import { track, trackException } from "@/lib/posthog";
+import { track, trackException, setUserProperties } from "@/lib/posthog";
 import { syncOneSignalLanguage } from "@/lib/onesignal-language";
 import {
   OnboardingCard,
@@ -135,15 +135,21 @@ export default function Onboarding() {
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       syncOneSignalLanguage(i18n.language || "en");
       hapticNotify("SUCCESS");
-      track("onboarding_completed", {
+      const onboardingProperties = {
         struggles: selectedStruggles,
         sleepPattern,
         eatingOutFrequency,
         walkOption,
+        dinnerTime: dinnerTime || null,
+        healthCondition: healthCondition || null,
+        preferredLanguage: i18n.language || "en",
         hasName: !!userName.trim(),
         hasGoal: !!userGoal.trim(),
+        hasNotificationEmail: !!notificationEmail.trim(),
         referralSource: referralSource || null,
-      });
+      };
+      track("onboarding_completed", onboardingProperties);
+      setUserProperties(onboardingProperties);
       setLocation("/plan");
     } catch (error: unknown) {
       hapticNotify("ERROR");

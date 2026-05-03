@@ -5,6 +5,7 @@ type Pending =
   | { kind: "identify"; id: string; properties?: Record<string, unknown> }
   | { kind: "reset" }
   | { kind: "track"; eventName: string; properties?: Record<string, unknown> }
+  | { kind: "setProps"; properties: Record<string, unknown> }
   | { kind: "exception"; error: unknown; context?: Record<string, unknown> };
 const pending: Pending[] = [];
 
@@ -21,6 +22,8 @@ function flushPending(): void {
         posthog.reset();
       } else if (p.kind === "track") {
         posthog.capture(p.eventName, p.properties);
+      } else if (p.kind === "setProps") {
+        posthog.setPersonProperties(p.properties);
       } else if (p.kind === "exception") {
         const err =
           p.error instanceof Error
@@ -81,6 +84,19 @@ export function identifyUser(
     }
   } catch (err) {
     if (import.meta.env.DEV) console.warn("[posthog] identify failed:", err);
+  }
+}
+
+export function setUserProperties(properties: Record<string, unknown>): void {
+  if (!properties || Object.keys(properties).length === 0) return;
+  if (!initialized) {
+    pending.push({ kind: "setProps", properties });
+    return;
+  }
+  try {
+    posthog.setPersonProperties(properties);
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn("[posthog] setPersonProperties failed:", err);
   }
 }
 
