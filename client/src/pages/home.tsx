@@ -1375,6 +1375,7 @@ export default function Home() {
   const showCheckIn = show2pmWindow || show10pmWindow;
   const checkInDone = recorded
     || (show10pmWindow && isAllCheckInDone());
+  // dayOfWeek uses Mon-start convention (Mon=0..Sun=6), so 6 = Sunday
   const isSundayEvening = dayOfWeek === 6 && effectiveHour >= 22;
   const nextWeekPlanned = !!(plan?.startDate && todayStr < plan.startDate);
   const showReviewCard = !nextWeekPlanned && (

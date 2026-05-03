@@ -1474,16 +1474,9 @@ export async function registerRoutes(
         result.plan = { ...result.plan, ...planUpdate };
       }
 
-      if (effectiveStretchOnly) {
-        await storage.updateWeeklyPlan(result.plan.id, { walkDurationGoal: 2, isStretchWeek: true });
-        const days = await storage.getWeeklyPlanDays(result.plan.id);
-        for (const day of days) {
-          if (day.walkScheduled && !day.standingTap) {
-            await storage.updateWeeklyPlanDay(day.id, { walkDuration: 2, isStretchDay: true });
-          }
-        }
-        result.plan = { ...result.plan, walkDurationGoal: 2, isStretchWeek: true };
-      }
+      // Stretch-mode walk-duration cap is now applied inside createWeeklyPlan
+      // (see engine.ts) so the per-day walkDuration and walkDurationGoal are
+      // already 2 in the result returned above.
 
       {
         const jsDay = effectiveDate.getDay();

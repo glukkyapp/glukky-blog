@@ -397,8 +397,17 @@ export async function createWeeklyPlan(input: CreatePlanInput & { isStretchMode?
     });
   }
 
+  // Stretch-mode override: cap each walk day's duration to 2 mins (standing-tap days unchanged).
+  if (input.isStretchMode) {
+    for (const e of dayEntries) {
+      if (e.walkScheduled && !e.standingTap) e.walkDuration = 2;
+    }
+  }
+
   const walkDayDurationsForGoal = dayEntries.filter(d => d.walkScheduled && !d.standingTap && d.walkDuration > 0).map(d => d.walkDuration);
-  const walkDayMaxDuration = walkDayDurationsForGoal.length > 0 ? Math.max(...walkDayDurationsForGoal) : walkDuration;
+  const walkDayMaxDuration = input.isStretchMode
+    ? 2
+    : (walkDayDurationsForGoal.length > 0 ? Math.max(...walkDayDurationsForGoal) : walkDuration);
 
   const plan = await storage.createWeeklyPlan({
     userId: input.userId,
@@ -563,22 +572,22 @@ export async function evaluateDietStruggle(userId: string, struggle: string, upT
   }
 
   if (activeDays >= 42) {
-    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (yesDays / actualActiveDays >= 0.75) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "moved_on", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
   if (activeDays >= 35) {
-    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
-    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (yesDays / actualActiveDays >= 0.75) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.75) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
   if (activeDays >= 28) {
-    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
-    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (yesDays / actualActiveDays >= 0.75) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.75) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
     return { type: "in_cycle", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
   }
   if (activeDays >= 21 && activeDays < 28) {
-    if (yesDays / actualActiveDays >= 0.762) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
-    if (noChanceDays / actualActiveDays >= 0.762) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (yesDays / actualActiveDays >= 0.75) return { type: "mastered", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
+    if (noChanceDays / actualActiveDays >= 0.75) return { type: "not_relevant", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   }
   if (weeksFound >= 8) return { type: "moved_on", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, bestTip, bestTipYes, weeksFound };
   return { type: "in_cycle", struggle, yesDays, noDays, noChanceDays, activeDays: actualActiveDays, weeksFound };
@@ -691,7 +700,9 @@ export async function processDinnerGraduation(userId: string, eventDate: string)
 
   if (dinnerOutcomeType === "mastered") {
     await storage.updateProfile(userId, { dinnerMastered: true });
-    try { await awardDinnerGraduationCoin(userId, eventDate); } catch {}
+    try { await awardDinnerGraduationCoin(userId, eventDate); } catch (err) {
+      console.error("Dinner graduation coin grant failed", { userId, eventDate, err });
+    }
   } else if (dinnerOutcomeType === "moved_on" || dinnerOutcomeType === "not_relevant") {
     await storage.updateProfile(userId, { dinnerExitType: dinnerOutcomeType });
   }
@@ -1111,7 +1122,7 @@ export function getFirstWeekPlan(profile: {
   }
 
   return {
-    walkFrequency: profile.walksPerWeek || 3,
+    walkFrequency: 3,
     walkDuration: profile.walkDuration || 10,
     isDinnerFocus,
     dietStruggle,
