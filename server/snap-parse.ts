@@ -118,8 +118,15 @@ export function stripExtrasContainedInName(name: string, extras: unknown): strin
 
   const haystack = name.toLowerCase();
 
+  // Split ONLY on comma-family separators. The naming convention uses
+  // with / 配 / 加 / 和 as connectors INSIDE food names (and as parts of
+  // compound terms like 和牛 / 加州卷 / 配料), so splitting on them here
+  // would either chop those compounds or fail silently when Claude
+  // omits whitespace around them. The prompt mandates commas as the
+  // only separator in the side-dishes / extras field. `、` is retained
+  // here as a defensive fallback only — the prompt itself never uses it.
   const tokens = trimmed
-    .split(/[,，、/／&]|\s+and\s+|\s+及\s+|\s+和\s+|\s+加\s+|\s+配\s+/i)
+    .split(/[,，、/／&]/)
     .map((t) => t.trim())
     .filter(Boolean);
 
