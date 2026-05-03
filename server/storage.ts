@@ -19,7 +19,6 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
-import { normalizeFoodNameForMatch, foodNamesMatch } from "./snap-parse";
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 
@@ -730,26 +729,23 @@ export class DatabaseStorage implements IStorage {
     const normalised = name.trim().toLowerCase();
     if (!normalised) return null;
 
-    let rows = await db.select().from(foodLabels).where(
+    // STRICT exact-match-only lookup (case-insensitive on the three
+    // name columns). The previous fuzzy fallback (foodNamesMatch +
+    // normalizeFoodNameForMatch with `with …` / 配/加/和 stripping)
+    // was removed because it conflated materially different dishes:
+    // e.g. "Wonton noodles with shrimp" vs "Wonton noodles with choi
+    // sum" both stripped to "wonton noodles" and silently swapped one
+    // library row's portion / sauces / advice onto the other dish's
+    // photo. Product rule: exact name match → most popular combo;
+    // anything else → no library hit, fall through to the per-snap
+    // labels-only Claude call.
+    const rows = await db.select().from(foodLabels).where(
       or(
         sql`lower(${foodLabels.foodNameEn}) = ${normalised}`,
         sql`lower(${foodLabels.foodNameZhHant}) = ${normalised}`,
         sql`lower(${foodLabels.foodNameYue}) = ${normalised}`,
       )
     );
-
-    if (rows.length === 0) {
-      const normalisedInput = normalizeFoodNameForMatch(name);
-      const minLen = /[\u4e00-\u9fff]/.test(normalisedInput) ? 2 : 3;
-      if (normalisedInput && normalisedInput.length >= minLen) {
-        const all = await db.select().from(foodLabels);
-        rows = all.filter((c) =>
-          foodNamesMatch(name, c.foodNameEn) ||
-          foodNamesMatch(name, c.foodNameZhHant) ||
-          foodNamesMatch(name, c.foodNameYue)
-        );
-      }
-    }
 
     if (rows.length === 0) return null;
 

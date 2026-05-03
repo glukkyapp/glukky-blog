@@ -60,20 +60,21 @@ export function extractJsonObject(raw: string): any | null {
  * Steps:
  * - lowercase, trim
  * - strip punctuation (keep CJK characters and word characters)
- * - strip common trailing modifiers that usually describe toppings rather
- *   than the dish itself: English `with …`, Chinese `配 …` / `加 …` / `和 …`
  * - collapse whitespace
  *
- * Conservative on purpose — when in doubt, returns a longer string so that
- * containment matching does not over-merge.
+ * NOTE: The previous trailing-modifier strippers (English `with …`,
+ * Chinese `配 …` / `加 …` / `和 …`) were removed when the food-library
+ * lookup switched to strict exact-match-only. They were the source of
+ * silent cross-variant matches (e.g. "Wonton noodles with shrimp" vs
+ * "Wonton noodles with choi sum" both collapsing to "wonton noodles"
+ * and swapping one row's combo onto the other dish's photo). If a
+ * future caller needs trailing-modifier stripping, do it at the call
+ * site instead of re-introducing it here.
  */
 export function normalizeFoodNameForMatch(raw: unknown): string {
   if (typeof raw !== "string") return "";
   let s = raw.trim().toLowerCase();
   if (!s) return "";
-
-  s = s.replace(/\s+with\s+.+$/i, "");
-  s = s.replace(/[配加和](?![\s\S]*[配加和]).+$/u, "");
 
   s = s.replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/g, " ");
   s = s.replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, (ch) => {
