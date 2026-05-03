@@ -2710,7 +2710,9 @@ DO-NOT-SPLIT COMPOUND TERMS:
 - Treat any other established compound the same way. When in doubt, prefer keeping the term whole over splitting it.
 
 MAIN-DISH RULE:
-- The "name" must contain ONLY the main dish — the 1 or at most 2 components with the largest visible portion in the photo. Smaller side toppings or garnishes do NOT belong in the name.
+- The "name" must contain at most 2 components: the main dish, plus optionally ONE accompaniment joined by with / 配 / 加 (per the FORMAT section above). Pick the 1–2 components with the largest visible portion in the photo.
+- A visible accompaniment that is one of those top 2 components belongs in the name via with / 配 / 加 — NOT in the extras field. Only smaller side toppings, garnishes, or the 3rd-and-beyond items go into extras.
+- Example: a bowl with wonton noodles (largest) + choi sum (second largest) + a few peanuts on top → name = "Wonton noodles with choi sum" / "雲吞麵配菜心", extras = "peanuts" / "花生". Choi sum belongs in the name (it's the 2nd-largest component), peanuts go to extras.
 - Prefer the standard, commonly used Hong Kong dish name — the name a local would use on a cha chaan teng / 茶記 / noodle shop menu — BUT never substitute the menu category or meal-occasion wrapper for the actual food (see WRAPPER RULE below).
 - Use the most common spelling and singular/plural form so the same dish always comes back with the same wording (e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
 - Do NOT invent poetic phrasings or rare variations.
@@ -2776,7 +2778,7 @@ NAME STYLE (very important for the "name" field, in addition to the rules above)
 - Keep it concise: roughly 4 to 8 words in English, or the natural equivalent in ${responseLang}.
 - Stay 100% truthful to the photo. Do NOT invent ingredients, toppings, or qualities you cannot see.
 - Avoid generic single-word names like "Rice", "Noodles", or "Soup" on their own.
-- Examples (English): "Sizzling wok-fried rice with scallions", "Crispy pan-seared char siu over rice", "Steamed shrimp dumplings with chive".
+- Examples (English): "Sizzling wok-fried rice with scallions", "Crispy pan-seared char siu with rice", "Steamed shrimp dumplings with chive".
 - Do NOT mention prices, restaurants, or brand names.`;
 
       const labelsOnlySystem = (foodName: string) => `You are a food assistant for Hong Kong cuisine. The dish in the photo has already been identified as: "${foodName}".
@@ -2790,6 +2792,7 @@ Rules for "extras":
 - Do NOT list any ingredient that is already part of the dish name "${foodName}". If an ingredient is in the name, it does NOT belong in extras.
 - Only list small accompaniments, side toppings, or garnishes that you can actually see in the photo.
 - If there are no additional toppings/sides, return null.
+- When there are 2+ items, separate them with commas ONLY: "," for English, "，" for Chinese. Do NOT use the ideographic comma "、". Do NOT use with / 配 / 加 / 和 / and / 及 as separators in the extras field — those are connector words reserved for the dish name. Example (correct): "煎腸仔，奶茶" or "sausage, milk tea". Example (WRONG): "菜心配雞蛋", "sausage and milk tea".
 
 Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
