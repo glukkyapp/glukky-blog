@@ -5,6 +5,7 @@ import {
 import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
   breadcrumbs, articleSwitchLink, articleJsonLd, faqJsonLd, organizationJsonLd,
+  appStoreCta, waitlistCta,
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
@@ -160,7 +161,27 @@ export function aboutPage(locale) {
 <section class="prose">
   <div class="container-narrow">
     ${t.about.sections.map(s => `<h2>${escapeHtml(s.h)}</h2><p>${escapeHtml(s.p)}</p>`).join("")}
-    <p class="cta-inline"><a class="btn btn-primary" href="${urlFor(locale, "app")}">${escapeHtml(t.about.ctaButton)}</a></p>
+  </div>
+</section>
+
+<section class="screens">
+  <div class="container">
+    <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
+      <img src="/images/app-screen-1.png" alt="${escapeAttr(t.app.screenshotsAlt)}" loading="lazy" width="280" height="600" />
+      <img src="/images/app-screen-2.png" alt="" loading="lazy" width="280" height="600" />
+      <img src="/images/app-screen-3.png" alt="" loading="lazy" width="280" height="600" />
+    </div>
+    <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="container cta-banner-inner">
+    <div>
+      <h2>${escapeHtml(t.about.ctaTitle)}</h2>
+      <p>${escapeHtml(t.app.ctaBody)}</p>
+    </div>
+    ${appStoreCta(locale, t.about.ctaButton)}
   </div>
 </section>
 `;
@@ -208,7 +229,10 @@ export function appPage(locale) {
       <h2>${escapeHtml(t.app.ctaTitle)}</h2>
       <p>${escapeHtml(t.app.ctaBody)}</p>
     </div>
-    <a class="btn btn-primary" href="${urlFor(locale, "app")}#waitlist" rel="nofollow">${escapeHtml(t.app.ctaButton)}</a>
+    <p class="cta-pair">
+      ${appStoreCta(locale, t.app.ctaButton)}
+      ${waitlistCta(locale, locale === "en" ? "Join the waitlist" : "加入等候名單")}
+    </p>
   </div>
 </section>
 `;

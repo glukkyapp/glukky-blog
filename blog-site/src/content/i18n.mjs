@@ -3,8 +3,10 @@
 // easier to type, link and analyze, and acceptable for the ZH side).
 
 export const SITE_URL = "https://glukky.com";
-// Placeholder until App Store URL + waitlist URL is confirmed by the user.
+// PLACEHOLDER — replace with the real App Store URL + waitlist URL before launch.
+// Wired into every "Get the app" CTA so swapping it once updates the whole site.
 export const APP_STORE_URL = "https://apps.apple.com/app/idPLACEHOLDER";
+export const WAITLIST_URL = "https://glukky.com/app#waitlist";
 
 export const LOCALES = ["en", "zh-Hant"];
 export const DEFAULT_LOCALE = "en";

@@ -45,10 +45,6 @@ args = "Start application"
 task = "workflow.run"
 args = "week1-gate-check"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Glukky website dev"
-
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -68,18 +64,6 @@ args = "npx playwright test tests/week1-gate.spec.ts tests/paywall-leave-anyway-
 
 [workflows.workflow.metadata]
 outputType = "console"
-
-[[workflows.workflow]]
-name = "Glukky website dev"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node blog-site/serve.mjs"
-waitForPort = 8080
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.0", "javascript_anthropic_ai_integrations:2.0.0"]

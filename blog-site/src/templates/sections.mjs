@@ -1,5 +1,5 @@
 // Reusable page sections (CTA, article cards, FAQ, sources).
-import { ui, urlFor, articleUrl, altLocale, fmtDate, SITE_URL } from "../content/i18n.mjs";
+import { ui, urlFor, articleUrl, altLocale, fmtDate, SITE_URL, APP_STORE_URL, WAITLIST_URL } from "../content/i18n.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
 export function ctaBanner(locale) {
@@ -13,6 +13,18 @@ export function ctaBanner(locale) {
     <a class="btn btn-primary" href="${urlFor(locale, "app")}">${escapeHtml(t.blog.ctaButton)}</a>
   </div>
 </section>`;
+}
+
+// External "Get the app" CTA — points at the App Store placeholder URL so it
+// can be swapped in one place at launch.
+export function appStoreCta(locale, label) {
+  const t = ui[locale];
+  return `<a class="btn btn-primary" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store">${escapeHtml(label || t.app.ctaButton)}</a>`;
+}
+
+export function waitlistCta(locale, label) {
+  const t = ui[locale];
+  return `<a class="btn btn-ghost" href="${escapeAttr(WAITLIST_URL)}" rel="noopener" data-cta="waitlist">${escapeHtml(label || t.app.ctaButton)}</a>`;
 }
 
 export function articleCard(locale, article) {
