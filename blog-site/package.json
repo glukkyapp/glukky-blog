@@ -1,0 +1,12 @@
+{
+  "name": "glukky-blog-site",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Glukky bilingual SEO website (EN + Traditional Chinese for Hong Kong). Pure-HTML static site built with a tiny Node script — zero npm dependencies. Lives in this subfolder so the existing Glukky app is untouched.",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node serve.mjs",
+    "start": "node serve.mjs"
+  }
+}

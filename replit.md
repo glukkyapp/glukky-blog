@@ -189,3 +189,33 @@ Self-learning food knowledge pipeline to reduce Claude API calls.
 **Frontend:**
 - `client/src/components/piggy-bank-svg.tsx` — inline SVG cartoon teal pig, 5 fill states (0–9, 10–24, 25–39, 40–54, 55–60 coins), sparkles when full; plain HTML SVG (compatible with web + Capacitor/WebView wrapper)
 - Roadmap page: piggy bank card at top, CSS coin-drop animation on coin award, reward-setup modal (auto-shown when needsRewardSetup=true), congratulations modal when full
+
+## Glukky Blog Site (`blog-site/`) — bilingual SEO website
+
+A separate, plain-HTML static site that lives entirely under `blog-site/` so the main Glukky React/Express app is **never touched**. Will be deployed to glukky.com; the existing app stays at its current host.
+
+**Why plain HTML + tiny Node build script (not Astro/Next):** the sandbox blocks `bash npm i` and the packager paths for a non-root subfolder, so an off-the-shelf SSG was not set-up-able in this environment. The spec explicitly allowed "Plain HTML/CSS/JS if faster and cheaper", and a 10-page bilingual site is well within scope of a tiny Node script with zero dependencies.
+
+**Structure:**
+- `blog-site/build.mjs` — pure-Node static builder, renders `dist/` from templates + content articles. Generates sitemap.xml + robots.txt + favicon.svg automatically. Zero npm deps.
+- `blog-site/serve.mjs` — pure-Node dev server on port 8080 (hard-coded — Replit injects PORT=5000 which we deliberately ignore). Rebuilds on every navigation request.
+- `blog-site/src/templates/` — `layout.mjs` (head + header + footer with full SEO/hreflang/JSON-LD), `sections.mjs` (CTA, articleCard, FAQ, sources, breadcrumbs, JSON-LD helpers), `pages.mjs` (home, blogIndex, article, about, app).
+- `blog-site/src/content/i18n.mjs` — every UI string for `en` + `zh-Hant`, plus `urlFor`/`articleUrl`/`altLocale`/`fmtDate`/`readingMinutes` helpers.
+- `blog-site/src/content/articles/<slug>.<locale>.mjs` — one ES-module per article-locale pair (slug shared across languages).
+- `blog-site/src/content/research/citations.md` — single source of truth mapping every claim in the launch articles to a real published source. **Rule: no claim ships without a citation in this file.**
+- `blog-site/src/styles/global.css` — brand tokens (teal `hsl(166 48% 35%)`, cream `#fdfbee`) lifted from `client/src/index.css`; mobile-first; ZH font stack swap via `body.lang-zh`.
+- `blog-site/public/images/` — copies of brand assets from `attached_assets/`.
+
+**Routing model:** EN at `/`, `/blog`, `/blog/<slug>`, `/about`, `/app`. ZH-Hant at `/zh/`, `/zh/blog`, `/zh/blog/<slug>`, `/zh/about`, `/zh/app`. Slugs identical across languages so the language switcher always has a valid counterpart. Full `<link rel="alternate" hreflang>` triplet (`en` + `zh-Hant` + `x-default`) on every page; matching alternates in `sitemap.xml`.
+
+**SEO plumbing:** unique title + description per page, canonical URL, OG/Twitter tags, Article + FAQPage JSON-LD on every article, Organization JSON-LD on home, sitemap.xml with hreflang annotations, robots.txt.
+
+**Workflow:** `Glukky website dev` runs `node blog-site/serve.mjs` on port 8080 (console output type). The main `Start application` workflow on port 5000 is unaffected.
+
+**Launch articles (4 — stop here for review per spec):**
+1. `prediabetes-diet-where-to-start` (en + zh-Hant)
+2. `post-meal-walk-blood-sugar` (en + zh-Hant)
+
+All citations are to real, verifiable publications: NEJM (DPP / Knowler 2002), NIDDK, PREDIMED in Annals of Internal Medicine, ADA Standards of Care 2024, WHO healthy diet, NHS, HK Centre for Health Protection, DiPietro et al 2013 (Diabetes Care), Reynolds et al 2016 (Diabetologia), Buffey et al 2022 (Sports Medicine).
+
+**Editorial guardrails enforced:** no banned vocab (cure, reverse, miracle, hack, "treat", "diagnose"); medical disclaimer on every article; no fabricated citations; HK food/cultural references throughout the ZH-Hant copy; "Glukky is not a doctor / not a diagnostic device" stated in About + each article disclaimer.
