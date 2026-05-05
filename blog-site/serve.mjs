@@ -68,10 +68,13 @@ const server = createServer(async (req, res) => {
     build();
   }
 
-  // Resolve to a file under dist
-  let candidate = join(DIST, pathname);
-  // Prevent path traversal
-  if (!candidate.startsWith(DIST)) {
+  // Resolve to a file under dist. Strip the leading slash so we always treat
+  // the request path as relative to DIST, then resolve and verify containment.
+  const relPath = pathname.replace(/^\/+/, "");
+  let candidate = resolve(DIST, relPath);
+  const distResolved = resolve(DIST);
+  // Prevent path traversal: candidate must be DIST itself or a path inside it.
+  if (candidate !== distResolved && !candidate.startsWith(distResolved + "/")) {
     res.writeHead(403); res.end("Forbidden"); return;
   }
   try {
