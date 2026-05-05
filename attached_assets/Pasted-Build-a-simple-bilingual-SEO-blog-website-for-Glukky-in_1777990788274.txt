@@ -1,0 +1,445 @@
+Build a simple bilingual SEO blog website for Glukky in English and Traditional Chinese. The site should support organic traffic, educate users, and drive App Store downloads. The setup must stay low-cost, simple, and maintainable, with no unnecessary engineering. Use subdirectories for language structure because this is the simplest and most SEO-friendly approach for a bilingual site on one domain.
+
+Language and URL structure
+Use this exact structure:
+
+/ → redirect or serve English homepage
+
+/blog
+
+/blog/[english-slug]
+
+/about
+
+/app
+
+Traditional Chinese:
+
+/zh/
+
+/zh/blog/
+
+/zh/blog/[english-or-clean-romanized-slug]
+
+/zh/about/
+
+/zh/app/
+
+Rules:
+
+Keep the Chinese content inside /zh/ only.
+
+Do not mix Chinese and English articles in the same folder.
+
+Each English article should have a corresponding Traditional Chinese version where applicable.
+
+Cross-link equivalent language versions clearly on each page.
+
+Use hreflang and canonical tags correctly for EN and ZH pages.
+
+Keep URL slugs short and stable. English slugs are acceptable for Chinese pages if that is simpler to maintain. This is often easier and less error-prone than Chinese-character URLs.
+
+Goal
+Create a bilingual SEO-focused blog site for Glukky with:
+
+Homepage
+
+Blog index
+
+Article template
+
+About / app page
+
+English + Traditional Chinese content
+
+Simple CTA to App Store / waitlist
+
+Strong internal linking
+
+Good mobile UX
+
+Basic SEO metadata and schema
+
+Audience
+Primary audience:
+
+People with prediabetes
+
+People with type 2 diabetes or worried about blood sugar spikes
+
+People searching for food, GI, carb, meal timing, and walking strategies
+
+Hong Kong users reading Traditional Chinese
+
+Secondary English-speaking users in Hong Kong and globally
+
+Required content themes
+Focus the content strategy on:
+
+Post-meal walking
+
+Dinner timing and blood sugar
+
+Prediabetes diet
+
+Low GI foods
+
+Blood sugar-friendly eating
+
+Carb awareness / carb quality
+
+Food photo / AI food scan use cases
+
+Meal planning for blood sugar stability
+
+Habit formation for diabetes prevention
+
+Hong Kong / Cantonese-friendly food examples where possible
+
+SEO framework
+Use a simple topical cluster framework:
+
+Pillar pages:
+
+Prediabetes diet
+
+Blood sugar-friendly eating
+
+Post-meal walking
+
+Low GI foods
+
+Dinner timing
+
+Supporting articles:
+
+Best HK breakfast choices for prediabetes
+
+What to eat when your post-meal sugar spikes
+
+How long should you walk after dinner
+
+Low GI cha chaan teng options
+
+Carb quality vs carb quantity
+
+How AI food scan can help with blood sugar habits
+
+7 dinner habits that reduce blood sugar spikes
+
+Prediabetes signs and what to do next
+
+Blood sugar-friendly meal ideas in Hong Kong
+
+Foods that cause post-meal glucose spikes
+
+Conversion pages:
+
+About Glukky
+
+How Glukky works
+
+App download / join waitlist
+
+Technical constraints
+Must avoid expensive / complicated setups:
+
+No WordPress
+
+No database required
+
+No user login
+
+No comments system
+
+No heavy on-site search
+
+No overengineered tagging system
+
+No complex CMS unless extremely lightweight and free
+
+Preferred approach:
+
+Astro, if kept simple and static
+
+Vite + static pages
+
+Plain HTML/CSS/JS if faster and cheaper
+
+Must include:
+
+Fast loading pages
+
+Mobile-first layout
+
+Reusable article template
+
+Related articles
+
+Breadcrumbs
+
+FAQ block support
+
+Metadata support:
+
+title
+
+description
+
+canonical
+
+OG tags
+
+article schema
+
+hreflang
+
+Internal links to Glukky app page
+
+Waitlist / App Store CTA placeholder
+
+Design direction
+Design should be:
+
+Clean
+
+Trustworthy
+
+Editorial, not startup-hype
+
+Warm and calm
+
+Good readability on mobile
+
+Traditional Chinese should feel natural for Hong Kong users
+
+No flashy AI aesthetic
+
+Words and tones to avoid
+Avoid these words unless clinically justified:
+
+cure
+
+reverse diabetes
+
+treat diabetes
+
+diagnose
+
+medical device
+
+guaranteed
+
+fix your blood sugar
+
+beat diabetes
+
+miracle
+
+effortless
+
+hack
+
+Avoid these tones:
+
+hypey startup language
+
+biohacking bro tone
+
+fear-based medical scare language
+
+overclaiming AI accuracy
+
+implying Glukky replaces doctors
+
+Preferred wording:
+
+support
+
+habit change
+
+food awareness
+
+blood sugar-friendly
+
+lower GI choices
+
+post-meal routine
+
+prevention-focused
+
+lifestyle support
+
+for people managing or trying to prevent diabetes
+
+Build content now
+In addition to building the site, also generate launch-ready articles in both English and Traditional Chinese.
+
+Create:
+
+6 English articles
+
+6 Traditional Chinese articles
+
+Each Chinese article should correspond to an English article
+
+Put English under /blog/
+
+Put Traditional Chinese under /zh/blog/
+
+Each article should include:
+
+title
+
+meta description
+
+H1
+
+intro
+
+clear subheadings
+
+FAQ section
+
+short disclaimer that content is educational, not medical advice
+
+2–3 internal links
+
+natural CTA to Glukky app page
+
+language switch link to the equivalent article
+
+First 6 article pairs
+English + Traditional Chinese equivalents
+Prediabetes diet: where to start
+ZH: 糖尿前期飲食：如何開始
+
+How a post-meal walk helps blood sugar
+ZH: 飯後散步如何幫助血糖穩定
+
+Best dinner timing for blood sugar control
+ZH: 想穩定血糖，晚餐時間怎樣安排較好
+
+Low GI foods for everyday meals
+ZH: 日常飲食可選哪些低GI食物
+
+Why blood sugar spikes after meals
+ZH: 為什麼飯後血糖容易升高
+
+How AI food scan can support healthier eating habits
+ZH: AI食物辨識如何幫助建立更健康的飲食習慣
+
+Chinese writing rules
+Traditional Chinese content should:
+
+Use Traditional Chinese only
+
+Be written for Hong Kong readers
+
+Avoid stiff Mainland phrasing where possible
+
+Prefer natural wording like:
+
+血糖管理
+
+控糖飲食
+
+飯後散步
+
+晚餐時間
+
+低GI食物
+
+碳水化合物
+
+Avoid unnatural literal translation from English
+
+Keep headings and paragraphs concise for mobile reading
+
+URL and navigation rules
+Examples:
+
+/blog/prediabetes-diet-where-to-start
+
+/zh/blog/prediabetes-diet-where-to-start
+
+or if Chinese slugs are used, keep them short and consistent. English slugs are acceptable for both languages if simpler.
+
+Each article page must clearly show:
+
+breadcrumb
+
+current language
+
+switch to the equivalent language version
+
+related articles in the same language
+
+CTA to /app or /zh/app
+
+Must-have pages
+Homepage:
+
+clear value proposition
+
+featured articles in both languages
+
+topic clusters
+
+CTA to app
+
+Blog index:
+
+language-specific listing
+
+easy-to-scan article cards
+
+Article page:
+
+readable layout
+
+optional simple table of contents
+
+FAQ section
+
+related articles
+
+CTA banner for app
+
+App page:
+
+what Glukky does
+
+AI food scan
+
+walking + meal + dinner habit loop
+
+screenshots placeholder
+
+App Store CTA
+
+Nice-to-have, only if simple
+sitemap
+
+robots.txt
+
+RSS feed
+
+JSON-LD schema
+
+featured article section
+
+Final instruction
+Prioritize:
+
+SEO structure
+
+bilingual clarity
+
+low maintenance cost
+
+mobile readability
+
+simple future expansion
+
+Do not overengineer. Build the minimum clean bilingual SEO blog system that can scale by adding articles manually over time.

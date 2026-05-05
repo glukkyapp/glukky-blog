@@ -1,0 +1,102 @@
+Here’s what I changed, in plain terms.
+
+1) Made the “don’t touch the app” constraint more explicit
+You already said it, but I:
+
+Repeated that the existing app’s files, folder structure, workflows, dependencies, and deploy must not be changed, and
+
+Told the agent explicitly not to edit root package.json or restructure into a multi-app workspace.
+
+This reduces the chance it “helpfully” refactors the project.
+
+2) Tightened the “subfolder blog” approach
+You said “subfolder of this Repl”; I:
+
+Standardized the name as blog-site/ and stressed:
+
+All blog code lives only there.
+
+Astro and its deps are installed inside that subfolder, not at the root.
+
+Emphasized copying assets into blog-site/public/ so the blog is self-contained (no symlinks/imports from the app tree).
+
+This is to keep future migration simple and avoid cross-coupling.
+
+3) Clarified routing and i18n expectations
+You had the routes listed; I:
+
+Re-affirmed that /zh/ is only for Chinese and EN is the default.
+
+Mentioned using Astro’s i18n with en default and zh-Hant for the /zh/... paths, so the agent doesn’t invent another pattern.
+
+Functionally same as yours, just more explicit.
+
+4) Hardened SEO/schema instructions
+You already specified:
+
+canonical, hreflang, OG, JSON-LD Article, sitemap, robots.
+
+I:
+
+Re-stated that author and publisher should both be "Glukky" (Organization) for now, so it doesn’t decide to invent person authors.
+
+Grouped the SEO requirements page-level vs site-level, to reduce the chance it forgets sitemap/robots.
+
+No change of intent, just stricter wording.
+
+5) Structured the article requirements more mechanically
+You already defined:
+
+4 launch articles (2 EN + 2 ZH-HK)
+
+stop after 4
+
+citation rules
+
+tone rules, banned vocabulary.
+
+I mainly:
+
+Broke article requirements into bullets:
+
+structure (H1, intro, subheadings, FAQ, disclaimer, internal links, CTA, language switch)
+
+evidence & citations (real sources only, how to handle non-citable claims)
+
+language & tone (HK phrasing hints, “real rewrite” not literal translation).
+
+Explicitly said citations should be at the bottom with working links, so it doesn’t scatter them randomly.
+
+Substance is the same as your text; just more checklist-like so an agent is less likely to miss points.
+
+6) Made the “stop after 4 articles” a hard boundary
+You had:
+
+“Stop here for user review before writing the remaining 8.”
+
+I reinforced:
+
+After 4 articles + templates, the agent must:
+
+verify both projects run,
+
+then stop and report, and
+
+must not generate the remaining 8 until you explicitly approve.
+
+This is to avoid it “being helpful” and writing all 12.
+
+7) Added a bit of wording around App Store URL and domain
+You already said:
+
+placeholder CTA link,
+
+don’t wire domain.
+
+I just repeated:
+
+“use clearly marked placeholder URL” for App Store / waitlist,
+
+“do not wire the real glukky.com domain; I’ll point DNS later.”
+
+Again, same idea, stricter constraint.

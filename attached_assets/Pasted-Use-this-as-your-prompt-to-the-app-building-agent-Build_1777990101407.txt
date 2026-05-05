@@ -1,0 +1,420 @@
+Use this as your prompt to the app-building agent.
+
+Build a simple SEO blog website for Glukky to support organic traffic and App Store discovery. The site should target people in Hong Kong / Traditional Chinese and English users who are trying to manage or prevent diabetes through food habits, post-meal walking, dinner timing, and lower-GI eating. The blog's job is to rank for search queries, educate users, and funnel them to download Glukky. The setup must stay low-cost, simple, and maintainable. Use a static site or very lightweight setup only; avoid complex CMS, database, auth, or server infrastructure.
+
+Goal
+Create a bilingual SEO-focused blog site for Glukky with:
+
+Homepage
+
+Blog index
+
+Article template
+
+About / app page
+
+Simple CTA to App Store / waitlist
+
+English and Traditional Chinese structure
+
+Lightweight analytics-ready structure
+
+Strong internal linking
+
+Good mobile UX
+
+Clean metadata and schema basics
+
+Audience
+Primary audience:
+
+People with prediabetes
+
+People with type 2 diabetes or worried about blood sugar spikes
+
+People searching for food, GI, carb, meal timing, and walking strategies
+
+Hong Kong users reading Traditional Chinese
+
+Secondary English-speaking users in Hong Kong and globally
+
+Required content themes
+The blog content strategy should focus on:
+
+Post-meal walking
+
+Dinner timing and blood sugar
+
+Prediabetes diet
+
+Low GI foods
+
+Blood sugar diet habits
+
+Carb awareness / carb quality
+
+Food photo / AI food scan use cases
+
+Meal planning for blood sugar stability
+
+Habit formation for diabetes prevention
+
+HK / Cantonese-friendly food examples when possible
+
+SEO framework
+Use a simple topical cluster framework:
+
+Pillar pages:
+
+Prediabetes diet
+
+Blood sugar-friendly eating
+
+Post-meal walking
+
+Low GI foods
+
+Dinner timing
+
+Supporting articles:
+
+Best HK breakfast choices for prediabetes
+
+What to eat when your post-meal sugar spikes
+
+How long should you walk after dinner
+
+Low GI cha chaan teng options
+
+Carb quality vs carb quantity
+
+How AI food scan can help with blood sugar habits
+
+7 dinner habits that reduce blood sugar spikes
+
+Prediabetes signs and what to do next
+
+Blood sugar-friendly meal ideas in Hong Kong
+
+Foods that cause post-meal glucose spikes
+
+Conversion pages:
+
+About Glukky
+
+How Glukky works
+
+App download / join waitlist
+
+Site structure
+Keep it simple:
+
+/
+
+/blog
+
+/blog/[slug]
+
+/about
+
+/app
+
+/zh/
+
+/zh/blog
+
+/zh/blog/[slug]
+
+/zh/about
+
+/zh/app
+
+If full bilingual duplication is too expensive, build English first with a clean structure that can easily expand to /zh/ later.
+
+Technical constraints
+Must avoid expensive / complicated setups:
+
+No WordPress
+
+No headless CMS unless extremely lightweight and free
+
+No database required
+
+No user login
+
+No comments system
+
+No heavy search system
+
+No overengineered tagging system
+
+No server-rendered complexity unless already trivial in the stack
+
+Preferred approach:
+
+Static site generation or plain static pages
+
+Markdown or JSON/YAML content files
+
+Simple reusable article template
+
+Manual article publishing is acceptable
+
+Vercel / Netlify / Cloudflare Pages friendly
+
+Cheap or free hosting preferred
+
+Basic framework
+Preferred stack choices, in order:
+
+Vite + simple static routes
+
+Astro if the agent is comfortable and can keep it lightweight
+
+Plain HTML/CSS/JS if that is faster and cheaper
+
+Must include:
+
+Fast loading pages
+
+Mobile-first layout
+
+Clean typography
+
+Simple category / topic navigation
+
+Related articles section
+
+Breadcrumbs
+
+FAQ block support
+
+Article metadata support:
+
+title
+
+description
+
+canonical
+
+OG tags
+
+article schema
+
+Internal links to Glukky app page
+
+Newsletter / waitlist CTA placeholder
+
+App Store CTA placeholder
+
+Design direction
+Design should be:
+
+Clean
+
+Trustworthy
+
+Health-focused
+
+Editorial, not startup-hype
+
+Warm and calm, not neon AI style
+
+Good readability on mobile
+
+Traditional Chinese should feel natural for HK users
+
+Avoid generic SaaS visuals. Use simple illustrations, subtle food / walking / habit cues, and clean layout.
+
+Words and tones to avoid
+Avoid these words in copy unless clinically justified:
+
+cure
+
+reverse diabetes
+
+treat diabetes
+
+diagnose
+
+medical device
+
+guaranteed
+
+fix your blood sugar
+
+beat diabetes
+
+control diabetes instantly
+
+miracle
+
+effortless
+
+hack
+
+Avoid these tones:
+
+hypey startup language
+
+biohacking bro tone
+
+fear-based medical scare language
+
+overclaiming AI accuracy
+
+sounding like Glukky replaces doctors
+
+Preferred wording:
+
+support
+
+habit change
+
+food awareness
+
+blood sugar-friendly
+
+lower GI choices
+
+post-meal routine
+
+prevention-focused
+
+lifestyle support
+
+for people managing or trying to prevent diabetes
+
+Content rules
+Every article should:
+
+Target one main keyword and 2–4 related terms
+
+Have one clear search intent
+
+Include title, meta description, H1, intro, subheads, FAQ
+
+Link to at least 2 related internal articles
+
+Link to the Glukky app page naturally
+
+Include a short disclaimer that the blog is educational and not medical advice
+
+Use concise paragraphs and mobile-friendly formatting
+
+Example keyword clusters
+English:
+
+prediabetes diet
+
+blood sugar diet
+
+post meal walk
+
+dinner timing blood sugar
+
+low GI foods
+
+blood sugar spikes after meals
+
+type 2 prevention diet
+
+carb quality
+
+AI food scan
+
+meal habits
+
+Traditional Chinese:
+
+糖尿前期飲食
+
+控糖飲食
+
+飯後血糖
+
+飯後散步
+
+低GI食物
+
+血糖管理
+
+糖尿病飲食
+
+晚餐時間
+
+碳水化合物
+
+飲食打卡
+
+Must-have pages
+Homepage should include:
+
+clear value proposition
+
+featured articles
+
+topic clusters
+
+CTA to app
+
+Blog index should include:
+
+filter by topic if easy
+
+article cards
+
+bilingual-ready structure
+
+Article page should include:
+
+readable layout
+
+table of contents if simple
+
+related articles
+
+FAQ section
+
+CTA banner for app
+
+App page should include:
+
+what Glukky does
+
+AI food scan
+
+walking + meal + dinner habit loop
+
+screenshots placeholder
+
+App Store CTA
+
+Nice-to-have, only if simple
+Basic sitemap
+
+robots.txt
+
+RSS feed
+
+JSON-LD schema
+
+simple featured article section
+
+basic search only if static and cheap
+
+Final instruction
+Prioritize:
+
+SEO structure
+
+simplicity
+
+low maintenance cost
+
+mobile readability
+
+bilingual extensibility
+
+Do not overengineer. Build the minimum clean SEO blog system that can scale by adding articles manually over time.
+
