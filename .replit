@@ -45,6 +45,10 @@ args = "Start application"
 task = "workflow.run"
 args = "week1-gate-check"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Preview blog"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -61,6 +65,18 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx playwright test tests/week1-gate.spec.ts tests/paywall-leave-anyway-unlock.spec.ts --reporter=list && node tests/week1-gate.test.mjs && npx tsx tests/paywall-leave-anyway-unlock.test.mts"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Preview blog"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node blog-site/serve.mjs"
+waitForPort = 8080
 
 [workflows.workflow.metadata]
 outputType = "console"
