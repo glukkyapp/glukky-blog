@@ -1,0 +1,68 @@
+const KEYWORD_CATEGORY_MAP = [
+  {
+    category: "reduce_sugar",
+    keywords: ["sugar", "sugary", "sweet", "sweetened", "soda", "juice",
+               "dessert", "candy", "glucose spike", "blood sugar"],
+    sources: [
+      { label: "WHO – Reducing Free Sugars Intake in Adults",
+        url: "https://www.who.int/tools/elena/interventions/free-sugars-adults-ncds" },
+      { label: "ADA – Nutrition Therapy for Adults with Diabetes",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" }
+    ]
+  },
+  {
+    category: "carb_control",
+    keywords: ["carb", "carbohydrate", "rice", "noodle", "bread", "pasta",
+               "starchy", "refined", "white rice", "congee", "glycemic"],
+    sources: [
+      { label: "ADA – Nutrition Therapy Consensus Report (2019)",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" },
+      { label: "NCBI Endotext – Dietary Advice for Individuals with Diabetes",
+        url: "https://www.ncbi.nlm.nih.gov/books/NBK279012/" }
+    ]
+  },
+  {
+    category: "increase_fiber",
+    keywords: ["fiber", "fibre", "vegetable", "vegetables", "leafy",
+               "greens", "legume", "whole grain", "broccoli", "spinach"],
+    sources: [
+      { label: "ADA – Nutrition Therapy Consensus Report (2019)",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" },
+      { label: "NCBI Endotext – Dietary Advice for Individuals with Diabetes",
+        url: "https://www.ncbi.nlm.nih.gov/books/NBK279012/" }
+    ]
+  },
+  {
+    category: "fat_and_lipids",
+    keywords: ["fat", "fatty", "fried", "oily", "saturated", "cholesterol",
+               "lipid", "triglyceride", "trans fat", "deep fried"],
+    sources: [
+      { label: "ADA – Nutrition Therapy Consensus Report (2019)",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" },
+      { label: "ADA – Lipid Management in Diabetes (2024)",
+        url: "https://professional.diabetes.org/sites/dpro/files/2024-03/KDBH-LipidManagement.pdf" }
+    ]
+  },
+  {
+    category: "sodium_hypertension",
+    keywords: ["salt", "sodium", "soy sauce", "processed", "salty",
+               "blood pressure", "hypertension", "preserved", "cured"],
+    sources: [
+      { label: "ADA – Nutrition Therapy Consensus Report (2019)",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" },
+      { label: "NCBI – The DASH Diet: Managing Hypertension Through Nutrition",
+        url: "https://www.ncbi.nlm.nih.gov/books/NBK482514/" }
+    ]
+  },
+  {
+    category: "balanced_plate",
+    keywords: ["balanced", "portion", "plate", "protein", "lean",
+               "serving size", "overeating", "meal balance"],
+    sources: [
+      { label: "ADA – Nutrition Therapy Consensus Report (2019)",
+        url: "https://diabetesjournals.org/care/article/42/5/731/40480/Nutrition-Therapy-for-Adults-With-Diabetes-or" },
+      { label: "ADA – Nutrition Therapy Recommendations for Adults (2013)",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC3816916/" }
+    ]
+  }
+];
