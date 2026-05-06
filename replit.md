@@ -73,6 +73,10 @@ I prefer to be asked before any significant modifications are made to the core a
 I prefer clear communication regarding the purpose and impact of any proposed changes.
 When adding new diet tips to DIET_TIP_LADDERS in shared/schema.ts, also add an icon entry to TIP_ICON_MAP in client/src/pages/monthly-report.tsx and ask the product owner to assign a lucide icon.
 
+**Blog article writing rules (`blog-site/src/content/articles/`):**
+- Do **not** write in "according to research / a 2022 study found / a 2016 paper showed" prose style. State the conclusion in plain language and let the superscript citation (`<sup><a href="#src-N">N</a></sup>`) carry the evidence trail. Reserve study names and journal references for the `sources` array at the end of each article.
+- Prefer **direct quotes** from sources over my own interpretation. My interpretations have been only partially correct in past drafts. When a paraphrase is unavoidable, stay strictly inside what the source actually measured — never extend a finding past its scope, and never invent statistics, percentages, or numeric ranges that are not in the source.
+
 ## Gotchas
 
 - **Paywall Price Hardcoding:** The paywall headline price is hardcoded in locale files (`en.json`, `zh-Hant.json`, `yue.json`). Changing the price requires editing these strings directly.

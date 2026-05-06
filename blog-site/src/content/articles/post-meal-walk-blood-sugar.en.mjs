@@ -19,13 +19,7 @@ export default {
 
 <p>When you eat, especially a meal with a lot of starchy carbohydrates, glucose rises in your bloodstream. Your muscles can absorb glucose for energy — and they do so more effectively when they're working, even gently. A short post-meal walk gives that mechanism somewhere to go before the post-meal peak builds up.</p>
 
-<p>You don't need to take a single step to see that this matters; the trials show it. In a 2013 study in <em>Diabetes Care</em>, older adults at risk of impaired glucose tolerance who took three 15-minute walks shortly after each main meal had better 24-hour glucose control than the same people doing one longer walk earlier in the day.<sup><a href="#src-1">1</a></sup></p>
-
-<p>A 2016 randomised crossover study in <em>Diabetologia</em> found a similar pattern in adults already living with type 2 diabetes: walking specifically after each meal lowered their post-meal glucose more than walking the same total amount distributed across the day.<sup><a href="#src-2">2</a></sup></p>
-
-<p>And a 2022 systematic review and meta-analysis in <em>Sports Medicine</em> showed that even short bouts of light-intensity walking, used to break up long sitting, can lower glucose and insulin responses compared with continuous sitting.<sup><a href="#src-3">3</a></sup></p>
-
-<p>Three different study designs, three different populations, the same direction of effect: <strong>walking soon after eating tends to soften the post-meal blood-sugar rise.</strong></p>
+<p>Short walks after each meal do more for your blood sugar than one longer walk at a different time of day.<sup><a href="#src-1">1</a></sup> The evening meal matters most — it tends to be heavier in carbs, and it's usually followed by the longest sit of the day.<sup><a href="#src-2">2</a></sup></p>
 
 <h2 id="how-long">How long, and how soon?</h2>
 
@@ -34,7 +28,7 @@ export default {
 <ul>
   <li><strong>10 to 15 minutes</strong> per walk is enough to be useful. Longer is fine, but the studies showing benefit are not built around marathons.</li>
   <li><strong>Within 30 minutes or so of finishing the meal</strong> appears to be the sweet spot. The earlier within that window, the better the alignment with the post-meal glucose rise.</li>
-  <li><strong>A comfortable, conversational pace.</strong> Not a stroll, not a jog. The 2022 meta-analysis specifically found benefit even at light intensity.<sup><a href="#src-3">3</a></sup></li>
+  <li><strong>A comfortable, conversational pace.</strong> Not a stroll, not a jog. Research found benefit even at light intensity.<sup><a href="#src-3">3</a></sup></li>
 </ul>
 
 <p>If you can only do one a day, the after-dinner walk is usually the most impactful. Dinner is often the largest meal, and the post-meal sit-on-the-sofa is the longest stretch of inactivity in the day for most people.</p>
@@ -83,11 +77,11 @@ export default {
     },
     {
       q: "Does pace matter?",
-      a: "<p>A comfortable, conversational pace is enough. A 2022 meta-analysis specifically found benefit even at light-intensity walking used to interrupt sitting, so you don't need to push hard.</p>",
+      a: "<p>A comfortable, conversational pace is enough. You don't need to push hard.</p>",
     },
     {
-      q: "What if I can only walk once a day?",
-      a: "<p>Most people benefit most from a walk after their largest meal — for many that's dinner, when the after-meal sit-down also tends to be the longest stretch of inactivity in the day.</p>",
+      q: "What if it's impossible for me to walk today?",
+      a: "<p>Light walking is the most effective option, but standing also helps — frequent short standing breaks meaningfully reduce post-meal blood sugar compared to staying seated through the whole digestion window.<sup><a href=\"#src-3\">3</a></sup> If you can't get out for a walk, get up off the sofa or chair every 20–30 minutes, take a few flights of stairs, or pace while you're on a phone call. Anything beats an unbroken sit.</p>",
     },
     {
       q: "Will a post-meal walk replace exercise?",
