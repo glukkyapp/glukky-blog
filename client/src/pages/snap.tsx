@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Images, Loader2, RotateCcw, ChevronRight, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
+import { Camera, Images, Loader2, RotateCcw, ChevronRight, ChevronDown, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
 import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -38,9 +38,15 @@ interface LabelResult {
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
 
+interface AdviceSource {
+  label: string;
+  url: string;
+}
+
 interface AdviceResult {
   advice: string;
   focusPanelData?: FocusPanelData | null;
+  sources?: AdviceSource[];
   adviceUsedToday: number;
   adviceLimit: number;
 }
@@ -220,6 +226,7 @@ export default function Snap() {
   const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
+  const [sourcesExpanded, setSourcesExpanded] = useState<Record<number, boolean>>({});
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
   const [disambigIndex, setDisambigIndex] = useState(0);
   const [sauceManual, setSauceManual] = useState(false);
@@ -241,6 +248,7 @@ export default function Snap() {
     setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
     setAdviceResult(null);
     setAdvicePanel(0);
+    setSourcesExpanded({});
     setDisambigQueue([]);
     setDisambigIndex(0);
     setSauceManual(false);
@@ -498,6 +506,7 @@ export default function Snap() {
   ) {
     setStep("advising");
     setAdvicePanel(0);
+    setSourcesExpanded({});
     const reqName = overrides?.name ?? form.name;
     const reqCanonical = overrides?.canonicalName ?? labelResult?.canonicalName ?? null;
     const reqPortion = overrides?.portion ?? form.portion;
@@ -1093,6 +1102,48 @@ export default function Snap() {
                 </div>
               )}
             </div>
+
+            {!isFocusPanel && adviceResult?.sources && adviceResult.sources.length > 0 && (
+              <div className="flex flex-col gap-2 text-[10px] leading-snug text-muted-foreground">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 self-start text-left hover:text-foreground transition-colors"
+                  onClick={() => {
+                    hapticTap("SOFT");
+                    setSourcesExpanded((prev) => ({ ...prev, [advicePanel]: !prev[advicePanel] }));
+                  }}
+                  data-testid={`button-snap-sources-toggle-${advicePanel}`}
+                >
+                  {sourcesExpanded[advicePanel]
+                    ? <ChevronDown className="w-3 h-3" />
+                    : <ChevronRight className="w-3 h-3" />}
+                  <span>{t("snap.sources_label")}</span>
+                </button>
+                {sourcesExpanded[advicePanel] && (
+                  <ul
+                    className="flex flex-col gap-1 pl-4 list-disc"
+                    data-testid={`list-snap-sources-${advicePanel}`}
+                  >
+                    {adviceResult.sources.map((src, i) => (
+                      <li key={i}>
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-foreground transition-colors"
+                          data-testid={`link-snap-source-${advicePanel}-${i}`}
+                        >
+                          {src.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p data-testid={`text-snap-disclaimer-${advicePanel}`}>
+                  {t("snap.advice_disclaimer")}
+                </p>
+              </div>
+            )}
 
             {totalPanels > 1 && (
               <div className="flex items-center justify-center gap-2" data-testid="nav-snap-advice-dots">

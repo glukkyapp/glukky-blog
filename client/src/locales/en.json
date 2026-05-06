@@ -803,6 +803,8 @@
     "get_advice": "Get diet advice",
     "try_again": "Try a different photo",
     "advice_title": "Diet advice",
+    "sources_label": "Sources and guidelines",
+    "advice_disclaimer": "Glukky provides general lifestyle information only and does not offer medical diagnosis or treatment. Always consult your doctor before making medical decisions.",
     "done": "Done",
     "next": "Next",
     "error_no_food": "No food detected in this photo. Please try a clearer shot.",

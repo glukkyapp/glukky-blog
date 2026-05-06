@@ -17,6 +17,7 @@ import {
 } from "./engine";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_PRIORITY, type InsertUserProfile } from "@shared/schema";
 import type { FoodLabel } from "@shared/schema";
+import { pickSources } from "./advice-sources";
 import {
   evaluateDailyAchievements,
   evaluateWeeklyAchievements,
@@ -3116,6 +3117,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           return res.json({
             advice: cachedAdvice,
             focusPanelData,
+            sources: pickSources(cachedAdvice),
             adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
             adviceLimit: SNAP_LABEL_DAILY_LIMIT,
             adviceSource: "cache",
@@ -3129,6 +3131,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         return res.json({
           advice: existingCachedAdvice,
           focusPanelData,
+          sources: pickSources(existingCachedAdvice),
           adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
           adviceLimit: SNAP_LABEL_DAILY_LIMIT,
           adviceSource: "cache",
@@ -3181,7 +3184,23 @@ Always reply in this format (the optional cultural opener, if any, comes first o
 📝 Next time: [one change for the next time this dish is prepared or ordered]
 
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (🩸, ⚡, 📝).
-If there is a genuine concern, output all 4 lines.${includeTagLine ? tagInstruction : ""}`;
+If there is a genuine concern, output all 4 lines.
+
+Evidence-based principles you MUST stay within (from Diabetes Care 2019 Consensus & WHO/ADA guidance). Do NOT invent principles outside this list and do NOT contradict them:
+- Emphasize non-starchy vegetables.
+- Minimize added sugars and refined grains.
+- Prefer whole, minimally processed foods over highly processed foods.
+- Reduced overall carbohydrate intake has the strongest evidence for improving glycaemia.
+- Lower-carbohydrate eating patterns may be considered for selected adults with type 2 (not meeting glycaemic targets, or where reducing antiglycaemic medication is a priority) — never frame this as a universal recommendation.
+- Encourage fibre-rich foods.
+- Reduce saturated fat and increase unsaturated fats and omega-3 (Mediterranean-style pattern).
+- Limit added salt and sodium.
+
+Hard constraints on your advice:
+- Advice must be SPECIFIC to the food in the photo and the user's context. No generic, non-specific advice.
+- Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).
+- Use practical "swap X for Y" / "add Z" / "leave half of W" language tied to THIS dish.
+- Never just repeat a principle verbatim — translate it into a concrete action for this meal.${includeTagLine ? tagInstruction : ""}`;
 
       // Pre-check cache for all locales BEFORE any Claude call so we
       // know whether this advice request would actually hit Claude.
@@ -3294,6 +3313,7 @@ No explanation, just JSON.`,
         : computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId, claudeTags);
 
       const userAdvice = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
+      const userAdviceSources = pickSources(userAdvice);
 
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
@@ -3306,6 +3326,7 @@ No explanation, just JSON.`,
       res.json({
         advice: userAdvice,
         focusPanelData,
+        sources: userAdviceSources,
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
         adviceLimit: SNAP_LABEL_DAILY_LIMIT,
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",

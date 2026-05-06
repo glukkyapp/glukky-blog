@@ -807,6 +807,8 @@
     "get_advice": "獲取飲食建議",
     "try_again": "換一張照片",
     "advice_title": "飲食建議",
+    "sources_label": "指引及資料來源",
+    "advice_disclaimer": "免責聲明：Glukky 只提供一般生活資訊，並不提供醫療診斷或治療。作出任何醫療決定前，請先諮詢你的醫生。",
     "done": "完成",
     "next": "下一頁",
     "error_no_food": "未能識別食物，請嘗試拍攝更清晰的照片。",
