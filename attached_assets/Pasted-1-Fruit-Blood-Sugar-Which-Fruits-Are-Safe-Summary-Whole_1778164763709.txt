@@ -1,0 +1,70 @@
+1. Fruit & Blood Sugar: Which Fruits Are Safe?
+Summary
+Whole fruits are not “banned” for diabetes — most people do better focusing on which fruits and in what form: whole, lower‑GI fruits like apples, pears, berries, cherries, citrus and kiwi are steadier choices, while very sweet, high‑GI fruits (mango, ripe banana, pineapple, watermelon, cantaloupe) and fruit juice push blood sugar up faster.
+
+English fruit poster
+(see the generated image above)
+
+Traditional Chinese fruit poster
+(see the generated image above)
+
+Key citations
+
+Ren Y et al. “Effect of fruit on glucose control in diabetes mellitus: a meta-analysis of randomized controlled trials.” Frontiers in Endocrinology 2023.
+https://pubmed.ncbi.nlm.nih.gov/37214237/
+
+“11 Low Glycemic Fruits for People With Diabetes.” GoodRx.
+https://www.goodrx.com/conditions/diabetes/best-and-worst-fruit-for-diabetics
+
+2. What Should Your Blood Sugar Be After a Meal — and When?
+Summary
+For everyday tracking, most adults with diabetes use simple targets: before meals, aim for about 4–7 mmol/L, and roughly under 10 mmol/L one to two hours after eating; lab cut‑offs for diagnosing prediabetes and diabetes are stricter (fasting ≥7.0 or 2‑hour ≥11.1 mmol/L for diabetes).
+
+Diagnosis ranges (lab use)
+
+Category	Fasting plasma glucose (FPG)	2‑hour post‑prandial (OGTT / lab)
+Normal	< 5.6 mmol/L	< 7.8 mmol/L
+Prediabetes	5.6 – 6.9 mmol/L	7.8 – 11.0 mmol/L
+Diabetes	≥ 7.0 mmol/L	≥ 11.1 mmol/L
+Simple everyday targets (for many adults with diabetes)
+
+Situation	Target (mmol/L)
+Fasting / before meals	4 – 7
+1–2 hours after meal start	< 10
+Key citations
+
+“2. Diagnosis and Classification of Diabetes: Standards of Care in Diabetes—2024/2025.” Diabetes Care (ADA).
+https://pmc.ncbi.nlm.nih.gov/articles/PMC9810469/
+
+“Check Your Blood Glucose.” American Diabetes Association.
+https://diabetes.org/living-with-diabetes/treatment-care/checking-your-blood-sugar
+
+“Manage Blood Sugar.” Centers for Disease Control and Prevention (CDC).
+https://www.cdc.gov/diabetes/treatment/index.html
+
+3. GI Explained in 5 Minutes — And Why It’s Not the Whole Story
+Summary
+Low‑GI and low‑GL eating patterns (more “slow carbs”, fewer rapid‑spike foods) reliably bring HbA1c down by about a third of a percentage point on average in people with diabetes, and also modestly improve fasting glucose, lipids, blood pressure and inflammation — but portion size and overall balance still matter, so “low GI” is a tool, not a magic label.
+
+Key citations
+
+Chiavaroli L et al. “Effect of low glycaemic index or load dietary patterns on glycaemic control and cardiometabolic risk factors in diabetes: systematic review and meta-analysis of randomised controlled trials.” BMJ 2021;374:n1651.
+https://www.bmj.com/content/374/bmj.n1651
+
+“The role of low glycemic index and load diets in medical nutrition therapy for diabetes.” Nutrients 2024.
+https://pmc.ncbi.nlm.nih.gov/articles/PMC11519289/
+
+4. CGM in Hong Kong: What It Is, Who It’s For, and What to Do Without One
+Summary
+For people already living with type 2 diabetes on insulin, switching from finger‑prick testing to continuous glucose monitoring (CGM) is linked to roughly a 1% drop in HbA1c, and early prediabetes studies suggest that even short‑term CGM use can nudge people toward smaller portions, healthier swaps, and more activity — but for now, most of the strongest data is in insulin‑treated type 2 rather than pure prediabetes.
+
+Key citations
+
+“Continuous Glucose Monitoring vs Fingerstick Monitoring in Veterans With Type 2 Diabetes.” Journal article, 2024; n=150.
+https://pmc.ncbi.nlm.nih.gov/articles/PMC11745360/
+
+ClinicalTrials.gov. “Continuous Glucose Monitoring (CGM) in Prediabetes.” Study record NCT07371546.
+https://clinicaltrials.gov/study/NCT07371546
+
+Polonsky WH et al. “Diabetes patient preferences for glucose-monitoring technologies: a systematic review.” Patient Preference and Adherence 2023.
+https://pmc.ncbi.nlm.nih.gov/articles/PMC9853131/
