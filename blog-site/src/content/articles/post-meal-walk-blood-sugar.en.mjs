@@ -45,6 +45,8 @@ export default {
   <li><strong>Use a phone reminder.</strong> An automatic nudge after your usual dinner time removes the decision.</li>
 </ul>
 
+<p>If you'd like a hand stitching these small cues together, <a href="/app">Glukky</a> is the companion app we're quietly building for exactly this — a friendly after-dinner nudge to walk, a food snap to remember what was on the plate, and a weekly view to see whether the walks are actually happening.</p>
+
 <h2 id="hong-kong-friendly">Hong Kong-friendly post-meal routes</h2>
 
 <p>If you live in Hong Kong, after-dinner walking is one of the easier habits to build. Practical ideas:</p>

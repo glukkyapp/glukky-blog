@@ -70,6 +70,8 @@ export default {
 
 <p>If you change one non-food thing alongside the swaps above, make it a short walk after the meal that usually pushes your blood sugar up the most — typically dinner. A 10–15 minute walk after a meal measurably lowers your blood sugar peak — even at a gentle pace.<sup><a href="#src-8">8</a></sup> We've written this up in detail: <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</p>
 
+<p>If keeping all of this straight feels like one more thing to remember, <a href="/app">Glukky</a> is the small companion app we're building around it — snap a photo of a meal for a calmer second opinion, get a friendly nudge for the after-dinner walk, and see how the week is shaping up at a glance.</p>
+
 <aside class="disclaimer" role="note">This article is educational and lifestyle-focused. It is not medical advice, diagnosis or treatment. If you've been told you have prediabetes, talk to your doctor or a registered dietitian about your own situation.</aside>
 
 <p>Diabetes is among the leading chronic diseases locally, and points to lifestyle factors — diet, body weight, physical activity — as the central preventable risks.<sup><a href="#src-7">7</a></sup> The good news is that prediabetes is reversible.</p>

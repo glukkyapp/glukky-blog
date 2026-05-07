@@ -58,19 +58,13 @@ export default {
   <li><strong>The post-meal walk.</strong> Walking for 10–15 minutes after the meal that usually pushes your blood sugar up the most is one of the most consistently useful single levers — see <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</li>
 </ul>
 
+<p>If you'd like all of that in one place rather than three separate habits to juggle, <a href="/app">Glukky</a> is the small companion app we're building around it — a quick food snap, a gentle after-dinner walk nudge, and a simple weekly view that lets the pattern speak for itself.</p>
+
 <aside class="disclaimer" role="note">This article is educational and not medical advice. Whether CGM is right for you depends on your specific situation — type of diabetes, medications, other conditions and goals. Discuss it with your doctor or a diabetes specialist.</aside>
 
 <p>If you're new to the surrounding numbers, our piece on <a href="/blog/blood-sugar-targets-after-meals">blood sugar targets after meals</a> is the natural place to start before reading any CGM line.</p>
 `,
   faq: [
-    {
-      q: "Will my insurance cover a CGM in Hong Kong?",
-      a: "<p>It depends on your specific insurance plan and on whether you're on insulin. Some private plans cover CGM for insulin-treated diabetes; many do not cover it for prediabetes or non-insulin type 2. Ask your insurer for the specific terms before you commit to a long-term sensor subscription.</p>",
-    },
-    {
-      q: "Do I need a prescription to buy one?",
-      a: "<p>In Hong Kong, several CGM brands are available without a prescription through pharmacies and direct-from-manufacturer channels. Whether you <em>should</em> use one without medical input is a separate question — interpreting the data is much easier with a clinician's input, especially the first time.</p>",
-    },
     {
       q: "Will a CGM tell me what to eat?",
       a: "<p>Not exactly. A CGM tells you what each meal did to your blood sugar. Translating that into \"so what should I do next time?\" still takes a bit of judgement — usually some combination of smaller portions of the spikiest items, more vegetables and protein, and a post-meal walk for the meal that spikes you most.</p>",
