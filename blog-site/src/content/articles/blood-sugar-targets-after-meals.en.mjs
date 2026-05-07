@@ -113,7 +113,7 @@ export default {
   ],
   sources: [
     {
-      label: "American Diabetes Association. 2. Diagnosis and Classification of Diabetes: Standards of Care in Diabetes — 2023.",
+      label: "2. Diagnosis and Classification of Diabetes: Standards of Care in Diabetes — 2024/2025.",
       publisher: "Diabetes Care (ADA)",
       url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9810469/",
     },
