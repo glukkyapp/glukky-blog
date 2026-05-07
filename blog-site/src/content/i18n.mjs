@@ -131,9 +131,16 @@ export const ui = {
         },
       ],
       screenshotsAlt:
-        "Glukky app screenshots — home, food snap, walking nudge, dinner timing.",
+        "Glukky app screenshots — food snap, diet advice, diet tip, monthly report, personalised weekly schedule.",
       screenshotsCaption:
-        "Glukky on iPhone — home, food snap, walking nudge, dinner timing.",
+        "Glukky on iPhone — food snap, diet advice, diet tip, monthly report, personalised weekly schedule.",
+      scenes: [
+        { label: "Food snap" },
+        { label: "Diet advice" },
+        { label: "Diet tip" },
+        { label: "Monthly report" },
+        { label: "Personalised weekly schedule" },
+      ],
       ctaTitle: "Coming to the App Store",
       ctaBody:
         "Glukky is launching soon. Tap below to be notified when it's live.",
@@ -260,9 +267,16 @@ export const ui = {
         },
       ],
       screenshotsAlt:
-        "Glukky 應用程式介面截圖：首頁、拍下食物、散步提示、晚餐時間。",
+        "Glukky 應用程式介面截圖：食物快拍、即時建議、飲食貼士、每月報告、個人化計劃。",
       screenshotsCaption:
-        "Glukky iPhone 介面：首頁、拍下食物、散步提示、晚餐時間。",
+        "Glukky 介面：食物快拍、即時建議、飲食貼士、每月報告、個人化計劃。",
+      scenes: [
+        { label: "食物快拍" },
+        { label: "即時建議" },
+        { label: "飲食貼士" },
+        { label: "每月報告" },
+        { label: "個人化計劃" },
+      ],
       ctaTitle: "即將上架 App Store",
       ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
       ctaButton: "下載 Glukky",

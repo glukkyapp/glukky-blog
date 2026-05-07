@@ -9,6 +9,26 @@ import {
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
+const SCREEN_SLUGS = [
+  "1-foodsnap",
+  "2-advice",
+  "3-tip",
+  "4-report",
+  "5-schedule",
+];
+
+function screensStrip(locale) {
+  const t = ui[locale];
+  const scenes = t.app.scenes || [];
+  return `<div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
+      ${SCREEN_SLUGS.map((slug, i) => {
+        const label = scenes[i] ? scenes[i].label : "";
+        return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
+      }).join("\n      ")}
+    </div>
+    <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>`;
+}
+
 export function homePage(locale, articles) {
   const t = ui[locale];
   // pick the 4 most recent articles in this locale as "Start here"
@@ -166,12 +186,7 @@ export function aboutPage(locale) {
 
 <section class="screens">
   <div class="container">
-    <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
-      <img src="/images/app-screen-1.png" alt="${escapeAttr(t.app.screenshotsAlt)}" loading="lazy" width="280" height="600" />
-      <img src="/images/app-screen-2.png" alt="" loading="lazy" width="280" height="600" />
-      <img src="/images/app-screen-3.png" alt="" loading="lazy" width="280" height="600" />
-    </div>
-    <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>
+    ${screensStrip(locale)}
   </div>
 </section>
 
@@ -214,12 +229,7 @@ export function appPage(locale) {
 
 <section class="screens">
   <div class="container">
-    <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
-      <img src="/images/app-screen-1.png" alt="${escapeAttr(t.app.screenshotsAlt)}" loading="lazy" width="280" height="600" />
-      <img src="/images/app-screen-2.png" alt="" loading="lazy" width="280" height="600" />
-      <img src="/images/app-screen-3.png" alt="" loading="lazy" width="280" height="600" />
-    </div>
-    <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>
+    ${screensStrip(locale)}
   </div>
 </section>
 
