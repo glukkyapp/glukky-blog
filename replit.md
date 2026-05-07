@@ -76,6 +76,8 @@ When adding new diet tips to DIET_TIP_LADDERS in shared/schema.ts, also add an i
 **Blog article writing rules (`blog-site/src/content/articles/`):**
 - Do **not** write in "according to research / a 2022 study found / a 2016 paper showed" prose style. State the conclusion in plain language and let the superscript citation (`<sup><a href="#src-N">N</a></sup>`) carry the evidence trail. Reserve study names and journal references for the `sources` array at the end of each article.
 - Prefer **direct quotes** from sources over my own interpretation. My interpretations have been only partially correct in past drafts. When a paraphrase is unavoidable, stay strictly inside what the source actually measured — never extend a finding past its scope, and never invent statistics, percentages, or numeric ranges that are not in the source.
+- Articles in the `*.zh-Hant.mjs` files must be written in **formal Traditional Chinese** (suitable for a wider Trad-Chinese reading audience), not HK Cantonese colloquial. HK-specific facts (CHP guidelines, local food references) stay accurate via the citation, but framing prose stays in formal Trad Chinese.
+- Citation entries (`sources[].label` and `sources[].publisher`) stay in **English in every locale**, regardless of the article language. Do not translate study titles, journal names, or organisation names into Chinese.
 
 ## Gotchas
 

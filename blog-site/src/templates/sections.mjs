@@ -60,7 +60,7 @@ export function sourcesBlock(locale, sources) {
   return `<section class="sources" aria-labelledby="sources-heading">
     <h2 id="sources-heading">${escapeHtml(t.blog.sourcesHeading)}</h2>
     <ol class="sources-list">
-      ${sources.map(s => `<li>
+      ${sources.map((s, i) => `<li id="src-${i + 1}">
         <a href="${escapeAttr(s.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a>${s.publisher ? ` <span class="muted small">— ${escapeHtml(s.publisher)}</span>` : ""}
       </li>`).join("")}
     </ol>

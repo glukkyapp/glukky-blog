@@ -104,6 +104,12 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: 2.5em 0; }
   padding: 14px 18px; margin: 1.6em 0;
 }
 
+/* === Anchor scroll offset (clears the sticky site header) === */
+:root { scroll-padding-top: 80px; }
+html { scroll-padding-top: 80px; }
+.sources-list li[id^="src-"] { scroll-margin-top: 80px; }
+h2[id], h3[id] { scroll-margin-top: 80px; }
+
 /* === Header === */
 .site-header { background: var(--color-bg); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 50; backdrop-filter: saturate(180%) blur(8px); }
 .site-header-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; }
