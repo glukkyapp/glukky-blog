@@ -1,0 +1,72 @@
+Prerequisites
+Before starting, confirm you have:
+
+Your blog-site code in a GitHub repository (push from Replit if not done yet)
+
+A Cloudflare account (free tier is fine)
+
+Your domain already in Cloudflare (i.e. Cloudflare is your DNS manager, not just your registrar)
+
+Phase 1: Push Your Code to GitHub
+1. Initialise the repo (if not done)
+
+bash
+cd blog-site
+git init
+git add .
+git commit -m "initial blog build"
+2. Push to GitHub
+
+bash
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git branch -M main
+git push -u origin main
+Every future git push will trigger an automatic redeploy on Cloudflare.
+
+Phase 2: Connect to Cloudflare Pages
+3. Log in to dash.cloudflare.com
+
+4. In the left sidebar → Workers & Pages → Create application → Pages tab
+
+5. Click Connect to Git → authorise your GitHub account → select your repo
+
+6. Configure the build settings:
+
+Field	Value
+Project name	glukky-blog (or any name)
+Production branch	main
+Build command	node build.mjs
+Build output directory	dist (or wherever your build outputs HTML)
+7. Click Save and Deploy — Cloudflare runs your build and publishes it to a temporary URL like glukky-blog.pages.dev
+
+Phase 3: Attach Your Custom Domain
+8. In Cloudflare dashboard → Workers & Pages → select your project → Custom domains tab
+
+9. Click Set up a domain → type your domain (e.g. glukky.app or blog.glukky.app) → click Continue
+
+10. Since your domain is already on Cloudflare DNS, it will automatically create the CNAME record for you — just click Activate domain
+
+11. SSL is provisioned automatically. Wait 1–5 minutes and your site will be live at your custom domain.
+
+Phase 4: Verify
+12. Check these four things after deployment:
+
+https://yourdomain.com/blog — blog index loads with all 8 articles
+
+https://yourdomain.com/blog/fruit-and-blood-sugar — Article 1 loads, fruit poster image returns HTTP 200
+
+https://yourdomain.com/blog/blood-sugar-targets-after-meals — both tables render with all rows
+
+https://yourdomain.com/sitemap.xml — 16 URLs listed
+
+Phase 5: Future Deploys (Automatic)
+After the initial setup, every time you push new articles or edits to GitHub, Cloudflare automatically rebuilds and redeploys — no manual steps needed.
+
+bash
+git add .
+git commit -m "add four new EN articles"
+git push
+Cloudflare will pick it up within ~30 seconds.
+
+One Thing to Check First
+Your build.mjs currently outputs to a folder — confirm what that output directory is called (dist, out, public, or something custom) and make sure it matches exactly what you enter in the Build output directory field in Step 6. That's the most common reason first deploys fail.

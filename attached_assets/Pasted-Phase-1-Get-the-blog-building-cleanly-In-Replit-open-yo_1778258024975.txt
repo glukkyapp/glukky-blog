@@ -1,0 +1,125 @@
+Phase 1 — Get the blog building cleanly
+In Replit, open your blog-site project.
+
+In the shell, run:
+
+bash
+node build.mjs
+Confirm it finishes with something like:
+
+bash
+✓ Done. Output in ./dist
+That means Cloudflare can later run the same command.
+
+Phase 2 — Put blog-site on GitHub
+If you already did this, you can skip to Phase 3.
+
+On your computer (or in Replit’s shell), go into the blog folder:
+
+bash
+cd blog-site
+Initialise git and commit:
+
+bash
+git init
+git add .
+git commit -m "Initial blog deploy"
+On GitHub, create a new empty repo (e.g. glukky-blog) — public or private is fine.
+
+Back in the terminal, connect and push:
+
+bash
+git remote add origin https://github.com/YOUR_USERNAME/glukky-blog.git
+git branch -M main
+git push -u origin main
+Now the blog code is on GitHub as a standalone repo (cleanest with Cloudflare).
+
+Phase 3 — Create Cloudflare Pages project
+Go to https://dash.cloudflare.com and log in.
+
+Left sidebar → Workers & Pages → Create application.
+
+Choose the Pages tab.
+
+Click Connect to Git.
+
+When GitHub asks, sign in and authorize Cloudflare Pages (limited to that repo if you prefer).
+
+Back in Cloudflare, select the glukky-blog repo.
+
+When it asks for build settings, use:
+
+Project name: glukky-blog (any name is fine)
+
+Production branch: main
+
+Build command:
+
+text
+node build.mjs
+Build output directory:
+
+text
+dist
+Click Save and Deploy.
+
+First build will run; you’ll see a temporary URL like https://glukky-blog.pages.dev/.
+
+Wait until status shows “Active” and visit that URL to confirm the blog works.
+
+Phase 4 — Set Node version (once)
+To avoid any Node version surprises:
+
+In Cloudflare dashboard → open your glukky-blog Pages project.
+
+Go to Settings → Environment variables.
+
+Add a variable:
+
+Name: NODE_VERSION
+
+Value: 20
+
+Save, then trigger a new deploy (e.g. make a tiny commit to the repo and git push once).
+Cloudflare will now build with Node 20 going forward.
+
+Phase 5 — Attach your .com domain to the blog
+You said the domain is only for the blog, so we point the apex at the Pages project.
+
+In the same Pages project, go to the Custom domains tab.
+
+Click Set up a custom domain.
+
+Enter your domain, e.g.:
+
+text
+glukky.com
+Click Continue.
+
+Cloudflare will show you the DNS settings it’s going to use. Since your DNS is already on Cloudflare, you can usually just click Activate domain:
+
+It will create the needed A/CNAME records for glukky.com → your Pages project.
+
+Wait 1–5 minutes. Then test:
+
+Visit https://glukky.com — it should show your blog.
+
+Visit https://glukky-blog.pages.dev — still works as a fallback.
+
+(If you prefer blog.glukky.com instead of the root, the steps are identical, just enter blog.glukky.com in step 3.)
+
+Phase 6 — Verify everything
+Once DNS has propagated:
+
+Open:
+
+https://glukky.com → blog home
+
+https://glukky.com/blog/fruit-and-blood-sugar → one article
+
+Open https://glukky.com/sitemap.xml and skim:
+
+Check that URLs for the 6 EN + 6 ZH articles are there.
+
+Confirm your app’s Replit URL still works as before (no change needed there).
+
