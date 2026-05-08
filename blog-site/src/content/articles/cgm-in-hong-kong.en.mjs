@@ -16,15 +16,18 @@ export default {
     "prediabetes-diet-where-to-start",
   ],
   body: `
-<p class="lead">For people already living with type 2 diabetes on insulin, switching from finger‑prick testing to continuous glucose monitoring (CGM) is linked to roughly a 1% drop in HbA1c, and early prediabetes studies suggest that even short‑term CGM use can nudge people toward smaller portions, healthier swaps, and more activity — but for now, most of the strongest data is in insulin‑treated type 2 rather than pure prediabetes.</p>
-
-<p>Continuous glucose monitors are everywhere on social media right now — including in Hong Kong, where private clinics and pharmacies sell sensors over the counter. The marketing makes them sound essential for everyone. The actual evidence is more specific than that.</p>
+<p>Continuous glucose monitors (CGMs) are everywhere on social media right now — Hong Kong included, where the marketing makes them sound like something everyone needs.</p>
 
 <h2 id="what-cgm-is">What a CGM actually is</h2>
 
 <p>A CGM is a small sensor you wear on the back of your upper arm (or sometimes your abdomen) for 10–14 days at a time. A tiny filament under the skin measures glucose in the fluid between your cells, and your phone shows you a continuous line — what your blood sugar is doing right now, what it did overnight, and how a particular meal affected you.</p>
 
 <p>The difference from a finger-prick meter isn't really about accuracy at a single moment. It's about <em>seeing the curve</em>. A meter tells you the height; a CGM shows you the shape.</p>
+
+<figure>
+  <img src="/images/photo-cgm-sensor.jpg" alt="A FreeStyle Libre continuous glucose monitor sensor worn on the back of an upper arm, with a handheld reader nearby." loading="lazy" width="1024" height="683" />
+  <figcaption>A continuous glucose monitor worn on the upper arm. Photo: Thirunavukkarasye-Raveendran, <a href="https://commons.wikimedia.org/wiki/File:FreeStyle_libre_am_Oberarm_und_Auslesegerät-4.JPG" rel="noopener">Wikimedia Commons</a>, CC BY 4.0.</figcaption>
+</figure>
 
 <h2 id="who-benefits-most">Where the strongest evidence sits</h2>
 
@@ -34,23 +37,24 @@ export default {
 
 <h2 id="why-people-choose">Why people choose, or hesitate, about CGM</h2>
 
-<p>If you ask people with diabetes what they actually want from a glucose monitor, three themes show up again and again: less pain and less hassle than finger-pricks, accuracy they can trust, and a price they can live with. CGM scores well on the first; people are usually happy not to lance their fingers ten times a day. Accuracy and confidence in the numbers tend to come with a few weeks of wear. Cost and the sticker shock of a continuous supply of sensors are the most common reasons people hold off.<sup><a href="#src-3">3</a></sup></p>
+<p>When researchers ask people with diabetes what they actually want from a glucose monitor, two clusters of reasons keep showing up.<sup><a href="#src-3">3</a></sup></p>
 
-<p>Other quiet hesitations: not wanting a visible sensor on the arm, worrying about getting overwhelmed by data, or simply not being sure what to <em>do</em> with the line on the screen. None of those are silly — they're worth raising with whichever clinician you're discussing CGM with.</p>
-
-<h2 id="hk-availability">CGM availability in Hong Kong</h2>
-
-<p>CGMs are available privately in Hong Kong — through endocrinology clinics, larger pharmacy chains, and direct-from-manufacturer ordering. They are not, by default, reimbursed under public schemes for everyone with diabetes; coverage depends on the specific scheme and your circumstances. Practical points if you're considering one:</p>
-
+<p><strong>Reasons to choose a CGM:</strong></p>
 <ul>
-  <li>You'll usually pay per sensor (each lasts ~10–14 days). The ongoing cost adds up, which is the single biggest practical factor for most people.</li>
-  <li>Some sensors need a separate reader; many modern ones just talk to your phone.</li>
-  <li>If you don't take insulin, ask whether a short trial (one or two sensors) would be more useful than a long-term subscription. Many people get most of the behavioural insight in the first few weeks.</li>
+  <li>Less pain and less hassle than finger-pricks.</li>
+  <li>Better-perceived accuracy and confidence in the numbers, especially after a few weeks of wear.</li>
+</ul>
+
+<p><strong>Reasons to hesitate:</strong></p>
+<ul>
+  <li>Cost — the ongoing price of a continuous supply of sensors is the most common reason people hold off.</li>
+  <li>Not wanting a visible sensor on the arm.</li>
+  <li>Worrying about being overwhelmed by data, or not knowing what to <em>do</em> with the line on the screen.<sup><a href="#src-3">3</a></sup></li>
 </ul>
 
 <h2 id="without-one">What to do if you don't have a CGM</h2>
 
-<p>You can get a lot of the same insight without one. Three things that work:</p>
+<p>You can still get most of the same insight without one:</p>
 
 <ul>
   <li><strong>The food snap habit.</strong> A photo of every meal for two weeks, looked back at, often surfaces the pattern as clearly as a sensor would.</li>

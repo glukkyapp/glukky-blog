@@ -170,18 +170,18 @@ export const ui = {
     },
     home: {
       eyebrow: "Glukky 健康筆記",
-      heroTitle: "穩定血糖，由可以每日做到的小習慣開始。",
+      heroTitle: "穩定血糖，由每日小習慣開始。",
       heroLead:
-        "由糖尿前期飲食、飯後散步、晚餐時間到低 GI 食物，立足香港，平實易明。沒有炒作、沒有恐嚇、沒有流行語。",
+        "告訴你有關：糖尿前期飲食、飯後散步及晚餐時間的重要性、低 GI 食物及常見誤解。",
       heroPrimary: "閱讀全部文章",
       heroSecondary: "了解 Glukky",
       featuredHeading: "推薦閱讀",
-      clusterHeading: "我們撰寫的題目",
+      clusterHeading: "文章主題",
       clusters: [
         {
           title: "糖尿前期飲食",
           desc:
-            "由何處入手？最先要改的是什麼？所謂「控糖飲食」實際上如何在日常落實？",
+            "由何處入手？最先要改善的是什麼？所謂「控糖飲食」實際上如何做到？",
         },
         {
           title: "飯後散步",
