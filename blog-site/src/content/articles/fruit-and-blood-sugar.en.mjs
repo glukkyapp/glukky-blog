@@ -51,6 +51,8 @@ export default {
 
 <p>Some of the highest-sugar things people drink in Hong Kong are framed as "fruit": bottled fruit juices, fresh-pressed sugar-cane and watermelon juice from street stalls, sweet smoothies from cha chaan tengs, and 鮮榨果汁 sold by the bottle. None of these behave like whole fruit. If you're trying to keep post-meal numbers calmer, treat fruit drinks the same way you'd treat a soft drink, not the same way you'd treat an apple.</p>
 
+<p>If you're not sure where to begin, <a href="/app">Glukky</a> is a small companion app that handles the above for you.</p>
+
 <aside class="disclaimer" role="note">This article is educational and lifestyle-focused. It is not medical advice, diagnosis or treatment. If you have diabetes or are pregnant, talk to your doctor or a registered dietitian about how fruit fits into your own plan.</aside>
 
 <p>If you'd like the matching everyday numbers — what "after-meal" actually means in mmol/L — see our piece on <a href="/blog/blood-sugar-targets-after-meals">blood sugar targets after meals</a>. For the bigger picture on why GI matters and where it doesn't, see <a href="/blog/glycaemic-index-explained">glycaemic index explained</a>.</p>

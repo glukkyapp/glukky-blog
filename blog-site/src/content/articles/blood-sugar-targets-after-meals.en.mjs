@@ -89,6 +89,8 @@ export default {
 
 <p>Home glucose meters in Hong Kong report in mmol/L (the same unit used everywhere on this page). Some imported meters or US-based apps default to mg/dL — divide by 18 to convert (so 180 mg/dL ≈ 10 mmol/L). It's worth setting your meter to mmol/L at the start so the numbers match what your doctor talks about.</p>
 
+<p>If you're not sure where to begin, <a href="/app">Glukky</a> is a small companion app that handles the above for you.</p>
+
 <aside class="disclaimer" role="note">This article is educational. It is not medical advice. The targets above are general adult targets for type 2 diabetes — they are not pregnancy targets, paediatric targets, or targets for type 1 diabetes. Talk to your own doctor about the right range for you.</aside>
 
 <p>If you're trying to bring after-meal numbers down, two of the highest-leverage everyday habits are choosing slower carbs (see <a href="/blog/glycaemic-index-explained">glycaemic index explained</a>) and the fruit you reach for (see <a href="/blog/fruit-and-blood-sugar">fruit and blood sugar</a>).</p>
@@ -113,7 +115,7 @@ export default {
   ],
   sources: [
     {
-      label: "2. Diagnosis and Classification of Diabetes: Standards of Care in Diabetes — 2024/2025.",
+      label: "Diagnosis and Classification of Diabetes: Standards of Care in Diabetes — 2024/2025.",
       publisher: "Diabetes Care (ADA)",
       url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9810469/",
     },

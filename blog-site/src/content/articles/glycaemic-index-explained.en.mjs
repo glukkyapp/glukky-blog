@@ -57,6 +57,8 @@ export default {
   <li>Walk for 10–15 minutes after the meal that usually pushes your blood sugar up the most. (We've written about this in <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.)</li>
 </ul>
 
+<p>If you're not sure where to begin, <a href="/app">Glukky</a> is a small companion app that handles the above for you.</p>
+
 <aside class="disclaimer" role="note">This article is educational. It is not a personalised diet plan. If you have diabetes or another condition that affects how your body handles carbohydrate, talk to your doctor or a registered dietitian about how to apply these ideas to your own meals.</aside>
 
 <p>If you'd like the matching everyday numbers — what counts as "in range" before and after meals — see <a href="/blog/blood-sugar-targets-after-meals">blood sugar targets after meals</a>. For where fruit fits in the picture, see <a href="/blog/fruit-and-blood-sugar">fruit and blood sugar</a>.</p>
