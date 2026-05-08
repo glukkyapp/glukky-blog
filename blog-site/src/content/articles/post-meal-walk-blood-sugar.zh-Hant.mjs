@@ -89,5 +89,7 @@ export default {
     { label: "DiPietro L et al. Three 15-min Bouts of Moderate Postmeal Walking Significantly Improves 24-h Glycemic Control in Older People at Risk for Impaired Glucose Tolerance. Diabetes Care 2013;36(10):3262-3268.", publisher: "Diabetes Care", url: "https://diabetesjournals.org/care/article/36/10/3262/30898" },
     { label: "Reynolds AN et al. Advice to walk after meals is more effective for lowering postprandial glycaemia in type 2 diabetes mellitus than advice that does not specify timing: a randomised crossover study. Diabetologia 2016;59:2572-2578.", publisher: "Diabetologia", url: "https://link.springer.com/article/10.1007/s00125-016-4085-2" },
     { label: "Buffey AJ et al. The Acute Effects of Interrupting Prolonged Sitting With Brief Bouts of Light-Intensity Walking on Cardiometabolic Health. Sports Medicine 2022;52:1765-1787.", publisher: "Sports Medicine", url: "https://link.springer.com/article/10.1007/s40279-022-01649-4" },
+    { label: "Exercise Prescription — physical activity guidance for adults.", publisher: "Centre for Health Protection, Hong Kong Department of Health", url: "https://www.chp.gov.hk/en/static/100013.html" },
+    { label: "American Diabetes Association. Standards of Care in Diabetes — 2024.", publisher: "Diabetes Care, Vol 47, Suppl 1", url: "https://diabetesjournals.org/care/issue/47/Supplement_1" },
   ],
 };
