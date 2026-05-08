@@ -4,7 +4,7 @@ export default {
   locale: "zh-Hant",
   title: "飯後散步如何幫助血糖穩定",
   description:
-    "在所有改善血糖的日常習慣之中，其中一項最有效易做的，就是飯後散步。本文說明研究實際呈現的結果、要散多久、何時散最好，以及如何養成持續的習慣。",
+    "為何短暫的飯後散步能平緩飯後血糖的升幅？研究實際說了什麼、要散多久、何時散最有效，以及如何養成持續的習慣。",
   publishedAt: "2026-05-05",
   pillar: "飯後散步",
   heroImage: "/images/illus-path.png",
