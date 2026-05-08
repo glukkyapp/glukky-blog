@@ -102,5 +102,6 @@ export default {
     { label: "Type 2 diabetes — overview and prevention.", publisher: "NHS (UK)", url: "https://www.nhs.uk/conditions/type-2-diabetes/" },
     { label: "Salas-Salvadó J et al. Prevention of Diabetes With Mediterranean Diets. Ann Intern Med 2014;160(1):1-10.", publisher: "Annals of Internal Medicine (PREDIMED)", url: "https://www.acpjournals.org/doi/10.7326/M13-1725" },
     { label: "DiPietro L et al. Three 15-min Bouts of Moderate Postmeal Walking Significantly Improves 24-h Glycemic Control. Diabetes Care 2013;36(10):3262-3268.", publisher: "Diabetes Care", url: "https://diabetesjournals.org/care/article/36/10/3262/30898" },
+    { label: "Diabetes Prevention Program (DPP) — overview.", publisher: "U.S. National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK)", url: "https://www.niddk.nih.gov/about-niddk/research-areas/diabetes/diabetes-prevention-program-dpp" },
   ],
 };
