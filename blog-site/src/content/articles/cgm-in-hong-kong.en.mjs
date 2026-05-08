@@ -42,7 +42,7 @@ export default {
 <p><strong>Reasons to choose a CGM:</strong></p>
 <ul>
   <li>Less pain and less hassle than finger-pricks.</li>
-  <li>Better-perceived accuracy and confidence in the numbers, especially after a few weeks of wear.</li>
+  <li>Better-perceived accuracy and confidence in the numbers, especially after a few weeks of wear.<sup><a href="#src-3">3</a></sup></li>
 </ul>
 
 <p><strong>Reasons to hesitate:</strong></p>

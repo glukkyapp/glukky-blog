@@ -42,7 +42,7 @@ export default {
 <p><strong>選擇 CGM 的原因：</strong></p>
 <ul>
   <li>比扎手指少痛楚，亦少麻煩。</li>
-  <li>對數字的準確度有較高信心，尤其在佩戴幾星期之後。</li>
+  <li>對數字的準確度有較高信心，尤其在佩戴幾星期之後。<sup><a href="#src-3">3</a></sup></li>
 </ul>
 
 <p><strong>猶豫的原因：</strong></p>
