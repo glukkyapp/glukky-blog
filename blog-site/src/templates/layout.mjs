@@ -46,7 +46,7 @@ function head(opts) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#fdfbee" />
 <title>${escapeHtml(fullTitle)}</title>
-<meta name="description" content="${escapeAttr(opts.description)}" />
+${opts.description ? `<meta name="description" content="${escapeAttr(opts.description)}" />` : ""}
 <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
 <link rel="alternate" hreflang="en" href="${escapeAttr(SITE_URL + urlFor("en", cleanPath))}" />
 <link rel="alternate" hreflang="zh-Hant" href="${escapeAttr(SITE_URL + urlFor("zh-Hant", cleanPath))}" />
@@ -54,14 +54,14 @@ function head(opts) {
 <meta property="og:type" content="${escapeAttr(opts.ogType || "website")}" />
 <meta property="og:site_name" content="${escapeAttr(t.siteName)}" />
 <meta property="og:title" content="${escapeAttr(opts.title)}" />
-<meta property="og:description" content="${escapeAttr(opts.description)}" />
+${opts.description ? `<meta property="og:description" content="${escapeAttr(opts.description)}" />` : ""}
 <meta property="og:url" content="${escapeAttr(canonicalUrl)}" />
 <meta property="og:image" content="${escapeAttr(ogImage)}" />
 <meta property="og:locale" content="${escapeAttr(opts.locale === "en" ? "en_GB" : "zh_HK")}" />
 <meta property="og:locale:alternate" content="${escapeAttr(opts.locale === "en" ? "zh_HK" : "en_GB")}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escapeAttr(opts.title)}" />
-<meta name="twitter:description" content="${escapeAttr(opts.description)}" />
+${opts.description ? `<meta name="twitter:description" content="${escapeAttr(opts.description)}" />` : ""}
 <meta name="twitter:image" content="${escapeAttr(ogImage)}" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
