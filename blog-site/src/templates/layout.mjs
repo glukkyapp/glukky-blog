@@ -67,7 +67,7 @@ ${opts.description ? `<meta name="twitter:description" content="${escapeAttr(opt
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Karla:wght@400;500;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="${escapeAttr(opts.cssFile || "/styles.css")}" />
 ${opts.jsonLd ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd)
   .replace(/</g, "\\u003c")}</script>` : ""}
 </head>`;

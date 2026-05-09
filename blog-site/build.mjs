@@ -3,6 +3,7 @@
 // Run: `node build.mjs`
 
 import { readdir, mkdir, writeFile, copyFile, readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -138,9 +139,11 @@ async function build() {
   if (existsSync(PUBLIC)) {
     await copyDir(PUBLIC, DIST);
   }
-  // Copy stylesheet to /styles.css
+  // Copy stylesheet to /styles.{hash}.css (cache-busting)
   const css = await readFile(STYLES, "utf8");
-  await writeFile(join(DIST, "styles.css"), css, "utf8");
+  const cssHash = createHash("sha256").update(css).digest("hex").slice(0, 8);
+  const cssFileName = `styles.${cssHash}.css`;
+  await writeFile(join(DIST, cssFileName), css, "utf8");
   await writeFile(join(DIST, "favicon.svg"), makeFavicon(), "utf8");
 
   const allSitemap = [];
@@ -157,6 +160,7 @@ async function build() {
           title: t.home.heroTitle,
           description: t.home.heroLead,
           path: "",
+          cssFile: `/${cssFileName}`,
           jsonLd: organizationJsonLd(),
         },
         homePage(locale, articles)
@@ -174,6 +178,7 @@ async function build() {
           title: t.blog.title,
           description: t.blog.lead,
           path: "blog",
+          cssFile: `/${cssFileName}`,
         },
         blogIndexPage(locale, articles)
       );
@@ -190,6 +195,7 @@ async function build() {
           title: t.about.title,
           description: t.about.lead,
           path: "about",
+          cssFile: `/${cssFileName}`,
         },
         aboutPage(locale)
       );
@@ -206,6 +212,7 @@ async function build() {
           title: t.app.title,
           description: t.app.lead,
           path: "app",
+          cssFile: `/${cssFileName}`,
         },
         appPage(locale)
       );
@@ -226,6 +233,7 @@ async function build() {
           path: `blog/${a.slug}`,
           ogType: "article",
           ogImage: a.heroImage,
+          cssFile: `/${cssFileName}`,
           jsonLd: jsonLd.length === 1 ? jsonLd[0] : jsonLd,
         },
         articlePage(locale, a, articles)
