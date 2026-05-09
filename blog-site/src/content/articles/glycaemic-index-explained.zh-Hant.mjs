@@ -7,7 +7,7 @@ export default {
     "採用低 GI 或低 GL 飲食模式（多「慢碳水」、少快速升糖食物），平均能令糖化血紅素（HbA1c）下降約三分之一個百分點，並能輕微改善空腹血糖、血脂、血壓與發炎指標；但份量大小與整體飲食平衡仍然重要，所以「低 GI」是工具，不是萬靈標籤。",
   publishedAt: "2026-05-09",
   pillar: "飲食與血糖",
-  heroImage: "",
+  heroImage: "/images/photo-low-gi.png",
   heroAlt: "",
   relatedSlugs: [
     "fruit-and-blood-sugar",

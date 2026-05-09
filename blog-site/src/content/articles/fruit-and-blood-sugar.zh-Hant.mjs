@@ -7,7 +7,7 @@ export default {
     "完整水果並非糖尿病的「禁區」 —— 大部分人更應留意的是吃哪一種、以什麼形式吃：低 GI 的水果如蘋果、梨、莓類、車厘子、柑橘類與奇異果，是相對安全的選擇；非常甜、高 GI 的水果（芒果、熟透的香蕉、菠蘿、西瓜、哈密瓜）以及果汁，會令血糖升得較快。",
   publishedAt: "2026-05-07",
   pillar: "飲食與血糖",
-  heroImage: "",
+  heroImage: "/images/photo-fruit.png",
   heroAlt: "",
   relatedSlugs: [
     "blood-sugar-targets-after-meals",

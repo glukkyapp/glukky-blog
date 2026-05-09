@@ -7,7 +7,7 @@ export default {
     "對日常追蹤而言，大部分糖尿病成人會採用簡單的目標：飯前約 4–7 mmol/L，飯後一至兩小時則大致低於 10 mmol/L；至於用於診斷糖尿前期及糖尿病的化驗標準則更嚴格（糖尿病為空腹 ≥7.0 或兩小時 ≥11.1 mmol/L）。",
   publishedAt: "2026-05-08",
   pillar: "血糖基礎",
-  heroImage: "",
+  heroImage: "/images/photo-glucose-target.png",
   heroAlt: "",
   relatedSlugs: [
     "fruit-and-blood-sugar",

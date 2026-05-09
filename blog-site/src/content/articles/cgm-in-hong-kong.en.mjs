@@ -7,7 +7,7 @@ export default {
     "For people already living with type 2 diabetes on insulin, switching from finger‑prick testing to continuous glucose monitoring (CGM) is linked to roughly a 1% drop in HbA1c, and early prediabetes studies suggest that even short‑term CGM use can nudge people toward smaller portions, healthier swaps, and more activity — but for now, most of the strongest data is in insulin‑treated type 2 rather than pure prediabetes.",
   publishedAt: "2026-05-10",
   pillar: "Tools & monitoring",
-  heroImage: "",
+  heroImage: "/images/photo-cgm.png",
   heroAlt: "",
   relatedSlugs: [
     "blood-sugar-targets-after-meals",

@@ -7,7 +7,7 @@ export default {
     "Low‑GI and low‑GL eating patterns (more \"slow carbs\", fewer rapid‑spike foods) reliably bring HbA1c down by about a third of a percentage point on average in people with diabetes, and also modestly improve fasting glucose, lipids, blood pressure and inflammation — but portion size and overall balance still matter, so \"low GI\" is a tool, not a magic label.",
   publishedAt: "2026-05-09",
   pillar: "Diet & blood sugar",
-  heroImage: "",
+  heroImage: "/images/photo-low-gi.png",
   heroAlt: "",
   relatedSlugs: [
     "fruit-and-blood-sugar",

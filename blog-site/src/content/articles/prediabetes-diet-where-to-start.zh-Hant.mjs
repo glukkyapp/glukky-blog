@@ -7,7 +7,7 @@ export default {
     "若醫生告訴你血糖落入糖尿前期範圍，不必驚慌。本文由日常入手，說明三項最值得先換的飲食習慣，以及如何在香港繼續吃得開心、又對血糖友善。",
   publishedAt: "2026-05-05",
   pillar: "糖尿前期飲食",
-  heroImage: "/images/illus-foodsnap.png",
+  heroImage: "/images/photo-prediabetes-diet.png",
   heroAlt: "簡單一碟餸，旁邊一部手機 —— Glukky AI 食物影相的概念。",
   relatedSlugs: ["post-meal-walk-blood-sugar"],
   body: `

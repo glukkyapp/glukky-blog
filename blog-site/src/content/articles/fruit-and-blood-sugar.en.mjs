@@ -7,7 +7,7 @@ export default {
     "Whole fruits are not \"banned\" for diabetes — most people do better focusing on which fruits and in what form: whole, lower‑GI fruits like apples, pears, berries, cherries, citrus and kiwi are steadier choices, while very sweet, high‑GI fruits (mango, ripe banana, pineapple, watermelon, cantaloupe) and fruit juice push blood sugar up faster.",
   publishedAt: "2026-05-07",
   pillar: "Diet & blood sugar",
-  heroImage: "",
+  heroImage: "/images/photo-fruit.png",
   heroAlt: "",
   relatedSlugs: [
     "blood-sugar-targets-after-meals",

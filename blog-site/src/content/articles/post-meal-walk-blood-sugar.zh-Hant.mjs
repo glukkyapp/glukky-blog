@@ -7,7 +7,7 @@ export default {
     "為何短暫的飯後散步能平緩飯後血糖的升幅？研究實際說了什麼、要散多久、何時散最有效，以及如何養成持續的習慣。",
   publishedAt: "2026-05-05",
   pillar: "飯後散步",
-  heroImage: "/images/illus-path.png",
+  heroImage: "/images/photo-post-meal-walk.png",
   heroAlt: "一條向上的小路 —— 一步一步累積的日常習慣。",
   relatedSlugs: ["prediabetes-diet-where-to-start"],
   body: `

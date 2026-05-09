@@ -7,7 +7,7 @@ export default {
     "If you've just been told your blood sugar is in the prediabetes range, here's a calm, practical place to begin — three swaps to try first, what the research actually shows, and how to keep eating like a normal person in Hong Kong.",
   publishedAt: "2026-05-05",
   pillar: "Prediabetes diet",
-  heroImage: "/images/illus-foodsnap.png",
+  heroImage: "/images/photo-prediabetes-diet.png",
   heroAlt: "A simple plate next to a smartphone — the Glukky food snap idea.",
   relatedSlugs: ["post-meal-walk-blood-sugar"],
   body: `

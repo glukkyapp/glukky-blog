@@ -7,7 +7,7 @@ export default {
     "Why a short walk shortly after eating tends to flatten the post-meal blood-sugar rise — what the research actually says, how long the walk needs to be, and how to make it a habit you'll keep.",
   publishedAt: "2026-05-05",
   pillar: "Post-meal walking",
-  heroImage: "/images/illus-path.png",
+  heroImage: "/images/photo-post-meal-walk.png",
   heroAlt: "A simple path leading uphill — the small steady-step idea.",
   relatedSlugs: ["prediabetes-diet-where-to-start"],
   body: `

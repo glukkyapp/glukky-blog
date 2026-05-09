@@ -7,7 +7,7 @@ export default {
     "For everyday tracking, most adults with diabetes use simple targets: before meals, aim for about 4–7 mmol/L, and roughly under 10 mmol/L one to two hours after eating; lab cut‑offs for diagnosing prediabetes and diabetes are stricter (fasting ≥7.0 or 2‑hour ≥11.1 mmol/L for diabetes).",
   publishedAt: "2026-05-08",
   pillar: "Blood sugar basics",
-  heroImage: "",
+  heroImage: "/images/photo-glucose-target.png",
   heroAlt: "",
   relatedSlugs: [
     "fruit-and-blood-sugar",

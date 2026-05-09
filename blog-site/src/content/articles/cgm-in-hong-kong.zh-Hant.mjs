@@ -6,7 +6,7 @@ export default {
   description: "",
   publishedAt: "2026-05-10",
   pillar: "工具與監測",
-  heroImage: "",
+  heroImage: "/images/photo-cgm.png",
   heroAlt: "",
   relatedSlugs: [
     "blood-sugar-targets-after-meals",

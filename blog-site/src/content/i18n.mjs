@@ -159,7 +159,7 @@ export const ui = {
     },
     footer: {
       tagline:
-        "為糖尿前期、二型糖尿患者及關注血糖健康的人士而寫。",
+        "Glukky AI小幫手助你管理日常。每餐飯給你即時建議、提醒你飯後散步，每月回顧，不必再為數字緊張。",
       sections: "目錄",
       languages: "語言",
       english: "English",
