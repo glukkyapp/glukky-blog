@@ -19,16 +19,16 @@ export default {
 
 <h2 id="what-cgm-is">CGM 究竟是什麼</h2>
 
-<p>CGM 是一個小感應器，貼在上臂後方（有時亦會貼在腹部），每次可佩戴 10 至 14 日。皮膚下一條極幼細的探針會量度細胞之間組織液的葡萄糖水平，手機則會顯示一條連續的曲線 —— 你目前血糖是多少、夜間又如何、某一餐又如何影響它。它與指尖血糖機的分別，是它能告訴你你的血糖趨勢。</p>
+<p>CGM 是一個小感應器，貼在上臂後方（有時亦會貼在腹部），每次可佩戴 <mark>10 至 14 日</mark>。皮膚下一條極幼細的探針會量度細胞之間組織液的葡萄糖水平，手機則會顯示一條連續的曲線 —— 你目前血糖是多少、夜間又如何、某一餐又如何影響它。它與指尖血糖機的分別，是它能告訴你你的<mark>血糖趨勢</mark>。</p>
 
 <figure>
   <img src="/images/photo-cgm-sensor.jpg" alt="一個 FreeStyle Libre 連續血糖監測器感應器貼在上臂後方，旁邊有一台手持讀取器。" loading="lazy" width="1024" height="683" />
-  <figcaption>一個連續血糖監測器感應器貼在上臂。相片：Thirunavukkarasye-Raveendran，<a href="https://commons.wikimedia.org/wiki/File:FreeStyle_libre_am_Oberarm_und_Auslesegerät-4.JPG" rel="noopener">Wikimedia Commons</a>，CC BY 4.0。</figcaption>
+  <figcaption>貼在上臂的連續血糖監測器感應器。相片：Thirunavukkarasye-Raveendran，<a href="https://commons.wikimedia.org/wiki/File:FreeStyle_libre_am_Oberarm_und_Auslesegerät-4.JPG" rel="noopener">Wikimedia Commons</a>，CC BY 4.0。</figcaption>
 </figure>
 
 <h2 id="who-benefits-most">誰適用？</h2>
 
-<p>對於使用胰島素的二型糖尿病人，從由指尖採血（俗稱「督手指」）轉至改用連續血糖監測（CGM）後，平均糖化血紅素（HbA1c）下降約 1 個百分點<sup><a href="#src-1">1</a></sup>；早期針對糖尿前期的研究亦顯示，即使短期使用 CGM，也可促使人選擇較小份量及較健康的食物。不過目前最有力的數據仍集中在使用胰島素的二型糖尿病患者，而非糖尿前期。</p>
+<p>對於使用胰島素的二型糖尿病人，從由指尖採血（俗稱「督手指」）轉至改用連續血糖監測（CGM）後，平均糖化血紅素（HbA1c）下降約 <mark>1 個百分點</mark><sup><a href="#src-1">1</a></sup>；早期針對糖尿前期的研究亦顯示，即使短期使用 CGM，也可促使人選擇較小份量及較健康的食物。不過目前最有力的數據仍集中在使用胰島素的二型糖尿病患者，而非糖尿前期。</p>
 
 <p>至於糖尿前期 —— 即血糖偏高但仍未到糖尿病範圍 —— 短期使用 CGM 似乎能促使人選擇較小份量、較溫和的替代食物。<sup><a href="#src-2">2</a></sup>暫時並沒有指引建議「每位糖尿前期人士都應該佩戴 CGM」。</p>
 
@@ -55,8 +55,8 @@ export default {
 
 <ul>
   <li><strong>食物紀錄：</strong>連續兩星期將每一餐都拍下來，你會發現自己對某些食物的偏愛可能影響了血糖。</li>
-  <li><strong>針對性指尖採血（俗稱督手指）：</strong>如果醫生同意，選擇你經常吃的食物，在飯後 1–2 小時量度血糖，會令你大致知道這頓飯的影響。</li>
-  <li><strong>飯後散步：</strong>飯後散步 10 至 15 分鐘，是改善血糖其中一項最有效的生活習慣。詳見<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</li>
+  <li><strong>針對性指尖採血（俗稱督手指）：</strong>如果醫生同意，選擇你經常吃的食物，在飯後 <mark>1–2 小時</mark>量度血糖，會令你大致知道這頓飯的影響。</li>
+  <li><strong>飯後散步：</strong>飯後散步 <mark>10 至 15 分鐘</mark>，是改善血糖其中一項最有效的生活習慣。詳見<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</li>
 </ul>
 
 <p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/app">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
@@ -72,7 +72,7 @@ export default {
     },
     {
       q: "要佩戴多久才有用？",
-      a: "<p>多數人在頭 2 至 4 星期已能發現血糖規律。如果生活習慣、藥物或體重有變化、需計算胰島素劑量，你可能需配戴更長時間。</p>",
+      a: "<p>多數人在頭 <mark>2 至 4 星期</mark>已能發現血糖規律。如果生活習慣、藥物或體重有變化、需計算胰島素劑量，你可能需配戴更長時間。</p>",
     },
   ],
   sources: [

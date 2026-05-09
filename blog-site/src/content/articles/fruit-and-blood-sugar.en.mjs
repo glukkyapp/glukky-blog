@@ -30,8 +30,8 @@ export default {
 <p>As a rough working rule:</p>
 
 <ul>
-  <li><strong>Steadier choices (lower GI, more fibre):</strong> apples, pears, berries (strawberries, blueberries, raspberries), cherries, citrus (oranges, mandarins, grapefruit), kiwi.</li>
-  <li><strong>Spikier choices (higher GI or very sweet):</strong> mango, ripe banana, pineapple, watermelon, cantaloupe — and any of the above as juice or dried fruit.</li>
+  <li><strong>Steadier choices (lower GI, more fibre):</strong> <mark>apples, pears, berries (strawberries, blueberries, raspberries), cherries, citrus (oranges, mandarins, grapefruit), kiwi</mark>.</li>
+  <li><strong>Spikier choices (higher GI or very sweet):</strong> <mark>mango, ripe banana, pineapple, watermelon, cantaloupe</mark> — and any of the above as juice or dried fruit.</li>
 </ul>
 
 <p>Spikier doesn't mean "never". It means smaller portion, eaten with a meal rather than alone, and not back-to-back with other fast carbs.</p>

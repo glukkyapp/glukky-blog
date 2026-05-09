@@ -17,7 +17,7 @@ export default {
 
 <h2 id="why-it-matters">Why your eating choices actually matter here</h2>
 
-<p>Small, consistent habits in lifestyle cut the risk of developing type 2 diabetes by 58%, compared with 31% for metformin.<sup><a href="#src-1">1</a></sup></p>
+<p>Small, consistent habits in lifestyle cut the risk of developing type 2 diabetes by <mark>58%</mark>, compared with <mark>31%</mark> for metformin.<sup><a href="#src-1">1</a></sup></p>
 
 <p>The point isn't the exact number. The point is that <strong>everyday food and movement choices are the most evidence-backed lever you have</strong> for the prediabetes window. You don't need to do everything at once.</p>
 
@@ -39,7 +39,7 @@ export default {
 
 <h3 id="swap-3">3. Build a "blood-sugar-friendly plate"</h3>
 
-<p>A useful starting point: fill half your plate with vegetables, a quarter with protein, and a quarter with carbohydrates.<sup><a href="#src-4">4</a></sup> The point is that <em>protein, fibre and fat slow down how quickly the carbohydrate hits your bloodstream</em>.</p>
+<p>A useful starting point: <mark>fill half your plate with vegetables, a quarter with protein, and a quarter with carbohydrates</mark>.<sup><a href="#src-4">4</a></sup> The point is that <em>protein, fibre and fat slow down how quickly the carbohydrate hits your bloodstream</em>.</p>
 
 <p>You don't have to abandon rice or noodles. You add things alongside them — vegetables, eggs, tofu, fish, chicken, beans — so the meal is more balanced and the blood-sugar curve is gentler.</p>
 
@@ -68,7 +68,7 @@ export default {
 
 <h2 id="add-walking">Pair it with one habit</h2>
 
-<p>If you change one non-food thing alongside the swaps above, make it a short walk after the meal that usually pushes your blood sugar up the most — typically dinner. A 10–15 minute walk after a meal measurably lowers your blood sugar peak — even at a gentle pace.<sup><a href="#src-8">8</a></sup> We've written this up in detail: <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</p>
+<p>If you change one non-food thing alongside the swaps above, make it a short walk after the meal that usually pushes your blood sugar up the most — typically dinner. A <mark>10–15 minute</mark> walk after a meal measurably lowers your blood sugar peak — even at a gentle pace.<sup><a href="#src-8">8</a></sup> We've written this up in detail: <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</p>
 
 <p>If keeping all of this straight feels like one more thing to remember, <a href="/app">Glukky</a> is the small companion app we're building around it — snap a photo of a meal for a calmer second opinion, get a friendly nudge for the after-dinner walk, and see how the week is shaping up at a glance.</p>
 

@@ -29,7 +29,7 @@ export default {
 
 <h2 id="what-it-does">What low‑GI eating actually does</h2>
 
-<p>Across many randomised trials in people with diabetes, eating in a low-GI or low-GL pattern lowers HbA1c by about a third of a percentage point on average, and also produces modest improvements in fasting glucose, blood lipids, blood pressure and markers of inflammation.<sup><a href="#src-1">1</a></sup></p>
+<p>Across many randomised trials in people with diabetes, eating in a low-GI or low-GL pattern lowers HbA1c by about <mark>a third of a percentage point</mark> on average, and also produces modest improvements in fasting glucose, blood lipids, blood pressure and markers of inflammation.<sup><a href="#src-1">1</a></sup></p>
 
 <p>A third of a percentage point sounds small. In practice, it's roughly the kind of HbA1c change you'd hope to see from adding a single moderately-effective lever — useful, real, and worth doing, especially because the same change tends to nudge several other markers in the right direction at the same time.</p>
 
@@ -54,7 +54,7 @@ export default {
   <li>Choose <strong>less-refined carbs</strong> more often: oats, barley, beans and lentils, whole-grain breads, brown or red rice some of the time.</li>
   <li>Treat <strong>very fast carbs</strong> — sweet drinks, white bread, white rice in large portions, sugary breakfast pastries — as occasional rather than default.</li>
   <li>Whenever you do eat a faster carb, <strong>add slowing-down company</strong>: vegetables, protein, healthy fat, plain dairy.</li>
-  <li>Walk for 10–15 minutes after the meal that usually pushes your blood sugar up the most. (We've written about this in <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.)</li>
+  <li>Walk for <mark>10–15 minutes</mark> after the meal that usually pushes your blood sugar up the most. (We've written about this in <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.)</li>
 </ul>
 
 <p>If you're not sure where to begin, <a href="/app">Glukky</a> is a small companion app that handles the above for you.</p>

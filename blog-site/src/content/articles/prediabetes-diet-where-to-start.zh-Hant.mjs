@@ -19,7 +19,7 @@ export default {
 
 <h2 id="why-it-matters">飲食的重要性</h2>
 
-<p>微小而持續的生活習慣改變，能將罹患二型糖尿的風險降低 58%，相較之下，藥物改善（metformin）為 31%。<sup><a href="#src-2">2</a></sup><sup><a href="#src-3">3</a></sup></p>
+<p>微小而持續的生活習慣改變，能將罹患二型糖尿的風險降低 <mark>58%</mark>，相較之下，藥物改善（metformin）為 <mark>31%</mark>。<sup><a href="#src-2">2</a></sup><sup><a href="#src-3">3</a></sup></p>
 
 <p>在糖尿前期這個階段，<strong>日常飲食與活動，是你最有力的工具</strong>，而且你可以慢慢來。</p>
 
@@ -41,7 +41,7 @@ export default {
 
 <h3 id="swap-3">三、「血糖友善」食物配搭</h3>
 
-<p>一個簡單原則：一個圓碟分成：半碟蔬菜、四分之一碟蛋白質、四分之一碟碳水化合物。<sup><a href="#src-4">4</a></sup>重點是：<em>蛋白質、纖維與脂肪會減慢碳水化合物被吸收的速度。</em></p>
+<p>一個簡單原則：一個圓碟分成：<mark>半碟蔬菜、四分之一碟蛋白質、四分之一碟碳水化合物</mark>。<sup><a href="#src-4">4</a></sup>重點是：<em>蛋白質、纖維與脂肪會減慢碳水化合物被吸收的速度。</em></p>
 
 <p>你不需要戒掉白飯或麵食。重點是在旁邊加上菜、蛋、豆腐、魚、雞、豆類，令一餐更平衡，血糖曲線亦會柔和一些。</p>
 
@@ -70,7 +70,7 @@ export default {
 
 <h2 id="add-walking">習慣培養</h2>
 
-<p>除了飲食，另一個好習慣是飯後散步 10 至 15 分鐘。即使是輕鬆的步調，也能明顯降低餐後血糖高峰。<sup><a href="#src-8">8</a></sup>詳情可參考另一篇：<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</p>
+<p>除了飲食，另一個好習慣是飯後散步 <mark>10 至 15 分鐘</mark>。即使是輕鬆的步調，也能明顯降低餐後血糖高峰。<sup><a href="#src-8">8</a></sup>詳情可參考另一篇：<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</p>
 
 <p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/app">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
 

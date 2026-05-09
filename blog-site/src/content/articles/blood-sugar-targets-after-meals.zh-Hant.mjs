@@ -15,7 +15,7 @@ export default {
     "prediabetes-diet-where-to-start",
   ],
   body: `
-<p class="lead">對日常追蹤而言，大部分糖尿病成人會採用簡單的目標：飯前約 4–7 mmol/L，飯後一至兩小時則大致低於 10 mmol/L；至於用於診斷糖尿前期及糖尿病的化驗標準則更嚴格（糖尿病為空腹 ≥7.0 或兩小時 ≥11.1 mmol/L）。</p>
+<p class="lead">對日常追蹤而言，大部分糖尿病成人會採用簡單的目標：飯前約 <mark>4–7 mmol/L</mark>，飯後一至兩小時則大致低於 <mark>10 mmol/L</mark>；至於用於診斷糖尿前期及糖尿病的化驗標準則更嚴格（糖尿病為空腹 ≥7.0 或兩小時 ≥11.1 mmol/L）。</p>
 
 <p>關於血糖，較令人混淆的是各種不同的數字。醫生用來<strong>診斷</strong>糖尿病的界線，並不等於你日常用來<strong>管理</strong>糖尿病的目標。</p>
 
@@ -43,13 +43,13 @@ export default {
     </tr>
     <tr>
       <td>糖尿前期</td>
-      <td>5.6 – 6.9 mmol/L</td>
+      <td><mark>5.6 – 6.9 mmol/L</mark></td>
       <td>7.8 – 11.0 mmol/L</td>
     </tr>
     <tr>
       <td>糖尿病</td>
-      <td>≥ 7.0 mmol/L</td>
-      <td>≥ 11.1 mmol/L</td>
+      <td><mark>≥ 7.0 mmol/L</mark></td>
+      <td><mark>≥ 11.1 mmol/L</mark></td>
     </tr>
   </tbody>
 </table>
@@ -68,11 +68,11 @@ export default {
   <tbody>
     <tr>
       <td>空腹／飯前</td>
-      <td>4 – 7</td>
+      <td><mark>4 – 7</mark></td>
     </tr>
     <tr>
       <td>開始用餐後 1–2 小時</td>
-      <td>&lt; 10</td>
+      <td><mark>&lt; 10</mark></td>
     </tr>
   </tbody>
 </table>

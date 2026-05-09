@@ -24,8 +24,8 @@ export default {
 <p>研究大致顯示：</p>
 
 <ul>
-  <li><strong>每次 10 至 15 分鐘</strong>已經有用。再長亦無妨，但重點在於堅持。</li>
-  <li><strong>飯後約 30 分鐘內</strong>出發，才能與飯後血糖升幅的時間吻合。</li>
+  <li><strong>每次 <mark>10 至 15 分鐘</mark></strong>已經有用。再長亦無妨，但重點在於堅持。</li>
+  <li><strong>飯後約 <mark>30 分鐘內</mark></strong>出發，才能與飯後血糖升幅的時間吻合。</li>
   <li><strong>舒適、可以邊走邊交談的速度</strong>，不是慢慢踱步，亦不是跑步。研究發現即使輕度步行也有正面效果。<sup><a href="#src-3">3</a></sup></li>
 </ul>
 

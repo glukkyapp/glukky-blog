@@ -20,11 +20,13 @@ const SCREEN_SLUGS = [
 function screensStrip(locale) {
   const t = ui[locale];
   const scenes = t.app.scenes || [];
-  return `<div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
-      ${SCREEN_SLUGS.map((slug, i) => {
-        const label = scenes[i] ? scenes[i].label : "";
-        return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
-      }).join("\n      ")}
+  return `<div class="screens-bg">
+      <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
+        ${SCREEN_SLUGS.map((slug, i) => {
+          const label = scenes[i] ? scenes[i].label : "";
+          return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
+        }).join("\n        ")}
+      </div>
     </div>
     <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>`;
 }

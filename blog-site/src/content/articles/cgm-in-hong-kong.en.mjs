@@ -20,7 +20,7 @@ export default {
 
 <h2 id="what-cgm-is">What a CGM actually is</h2>
 
-<p>A CGM is a small sensor you wear on the back of your upper arm (or sometimes your abdomen) for 10–14 days at a time. A tiny filament under the skin measures glucose in the fluid between your cells, and your phone shows you a continuous line — what your blood sugar is doing right now, what it did overnight, and how a particular meal affected you.</p>
+<p>A CGM is a small sensor you wear on the back of your upper arm (or sometimes your abdomen) for <mark>10–14 days</mark> at a time. A tiny filament under the skin measures glucose in the fluid between your cells, and your phone shows you a continuous line — what your blood sugar is doing right now, what it did overnight, and how a particular meal affected you.</p>
 
 <p>The difference from a finger-prick meter isn't really about accuracy at a single moment. It's about <em>seeing the curve</em>. A meter tells you the height; a CGM shows you the shape.</p>
 
@@ -31,7 +31,7 @@ export default {
 
 <h2 id="who-benefits-most">Where the strongest evidence sits</h2>
 
-<p>For adults with type 2 diabetes who are already on insulin, switching from finger-prick testing to a CGM is linked to roughly a 1 percentage point drop in HbA1c.<sup><a href="#src-1">1</a></sup> A 1% HbA1c drop is a meaningful change — it's roughly the kind of effect you'd hope for from adding a new diabetes medication, and it's part of why CGM has moved from "specialist tool" to "standard of care" for insulin-treated type 2 in many places.</p>
+<p>For adults with type 2 diabetes who are already on insulin, switching from finger-prick testing to a CGM is linked to roughly a <mark>1 percentage point</mark> drop in HbA1c.<sup><a href="#src-1">1</a></sup> A 1% HbA1c drop is a meaningful change — it's roughly the kind of effect you'd hope for from adding a new diabetes medication, and it's part of why CGM has moved from "specialist tool" to "standard of care" for insulin-treated type 2 in many places.</p>
 
 <p>For prediabetes — i.e. people whose blood sugar is elevated but not yet in the diabetes range — the evidence is earlier and smaller. The interesting signal so far is behavioural rather than purely biochemical: short-term CGM use seems to nudge people toward smaller portions, gentler swaps, and a bit more daily movement, simply by making the cause-and-effect of meals visible.<sup><a href="#src-2">2</a></sup> It's promising. It's not yet "everyone with prediabetes should wear one".</p>
 
@@ -58,8 +58,8 @@ export default {
 
 <ul>
   <li><strong>The food snap habit.</strong> A photo of every meal for two weeks, looked back at, often surfaces the pattern as clearly as a sensor would.</li>
-  <li><strong>A targeted finger-prick.</strong> If your doctor agrees, picking one meal you eat often and checking 1–2 hours after it (a few times across different days) tells you most of what you need to know about that meal.</li>
-  <li><strong>The post-meal walk.</strong> Walking for 10–15 minutes after the meal that usually pushes your blood sugar up the most is one of the most consistently useful single levers — see <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</li>
+  <li><strong>A targeted finger-prick.</strong> If your doctor agrees, picking one meal you eat often and checking <mark>1–2 hours</mark> after it (a few times across different days) tells you most of what you need to know about that meal.</li>
+  <li><strong>The post-meal walk.</strong> Walking for <mark>10–15 minutes</mark> after the meal that usually pushes your blood sugar up the most is one of the most consistently useful single levers — see <a href="/blog/post-meal-walk-blood-sugar">how a post-meal walk helps blood sugar</a>.</li>
 </ul>
 
 <p>If you'd like all of that in one place rather than three separate habits to juggle, <a href="/app">Glukky</a> is the small companion app we're building around it — a quick food snap, a gentle after-dinner walk nudge, and a simple weekly view that lets the pattern speak for itself.</p>
@@ -75,7 +75,7 @@ export default {
     },
     {
       q: "How long should I wear one to get useful information?",
-      a: "<p>For pure curiosity / behaviour-change purposes (not insulin dosing), most people get a lot of the insight in the first 2–4 weeks. After that the marginal value drops off unless your routine, medications or weight are changing.</p>",
+      a: "<p>For pure curiosity / behaviour-change purposes (not insulin dosing), most people get a lot of the insight in the first <mark>2–4 weeks</mark>. After that the marginal value drops off unless your routine, medications or weight are changing.</p>",
     },
   ],
   sources: [

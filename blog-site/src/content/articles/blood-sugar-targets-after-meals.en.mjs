@@ -15,7 +15,7 @@ export default {
     "prediabetes-diet-where-to-start",
   ],
   body: `
-<p class="lead">For everyday tracking, most adults with diabetes use simple targets: before meals, aim for about 4–7 mmol/L, and roughly under 10 mmol/L one to two hours after eating; lab cut‑offs for diagnosing prediabetes and diabetes are stricter (fasting ≥7.0 or 2‑hour ≥11.1 mmol/L for diabetes).</p>
+<p class="lead">For everyday tracking, most adults with diabetes use simple targets: before meals, aim for about <mark>4–7 mmol/L</mark>, and roughly under <mark>10 mmol/L</mark> one to two hours after eating; lab cut‑offs for diagnosing prediabetes and diabetes are stricter (fasting ≥7.0 or 2‑hour ≥11.1 mmol/L for diabetes).</p>
 
 <p>One of the more confusing things about blood sugar is that there are <em>two</em> sets of numbers floating around. The cut-offs your doctor uses to <strong>diagnose</strong> diabetes are not the same as the targets you'll use day-to-day to <strong>manage</strong> it. Both are useful — they just answer different questions.</p>
 
@@ -43,13 +43,13 @@ export default {
     </tr>
     <tr>
       <td>Prediabetes</td>
-      <td>5.6 – 6.9 mmol/L</td>
+      <td><mark>5.6 – 6.9 mmol/L</mark></td>
       <td>7.8 – 11.0 mmol/L</td>
     </tr>
     <tr>
       <td>Diabetes</td>
-      <td>≥ 7.0 mmol/L</td>
-      <td>≥ 11.1 mmol/L</td>
+      <td><mark>≥ 7.0 mmol/L</mark></td>
+      <td><mark>≥ 11.1 mmol/L</mark></td>
     </tr>
   </tbody>
 </table>
@@ -68,11 +68,11 @@ export default {
   <tbody>
     <tr>
       <td>Fasting / before meals</td>
-      <td>4 – 7</td>
+      <td><mark>4 – 7</mark></td>
     </tr>
     <tr>
       <td>1–2 hours after meal start</td>
-      <td>&lt; 10</td>
+      <td><mark>&lt; 10</mark></td>
     </tr>
   </tbody>
 </table>

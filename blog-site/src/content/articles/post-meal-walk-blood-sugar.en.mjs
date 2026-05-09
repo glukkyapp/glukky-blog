@@ -26,8 +26,8 @@ export default {
 <p>The most-cited evidence converges on roughly:</p>
 
 <ul>
-  <li><strong>10 to 15 minutes</strong> per walk is enough to be useful. Longer is fine, but the studies showing benefit are not built around marathons.</li>
-  <li><strong>Within 30 minutes or so of finishing the meal</strong> appears to be the sweet spot. The earlier within that window, the better the alignment with the post-meal glucose rise.</li>
+  <li><strong><mark>10 to 15 minutes</mark></strong> per walk is enough to be useful. Longer is fine, but the studies showing benefit are not built around marathons.</li>
+  <li><strong>Within <mark>30 minutes</mark> or so of finishing the meal</strong> appears to be the sweet spot. The earlier within that window, the better the alignment with the post-meal glucose rise.</li>
   <li><strong>A comfortable, conversational pace.</strong> Not a stroll, not a jog. Research found benefit even at light intensity.<sup><a href="#src-3">3</a></sup></li>
 </ul>
 
