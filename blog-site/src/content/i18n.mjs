@@ -158,8 +158,7 @@ export const ui = {
       app: "下載應用",
     },
     footer: {
-      tagline:
-        "Glukky AI小幫手助你管理日常。每餐飯給你即時建議、提醒你飯後散步，每月回顧，不必再為數字緊張。",
+      tagline: "為糖尿前期、二型糖尿患者及關注血糖健康的人士而設。",
       sections: "目錄",
       languages: "語言",
       english: "English",
@@ -215,9 +214,9 @@ export const ui = {
       breadcrumbBlog: "文章",
       switchLang: "English",
       switchLangAria: "Read this article in English",
-      ctaTitle: "建立習慣，不必再翻查表格",
+      ctaTitle: "Glukky AI小幫手助你管理日常",
       ctaBody:
-        "Glukky 幫你拍下餐點、提醒你飯後散步，慢慢留意身體的反應 —— 而不必每日盯著數字。",
+        "每餐飯給你即時建議、提醒你飯後散步，每月回顧，不必再為數字緊張。",
       ctaButton: "了解 Glukky 的運作方式",
       published: "發佈日期",
       updated: "更新日期",

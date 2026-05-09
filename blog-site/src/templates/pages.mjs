@@ -84,7 +84,7 @@ export function blogIndexPage(locale, articles) {
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   return `
 <section class="page-hero">
-  <div class="container-narrow">
+  <div class="container">
     ${breadcrumbs(locale, [
       { href: urlFor(locale, ""), label: t.blog.breadcrumbHome },
       { label: t.blog.breadcrumbBlog },
