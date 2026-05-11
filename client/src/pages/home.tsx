@@ -172,6 +172,17 @@ export default function Home() {
   useEffect(() => { if (cycle < 2 && calendarPlan?.isDinnerFocus) cardDinnerTiming.trigger(); }, [calendarPlan?.isDinnerFocus, cycle]);
   useEffect(() => { if (cycle < 2 && pivotStep === "show_tactics") cardDinnerTactics.trigger(); }, [pivotStep, cycle]);
   useEffect(() => { if (cycle < 2 && calendarPlan?.dietTip === "Food Switch") foodSwitchPopup.trigger(); }, [calendarPlan?.dietTip, cycle]);
+  const dietTipViewedRef = useRef(false);
+  useEffect(() => {
+    if (calendarPlan?.dietTip && !dietTipViewedRef.current) {
+      dietTipViewedRef.current = true;
+      track("diet_tip:viewed", {
+        tip_text: calendarPlan.dietTip,
+        tip_category: calendarPlan.dietStruggle ?? null,
+        source: "home_feed",
+      });
+    }
+  }, [calendarPlan?.dietTip, calendarPlan?.dietStruggle]);
 
   const sundayCheckInDone = (() => {
     if (!isCatchUp) return false;
@@ -288,6 +299,7 @@ export default function Home() {
       }
 
       if (allDone) {
+        track("checkin:completed");
         setShowTickAnimation(true);
         setTimeout(() => {
           setShowTickAnimation(false);
