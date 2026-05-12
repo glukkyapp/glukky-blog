@@ -3685,6 +3685,11 @@ No explanation, just JSON.`,
         type: result.type ?? event.type ?? null,
         outcome: result.outcome,
       });
+      if (result.outcome === "granted" && result.userId) {
+        trackServer(result.userId, "subscription:started", {
+          is_first_subscription: result.type === "INITIAL_PURCHASE",
+        });
+      }
 
       return res.status(200).json({ ok: true, ...result });
     } catch (error: any) {

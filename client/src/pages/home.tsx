@@ -299,7 +299,7 @@ export default function Home() {
       }
 
       if (allDone) {
-        track("checkin:completed");
+        track("checkin:completed", { type: 'on_time' });
         setShowTickAnimation(true);
         setTimeout(() => {
           setShowTickAnimation(false);
@@ -401,6 +401,7 @@ export default function Home() {
       } else if (wasTiredMiss) {
         setCatchupAdjMsg(t("home.catchup_tired_ease"));
       }
+      track("checkin:completed_catchup", { type: 'catchup' });
       setCatchupCompleted(true);
     },
     onError: (error: Error) => {
@@ -436,7 +437,6 @@ export default function Home() {
 
   function handleTacticPick(tactic: string) {
     if (!todayPlan?.planDayId) return;
-    track("checkin_click", { kind: "dinner_tactic", value: tactic, date: checkInDate, isCatchUp });
     dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: tactic });
     setShowTacticPicker(false);
     if (show10pmWindow) {
@@ -666,7 +666,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "catchup_dinner", value: "moved_early", date: checkInDate, isCatchUp });
                 if (todayPlan?.planDayId) {
                   dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
                 }
@@ -681,7 +680,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "catchup_dinner", value: "used_tactic", date: checkInDate, isCatchUp });
                 setShowTacticPicker(true);
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
@@ -693,7 +691,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "catchup_dinner", value: "didnt_manage", date: checkInDate, isCatchUp });
                 logMutation.mutate({ dinnerSuccess: false });
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
@@ -718,7 +715,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "dinner_late", value: "moved_early", date: checkInDate, isCatchUp });
                 if (todayPlan?.planDayId) {
                   dinnerLabelMutation.mutate({ planDayId: todayPlan.planDayId, label: "move_early" });
                 }
@@ -733,7 +729,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "dinner_late", value: "used_tactic", date: checkInDate, isCatchUp });
                 setShowTacticPicker(true);
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
@@ -745,7 +740,6 @@ export default function Home() {
               size="sm"
               variant="outline"
               onClick={() => {
-                track("checkin_click", { kind: "dinner_late", value: "didnt_manage", date: checkInDate, isCatchUp });
                 logMutation.mutate({ dinnerSuccess: false });
               }}
               disabled={dinnerLabelMutation.isPending || logMutation.isPending}
@@ -964,7 +958,6 @@ export default function Home() {
             variant={todayLog?.dinnerSuccess === true ? "default" : "outline"}
             className={todayLog?.dinnerSuccess === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
             onClick={() => {
-              track("checkin_click", { kind: "dinner", value: "yes", date: checkInDate, isCatchUp });
               logMutation.mutate({ dinnerSuccess: true });
             }}
             disabled={logMutation.isPending}
@@ -977,7 +970,6 @@ export default function Home() {
             variant={todayLog?.dinnerSuccess === false ? "default" : "outline"}
             className={todayLog?.dinnerSuccess === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
             onClick={() => {
-              track("checkin_click", { kind: "dinner", value: "no", date: checkInDate, isCatchUp });
               logMutation.mutate({ dinnerSuccess: false });
             }}
             disabled={logMutation.isPending}
@@ -1019,7 +1011,6 @@ export default function Home() {
                 variant={todayLog?.walkCompleted === true ? "default" : "outline"}
                 className={todayLog?.walkCompleted === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "standing_tap", value: "yes", date: checkInDate, isCatchUp });
                   logMutation.mutate({ walkCompleted: true, walkTired: false });
                 }}
                 disabled={logMutation.isPending}
@@ -1032,7 +1023,6 @@ export default function Home() {
                 variant={todayLog?.walkCompleted === false ? "default" : "outline"}
                 className={todayLog?.walkCompleted === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "standing_tap", value: "no", date: checkInDate, isCatchUp });
                   logMutation.mutate({ walkCompleted: false, walkTired: false });
                 }}
                 disabled={logMutation.isPending}
@@ -1088,7 +1078,6 @@ export default function Home() {
                 variant={todayLog?.walkCompleted === true ? "default" : "outline"}
                 className={todayLog?.walkCompleted === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "walk", value: "yes", date: checkInDate, isCatchUp });
                   logMutation.mutate({ walkCompleted: true });
                 }}
                 disabled={logMutation.isPending}
@@ -1101,7 +1090,6 @@ export default function Home() {
                 variant={todayLog?.walkCompleted === false ? "default" : "outline"}
                 className={todayLog?.walkCompleted === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "walk", value: "no", date: checkInDate, isCatchUp });
                   logMutation.mutate({ walkCompleted: false });
                 }}
                 disabled={logMutation.isPending}
@@ -1122,7 +1110,6 @@ export default function Home() {
                   variant={todayLog?.walkTired === true ? "default" : "outline"}
                   className={todayLog?.walkTired === true ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                   onClick={() => {
-                    track("checkin_click", { kind: "tired", value: "yes", date: checkInDate, isCatchUp });
                     logMutation.mutate({ walkTired: true });
                   }}
                   disabled={logMutation.isPending}
@@ -1135,7 +1122,6 @@ export default function Home() {
                   variant={todayLog?.walkTired === false ? "default" : "outline"}
                   className={todayLog?.walkTired === false ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                   onClick={() => {
-                    track("checkin_click", { kind: "tired", value: "no", date: checkInDate, isCatchUp });
                     logMutation.mutate({ walkTired: false });
                   }}
                   disabled={logMutation.isPending}
@@ -1205,7 +1191,6 @@ export default function Home() {
                 variant={todayLog?.dietResponse === "yes" ? "default" : "outline"}
                 className={todayLog?.dietResponse === "yes" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "diet", value: "yes", date: checkInDate, isCatchUp });
                   logMutation.mutate({ dietResponse: "yes" });
                 }}
                 disabled={logMutation.isPending}
@@ -1218,7 +1203,6 @@ export default function Home() {
                 variant={todayLog?.dietResponse === "no" ? "default" : "outline"}
                 className={todayLog?.dietResponse === "no" ? "bg-red-500 hover:bg-red-600 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "diet", value: "no", date: checkInDate, isCatchUp });
                   logMutation.mutate({ dietResponse: "no" });
                 }}
                 disabled={logMutation.isPending}
@@ -1231,7 +1215,6 @@ export default function Home() {
                 variant={todayLog?.dietResponse === "no_chance" ? "default" : "outline"}
                 className={todayLog?.dietResponse === "no_chance" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                 onClick={() => {
-                  track("checkin_click", { kind: "diet", value: "no_chance", date: checkInDate, isCatchUp });
                   logMutation.mutate({ dietResponse: "no_chance" });
                 }}
                 disabled={logMutation.isPending}

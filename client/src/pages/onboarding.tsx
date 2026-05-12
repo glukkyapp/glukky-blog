@@ -148,7 +148,7 @@ export default function Onboarding() {
         hasNotificationEmail: !!notificationEmail.trim(),
         referralSource: referralSource || null,
       };
-      track("onboarding_completed", onboardingProperties);
+      track("onboarding:completed", onboardingProperties);
       setUserProperties(onboardingProperties);
       setLocation("/plan");
     } catch (error: unknown) {

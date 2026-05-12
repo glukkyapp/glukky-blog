@@ -614,6 +614,7 @@ export default function WeeklyPlanner() {
       queryClient.invalidateQueries({ queryKey: ["/api/gate-status"] });
 
       if (wasFirstPlan) {
+        track("onboarding:first_plan_created");
         // First-plan path: navigate to /snap IMMEDIATELY and SKIP the
         // auto-focus info popup entirely. The popup (`<InfoSheet>`) is
         // page-scoped to weekly-planner — it would unmount the moment
@@ -636,7 +637,6 @@ export default function WeeklyPlanner() {
         refetchGate().catch((e: unknown) => {
           track("first_plan_refetch_gate_error", { message: String(e) });
         });
-        track("first_plan_navigation_fired", { path: "immediate" });
         setLocation(target);
         return;
       }
@@ -679,7 +679,6 @@ export default function WeeklyPlanner() {
     // see it in PostHog.
     try {
       if (postPlanWasFirstRef.current) {
-        track("first_plan_navigation_fired", { path: "deferred_via_sheet_dismiss" });
         await refetchGate();
       }
     } catch (e) {
@@ -743,7 +742,6 @@ export default function WeeklyPlanner() {
         track("first_plan_navigation_skipped", { reason: "paywall_opened_during_wait" });
         return;
       }
-      track("first_plan_navigation_fired", { path: "safety_net" });
       setLocation("/snap");
     }, 1500);
     return () => window.clearTimeout(timer);

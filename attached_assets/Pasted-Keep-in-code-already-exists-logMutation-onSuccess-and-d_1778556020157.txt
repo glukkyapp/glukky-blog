@@ -1,0 +1,51 @@
+Keep in code (already exists, logMutation.onSuccess and dinnerLabelMutation.onSuccess):
+
+ts
+track('checkin:completed', {
+  type: 'on_time',          // completed 10pm–midnight same day
+  triggered_by: 'manual' | 'notification',
+});
+Add to code (catchupMutation.onSuccess — currently missing entirely):
+
+ts
+track('checkin:completed_catchup', {
+  type: 'catchup',          // completed after midnight for a previous day
+  days_late: daysLate,      // integer: 1, 2, 3...
+});
+2. First-Time User Funnel — What to Add, Remove, and Revise
+Following PostHog's category:object_action naming convention:
+
+Events to ADD (new code needed)
+These don't exist yet and cover the first-time user funnel:
+
+ts
+// 1. Onboarding fully completed (last onboarding screen dismissed)
+track('onboarding:completed', {
+  steps_completed: totalSteps,
+});
+
+// 2. First plan created — fire ONLY when wasFirstPlan === true
+// (plan_created already fires for all plans — keep that, add this separately)
+track('onboarding:first_plan_created');
+
+// 3. First food snap label completed — fire only when it's the user's first snap
+track('onboarding:first_snap_completed');
+
+// 4. Subscribed (from backend RevenueCat webhook — already exists as subscription:started)
+// Add is_first_subscription property to existing event:
+capture(userId, 'subscription:started', {
+  is_first_subscription: true,   // $set_once so it never overwrites
+  source: 'onboarding' | 'paywall',
+});
+Events to KEEP unchanged
+Event	Status
+plan_created	Keep — fires for every plan including first
+snap_label_succeeded	Keep — fires for every snap
+subscription:started	Keep — add is_first_subscription property
+checkin:completed	Keep — on-time only
+Events to REMOVE or RETIRE
+Event	Reason
+Event	Reason
+first_plan_handoff_locked	Redundant — replaced by onboarding:first_plan_created
+first_plan_navigation_fired	Redundant — not meaningful for funnel analysis
+checkin_click	Autocapture noise — not a real behaviour event 

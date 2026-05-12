@@ -199,7 +199,7 @@ export default function Snap() {
   const { user } = useAuth();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
-  const { showPaywall, refetchGate } = useGate();
+  const { showPaywall, refetchGate, gate } = useGate();
 
   function handleSnapCompleted() {
     if (!user?.id) return;
@@ -264,6 +264,7 @@ export default function Snap() {
     setError(null);
     setStep("labeling");
     track("snap_started", { language: i18n.language });
+    const isFirstLabel = !gate?.hasTriedFirstFoodSnap;
 
     try {
       const { base64, mimeType } = await compressImage(file);
@@ -347,6 +348,7 @@ export default function Snap() {
         comboSource: data.comboSource,
         hasName: !!data.name,
       });
+      if (isFirstLabel) track("onboarding:first_snap_completed");
     } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));
