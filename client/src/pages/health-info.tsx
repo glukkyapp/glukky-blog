@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DIET_TIP_I18N_KEYS } from "@shared/schema";
+import { DIET_TIP_I18N_KEYS, DIET_TIP_LADDERS } from "@shared/schema";
+import { track } from "@/lib/posthog";
 import { motion, AnimatePresence } from "framer-motion";
 import { preloadStage4DietTipThumbnails, getStage4Promise } from "@/lib/preload-assets";
 import { usePromiseLoading } from "@/components/global-loading-overlay";
@@ -237,7 +238,14 @@ export default function HealthInfo() {
   const hasCachedData = !!cachedTips;
 
   function handleSelect(tip: string) {
-    setSelectedTip(prev => (prev === tip ? null : tip));
+    setSelectedTip(prev => {
+      const isOpening = prev !== tip;
+      if (isOpening) {
+        const tipCategory = Object.keys(DIET_TIP_LADDERS).find(cat => DIET_TIP_LADDERS[cat]?.includes(tip)) ?? null;
+        track("diet_tip_viewed", { tip_text: tip, tip_category: tipCategory, source: "health_info" });
+      }
+      return isOpening ? tip : null;
+    });
   }
 
   function renderDetail(tipKey: string) {

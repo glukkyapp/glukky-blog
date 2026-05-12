@@ -412,7 +412,6 @@ export default function WeeklyPlanner() {
     },
     onSuccess: ({ data, struggle }: { data: { struggles3: string[] }; struggle: string }) => {
       hapticNotify("SUCCESS");
-      track("struggle_completed", { struggle_category: struggle, status: "moved_on" });
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles3: data.struggles3 } : old);
       setCycle3GateReleased(prev => new Set([...prev, struggle]));
       setPendingSkipNavigation(true);
@@ -430,7 +429,6 @@ export default function WeeklyPlanner() {
     },
     onSuccess: ({ data, struggle }: { data: { struggles2: string[] }; struggle: string }) => {
       hapticNotify("SUCCESS");
-      track("struggle_completed", { struggle_category: struggle, status: "moved_on" });
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles2: data.struggles2 } : old);
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
       setPendingSkipNavigation(true);
@@ -600,13 +598,7 @@ export default function WeeklyPlanner() {
       const target = wasFirstPlan ? "/snap" : "/";
       postPlanWasFirstRef.current = wasFirstPlan;
       postPlanTargetRef.current = target;
-      track("plan_created", {
-        wasFirstPlan,
-        eatOutAutoAdded: !!data?.eatOutAutoAdded,
-        sugaryAutoAdded: !!data?.sugaryAutoAdded,
-        gateLoadedAtMutationStart: gateLoadedAtMutationStartRef.current,
-        navigationTarget: target,
-      });
+      track("plan_created", { planId: data?.plan?.id ?? null });
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });

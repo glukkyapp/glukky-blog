@@ -826,6 +826,7 @@ export async function registerRoutes(
                 difficultStruggles: difficult.filter(s => s !== currentStruggleForReflection),
               });
               try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 1):", e); }
+              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" });
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -833,6 +834,7 @@ export async function registerRoutes(
               await storage.updateProfile(userId, {
                 skippedStruggles: [...skipped, currentStruggleForReflection],
               });
+              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "skipped" });
             }
             dietJustSkipped = true;
           } else if (dietEvaluation.type === "moved_on") {
@@ -840,6 +842,7 @@ export async function registerRoutes(
               await storage.updateProfile(userId, {
                 difficultStruggles: [...difficult, currentStruggleForReflection],
               });
+              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "moved_on" });
             }
             dietJustMovedOn = true;
           }
@@ -3686,9 +3689,7 @@ No explanation, just JSON.`,
         outcome: result.outcome,
       });
       if (result.outcome === "granted" && result.userId) {
-        trackServer(result.userId, "subscription_started", {
-          is_first_subscription: result.type === "INITIAL_PURCHASE",
-        });
+        trackServer(result.userId, "subscription_started");
       }
 
       return res.status(200).json({ ok: true, ...result });
