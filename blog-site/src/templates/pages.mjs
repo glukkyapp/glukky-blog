@@ -183,6 +183,7 @@ export function aboutPage(locale) {
 <section class="prose">
   <div class="container-narrow">
     ${t.about.sections.map(s => `<h2>${escapeHtml(s.h)}</h2><p>${escapeHtml(s.p)}</p>`).join("")}
+    <p class="contact-line">${escapeHtml(t.about.contactIntro)} <a href="mailto:hello@glukky.com">hello@glukky.com</a></p>
   </div>
 </section>
 
