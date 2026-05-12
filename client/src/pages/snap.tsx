@@ -348,7 +348,7 @@ export default function Snap() {
         comboSource: data.comboSource,
         hasName: !!data.name,
       });
-      if (isFirstLabel) track("onboarding:first_snap_completed");
+      if (isFirstLabel) track("onboarding_first_snap_completed");
     } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));

@@ -176,7 +176,7 @@ export default function Home() {
   useEffect(() => {
     if (calendarPlan?.dietTip && !dietTipViewedRef.current) {
       dietTipViewedRef.current = true;
-      track("diet_tip:viewed", {
+      track("diet_tip_viewed", {
         tip_text: calendarPlan.dietTip,
         tip_category: calendarPlan.dietStruggle ?? null,
         source: "home_feed",
@@ -299,7 +299,7 @@ export default function Home() {
       }
 
       if (allDone) {
-        track("checkin:completed", { type: 'on_time' });
+        track("checkin_completed", { type: 'on_time' });
         setShowTickAnimation(true);
         setTimeout(() => {
           setShowTickAnimation(false);
@@ -401,7 +401,7 @@ export default function Home() {
       } else if (wasTiredMiss) {
         setCatchupAdjMsg(t("home.catchup_tired_ease"));
       }
-      track("checkin:completed_catchup", { type: 'catchup' });
+      track("checkin_completed_catchup", { type: 'catchup' });
       setCatchupCompleted(true);
     },
     onError: (error: Error) => {

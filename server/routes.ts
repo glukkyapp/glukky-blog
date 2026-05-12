@@ -3686,7 +3686,7 @@ No explanation, just JSON.`,
         outcome: result.outcome,
       });
       if (result.outcome === "granted" && result.userId) {
-        trackServer(result.userId, "subscription:started", {
+        trackServer(result.userId, "subscription_started", {
           is_first_subscription: result.type === "INITIAL_PURCHASE",
         });
       }

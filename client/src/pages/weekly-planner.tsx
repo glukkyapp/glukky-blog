@@ -412,7 +412,7 @@ export default function WeeklyPlanner() {
     },
     onSuccess: ({ data, struggle }: { data: { struggles3: string[] }; struggle: string }) => {
       hapticNotify("SUCCESS");
-      track("struggle:completed", { struggle_category: struggle, status: "moved_on" });
+      track("struggle_completed", { struggle_category: struggle, status: "moved_on" });
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles3: data.struggles3 } : old);
       setCycle3GateReleased(prev => new Set([...prev, struggle]));
       setPendingSkipNavigation(true);
@@ -430,7 +430,7 @@ export default function WeeklyPlanner() {
     },
     onSuccess: ({ data, struggle }: { data: { struggles2: string[] }; struggle: string }) => {
       hapticNotify("SUCCESS");
-      track("struggle:completed", { struggle_category: struggle, status: "moved_on" });
+      track("struggle_completed", { struggle_category: struggle, status: "moved_on" });
       queryClient.setQueryData(["/api/profile"], (old: any) => old ? { ...old, struggles2: data.struggles2 } : old);
       setCycle2GateReleased(prev => new Set([...prev, struggle]));
       setPendingSkipNavigation(true);
@@ -575,7 +575,7 @@ export default function WeeklyPlanner() {
       const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const isEatOutStepHidden = cycle >= 2 && cycle2Focus !== "eat_out" && cycle3Focus !== "eat_out";
       const isLateDinnerStepHidden = cycle >= 2 && !isDinnerFocus;
-      track("week_plan:generate_requested");
+      track("week_plan_generate_requested");
       const res = await apiRequest("POST", "/api/plan/weekly", {
         negotiationChoice,
         walkDays: effectiveWalkDays,
@@ -614,7 +614,7 @@ export default function WeeklyPlanner() {
       queryClient.invalidateQueries({ queryKey: ["/api/gate-status"] });
 
       if (wasFirstPlan) {
-        track("onboarding:first_plan_created");
+        track("onboarding_first_plan_created");
         // First-plan path: navigate to /snap IMMEDIATELY and SKIP the
         // auto-focus info popup entirely. The popup (`<InfoSheet>`) is
         // page-scoped to weekly-planner — it would unmount the moment
