@@ -115,7 +115,7 @@ function footer(locale) {
         <span class="brand-name">${escapeHtml(t.siteName)}</span>
       </a>
       <p class="muted">${escapeHtml(t.footer.tagline)}</p>
-      <p class="muted">${escapeHtml(t.footer.contactPre)}<a href="mailto:hello@glukky.com">hello@glukky.com</a>${escapeHtml(t.footer.contactPost)}</p>
+      <p class="muted">${escapeHtml(t.footer.contact).replace("hello@glukky.com", '<a href="mailto:hello@glukky.com">hello@glukky.com</a>')}</p>
     </div>
     <div class="site-footer-cols">
       <div>
