@@ -818,8 +818,9 @@ export async function registerRoutes(
           const skipped = (profileBeforeMastery?.skippedStruggles || []) as string[];
           const difficult = (profileBeforeMastery?.difficultStruggles || []) as string[];
           // One-time-ever guard: only emit struggle_completed for the user's
-          // very first Cycle-1 resolution. After that, all three arrays will
-          // be non-empty and we go silent for subsequent resolutions.
+          // very first Cycle-1 resolution. After that, at least one of the
+          // three arrays will be non-empty and we go silent for subsequent
+          // resolutions.
           const isFirstEverResolution = mastered.length === 0 && skipped.length === 0 && difficult.length === 0;
 
           if (dietEvaluation.type === "mastered") {

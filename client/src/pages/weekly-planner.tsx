@@ -600,6 +600,8 @@ export default function WeeklyPlanner() {
       postPlanTargetRef.current = target;
       if (data?.plan?.id != null) {
         track("plan_created", { planId: data.plan.id });
+      } else {
+        console.warn("[analytics] plan_created skipped: response missing plan.id", data);
       }
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
