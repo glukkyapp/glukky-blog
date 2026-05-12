@@ -817,6 +817,10 @@ export async function registerRoutes(
           const mastered = (profileBeforeMastery?.masteredStruggles || []) as string[];
           const skipped = (profileBeforeMastery?.skippedStruggles || []) as string[];
           const difficult = (profileBeforeMastery?.difficultStruggles || []) as string[];
+          // One-time-ever guard: only emit struggle_completed for the user's
+          // very first Cycle-1 resolution. After that, all three arrays will
+          // be non-empty and we go silent for subsequent resolutions.
+          const isFirstEverResolution = mastered.length === 0 && skipped.length === 0 && difficult.length === 0;
 
           if (dietEvaluation.type === "mastered") {
             if (!mastered.includes(currentStruggleForReflection)) {
@@ -826,7 +830,9 @@ export async function registerRoutes(
                 difficultStruggles: difficult.filter(s => s !== currentStruggleForReflection),
               });
               try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 1):", e); }
-              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" });
+              if (isFirstEverResolution) {
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" });
+              }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -834,7 +840,9 @@ export async function registerRoutes(
               await storage.updateProfile(userId, {
                 skippedStruggles: [...skipped, currentStruggleForReflection],
               });
-              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "skipped" });
+              if (isFirstEverResolution) {
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "skipped" });
+              }
             }
             dietJustSkipped = true;
           } else if (dietEvaluation.type === "moved_on") {
@@ -842,7 +850,9 @@ export async function registerRoutes(
               await storage.updateProfile(userId, {
                 difficultStruggles: [...difficult, currentStruggleForReflection],
               });
-              trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "moved_on" });
+              if (isFirstEverResolution) {
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "moved_on" });
+              }
             }
             dietJustMovedOn = true;
           }

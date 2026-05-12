@@ -598,7 +598,9 @@ export default function WeeklyPlanner() {
       const target = wasFirstPlan ? "/snap" : "/";
       postPlanWasFirstRef.current = wasFirstPlan;
       postPlanTargetRef.current = target;
-      track("plan_created", { planId: data?.plan?.id ?? null });
+      if (data?.plan?.id != null) {
+        track("plan_created", { planId: data.plan.id });
+      }
       hapticNotify("SUCCESS");
       queryClient.invalidateQueries({ queryKey: ["/api/plan/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
