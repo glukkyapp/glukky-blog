@@ -17,15 +17,21 @@ const SCREEN_SLUGS = [
   "5-schedule",
 ];
 
-function screensStrip(locale) {
+function screensStrip(locale, { autoScroll = false } = {}) {
   const t = ui[locale];
   const scenes = t.app.scenes || [];
-  return `<div class="screens-bg">
+  const imgs = SCREEN_SLUGS.map((slug, i) => {
+    const label = scenes[i] ? scenes[i].label : "";
+    return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
+  });
+  const dupeImgs = SCREEN_SLUGS.map(slug =>
+    `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="" aria-hidden="true" loading="lazy" width="280" height="600" />`
+  );
+  const allImgs = autoScroll ? [...imgs, ...dupeImgs] : imgs;
+  const bgClass = autoScroll ? "screens-bg screens-auto" : "screens-bg";
+  return `<div class="${bgClass}">
       <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
-        ${SCREEN_SLUGS.map((slug, i) => {
-          const label = scenes[i] ? scenes[i].label : "";
-          return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
-        }).join("\n        ")}
+        ${allImgs.join("\n        ")}
       </div>
     </div>
     <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>`;
@@ -208,14 +214,23 @@ export function aboutPage(locale) {
 export function appPage(locale) {
   const t = ui[locale];
   return `
-<section class="page-hero">
+<section class="app-hero">
   <div class="container-narrow">
-    ${breadcrumbs(locale, [
-      { href: urlFor(locale, ""), label: t.blog.breadcrumbHome },
-      { label: t.app.title },
-    ])}
-    <h1>${escapeHtml(t.app.title)}</h1>
-    <p class="lead muted">${escapeHtml(t.app.lead)}</p>
+    <h1 class="app-hero-title">
+      <span class="app-hero-h1">${escapeHtml(t.app.heroH1)}</span>
+      <span class="app-hero-h2">${escapeHtml(t.app.heroH2)}</span>
+    </h1>
+    <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
+    <p class="app-hero-actions">
+      ${appStoreCta(locale, "App Store")}
+      ${waitlistCta(locale, locale === "en" ? "Join the list" : "加入等候名單")}
+    </p>
+  </div>
+</section>
+
+<section class="screens">
+  <div class="container">
+    ${screensStrip(locale, { autoScroll: true })}
   </div>
 </section>
 
@@ -227,25 +242,6 @@ export function appPage(locale) {
         <p class="muted">${escapeHtml(p.p)}</p>
       </div>`).join("")}
     </div>
-  </div>
-</section>
-
-<section class="screens">
-  <div class="container">
-    ${screensStrip(locale)}
-  </div>
-</section>
-
-<section class="cta-banner">
-  <div class="container cta-banner-inner">
-    <div>
-      <h2>${escapeHtml(t.app.ctaTitle)}</h2>
-      <p>${escapeHtml(t.app.ctaBody)}</p>
-    </div>
-    <p class="cta-pair">
-      ${appStoreCta(locale, t.app.ctaButton)}
-      ${waitlistCta(locale, locale === "en" ? "Join the waitlist" : "加入等候名單")}
-    </p>
   </div>
 </section>
 `;

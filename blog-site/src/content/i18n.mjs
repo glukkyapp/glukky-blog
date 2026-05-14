@@ -116,8 +116,10 @@ export const ui = {
     },
     app: {
       title: "Glukky — the app",
+      heroH1: "Build the habit, not the spreadsheet.",
+      heroH2: "Sugar management made easy.",
       lead:
-        "A calm habit loop: snap a meal, take a short walk, eat dinner a bit earlier. Glukky makes the loop easy to keep.",
+        "Glukky is a calm, food-aware companion for people with prediabetes, type 2, or anyone trying to keep blood sugar more stable through everyday choices.",
       pillars: [
         {
           h: "AI food snap",
@@ -253,8 +255,10 @@ export const ui = {
     },
     app: {
       title: "Glukky 應用程式",
+      heroH1: "不再盯著數字，",
+      heroH2: "控糖變得簡單。",
       lead:
-        "一個輕鬆的習慣循環：拍下餐點、飯後散步、稍早吃晚餐。Glukky 幫你持之以恆。",
+        "每週一個輕鬆的習慣循環：拍下餐點、飯後散步、飲食改善。Glukky 助你持之以恆。",
       pillars: [
         {
           h: "AI 食物拍照",
