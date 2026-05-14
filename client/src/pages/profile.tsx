@@ -1,4 +1,5 @@
 import { useState } from "react";
+import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2 } from "lucide-react";
@@ -501,6 +502,13 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex flex-col items-center gap-1 py-5">
+        <img src={glukkyLogo} alt="Glukky" className="w-1/3 object-contain" />
+        <p className="text-[11px] text-muted-foreground text-center">
+          Copyright © 2026 Glukky. All rights reserved.
+        </p>
+      </div>
 
       {devCheck?.isDev && (
         <div className="pt-2">
