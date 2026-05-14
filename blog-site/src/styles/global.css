@@ -261,7 +261,7 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
 
 /* === Screens === */
 .screens-bg {
-  background: var(--color-emphasis);
+  background: #d6ecf7;
   border-radius: var(--radius-lg);
   padding: 1.5rem 1.5rem 0.75rem;
   margin: 0.5rem 0;
@@ -295,7 +295,7 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
   from { transform: translateX(0); }
   to   { transform: translateX(calc(-5 * (var(--marquee-item-w) + 1rem))); }
 }
-.screens-auto { overflow: hidden; }
+.screens-auto { overflow: hidden; background: var(--color-emphasis); }
 .screens-auto .screens-strip {
   overflow: visible;
   scroll-snap-type: none;

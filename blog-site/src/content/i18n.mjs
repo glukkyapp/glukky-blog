@@ -115,7 +115,7 @@ export const ui = {
       ctaButton: "See the app",
     },
     app: {
-      title: "Glukky — the app",
+      title: "Build the habit, not the spreadsheet. Sugar management made easy.",
       heroH1: "Build the habit, not the spreadsheet.",
       heroH2: "Sugar management made easy.",
       lead:
@@ -254,7 +254,7 @@ export const ui = {
       ctaButton: "看看這個應用程式",
     },
     app: {
-      title: "Glukky 應用程式",
+      title: "不再盯著數字，控糖變得簡單。",
       heroH1: "不再盯著數字，",
       heroH2: "控糖變得簡單。",
       lead:
