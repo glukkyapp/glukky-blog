@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { ui, urlFor, articleUrl, blogIndexUrl, SITE_URL, LOCALES, readingMinutes } from "./src/content/i18n.mjs";
 import { renderPage } from "./src/templates/layout.mjs";
 import {
-  homePage, blogIndexPage, articlePage, aboutPage, appPage,
+  homePage, blogIndexPage, articlePage, aboutPage, appPage, privacyPage,
 } from "./src/templates/pages.mjs";
 import {
   articleJsonLd, faqJsonLd, organizationJsonLd,
@@ -221,6 +221,23 @@ async function build() {
       console.log(`  → ${out}`);
     }
 
+    // /privacy  or  /zh/privacy
+    {
+      const html = renderPage(
+        {
+          locale,
+          title: t.privacy.title,
+          description: t.privacy.description,
+          path: "privacy",
+          cssFile: `/${cssFileName}`,
+        },
+        privacyPage(locale)
+      );
+      const out = urlFor(locale, "privacy");
+      await writePage(out, html);
+      console.log(`  → ${out}`);
+    }
+
     // articles in this locale
     const localeArticles = articles.filter(a => a.locale === locale);
     for (const a of localeArticles) {
@@ -246,7 +263,7 @@ async function build() {
 
   // sitemap.xml
   const sitemapEntries = [];
-  for (const path of ["", "blog", "about", "app"]) {
+  for (const path of ["", "blog", "about", "app", "privacy"]) {
     sitemapEntries.push(...urlPair(path));
   }
   // Also include each article in each locale

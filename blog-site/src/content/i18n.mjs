@@ -33,6 +33,7 @@ export const ui = {
       disclaimer:
         "Glukky's articles are educational and lifestyle-focused. They are not medical advice, diagnosis, or treatment. Talk to your doctor about your own situation.",
       copyright: "© Glukky",
+      privacy: "Privacy",
     },
     home: {
       eyebrow: "Glukky journal",
@@ -150,6 +151,10 @@ export const ui = {
         "Glukky is launching soon. Tap below to be notified when it's live.",
       ctaButton: "Get the app",
     },
+    privacy: {
+      title: "Privacy Policy",
+      description: "How Glukky collects, uses and protects your personal data.",
+    },
   },
   "zh-Hant": {
     htmlLang: "zh-Hant-HK",
@@ -171,6 +176,7 @@ export const ui = {
       disclaimer:
         "Glukky 文章只屬生活及健康資訊參考，並非醫療建議、診斷或治療。如有疑問，請諮詢醫生。",
       copyright: "© Glukky",
+      privacy: "私隱政策",
     },
     home: {
       eyebrow: "Glukky 健康筆記",
@@ -287,6 +293,10 @@ export const ui = {
       ctaTitle: "即將上架 App Store",
       ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
       ctaButton: "下載 Glukky",
+    },
+    privacy: {
+      title: "私隱政策",
+      description: "How Glukky collects, uses and protects your personal data.",
     },
   },
 };

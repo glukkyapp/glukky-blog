@@ -105,6 +105,7 @@ function footer(locale) {
     { href: urlFor(locale, "blog"), label: t.nav.blog },
     { href: urlFor(locale, "about"), label: t.nav.about },
     { href: urlFor(locale, "app"), label: t.nav.app },
+    { href: urlFor(locale, "privacy"), label: t.footer.privacy },
   ];
   const year = new Date().getFullYear();
   return `<footer class="site-footer">

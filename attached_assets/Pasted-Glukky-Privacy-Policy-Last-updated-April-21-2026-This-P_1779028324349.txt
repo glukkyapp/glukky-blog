@@ -1,0 +1,121 @@
+Glukky Privacy Policy
+Last updated: April 21, 2026
+
+This Privacy Policy explains how Security Health ("we", "our", "us") collects, uses and discloses information related to the Glukky application (the "Service").
+
+Contents
+
+Introduction
+Information Collection
+App Permissions
+Third-Party Services
+Data Sharing
+User Rights
+Data Security
+Data Retention
+Legal Compliance
+Contact
+Introduction
+#
+We collect and process information to provide, maintain and improve the Service. By using the Service you acknowledge this Policy and consent to these practices as described below.
+
+Information Collection and Use
+#
+We may collect different categories of information to operate features, enhance experience and ensure reliability.
+
+Personal Data
+Personal data may include information that can be used to identify or contact you:
+
+ Email Address
+Name
+Email & Messaging
+Device Data
+Collected to optimize compatibility, diagnostics and performance:
+
+Device ID
+Time Zone
+Usage Data
+Helps us understand feature adoption and improve user flows:
+
+App Usage Statistics
+Feature Usage
+Content Preferences
+Error Logs
+Performance Data
+App Permissions
+#
+The app may request access to certain device features. You can manage or revoke these permissions via system settings at any time.
+
+Camera – Capture images or videos needed for app features.
+Notifications – Send alerts, reminders or updates.
+Discover more
+Cell Phones
+Mobile
+Mobile App
+Third-Party Services
+#
+We may integrate third-party services that process limited data under their own privacy policies. Links or references below are descriptive and not exhaustive.Software
+
+
+Crash Reporting
+Custom Crash Reporting
+Cloud / Infrastructure
+Custom Cloud Services
+Discover more
+email
+Mobile Apps & Add-Ons
+Apple iOS
+Data Sharing
+#
+We may share information with third parties strictly for the purposes described:
+
+Payment Processing
+Content Delivery
+
+We do not sell user personal information.
+
+Your Rights
+#
+Depending on your jurisdiction, you may be entitled to exercise certain data protection rights:
+
+Request deletion of personal data.
+Request a copy (export) of data we store.
+Request correction of inaccurate data.
+Opt-out of certain collection or processing activities.
+Discover more
+Android Apps
+Android
+Search Engines
+To exercise any applicable rights, contact us at glukkysugarapp@gmail.com.
+
+Data Security
+#
+We employ reasonable technical and organizational measures to protect data. No method of transmission is 100% secure, but we strive to use standards aligned with industry practices:
+
+Encryption of data in transit and/or at rest.
+Use of secure transmission (HTTPS/TLS).
+Restricted access controls & authentication safeguards.
+
+Data Retention
+#
+We retain personal data as long as necessary for the purposes outlined in this policy. When no longer needed, it is securely deleted or anonymized.
+
+
+Contact us to request data deletion
+
+Legal Compliance
+#
+This policy is structured with reference to common international data protection frameworks:
+
+GDPR (EU General Data Protection Regulation)
+CCPA (California Consumer Privacy Act)
+Discover more
+Smart Phones
+AI Tools, Chatbots & Virtual Assistants
+Mobile Phones
+Contact
+#
+For inquiries or concerns about this Privacy Policy, please contact us:
+
+Email: glukkysugarapp@gmail.com
+Email & Messaging

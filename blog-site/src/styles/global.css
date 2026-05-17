@@ -165,6 +165,7 @@ body.lang-zh .page-hero h1 { font-family: var(--font-heading); font-weight: 800;
   line-height: 1.2;
   display: block;
   margin: 0 0 .75em;
+  text-align: center;
 }
 body.lang-zh .app-hero-title { font-family: var(--font-heading); font-weight: 800; }
 .app-hero-h1 { display: block; color: var(--color-fg); }

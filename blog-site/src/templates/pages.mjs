@@ -183,6 +183,9 @@ export function aboutPage(locale) {
     ])}
     <h1>${escapeHtml(t.about.title)}</h1>
     <p class="lead muted">${escapeHtml(t.about.lead)}</p>
+    <div class="app-hero-actions">
+      ${appStoreCta(locale, t.nav.app)}
+    </div>
   </div>
 </section>
 
@@ -193,12 +196,6 @@ export function aboutPage(locale) {
   </div>
 </section>
 
-<section class="screens">
-  <div class="container">
-    ${screensStrip(locale)}
-  </div>
-</section>
-
 <section class="cta-banner">
   <div class="container cta-banner-inner">
     <div>
@@ -206,6 +203,102 @@ export function aboutPage(locale) {
       <p>${escapeHtml(t.app.ctaBody)}</p>
     </div>
     ${appStoreCta(locale, t.about.ctaButton)}
+  </div>
+</section>
+`;
+}
+
+export function privacyPage(locale) {
+  const t = ui[locale];
+  return `
+<section class="page-hero">
+  <div class="container-narrow">
+    ${breadcrumbs(locale, [
+      { href: urlFor(locale, ""), label: t.blog.breadcrumbHome },
+      { label: t.privacy.title },
+    ])}
+    <h1>${escapeHtml(t.privacy.title)}</h1>
+    <p class="lead muted">Last updated: April 21, 2026</p>
+  </div>
+</section>
+
+<section class="prose">
+  <div class="container-narrow">
+    <p>This Privacy Policy explains how Security Health ("we", "our", "us") collects, uses and discloses information related to the Glukky application (the "Service").</p>
+
+    <h2>Introduction</h2>
+    <p>We collect and process information to provide, maintain and improve the Service. By using the Service you acknowledge this Policy and consent to these practices as described below.</p>
+
+    <h2>Information Collection and Use</h2>
+    <p>We may collect different categories of information to operate features, enhance experience and ensure reliability.</p>
+    <p><strong>Personal Data</strong> — may include information that can be used to identify or contact you:</p>
+    <ul>
+      <li>Email Address</li>
+      <li>Name</li>
+    </ul>
+    <p><strong>Device Data</strong> — collected to optimize compatibility, diagnostics and performance:</p>
+    <ul>
+      <li>Device ID</li>
+      <li>Time Zone</li>
+    </ul>
+    <p><strong>Usage Data</strong> — helps us understand feature adoption and improve user flows:</p>
+    <ul>
+      <li>App Usage Statistics</li>
+      <li>Feature Usage</li>
+      <li>Content Preferences</li>
+      <li>Error Logs</li>
+      <li>Performance Data</li>
+    </ul>
+
+    <h2>App Permissions</h2>
+    <p>The app may request access to certain device features. You can manage or revoke these permissions via system settings at any time.</p>
+    <ul>
+      <li><strong>Camera</strong> — Capture images or videos needed for app features.</li>
+      <li><strong>Notifications</strong> — Send alerts, reminders or updates.</li>
+    </ul>
+
+    <h2>Third-Party Services</h2>
+    <p>We may integrate third-party services (such as crash reporting and cloud infrastructure) that process limited data under their own privacy policies. We do not sell user personal information.</p>
+
+    <h2>Data Sharing</h2>
+    <p>We may share information with third parties strictly for the purposes described:</p>
+    <ul>
+      <li>Payment Processing</li>
+      <li>Content Delivery</li>
+    </ul>
+    <p>We do not sell user personal information.</p>
+
+    <h2>Your Rights</h2>
+    <p>Depending on your jurisdiction, you may be entitled to exercise certain data protection rights:</p>
+    <ul>
+      <li>Request deletion of personal data.</li>
+      <li>Request a copy (export) of data we store.</li>
+      <li>Request correction of inaccurate data.</li>
+      <li>Opt-out of certain collection or processing activities.</li>
+    </ul>
+    <p>To exercise any applicable rights, contact us at <a href="mailto:glukkysugarapp@gmail.com">glukkysugarapp@gmail.com</a>.</p>
+
+    <h2>Data Security</h2>
+    <p>We employ reasonable technical and organizational measures to protect data. No method of transmission is 100% secure, but we strive to use standards aligned with industry practices:</p>
+    <ul>
+      <li>Encryption of data in transit and/or at rest.</li>
+      <li>Use of secure transmission (HTTPS/TLS).</li>
+      <li>Restricted access controls &amp; authentication safeguards.</li>
+    </ul>
+
+    <h2>Data Retention</h2>
+    <p>We retain personal data as long as necessary for the purposes outlined in this policy. When no longer needed, it is securely deleted or anonymized.</p>
+
+    <h2>Legal Compliance</h2>
+    <p>This policy is structured with reference to common international data protection frameworks:</p>
+    <ul>
+      <li>GDPR (EU General Data Protection Regulation)</li>
+      <li>CCPA (California Consumer Privacy Act)</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>For inquiries or concerns about this Privacy Policy, please contact us:</p>
+    <p>Email: <a href="mailto:glukkysugarapp@gmail.com">glukkysugarapp@gmail.com</a></p>
   </div>
 </section>
 `;
