@@ -5,7 +5,7 @@ import {
 import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
   breadcrumbs, articleSwitchLink, articleJsonLd, faqJsonLd, organizationJsonLd,
-  appStoreCta, waitlistCta,
+  appStoreCta, waitlistCta, waitlistBtn, waitlistModal,
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
@@ -53,7 +53,7 @@ export function homePage(locale, articles) {
     <p class="hero-lead">${escapeHtml(t.home.heroLead)}</p>
     <p class="hero-actions">
       <a class="btn btn-primary" href="${urlFor(locale, "blog")}">${escapeHtml(t.home.heroPrimary)}</a>
-      <a class="btn btn-ghost" href="${urlFor(locale, "about")}">${escapeHtml(t.home.heroSecondary)}</a>
+      <a class="btn btn-ghost" href="${urlFor(locale, "app")}">${escapeHtml(t.home.heroSecondary)}</a>
     </p>
   </div>
 </section>
@@ -184,10 +184,11 @@ export function aboutPage(locale) {
     <h1>${escapeHtml(t.about.title)}</h1>
     <p class="lead muted">${escapeHtml(t.about.lead)}</p>
     <div class="app-hero-actions">
-      ${appStoreCta(locale, t.nav.app)}
+      ${waitlistBtn(locale)}
     </div>
   </div>
 </section>
+${waitlistModal()}
 
 <section class="prose">
   <div class="container-narrow">
@@ -315,11 +316,12 @@ export function appPage(locale) {
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
     <p class="app-hero-actions">
-      ${appStoreCta(locale, "App Store")}
-      ${waitlistCta(locale, locale === "en" ? "Join the list" : "加入等候名單")}
+      <a class="btn btn-secondary" aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.45;cursor:not-allowed;" data-cta="app-store-disabled">App Store</a>
+      ${waitlistBtn(locale)}
     </p>
   </div>
 </section>
+${waitlistModal()}
 
 <section class="screens">
   <div class="container">

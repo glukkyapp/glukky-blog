@@ -70,6 +70,7 @@ ${opts.description ? `<meta name="twitter:description" content="${escapeAttr(opt
 <link rel="stylesheet" href="${escapeAttr(opts.cssFile || "/styles.css")}" />
 ${opts.jsonLd ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd)
   .replace(/</g, "\\u003c")}</script>` : ""}
+<script src="https://waitlister.me/js/embed.js" defer></script>
 </head>`;
 }
 
