@@ -27,9 +27,9 @@ export function waitlistCta(locale, label) {
   return `<a class="btn btn-ghost" href="${escapeAttr(WAITLIST_URL)}" rel="noopener" data-cta="waitlist">${escapeHtml(label || t.app.ctaButton)}</a>`;
 }
 
-export function waitlistBtn(locale) {
+export function waitlistBtn(locale, cls = "btn btn-primary") {
   const label = locale === "en" ? "Join the list" : "加入等候名單";
-  return `<button class="btn btn-primary" onclick="document.getElementById('wl-modal').style.display='flex'" data-cta="waitlist-modal">${escapeHtml(label)}</button>`;
+  return `<button class="${escapeAttr(cls)}" onclick="document.getElementById('wl-modal').style.display='flex'" data-cta="waitlist-modal">${escapeHtml(label)}</button>`;
 }
 
 export function waitlistModal() {

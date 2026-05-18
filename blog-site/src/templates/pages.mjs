@@ -5,7 +5,7 @@ import {
 import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
   breadcrumbs, articleSwitchLink, articleJsonLd, faqJsonLd, organizationJsonLd,
-  appStoreCta, waitlistCta, waitlistBtn, waitlistModal,
+  appStoreCta, waitlistBtn, waitlistModal,
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
@@ -316,8 +316,8 @@ export function appPage(locale) {
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
     <p class="app-hero-actions">
-      <a class="btn btn-secondary" aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.45;cursor:not-allowed;" data-cta="app-store-disabled">App Store</a>
-      ${waitlistBtn(locale)}
+      <a class="btn btn-primary" aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.45;cursor:not-allowed;" data-cta="app-store-disabled">App Store</a>
+      ${waitlistBtn(locale, "btn btn-ghost")}
     </p>
   </div>
 </section>
