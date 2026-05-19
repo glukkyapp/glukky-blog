@@ -68,6 +68,7 @@ export default function Landing() {
     i18n.changeLanguage(code);
     if (isChangingLang) {
       setIsChangingLang(false);
+      setAuthView(isAppleSignInAvailable() ? "apple" : "email");
       setStep("auth");
     } else {
       setSlideIndex(0);
