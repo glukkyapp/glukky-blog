@@ -1,0 +1,79 @@
+Part 1 — i18n.ts detectDeviceLang()
+ts
+function detectDeviceLang(): string {
+  const lang = navigator.language || "";
+  if (lang.startsWith("zh")) return "zh-Hant";
+  if (lang === "yue") return "yue";
+  return "en";
+}
+Correct and complete. Two things worth knowing:
+
+navigator.language on iOS returns tags like zh-Hant-HK, zh-Hans-CN, zh-TW — all of these start with "zh", so .startsWith("zh") correctly catches all variants.
+
+"yue" as an exact match is correct — Cantonese is yue in BCP 47. However, some iOS/Android devices return yue-Hant-HK instead of bare "yue", so you may want to also add .startsWith("yue") as a secondary check:
+
+ts
+function detectDeviceLang(): string {
+  const lang = navigator.language || "";
+  if (lang.startsWith("zh")) return "zh-Hant";
+  if (lang.startsWith("yue")) return "yue";   // safer than exact match
+  return "en";
+}
+Application point — only when no valid savedLang:
+
+ts
+const savedLang = localStorage.getItem("lang");
+const validLangs = ["en", "zh-Hant", "yue"];
+const initialLang = savedLang && validLangs.includes(savedLang)
+  ? savedLang
+  : detectDeviceLang();          // ← runs only when no valid saved lang
+This is correct. The validLangs.includes() guard is important — without it, a corrupted localStorage value would bypass detection.
+
+Part 2 — cube-loading-screen.tsx ellipsis animation
+tsx
+<style>{`
+  @keyframes ell-dot {
+    0%, 100% { opacity: 0; }
+    50%       { opacity: 1; }
+  }
+  .ell-dot { animation: ell-dot 1.2s ease-in-out infinite; }
+  .ell-dot-1 { animation-delay: 0s; }
+  .ell-dot-2 { animation-delay: 0.4s; }
+  .ell-dot-3 { animation-delay: 0.8s; }
+`}</style>
+Correct. Two things to confirm:
+
+The <style> block placement should be inside the returned JSX, not above the return — same pattern as loading-screen.tsx. If you place it at the top level outside return() it will throw.
+
+.ell-dot base class must declare animation and the numbered classes only override animation-delay. Your structure does this correctly.
+
+The <p> element:
+
+tsx
+<p style={{
+  fontFamily: isZh ? '"LXGW WenKai TC", serif' : undefined,
+  fontSize: "0.75rem",
+  color: "rgba(13, 43, 30, 0.5)",
+  margin: "8px 0 0 0",
+  letterSpacing: "0.02em",
+}}>
+  {t("loading")}
+  <span className="ell-dot ell-dot-1">.</span>
+  <span className="ell-dot ell-dot-2">.</span>
+  <span className="ell-dot ell-dot-3">.</span>
+</p>
+Correct. One thing to watch:
+
+isZh should evaluate to true for both "zh-Hant" and "yue" since LXGW WenKai TC applies to all Chinese variants. Confirm your isZh condition covers both, e.g.:
+
+ts
+const isZh = currentLang === "zh-Hant" || currentLang === "yue";
+If isZh only checks "zh-Hant", Yue users will fall back to the system sans-serif instead of LXGW.
+
+The t("loading") key needs to exist in all three locale files (en, zh-Hant, yue). Add if missing:
+
+EN: "loading": "Loading"
+
+ZH: "loading": "載入中"
+
+YUE: "loading": "載入中"
