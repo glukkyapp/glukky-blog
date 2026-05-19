@@ -11,10 +11,16 @@ export interface NativelyAppleSignInResp {
   message?: string;    // present when status = false
 }
 
+// Ambient declaration for the Build Natively injected global.
+// TypeScript will accept this type at compile time; at runtime, guard with
+// `isAppleSignInAvailable()` before constructing an instance.
+declare class NativelyAppleSignInService {
+  signin(callback: (resp: NativelyAppleSignInResp) => void): void;
+}
+
 /** Returns true only inside the Build Natively iOS wrapper. */
 export function isAppleSignInAvailable(): boolean {
   try {
-    // @ts-ignore — NativelyAppleSignInService injected by Build Natively wrapper
     return typeof NativelyAppleSignInService !== "undefined";
   } catch {
     return false;
@@ -31,9 +37,8 @@ export function triggerAppleSignIn(
   onError: (msg: string) => void,
 ): void {
   try {
-    // @ts-ignore — NativelyAppleSignInService injected by Build Natively wrapper
     const svc = new NativelyAppleSignInService();
-    svc.signin((resp: NativelyAppleSignInResp) => {
+    svc.signin((resp) => {
       if (resp.status) {
         onSuccess(resp);
       } else {
