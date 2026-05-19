@@ -649,7 +649,8 @@
     "redirecting": "跳轉中...",
     "choose_language": "選擇語言 / Choose your language",
     "or": "或",
-    "apple_signin": "以 Apple 帳戶繼續"
+    "apple_signin": "以 Apple 帳戶繼續",
+    "continue_with_email": "以電郵繼續"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "外出用餐是本週你的重點",

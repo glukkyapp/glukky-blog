@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { preloadStage2Onboarding } from "@/lib/preload-assets";
 import { isAppleSignInAvailable, triggerAppleSignIn } from "@/lib/natively-apple";
 import { Loader2 } from "lucide-react";
@@ -51,6 +51,10 @@ export default function Landing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   useGlobalLoading(isLoading);
+  const [authView, setAuthView] = useState<"apple" | "email">(() =>
+    isAppleSignInAvailable() ? "apple" : "email"
+  );
+  const touchStartX = useRef<number | null>(null);
 
   const slides = [
     { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body"), objectPosition: "center 30%" },
@@ -76,6 +80,7 @@ export default function Landing() {
     if (slideIndex < slides.length - 1) {
       setSlideIndex((i) => i + 1);
     } else {
+      setAuthView(isAppleSignInAvailable() ? "apple" : "email");
       setStep("auth");
     }
   }, [slideIndex, slides.length]);
@@ -228,6 +233,18 @@ export default function Landing() {
         className="relative h-dvh w-full overflow-hidden flex flex-col"
         style={{ background: "#fdfbee", fontFamily: "'Inter', system-ui, sans-serif" }}
         data-testid="landing-slides-screen"
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          touchStartX.current = null;
+          if (dx < -40) {
+            handleSlideNext();
+          } else if (dx > 40) {
+            hapticTap("SOFT");
+            setSlideIndex((i) => Math.max(0, i - 1));
+          }
+        }}
       >
 
         {/* Hero image */}
@@ -250,7 +267,7 @@ export default function Landing() {
 
         {/* Content */}
         <div
-          className="flex-1 flex flex-col justify-between"
+          className="flex-1 flex flex-col"
           style={{ padding: "28px 30px 24px" }}
         >
           <div style={{ textAlign: "center", paddingTop: 16 }}>
@@ -283,67 +300,95 @@ export default function Landing() {
             </p>
           </div>
 
-          {/* Footer: spacer · Dots · Next (no Skip — preload runs here) */}
-          <div className="flex items-center justify-between" style={{ paddingTop: 20 }}>
-            <span aria-hidden style={{ width: 36, height: 36 }} />
-
-            <div className="flex items-center" style={{ gap: 8 }} data-testid="slide-dots">
-              {slides.map((_, i) => {
-                const active = i === slideIndex;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
-                    data-testid={`slide-dot-${i}`}
-                    aria-label={`Slide ${i + 1}`}
-                    className="flex items-center justify-center"
-                    style={{
-                      padding: 6,
-                      margin: -6,
-                      background: "transparent",
-                      border: 0,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "block",
-                        width: active ? 26 : 8,
-                        height: 8,
-                        borderRadius: 999,
-                        background: active ? ACCENT : "#e5e7eb",
-                        transition: "width 0.25s ease, background 0.25s ease",
-                      }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-
+          {/* Bottom section: Get Started button + dots/next row */}
+          <div className="flex flex-col mt-auto" style={{ gap: 14 }}>
+            {/* Get Started — full-width pill, jumps directly to auth */}
             <button
               type="button"
-              onClick={handleSlideNext}
-              data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
-              aria-label={slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
-              className="btn-pop"
+              onClick={() => {
+                hapticTap("SOFT");
+                setAuthView(isAppleSignInAvailable() ? "apple" : "email");
+                setStep("auth");
+              }}
+              data-testid="button-slide-skip-to-auth"
+              className="w-full btn-pop"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 999,
-                border: 0,
                 background: ACCENT,
                 color: "white",
-                display: "grid",
-                placeItems: "center",
-                fontSize: 18,
+                border: 0,
+                borderRadius: 999,
+                padding: "14px 0",
+                fontSize: 16,
                 fontWeight: 700,
                 cursor: "pointer",
                 boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
               }}
             >
-              ›
+              {t("landing.get_started")}
             </button>
+
+            {/* Dots · Next */}
+            <div className="flex items-center justify-between">
+              <span aria-hidden style={{ width: 36, height: 36 }} />
+
+              <div className="flex items-center" style={{ gap: 8 }} data-testid="slide-dots">
+                {slides.map((_, i) => {
+                  const active = i === slideIndex;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
+                      data-testid={`slide-dot-${i}`}
+                      aria-label={`Slide ${i + 1}`}
+                      className="flex items-center justify-center"
+                      style={{
+                        padding: 6,
+                        margin: -6,
+                        background: "transparent",
+                        border: 0,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "block",
+                          width: active ? 26 : 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background: active ? ACCENT : "#e5e7eb",
+                          transition: "width 0.25s ease, background 0.25s ease",
+                        }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSlideNext}
+                data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
+                aria-label={slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
+                className="btn-pop"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  border: 0,
+                  background: ACCENT,
+                  color: "white",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
+                }}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </div>
 
@@ -365,6 +410,72 @@ export default function Landing() {
     );
   }
 
+  // Apple-first view — shown on iOS as the initial auth screen
+  if (authView === "apple") {
+    return (
+      <div
+        className="flex flex-col min-h-screen px-6 pt-3 pb-3"
+        style={{ backgroundColor: "#fdfbee" }}
+        data-testid="landing-auth-screen"
+      >
+        <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+          <img src={slide1Img} alt="" />
+          <img src={slide2Img} alt="" />
+          <img src={slide3Img} alt="" />
+        </div>
+
+        {/* Logo + slogan — centred in the upper portion */}
+        <div className="flex flex-col items-center gap-1 flex-1 justify-center">
+          <img src={glukkyLogo} alt="Glukky" style={{ width: 280 }} data-testid="text-app-title" />
+          <p className="text-xs text-muted-foreground" data-testid="text-description">
+            {t("landing.slogan")}
+          </p>
+        </div>
+
+        {/* CTA stack at bottom */}
+        <div className="flex flex-col gap-3 pb-2">
+          <button
+            type="button"
+            onClick={handleAppleSignIn}
+            disabled={isLoading}
+            data-testid="button-apple-signin"
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-semibold transition-opacity disabled:opacity-50 btn-pop"
+            style={{ backgroundColor: "#000", color: "#fff", border: "none" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 814 1000" fill="currentColor" aria-hidden="true">
+              <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 405.1 8 279.5 8 160.1c0-114.2 74.1-174.8 146.6-174.8 74.1 0 125.4 44.2 170.8 44.2 43.3 0 101.6-47.6 184.1-47.6 28.6 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
+            </svg>
+            {t("landing.apple_signin")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { hapticTap("SOFT"); setAuthView("email"); }}
+            className="text-sm text-muted-foreground text-center hover:text-foreground transition-colors py-1"
+            data-testid="button-continue-email"
+          >
+            {t("landing.continue_with_email")}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            hapticTap("SOFT");
+            localStorage.removeItem("glukky_preferred_lang");
+            setIsChangingLang(true);
+            setStep("lang");
+          }}
+          className="mt-2 pt-3 text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
+          data-testid="button-change-language"
+        >
+          {t("landing.change_language")}
+        </button>
+      </div>
+    );
+  }
+
+  // Email view — default on web; shown on iOS after tapping "Continue with email instead"
   return (
     <div
       className="flex flex-col min-h-screen px-6 pt-3 pb-3"
@@ -376,6 +487,19 @@ export default function Landing() {
         <img src={slide2Img} alt="" />
         <img src={slide3Img} alt="" />
       </div>
+
+      {/* Back to Apple — only on iOS */}
+      {isAppleSignInAvailable() && (
+        <button
+          type="button"
+          onClick={() => { hapticTap("SOFT"); setAuthView("apple"); }}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start mb-2"
+          data-testid="button-back-to-apple"
+        >
+          ‹ {t("onboarding.back")}
+        </button>
+      )}
+
       <div className="flex flex-col items-center gap-1 mb-2">
         <div className="flex items-center gap-2" data-testid="text-app-title">
           <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
@@ -469,30 +593,6 @@ export default function Landing() {
           )}
         </Button>
       </form>
-
-      {isAppleSignInAvailable() && (
-        <>
-          <div className="flex items-center gap-3 mt-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">{t("landing.or")}</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleAppleSignIn}
-            disabled={isLoading}
-            data-testid="button-apple-signin"
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-opacity disabled:opacity-50 btn-pop mt-2"
-            style={{ backgroundColor: "#000", color: "#fff", border: "none" }}
-          >
-            <svg width="17" height="17" viewBox="0 0 814 1000" fill="currentColor" aria-hidden="true">
-              <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 405.1 8 279.5 8 160.1c0-114.2 74.1-174.8 146.6-174.8 74.1 0 125.4 44.2 170.8 44.2 43.3 0 101.6-47.6 184.1-47.6 28.6 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
-            </svg>
-            {t("landing.apple_signin")}
-          </button>
-        </>
-      )}
 
       <button
         type="button"

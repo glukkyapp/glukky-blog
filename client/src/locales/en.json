@@ -645,7 +645,8 @@
     "redirecting": "Redirecting...",
     "choose_language": "Choose your language / 選擇語言",
     "or": "or",
-    "apple_signin": "Continue with Apple"
+    "apple_signin": "Continue with Apple",
+    "continue_with_email": "Continue with email instead"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "Eating Out is your focus this week",
