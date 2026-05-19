@@ -39,6 +39,8 @@ export function triggerAppleSignIn(
   try {
     const svc = new NativelyAppleSignInService();
     svc.signin((resp) => {
+      // TEMP DEBUG — remove after diagnosis
+      alert("BN raw resp: " + JSON.stringify(resp));
       if (resp.status) {
         onSuccess(resp);
       } else {
