@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import cubeGif from "@assets/gif_new_v2_1777639983811.gif";
 
@@ -53,7 +52,6 @@ export default function CubeLoadingScreen({
   authReady,
   preloadReady,
 }: CubeLoadingScreenProps) {
-  const { t } = useTranslation();
   const [lang] = useState(() => i18n.language || "en");
   const isZh = isChineseLang(lang);
   const tips = isZh ? TIPS_ZH : TIPS_EN;
@@ -197,7 +195,7 @@ export default function CubeLoadingScreen({
             WebkitUserSelect: "none",
           }}
         >
-          {t("loading")}
+          {isZh ? "載入中" : "Loading"}
           <span className="ell-dot ell-dot-1">.</span>
           <span className="ell-dot ell-dot-2">.</span>
           <span className="ell-dot ell-dot-3">.</span>
