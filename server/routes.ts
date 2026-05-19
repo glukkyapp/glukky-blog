@@ -2073,6 +2073,7 @@ export async function registerRoutes(
     "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
     "770c837e-10bc-4ec1-b891-0683cdc07a96", // cynthiayuyu@hotmail.com
     "e6a689aa-3092-488b-adcc-ef9d68315cbd", // bbb@gmail.com
+    "f9396538-ff03-49f9-a6f7-8dab8039ebfb", // iva_40@yahoo.com.hk
   ]);
 
   // Daily window resets at midnight Hong Kong time so the cap aligns
