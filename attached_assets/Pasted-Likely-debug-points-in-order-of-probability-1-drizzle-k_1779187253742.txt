@@ -1,0 +1,32 @@
+Likely debug points in order of probability
+1. drizzle-kit push — run this LAST, not first
+The migration must happen after all code changes are saved. If the agent runs it mid-task, the code may reference appleId before the column exists, causing a DB error on first Apple sign-in.
+
+2. req.session.userId — confirm the session key name
+In step 3, the endpoint writes req.session.userId = user.id. This must match exactly what your existing email login writes. If email login writes req.session.user_id or req.session.id instead, the rest of the app won't recognise the Apple session. Tell the agent: match the session key name used in the existing /api/auth/login handler exactly.
+
+3. queryClient.setQueryData(["/api/auth/user"], user) — shape must match
+In step 5, after a successful Apple sign-in, the frontend writes user (which is { id, email }) directly into the query cache at ["/api/auth/user"]. If your existing /api/auth/user endpoint returns a richer object (e.g. includes name, createdAt, other fields), this partial object may cause UI breakage — components reading user.name would get undefined. Tell the agent: after Apple sign-in, refetch /api/auth/user instead of setQueryData, so the full user shape is loaded.
+
+Like this:
+
+ts
+await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+instead of:
+
+ts
+queryClient.setQueryData(["/api/auth/user"], user);
+4. isAppleSignInAvailable() returning false in dev
+The button will be invisible on desktop/browser because NativelyAppleSignInService isn't injected outside the BN wrapper. This is correct behaviour — not a bug. Don't let the agent "fix" a missing button in browser testing.
+
+5. Locale key nesting
+The keys are written as "apple_signin" and "or" in the instructions, but your locale files likely nest landing keys under a "landing" object:
+
+json
+{
+  "landing": {
+    "apple_signin": "Continue with Apple",
+    "or": "or"
+  }
+}
+The t("landing.apple_signin") call in the JSX assumes this nesting. Make sure the agent adds the keys inside the existing "landing": {} block, not at the top level of the JSON file.
