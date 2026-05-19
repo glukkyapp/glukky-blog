@@ -78,6 +78,11 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
+      // Apple-only accounts have no password hash — reject email login attempts for them
+      if (!user.password) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
         return res.status(401).json({ message: "Invalid email or password" });

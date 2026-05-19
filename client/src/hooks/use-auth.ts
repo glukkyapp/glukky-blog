@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 interface AuthUser {
   id: string;
-  email: string;
+  email: string | null;
 }
 
 export const SESSION_HINT_KEY = "glukky_has_session";
