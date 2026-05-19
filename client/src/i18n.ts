@@ -12,9 +12,18 @@ type LocaleModule = { default: LocaleResource };
 const savedLang = (typeof localStorage !== "undefined"
   ? localStorage.getItem("glukky_preferred_lang")
   : "") || "";
+
+function detectDeviceLang(): Lang {
+  if (typeof navigator === "undefined") return "en";
+  const lang = navigator.language || "";
+  if (lang.startsWith("zh")) return "zh-Hant";
+  if (lang.startsWith("yue")) return "yue";
+  return "en";
+}
+
 const initialLang: Lang = (VALID_LANGS as readonly string[]).includes(savedLang)
   ? (savedLang as Lang)
-  : "en";
+  : detectDeviceLang();
 
 const loadedBundles = new Set<string>(["en"]);
 const inflightBundles = new Map<string, Promise<void>>();

@@ -985,5 +985,6 @@
   },
   "offline_title": "沒有網絡連線",
   "offline_body": "請檢查您的網絡連線，然後再試一次。",
-  "offline_button": "重新載入"
+  "offline_button": "重新載入",
+  "loading": "載入中"
 }

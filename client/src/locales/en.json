@@ -981,5 +981,6 @@
   },
   "offline_title": "No internet connection",
   "offline_body": "Please check your connection and try again.",
-  "offline_button": "Reload"
+  "offline_button": "Reload",
+  "loading": "Loading"
 }
