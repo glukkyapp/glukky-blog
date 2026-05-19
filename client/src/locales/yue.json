@@ -647,7 +647,9 @@
     "welcome_back": "歡迎返嚟！",
     "account_created": "帳號開咗喇！",
     "redirecting": "跳轉緊...",
-    "choose_language": "揀你嘅語言 / Choose your language"
+    "choose_language": "揀你嘅語言 / Choose your language",
+    "or": "或",
+    "apple_signin": "用 Apple 帳戶繼續"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "今週你嘅重點係出外食飯",

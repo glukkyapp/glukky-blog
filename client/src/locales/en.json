@@ -643,7 +643,9 @@
     "welcome_back": "Welcome back!",
     "account_created": "Account created!",
     "redirecting": "Redirecting...",
-    "choose_language": "Choose your language / 選擇語言"
+    "choose_language": "Choose your language / 選擇語言",
+    "or": "or",
+    "apple_signin": "Continue with Apple"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "Eating Out is your focus this week",

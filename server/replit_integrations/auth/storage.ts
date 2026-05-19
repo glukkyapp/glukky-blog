@@ -6,6 +6,8 @@ export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(email: string, hashedPassword: string): Promise<User>;
+  getUserByAppleId(appleId: string): Promise<User | undefined>;
+  createAppleUser(appleId: string, email?: string): Promise<User>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -23,6 +25,19 @@ class AuthStorage implements IAuthStorage {
     const [user] = await db
       .insert(users)
       .values({ email, password: hashedPassword })
+      .returning();
+    return user;
+  }
+
+  async getUserByAppleId(appleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.appleId, appleId));
+    return user;
+  }
+
+  async createAppleUser(appleId: string, email?: string): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({ appleId, email: email ?? null, password: null })
       .returning();
     return user;
   }

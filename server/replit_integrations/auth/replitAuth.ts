@@ -91,6 +91,30 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Apple Sign In — unified login + silent register
+  app.post("/api/auth/apple-signin", async (req, res) => {
+    try {
+      const { subject, email } = req.body;
+      if (!subject) {
+        return res.status(400).json({ message: "Apple subject is required" });
+      }
+
+      let user = await authStorage.getUserByAppleId(subject);
+
+      if (!user) {
+        // First-time Apple user — create account silently, no error shown to UI
+        user = await authStorage.createAppleUser(subject, email || undefined);
+      }
+
+      // req.session.userId matches exactly what /api/auth/login writes
+      req.session.userId = user.id;
+      return res.json({ id: user.id, email: user.email ?? null });
+    } catch (error) {
+      console.error("Apple sign-in error:", error);
+      return res.status(500).json({ message: "Apple sign-in failed" });
+    }
+  });
+
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
