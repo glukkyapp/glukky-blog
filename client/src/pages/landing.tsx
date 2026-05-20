@@ -226,12 +226,16 @@ export default function Landing() {
   }
 
   if (step === "slides") {
-    const slide = slides[slideIndex];
     const ACCENT = "#127843";
     const HEADLINE = "#214B36";
+    // Peek layout math:
+    //   left margin = 20px, gap between cards = 12px, right peek = 20px
+    //   cardWidth = calc(100vw - 52px)   (20 + 12 + 20 = 52)
+    //   stride    = calc(100vw - 40px)   (cardWidth + gap = 100vw - 52 + 12)
+    //   trackX    = calc(20px - N * (100vw - 40px))
     return (
       <div
-        className="relative h-dvh w-full overflow-hidden flex flex-col"
+        className="relative h-dvh w-full flex flex-col"
         style={{ background: "#fdfbee", fontFamily: "'Inter', system-ui, sans-serif" }}
         data-testid="landing-slides-screen"
         onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
@@ -247,166 +251,174 @@ export default function Landing() {
           }
         }}
       >
-
-        {/* Hero image */}
-        <div
-          className="relative"
-          style={{
-            height: "46%",
-            borderBottomLeftRadius: 34,
-            borderBottomRightRadius: 34,
-            overflow: "hidden",
-          }}
-        >
-          <img
-            key={slideIndex}
-            src={slide.image}
-            alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: slide.objectPosition ?? "center", display: "block" }}
-          />
+        {/* Logo */}
+        <div style={{ paddingTop: 28, paddingBottom: 20, textAlign: "center", flexShrink: 0 }}>
+          <img src={glukkyLogo} alt="Glukky" style={{ width: 140, display: "inline-block" }} />
         </div>
 
-        {/* Content */}
-        <div
-          className="flex-1 flex flex-col"
-          style={{ padding: "28px 30px 24px" }}
-        >
-          <div style={{ textAlign: "center", paddingTop: 16 }}>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 22,
-                fontWeight: 800,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: HEADLINE,
-                lineHeight: 1.25,
-                whiteSpace: "pre-line",
-              }}
-              data-testid="text-slide-headline"
-            >
-              {slide.headline}
-            </h2>
-            <p
-              style={{
-                margin: "16px auto 0",
-                maxWidth: "26ch",
-                fontSize: 14,
-                lineHeight: 1.5,
-                color: "#6b7280",
-              }}
-              data-testid="text-slide-body"
-            >
-              {slide.body}
-            </p>
-          </div>
-
-          {/* Bottom section: Get Started button + dots/next row */}
-          <div className="flex flex-col mt-auto" style={{ gap: 14 }}>
-            {/* Get Started — full-width pill, jumps directly to auth */}
-            <button
-              type="button"
-              onClick={() => {
-                hapticTap("SOFT");
-                setAuthView(isAppleSignInAvailable() ? "apple" : "email");
-                setStep("auth");
-              }}
-              data-testid="button-slide-skip-to-auth"
-              className="w-full btn-pop"
-              style={{
-                background: ACCENT,
-                color: "white",
-                border: 0,
-                borderRadius: 999,
-                padding: "14px 0",
-                fontSize: 16,
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
-              }}
-            >
-              {t("landing.get_started")}
-            </button>
-
-            {/* Dots · Next */}
-            <div className="flex items-center justify-between">
-              <span aria-hidden style={{ width: 36, height: 36 }} />
-
-              <div className="flex items-center" style={{ gap: 8 }} data-testid="slide-dots">
-                {slides.map((_, i) => {
-                  const active = i === slideIndex;
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
-                      data-testid={`slide-dot-${i}`}
-                      aria-label={`Slide ${i + 1}`}
-                      className="flex items-center justify-center"
-                      style={{
-                        padding: 6,
-                        margin: -6,
-                        background: "transparent",
-                        border: 0,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: "block",
-                          width: active ? 26 : 8,
-                          height: 8,
-                          borderRadius: 999,
-                          background: active ? ACCENT : "#e5e7eb",
-                          transition: "width 0.25s ease, background 0.25s ease",
-                        }}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSlideNext}
-                data-testid={slideIndex === slides.length - 1 ? "button-get-started" : "button-next-slide"}
-                aria-label={slideIndex === slides.length - 1 ? t("landing.get_started") : t("landing.next")}
-                className="btn-pop"
+        {/* Photo card strip — overflow hidden clips the track, second card peeks from right */}
+        <div style={{ overflow: "hidden", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              transform: `translateX(calc(20px - ${slideIndex} * (100vw - 40px)))`,
+              transition: "transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)",
+            }}
+          >
+            {slides.map((s, i) => (
+              <div
+                key={i}
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 999,
-                  border: 0,
-                  background: ACCENT,
-                  color: "white",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
+                  width: "calc(100vw - 52px)",
+                  flexShrink: 0,
+                  height: "calc(100vw - 52px)",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  boxShadow: "0 8px 28px rgba(0,0,0,0.13)",
                 }}
               >
-                ›
-              </button>
-            </div>
+                <img
+                  src={s.image}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.objectPosition ?? "center", display: "block" }}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Home indicator */}
-        <div
-          className="absolute"
-          style={{
-            left: "50%",
-            bottom: 10,
-            transform: "translateX(-50%)",
-            width: 120,
-            height: 5,
-            borderRadius: 999,
-            background: "#111",
-            opacity: 0.9,
-          }}
-        />
+        {/* Copy block */}
+        <div style={{ textAlign: "center", padding: "24px 28px 0", flexShrink: 0 }}>
+          <h2
+            data-testid="text-slide-headline"
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: HEADLINE,
+              lineHeight: 1.3,
+              whiteSpace: "pre-line",
+            }}
+          >
+            {slides[slideIndex].headline}
+          </h2>
+          <p
+            data-testid="text-slide-body"
+            style={{
+              margin: "12px auto 0",
+              maxWidth: "26ch",
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: "#6b7280",
+            }}
+          >
+            {slides[slideIndex].body}
+          </p>
+        </div>
+
+        {/* Bottom navigation */}
+        <div style={{ marginTop: "auto", paddingBottom: 28, flexShrink: 0 }}>
+          {/* Pagination dots — centered, close to copy above */}
+          <div
+            style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 16 }}
+            data-testid="slide-dots"
+          >
+            {slides.map((_, i) => {
+              const active = i === slideIndex;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { hapticTap("SOFT"); setSlideIndex(i); }}
+                  data-testid={`slide-dot-${i}`}
+                  aria-label={`Slide ${i + 1}`}
+                  style={{ padding: 6, margin: -6, background: "transparent", border: 0, cursor: "pointer" }}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      width: active ? 26 : 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: active ? ACCENT : "#e5e7eb",
+                      transition: "width 0.25s ease, background 0.25s ease",
+                    }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Primary CTA — full-width pill */}
+          <button
+            type="button"
+            onClick={() => {
+              hapticTap("SOFT");
+              setAuthView(isAppleSignInAvailable() ? "apple" : "email");
+              setStep("auth");
+            }}
+            data-testid="button-get-started"
+            className="btn-pop"
+            style={{
+              display: "block",
+              width: "calc(100% - 48px)",
+              margin: "0 24px",
+              height: 52,
+              borderRadius: 9999,
+              background: ACCENT,
+              color: "white",
+              border: 0,
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 6px 14px rgba(18,120,67,0.35)",
+            }}
+          >
+            {t("landing.get_started")}
+          </button>
+
+          {/* Secondary: Log In */}
+          <button
+            type="button"
+            onClick={() => {
+              hapticTap("SOFT");
+              setTab("login");
+              setAuthView("email");
+              setStep("auth");
+            }}
+            data-testid="button-slide-login"
+            style={{
+              display: "block",
+              width: "100%",
+              marginTop: 14,
+              textAlign: "center",
+              color: ACCENT,
+              fontSize: 15,
+              fontWeight: 600,
+              background: "transparent",
+              border: 0,
+              cursor: "pointer",
+            }}
+          >
+            {t("landing.log_in")}
+          </button>
+
+          {/* Version number */}
+          <p
+            style={{
+              textAlign: "center",
+              color: "#d1d5db",
+              fontSize: 11,
+              margin: "10px 0 0",
+              userSelect: "none",
+            }}
+          >
+            Version 1.0.0
+          </p>
+        </div>
       </div>
     );
   }
