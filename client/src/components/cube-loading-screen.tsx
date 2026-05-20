@@ -28,6 +28,7 @@ const FADE_MS = 400;
 const MIN_DURATION_MS = TIP_INTERVAL_MS * 4;
 
 const FONT_LINK_ID = "lxgw-wenkai-tc-subset";
+const PLAYFAIR_LINK_ID = "playfair-display-font";
 
 function ensureChineseFontLoaded(): void {
   if (typeof document === "undefined") return;
@@ -41,6 +42,16 @@ function ensureChineseFontLoaded(): void {
   link.id = FONT_LINK_ID;
   link.rel = "stylesheet";
   link.href = url;
+  document.head.appendChild(link);
+}
+
+function ensurePlayfairLoaded(): void {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(PLAYFAIR_LINK_ID)) return;
+  const link = document.createElement("link");
+  link.id = PLAYFAIR_LINK_ID;
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap";
   document.head.appendChild(link);
 }
 
@@ -68,9 +79,10 @@ export default function CubeLoadingScreen({
   const [minElapsed, setMinElapsed] = useState(false);
   const startedAtRef = useRef<number>(Date.now());
 
-  // Inject the LXGW WenKai TC subset font only when needed.
+  // Inject fonts: LXGW for Chinese, Playfair Display for English.
   useEffect(() => {
     if (isZh) ensureChineseFontLoaded();
+    else ensurePlayfairLoaded();
   }, [isZh]);
 
   // Tip rotation: 3.5s interval, 0.4s fade, matches reference HTML.
@@ -162,7 +174,7 @@ export default function CubeLoadingScreen({
             WebkitUserSelect: "none",
             fontFamily: isZh
               ? '"LXGW WenKai TC", serif'
-              : undefined,
+              : '"Playfair Display", Georgia, serif',
           }}
         >
           {tips[tipIndex]}
