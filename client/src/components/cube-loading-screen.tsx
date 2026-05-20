@@ -2,18 +2,25 @@ import { useEffect, useState, useRef } from "react";
 import i18n from "@/i18n";
 import cubeGif from "@assets/gif_new_v2_1777639983811.gif";
 
-const TIPS_EN = [
-  "Blood sugar swings can affect your mood and energy throughout the day.",
-  "Keeping glucose stable helps your skin stay firm and clear.",
-  "Your heart, eyes, kidneys, and brain — blood sugar affects them all.",
-  "It's not just sweets — almost all foods raise your blood glucose after eating. What matters is how much and how fast.",
+const TIPS_EN: React.ReactNode[] = [
+  "Exercising every day, but your doctor still says your blood sugar isn't where it should be?",
+  <>Starting this week, try a <strong style={{ fontWeight: 700 }}>post-dinner walk</strong>. Just 10 minutes — more effective than you'd think.</>,
+  <>Thousands of people are already using <strong style={{ fontWeight: 700 }}>Food Snap</strong>. Let AI give you one better dinner choice every night.</>,
+  "One month from now, meet a better you.",
 ];
 
-const TIPS_ZH = [
-  "血糖波動會影響你一天的情緒和精力。",
-  "保持血糖穩定，有助皮膚緊緻透亮。",
-  "心臟、眼睛、腎臟、大腦——血糖能影響你全身。",
-  "不只是甜食——幾乎所有食物都會令血糖上升。重要的是多少與速度。",
+const TIPS_ZH_PLAIN = [
+  "每天運動，但醫生仍然說你血糖不達標？",
+  "這星期開始，做一次飯後散步吧。只需十分鐘，比你想像中的更有效。",
+  "數以千計的人在使用食物快拍。讓AI每晚給你一個更好的晚餐選擇。",
+  "一個月後，迎接煥然一新的你。",
+];
+
+const TIPS_ZH: React.ReactNode[] = [
+  "每天運動，但醫生仍然說你血糖不達標？",
+  <>這星期開始，做一次<strong style={{ fontWeight: 700 }}>飯後散步</strong>吧。只需十分鐘，比你想像中的更有效。</>,
+  <>數以千計的人在使用<strong style={{ fontWeight: 700 }}>食物快拍</strong>。讓AI每晚給你一個更好的晚餐選擇。</>,
+  "一個月後，迎接煥然一新的你。",
 ];
 
 const TIP_INTERVAL_MS = 3500;
@@ -25,7 +32,7 @@ const FONT_LINK_ID = "lxgw-wenkai-tc-subset";
 function ensureChineseFontLoaded(): void {
   if (typeof document === "undefined") return;
   if (document.getElementById(FONT_LINK_ID)) return;
-  const subsetText = TIPS_ZH.join("");
+  const subsetText = TIPS_ZH_PLAIN.join("");
   const url =
     "https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&text=" +
     encodeURIComponent(subsetText) +
@@ -140,11 +147,11 @@ export default function CubeLoadingScreen({
         }}
         data-testid="cube-loading-gif"
       />
-      <div style={{ maxWidth: 300, width: "100%", textAlign: "center" }}>
+      <div style={{ maxWidth: 360, width: "100%", textAlign: "center" }}>
         <p
           data-testid="cube-loading-tip"
           style={{
-            fontSize: "clamp(0.656rem, 2.625vw, 0.75rem)",
+            fontSize: "clamp(1.3rem, 5.25vw, 1.5rem)",
             lineHeight: 1.7,
             color: "#0D2B1E",
             fontWeight: 400,
@@ -187,7 +194,7 @@ export default function CubeLoadingScreen({
           data-testid="cube-loading-label"
           style={{
             fontFamily: isZh ? '"LXGW WenKai TC", serif' : undefined,
-            fontSize: "0.75rem",
+            fontSize: "1.5rem",
             color: "rgba(13, 43, 30, 0.5)",
             margin: "8px 0 0 0",
             letterSpacing: "0.02em",
