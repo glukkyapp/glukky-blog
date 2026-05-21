@@ -1577,7 +1577,7 @@ function AuthenticatedApp() {
     isPaywallInFlight: () => paywallInFlightRef.current,
   };
 
-  if (!currentPlan) {
+  if (!currentPlan && gateStatus?.gateMode !== "off") {
     return (
       <GateContext.Provider value={gateCtx}>
         <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
