@@ -43,6 +43,7 @@ export default function FloatingNavBar() {
     if (key === "profile") return false;
     if (isLocked) return true;
     if (!gate) return false;
+    if (gate.gateMode === "off") return false;
 
     // Premium → fall through to per-feature gating below.
     if (gate.isPremium) {
