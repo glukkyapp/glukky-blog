@@ -212,6 +212,14 @@ export default function Snap() {
   const [disambigIndex, setDisambigIndex] = useState(0);
   const [sauceManual, setSauceManual] = useState(false);
   const [toppingManual, setToppingManual] = useState(false);
+  const [snapTooltipDismissed, setSnapTooltipDismissed] = useState(
+    () => localStorage.getItem("glukky_snap_tooltip_dismissed") === "1"
+  );
+
+  function dismissSnapTooltip() {
+    localStorage.setItem("glukky_snap_tooltip_dismissed", "1");
+    setSnapTooltipDismissed(true);
+  }
 
   useGlobalLoading(step === "labeling" || step === "advising");
 
@@ -241,6 +249,7 @@ export default function Snap() {
     e.target.value = "";
     if (!file) return;
 
+    dismissSnapTooltip();
     setPreviewUrl(URL.createObjectURL(file));
     setError(null);
     setStep("labeling");
@@ -708,6 +717,23 @@ export default function Snap() {
 
       {step === "upload" && (
         <div className="flex flex-col items-center gap-5 pt-6">
+          {!snapTooltipDismissed && (
+            <div
+              className="w-full rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 space-y-2"
+              data-testid="banner-snap-first-use"
+            >
+              <p className="text-sm text-muted-foreground leading-snug">
+                {t("snap.first_use_tooltip")}
+              </p>
+              <button
+                className="text-xs font-medium text-primary"
+                onClick={dismissSnapTooltip}
+                data-testid="button-snap-tooltip-dismiss"
+              >
+                {t("snap.first_use_tooltip_dismiss")}
+              </button>
+            </div>
+          )}
           {error && (
             <div
               className="w-full rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive text-center"

@@ -85,9 +85,13 @@ function GlobalPiggyBankPopup() {
   const [showCongrats, setShowCongrats] = useState(false);
   const [rewardInput, setRewardInput] = useState("");
   const [congratsShown, setCongratsShown] = useState(false);
+  const [dialogStep, setDialogStep] = useState<"intro" | "goal">("intro");
+  const [dialogMode, setDialogMode] = useState<"first_time" | "edit">("first_time");
 
   useEffect(() => {
     if (piggy?.needsRewardSetup) {
+      setDialogMode("first_time");
+      setDialogStep("intro");
       setShowRewardSetup(true);
     }
   }, [piggy?.needsRewardSetup]);
@@ -101,7 +105,11 @@ function GlobalPiggyBankPopup() {
   }, [piggy?.coins, piggy?.needsRewardSetup]);
 
   useEffect(() => {
-    const handleOpenReward = () => setShowRewardSetup(true);
+    const handleOpenReward = () => {
+      setDialogMode("edit");
+      setDialogStep("goal");
+      setShowRewardSetup(true);
+    };
     const handleOpenCongrats = () => setShowCongrats(true);
     window.addEventListener("piggy-open-reward", handleOpenReward);
     window.addEventListener("piggy-open-congrats", handleOpenCongrats);
@@ -144,33 +152,65 @@ function GlobalPiggyBankPopup() {
     <>
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
         <DialogContent data-testid="modal-reward-setup-global">
-          <DialogHeader>
-            <DialogTitle>{t("roadmap.reward_setup_title")}</DialogTitle>
-            <DialogDescription>
-              {t("roadmap.reward_setup_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            <Input
-              value={rewardInput}
-              onChange={(e) => setRewardInput(e.target.value)}
-              placeholder={t("roadmap.reward_placeholder")}
-              data-testid="input-reward-global"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && rewardInput.trim()) {
-                  rewardMutation.mutate(rewardInput.trim());
-                }
-              }}
-            />
-            <Button
-              className="w-full btn-pop"
-              onClick={() => rewardMutation.mutate(rewardInput.trim())}
-              disabled={!rewardInput.trim() || rewardMutation.isPending}
-              data-testid="button-save-reward-global"
-            >
-              {rewardMutation.isPending ? t("roadmap.saving") : t("roadmap.save")}
-            </Button>
-          </div>
+          {dialogMode === "first_time" && dialogStep === "intro" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="sr-only">{t("roadmap.reward_setup_title")}</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center text-center gap-4 py-2">
+                <span className="text-5xl">🐷</span>
+                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-piggy-intro-body">
+                  {t("roadmap.piggy_intro_body")}
+                </p>
+                <Button
+                  className="w-full btn-pop"
+                  onClick={() => setDialogStep("goal")}
+                  data-testid="button-piggy-intro-next"
+                >
+                  {t("intro.next")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t("roadmap.reward_setup_title")}</DialogTitle>
+                <DialogDescription>
+                  {t("roadmap.piggy_intro_body")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 pt-1">
+                <Input
+                  value={rewardInput}
+                  onChange={(e) => setRewardInput(e.target.value)}
+                  placeholder={t("roadmap.reward_placeholder")}
+                  data-testid="input-reward-global"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && rewardInput.trim()) {
+                      rewardMutation.mutate(rewardInput.trim());
+                    }
+                  }}
+                />
+                <Button
+                  className="w-full btn-pop"
+                  onClick={() => rewardMutation.mutate(rewardInput.trim())}
+                  disabled={!rewardInput.trim() || rewardMutation.isPending}
+                  data-testid="button-save-reward-global"
+                >
+                  {rewardMutation.isPending ? t("roadmap.saving") : t("roadmap.save")}
+                </Button>
+                {dialogMode === "first_time" && (
+                  <button
+                    className="w-full text-sm text-muted-foreground underline underline-offset-2 py-1"
+                    onClick={() => setShowRewardSetup(false)}
+                    data-testid="button-skip-reward-global"
+                  >
+                    {t("roadmap.skip_for_now")}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

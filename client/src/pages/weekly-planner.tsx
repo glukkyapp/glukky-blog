@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Check, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Footprints, UtensilsCrossed,
   Calendar, CalendarDays, ShoppingBag, TrendingUp, Award, RotateCcw, Clock,
-  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X, Info,
+  Wine, Soup, Minus, Activity, Sparkles, Timer, Utensils, X,
 } from "lucide-react";
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, STRUGGLE_PRIORITY, type UserProfile } from "@shared/schema";
 
@@ -181,6 +181,10 @@ export default function WeeklyPlanner() {
   const [selectedStruggles3, setSelectedStruggles3] = useState<string[]>([]);
   const [repickStepNeeded, setRepickStepNeeded] = useState(false);
   const [expandedTip, setExpandedTip] = useState<string | null>(null);
+  const [walkDaysSubStep, setWalkDaysSubStep] = useState<"days" | "durations">("days");
+  const [showDurationRequiredPopup, setShowDurationRequiredPopup] = useState(false);
+  const [tipDescPopup, setTipDescPopup] = useState<{ title: string; desc: string } | null>(null);
+  const [showFirstWeekCelebration, setShowFirstWeekCelebration] = useState(false);
   const [eatOutLastStruggleSkipMsg, setEatOutLastStruggleSkipMsg] = useState(false);
   const [cycle2IntroStepNeeded, setCycle2IntroStepNeeded] = useState(false);
   const [pendingCycle2IntroNavigation, setPendingCycle2IntroNavigation] = useState(false);
@@ -840,7 +844,16 @@ export default function WeeklyPlanner() {
     goNext();
   }
 
+  useEffect(() => {
+    if (currentStepId !== "walkDays") setWalkDaysSubStep("days");
+  }, [currentStepId]);
+
   function goBack() {
+    if (currentStepId === "walkDays" && walkDaysSubStep === "durations") {
+      setStepDirection(-1);
+      setWalkDaysSubStep("days");
+      return;
+    }
     if (clampedStepIndex - 1 >= 0) {
       setStepDirection(-1);
       setStepIndex(clampedStepIndex - 1);
@@ -1564,11 +1577,17 @@ export default function WeeklyPlanner() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="text-walk-days-title">
-            {isStretchMode && acceptedEscalation !== true ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
-            {isStretchMode && acceptedEscalation !== true ? t("planner.pick_stretch_days") : t("planner.pick_walk_days")}
+            {walkDaysSubStep === "durations"
+              ? <><Timer className="w-5 h-5 text-primary" />{t("planner.walk_duration_per_day")}</>
+              : <>
+                  {isStretchMode && acceptedEscalation !== true ? <Activity className="w-5 h-5 text-primary" /> : <Calendar className="w-5 h-5 text-primary" />}
+                  {isStretchMode && acceptedEscalation !== true ? t("planner.pick_stretch_days") : t("planner.pick_walk_days")}
+                </>
+            }
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {walkDaysSubStep === "days" && (<>
           {showNegotiation && isScenarioD && (
             <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 space-y-2" data-testid="section-negotiation-congrats">
               <div className="flex items-start gap-2">
@@ -1754,10 +1773,13 @@ export default function WeeklyPlanner() {
               : t("planner.walk_days_selected", { count: walkDays.length })}
             {standingTapDay !== null && !walkDays.includes(standingTapDay) && ` + ${t("planner.one_standing_tap")}`}
           </p>
+          </>)}
 
-          {(!isStretchMode || acceptedEscalation === true) && walkDays.length > 0 && (
-            <div className="space-y-2 pt-2 border-t" data-testid="section-walk-durations">
-              <p className="text-xs font-medium text-muted-foreground">{t("planner.walk_duration_per_day")}</p>
+          {walkDaysSubStep === "durations" && (!isStretchMode || acceptedEscalation === true) && walkDays.length > 0 && (
+            <div className="space-y-3" data-testid="section-walk-durations">
+              <p className="text-sm text-muted-foreground">
+                {t("planner.walk_days_helper", { days: walkDays.slice().sort((a, b) => a - b).map(d => DAY_NAMES[d]).join("、") })}
+              </p>
               <div className="space-y-1.5">
                 {walkDays.sort((a, b) => a - b).map(day => {
                   const options = getDurationOptions(day);
@@ -2100,12 +2122,11 @@ export default function WeeklyPlanner() {
                     <span className="font-medium text-amber-600">{t(tactic.labelKey)}</span> — {t(tactic.shortKey)}
                   </p>
                   <button
-                    onClick={() => { tacticInfoSheet.openSheet({ title: t(tactic.labelKey), body: <p className="text-sm text-muted-foreground">{t(`mitigation.${tactic.key}_detail`)}</p> }); }}
-                    className="shrink-0 p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-full transition-colors"
+                    onClick={() => { setTipDescPopup({ title: t(tactic.labelKey), desc: t(`mitigation.${tactic.key}_detail`) }); }}
+                    className="shrink-0 text-xs text-primary/70 underline underline-offset-2 whitespace-nowrap"
                     data-testid={`button-info-planner-tactic-${tactic.key}`}
-                    aria-label={t(tactic.labelKey)}
                   >
-                    <Info className="w-4 h-4" />
+                    {t("planner.what_does_this_mean")}
                   </button>
                 </div>
               ))}
@@ -2358,7 +2379,6 @@ export default function WeeklyPlanner() {
           </p>
           {tipLadder.map((tip, i) => {
             const desc = translateDietTipDesc(tip, t);
-            const isExpanded = expandedTip === tip;
             return (
               <div
                 key={i}
@@ -2368,29 +2388,20 @@ export default function WeeklyPlanner() {
                     ? "border-primary bg-primary/5 ring-1 ring-primary"
                     : "border-border hover:border-primary/50"
                 }`}
-                onClick={() => {
-                  setSelectedTip(tip);
-                  setExpandedTip(isExpanded ? null : tip);
-                }}
+                onClick={() => setSelectedTip(tip)}
               >
-                <div className="flex items-center justify-between p-3">
-                  <p className={`text-sm font-medium ${selectedTip === tip ? "text-primary" : ""}`}>{translateDietTip(tip, t)}</p>
-                  <div
-                    className="ml-2 shrink-0 text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedTip(isExpanded ? null : tip);
-                    }}
-                    data-testid={`chevron-tip-${i}`}
-                  >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </div>
+                <div className="flex items-center justify-between p-3 gap-2">
+                  <p className={`text-sm font-medium flex-1 ${selectedTip === tip ? "text-primary" : ""}`}>{translateDietTip(tip, t)}</p>
+                  {desc && (
+                    <button
+                      className="shrink-0 text-xs text-primary/70 underline underline-offset-2 whitespace-nowrap"
+                      onClick={(e) => { e.stopPropagation(); setTipDescPopup({ title: translateDietTip(tip, t), desc }); }}
+                      data-testid={`button-tip-info-${i}`}
+                    >
+                      {t("planner.what_does_this_mean")}
+                    </button>
+                  )}
                 </div>
-                {isExpanded && desc && (
-                  <div className="px-3 pb-3">
-                    <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -2404,6 +2415,7 @@ export default function WeeklyPlanner() {
       <Card>
         <CardHeader>
           <CardTitle data-testid="text-preview-title">{t("planner.week_at_glance")}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-preview-legend-hint">{t("planner.week_overview_legend")}</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-8 gap-1 text-center text-xs">
@@ -2532,7 +2544,14 @@ export default function WeeklyPlanner() {
               <>
                 <Button
                   className="w-full mt-4 btn-pop"
-                  onClick={() => { hapticTap("MEDIUM"); createPlanMutation.mutate(); }}
+                  onClick={() => {
+                    hapticTap("MEDIUM");
+                    if (!reflection) {
+                      setShowFirstWeekCelebration(true);
+                    } else {
+                      createPlanMutation.mutate();
+                    }
+                  }}
                   disabled={createPlanMutation.isPending || eatOutCommitGateActive}
                   data-testid="button-confirm-plan"
                 >
@@ -2918,8 +2937,23 @@ export default function WeeklyPlanner() {
           <Button
             size="sm"
             className="btn-pop"
-            onClick={currentStepId === "weeklyReport" ? handleWeeklyReportNext : goNext}
+            onClick={() => {
+              if (currentStepId === "walkDays" && walkDaysSubStep === "days" && (!isStretchMode || acceptedEscalation === true) && walkDays.length > 0) {
+                setStepDirection(1);
+                setWalkDaysSubStep("durations");
+                return;
+              }
+              if (currentStepId === "walkDays" && walkDaysSubStep === "durations") {
+                const allHaveDuration = walkDays.every(d => walkDayDurations[d] !== undefined);
+                if (!allHaveDuration) { setShowDurationRequiredPopup(true); return; }
+                goNext();
+                return;
+              }
+              if (currentStepId === "weeklyReport") { handleWeeklyReportNext(); return; }
+              goNext();
+            }}
             disabled={
+              (currentStepId === "walkDays" && walkDaysSubStep === "days" && !isStretchActive && walkDays.length === 0) ||
               currentStepId === "repick" ||
               currentStepId === "cycle2Intro" ||
               (currentStepId === "dietTipSelection" && !selectedTip) ||
@@ -2985,6 +3019,77 @@ export default function WeeklyPlanner() {
       onNo={() => eatOutSkipCycle1Mutation.mutate()}
       isPending={eatOutCommitMutation.isPending || eatOutSkipCycle1Mutation.isPending}
     />
+    {tipDescPopup && (
+      <div
+        className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40"
+        onClick={() => setTipDescPopup(null)}
+        data-testid="overlay-tip-desc"
+      >
+        <div
+          className="bg-white dark:bg-gray-900 rounded-t-2xl shadow-xl w-full max-w-lg p-6 space-y-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="font-semibold text-base" data-testid="text-tip-desc-title">{tipDescPopup.title}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-tip-desc-body">{tipDescPopup.desc}</p>
+          <Button
+            className="w-full mt-2"
+            onClick={() => setTipDescPopup(null)}
+            data-testid="button-tip-desc-dismiss"
+          >
+            {t("planner.got_it")}
+          </Button>
+        </div>
+      </div>
+    )}
+    {showDurationRequiredPopup && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+        data-testid="overlay-duration-required"
+      >
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-6 flex flex-col items-center text-center gap-3 max-w-sm w-full">
+          <h3 className="text-lg font-semibold" data-testid="text-duration-required-title">{t("planner.duration_required_title")}</h3>
+          <p className="text-sm text-muted-foreground" data-testid="text-duration-required-body">{t("planner.duration_required_body")}</p>
+          <Button
+            className="w-full mt-1"
+            onClick={() => setShowDurationRequiredPopup(false)}
+            data-testid="button-duration-required-ok"
+          >
+            {t("planner.duration_required_ok")}
+          </Button>
+        </div>
+      </div>
+    )}
+    {showFirstWeekCelebration && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+        data-testid="overlay-first-week-celebration"
+      >
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-7 flex flex-col items-center text-center gap-4 max-w-sm w-full">
+          <span className="text-5xl">🎉</span>
+          <h2 className="text-xl font-bold" data-testid="text-celebrate-title">
+            {t("planner.first_week_celebrate_title")}
+          </h2>
+          <div className="text-sm text-muted-foreground space-y-1 w-full text-left">
+            <p className="font-medium">{t("planner.first_week_celebrate_intro")}</p>
+            {walkDays.length > 0 && (
+              <p>• {t("planner.first_week_celebrate_walk", { count: walkDays.length, days: walkDays.slice().sort((a, b) => a - b).map(d => DAY_NAMES[d]).join("、") })}</p>
+            )}
+            {isDinnerFocus && (
+              <p>• {t("planner.first_week_celebrate_dinner")}</p>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("planner.first_week_celebrate_hint")}</p>
+          <Button
+            className="w-full btn-pop"
+            onClick={() => { setShowFirstWeekCelebration(false); createPlanMutation.mutate(); }}
+            disabled={createPlanMutation.isPending}
+            data-testid="button-celebrate-start"
+          >
+            {createPlanMutation.isPending ? t("planner.creating_plan") : t("planner.first_week_celebrate_cta")}
+          </Button>
+        </div>
+      </div>
+    )}
     {graduationPopupOpen && (() => {
       const struggledName = reflection?.dinnerJustGraduated
         ? t("planner.late_dinner_management")
