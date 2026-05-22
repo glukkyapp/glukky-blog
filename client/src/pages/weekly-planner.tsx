@@ -2927,7 +2927,7 @@ export default function WeeklyPlanner() {
           variant="outline"
           size="sm"
           onClick={goBack}
-          disabled={clampedStepIndex === 0}
+          disabled={clampedStepIndex === 0 && !(currentStepId === "walkDays" && walkDaysSubStep === "durations")}
           data-testid="button-back"
         >
           <ChevronLeft className="w-4 h-4 mr-1" /> {t("planner.back")}
@@ -3021,12 +3021,12 @@ export default function WeeklyPlanner() {
     />
     {tipDescPopup && (
       <div
-        className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40"
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
         onClick={() => setTipDescPopup(null)}
         data-testid="overlay-tip-desc"
       >
         <div
-          className="bg-white dark:bg-gray-900 rounded-t-2xl shadow-xl w-full max-w-lg p-6 space-y-3"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 max-w-sm w-full p-6 space-y-3"
           onClick={(e) => e.stopPropagation()}
         >
           <h3 className="font-semibold text-base" data-testid="text-tip-desc-title">{tipDescPopup.title}</h3>
@@ -3064,7 +3064,7 @@ export default function WeeklyPlanner() {
         className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
         data-testid="overlay-first-week-celebration"
       >
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-7 flex flex-col items-center text-center gap-4 max-w-sm w-full">
+        <div className="bg-[#FBF7F0] dark:bg-gray-900 rounded-2xl shadow-xl mx-4 p-7 flex flex-col items-center text-center gap-4 max-w-sm w-full">
           <span className="text-5xl">🎉</span>
           <h2 className="text-xl font-bold" data-testid="text-celebrate-title">
             {t("planner.first_week_celebrate_title")}
@@ -3076,6 +3076,9 @@ export default function WeeklyPlanner() {
             )}
             {isDinnerFocus && (
               <p>• {t("planner.first_week_celebrate_dinner")}</p>
+            )}
+            {!isDinnerFocus && (
+              <p>• {t("planner.first_week_celebrate_diet", { struggle: STRUGGLE_NAMES[getEffectiveStruggle()] || "" })}</p>
             )}
           </div>
           <p className="text-xs text-muted-foreground">{t("planner.first_week_celebrate_hint")}</p>

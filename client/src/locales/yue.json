@@ -157,9 +157,9 @@
     "fiber_starter_short": "食咗蔬菜先",
     "dusk_prep_short": "下畫5點食少少野",
     "split_dinner_short": "分成兩餐食",
-    "fiber_starter_detail": "纖維行先策略嘅詳細說明即將推出。",
-    "dusk_prep_detail": "黃昏預備策略嘅詳細說明即將推出。",
-    "split_dinner_detail": "分開晚餐策略嘅詳細說明即將推出。"
+    "fiber_starter_detail": "纖維行先——食咗蔬菜先。纖維可減慢糖份吸收。",
+    "dusk_prep_detail": "黃昏預備——下畫5點食少少嘢，晚餐食少啲、影響細啲。",
+    "split_dinner_detail": "晚餐一開二——兩餐細，好過一餐大。"
   },
   "onboarding": {
     "step_of": "第{{step}}步，共{{total}}步",
@@ -402,8 +402,9 @@
     "first_week_celebrate_title": "做到喇！你嘅第一週計劃設定完成！",
     "first_week_celebrate_intro": "今週你計劃：",
     "first_week_celebrate_walk": "散步 {{count}} 日（{{days}}）",
-    "first_week_celebrate_dinner": "每晚管理晚飯",
-    "first_week_celebrate_hint": "每日打開 Glukky 完成簽到，就算成功！",
+    "first_week_celebrate_dinner": "每晚揀一個策略（纖維行先、黃昏預備或晚餐一開二），然後喺每日簽到度記錄。",
+    "first_week_celebrate_diet": "今週練習{{struggle}}——每日喺每日簽到度記低進度。",
+    "first_week_celebrate_hint": "每晚開 Glukky 完成每日簽到，唔使一分鐘——你嘅連續天數同進度會自動積累。",
     "first_week_celebrate_cta": "開始我嘅第一週",
     "diet_focus_title": "今週飲食重點",
     "diet_fallback": "呢週加個小重點啦！",

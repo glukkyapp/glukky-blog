@@ -157,9 +157,9 @@
     "fiber_starter_short": "eat veggies first",
     "dusk_prep_short": "light snack at 5 PM",
     "split_dinner_short": "split into two smaller meals",
-    "fiber_starter_detail": "More detail about the Fiber Starter tactic is coming soon.",
-    "dusk_prep_detail": "More detail about the Dusk Prep tactic is coming soon.",
-    "split_dinner_detail": "More detail about the Split Dinner tactic is coming soon."
+    "fiber_starter_detail": "Fiber Starter — eat your vegetables first. Fibre slows glucose absorption.",
+    "dusk_prep_detail": "Dusk Prep — small snack at 5pm means a smaller, less impactful late dinner.",
+    "split_dinner_detail": "Split Dinner — two smaller meals are easier on your blood sugar than one large one."
   },
   "onboarding": {
     "step_of": "Step {{step}} of {{total}}",
@@ -399,8 +399,9 @@
     "first_week_celebrate_title": "You did it! Your first week plan is all set!",
     "first_week_celebrate_intro": "This week you're planning to:",
     "first_week_celebrate_walk": "Walk {{count}} days ({{days}})",
-    "first_week_celebrate_dinner": "Manage your dinner every evening",
-    "first_week_celebrate_hint": "Just open Glukky each day and complete your check-in — that counts as a win!",
+    "first_week_celebrate_dinner": "Each evening, pick one tactic (Fiber Starter, Dusk Prep, or Split Dinner) and log it in your daily check-in.",
+    "first_week_celebrate_diet": "Work on {{struggle}} this week — log it each day in your daily check-in.",
+    "first_week_celebrate_hint": "Each evening, open your Glukky daily check-in. It takes under a minute — that's how your streak and progress build.",
     "first_week_celebrate_cta": "Start My First Week",
     "diet_focus_title": "This Week's Diet Focus",
     "diet_fallback": "Let's add a small focus this week!",

@@ -158,7 +158,6 @@ function GlobalPiggyBankPopup() {
                 <DialogTitle className="sr-only">{t("roadmap.reward_setup_title")}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col items-center text-center gap-4 py-2">
-                <span className="text-5xl">🐷</span>
                 <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-piggy-intro-body">
                   {t("roadmap.piggy_intro_body")}
                 </p>
