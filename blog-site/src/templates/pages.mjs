@@ -5,7 +5,7 @@ import {
 import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
   breadcrumbs, articleSwitchLink, articleJsonLd, faqJsonLd, organizationJsonLd,
-  appStoreCta, waitlistBtn, waitlistModal,
+  appStoreCta,
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
@@ -183,12 +183,8 @@ export function aboutPage(locale) {
     ])}
     <h1>${escapeHtml(t.about.title)}</h1>
     <p class="lead muted">${escapeHtml(t.about.lead)}</p>
-    <div class="app-hero-actions">
-      ${waitlistBtn(locale)}
-    </div>
   </div>
 </section>
-${waitlistModal()}
 
 <section class="prose">
   <div class="container-narrow">
@@ -315,13 +311,10 @@ export function appPage(locale) {
       <span class="app-hero-h2">${escapeHtml(t.app.heroH2)}</span>
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
-    <p class="app-hero-actions">
-      <a class="btn btn-primary" aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.45;cursor:not-allowed;" data-cta="app-store-disabled">App Store</a>
-      ${waitlistBtn(locale, "btn btn-ghost")}
-    </p>
+    <p class="app-hero-join-label">${escapeHtml(t.app.joinLabel)}</p>
+    <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>
   </div>
 </section>
-${waitlistModal()}
 
 <section class="screens">
   <div class="container">

@@ -27,24 +27,6 @@ export function waitlistCta(locale, label) {
   return `<a class="btn btn-ghost" href="${escapeAttr(WAITLIST_URL)}" rel="noopener" data-cta="waitlist">${escapeHtml(label || t.app.ctaButton)}</a>`;
 }
 
-export function waitlistBtn(locale, cls = "btn btn-primary") {
-  const label = locale === "en" ? "Join the list" : "加入等候名單";
-  return `<button class="${escapeAttr(cls)}" onclick="document.getElementById('wl-modal').style.display='flex'" data-cta="waitlist-modal">${escapeHtml(label)}</button>`;
-}
-
-export function waitlistModal() {
-  return `<div id="wl-modal"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;"
-     onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#fff;border-radius:12px;padding:2rem;max-width:420px;width:90%;position:relative;">
-    <button onclick="document.getElementById('wl-modal').style.display='none'"
-            style="position:absolute;top:.6rem;right:.8rem;background:none;border:none;font-size:1.4rem;cursor:pointer;line-height:1;"
-            aria-label="Close">&#x00D7;</button>
-    <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64"></div>
-  </div>
-</div>`;
-}
-
 export function articleCard(locale, article) {
   const t = ui[locale];
   return `<a class="article-card" href="${escapeAttr(articleUrl(locale, article.slug))}">

@@ -150,6 +150,7 @@ export const ui = {
       ctaBody:
         "Glukky is launching soon. Tap below to be notified when it's live.",
       ctaButton: "Get the app",
+      joinLabel: "Join the waitlist",
     },
     privacy: {
       title: "Privacy Policy",
@@ -293,6 +294,7 @@ export const ui = {
       ctaTitle: "即將上架 App Store",
       ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
       ctaButton: "下載 Glukky",
+      joinLabel: "加入等候名單",
     },
     privacy: {
       title: "私隱政策",
