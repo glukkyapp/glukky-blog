@@ -151,7 +151,7 @@ export const ui = {
         "Glukky is launching soon. Tap below to be notified when it's live.",
       ctaButton: "Get the app",
       joinLabel: "I want to learn more",
-      joinHint: "Please wait... if the page doesn't redirect, scroll down to refresh.",
+      joinHint: "Please enter your email below. If the form does not appear, scroll down to refresh.",
     },
     privacy: {
       title: "Privacy Policy",
@@ -296,7 +296,7 @@ export const ui = {
       ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
       ctaButton: "下載 Glukky",
       joinLabel: "我想了解更多",
-      joinHint: "請等等...如畫面沒有跳轉，請向下拉重新載入",
+      joinHint: "請在下方輸入你的電郵。如畫面沒有出現，請向下拉重新載入",
     },
     privacy: {
       title: "私隱政策",
