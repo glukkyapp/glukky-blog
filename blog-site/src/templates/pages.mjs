@@ -311,7 +311,10 @@ export function appPage(locale) {
       <span class="app-hero-h2">${escapeHtml(t.app.heroH2)}</span>
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
-    <p class="app-hero-join-label">${escapeHtml(t.app.joinLabel)}</p>
+    <div class="app-hero-join-wrap">
+      <button class="btn-waitlist-join" onclick="document.getElementById('wl-hint').style.display='block'">${escapeHtml(t.app.joinLabel)}</button>
+      <p id="wl-hint" class="wl-hint" style="display:none">${escapeHtml(t.app.joinHint)}</p>
+    </div>
     <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>
   </div>
 </section>
