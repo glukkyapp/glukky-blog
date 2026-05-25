@@ -312,7 +312,7 @@ export function appPage(locale) {
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
     <div class="app-hero-join-wrap">
-      <button class="btn-waitlist-join" onclick="document.getElementById('wl-hint').style.display='block'">${escapeHtml(t.app.joinLabel)}</button>
+      <button class="btn-waitlist-join" onclick="document.getElementById('wl-hint').style.display='block';if(window.posthog)posthog.capture('waitlist_button_clicked',{locale:'${locale}'})">${escapeHtml(t.app.joinLabel)}</button>
       <p id="wl-hint" class="wl-hint" style="display:none">${escapeHtml(t.app.joinHint)}</p>
     </div>
     <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>
