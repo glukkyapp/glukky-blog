@@ -150,6 +150,7 @@ export const ui = {
       ctaBody:
         "Glukky is launching soon. Tap below to be notified when it's live.",
       ctaButton: "Get the app",
+      spotsNote: "Free to join · 20 spots only",
       joinLabel: "I want to learn more",
       joinHint: "Please enter your email below. If the form does not appear, scroll down to refresh.",
     },
@@ -295,6 +296,7 @@ export const ui = {
       ctaTitle: "即將上架 App Store",
       ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
       ctaButton: "下載 Glukky",
+      spotsNote: "不需付費，名額20個",
       joinLabel: "我想了解更多",
       joinHint: "請在下方輸入你的電郵。如畫面沒有出現，請向下拉重新載入",
     },

@@ -171,6 +171,7 @@ body.lang-zh .app-hero-title { font-family: var(--font-heading); font-weight: 80
 .app-hero-h1 { display: block; color: var(--color-fg); }
 .app-hero-h2 { display: block; color: var(--color-primary); }
 .app-hero-lead { font-size: 1.15rem; max-width: 52ch; margin: 0 auto; text-align: center; }
+.app-hero-spots { font-size: 1.15rem; font-weight: 700; text-align: center; margin: 0.5rem auto 0; }
 .app-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 1.8rem 0 0; }
 .app-hero-join-wrap { text-align: center; margin: 2rem 0 0.75rem; }
 .btn-waitlist-join { background: #2d6a4f; color: #fff; border: none; border-radius: 9999px; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
