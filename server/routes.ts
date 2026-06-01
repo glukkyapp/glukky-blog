@@ -3373,9 +3373,9 @@ Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
 Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line):
 
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
-⚠️ Watch out: [the single biggest GI or sugar risk — 1 concise sentence]
-⚡ Right now: [one specific thing to do with THIS meal right now — be concrete]
-📝 Next time: [one change for the next time this dish is prepared or ordered]
+${locale === "zh-Hant" || locale === "yue" ? "⚠️ 注意：" : "⚠️ Watch out:"} [the single biggest GI or sugar risk — 1 concise sentence]
+${locale === "zh-Hant" ? "⚡ 現在：" : locale === "yue" ? "⚡ 依家：" : "⚡ Right now:"} [one specific thing to do with THIS meal right now — be concrete]
+${locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:"} [one change for the next time this dish is prepared or ordered]
 
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (Blood sugar impact, ⚡, 📝).
 If there is a genuine concern, output all 4 lines.
