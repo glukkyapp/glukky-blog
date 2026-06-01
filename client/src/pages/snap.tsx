@@ -14,7 +14,7 @@ import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import { track, trackException } from "@/lib/posthog";
-import { timedFetch } from "@/lib/queryClient";
+import { timedFetch, queryClient } from "@/lib/queryClient";
 
 const SNAP_TIMEOUT_MS = 45000;
 
@@ -651,6 +651,7 @@ export default function Snap() {
       setAdviceResult(data as AdviceResult);
       setSnapId(data.snapId ?? null);
       setStep("advice");
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
     } catch (err) {
       hapticNotify("ERROR");

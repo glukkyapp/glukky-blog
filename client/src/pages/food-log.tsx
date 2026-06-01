@@ -78,7 +78,7 @@ const GLUCOSE_BADGE: Record<string, { bg: string; text: string; label: string }>
   high: { bg: "bg-red-100", text: "text-red-700", label: "High" },
 };
 
-const GLUCOSE_BADGE_ZH: Record<string, string> = { low: "低", medium: "中", high: "高" };
+const GLUCOSE_BADGE_ZH: Record<string, string> = { low: "血糖影響：低", medium: "血糖影響：中", high: "血糖影響：高" };
 
 const MEAL_PILL_COLOR: Record<string, string> = {
   breakfast: "bg-sky-100 text-sky-700",
