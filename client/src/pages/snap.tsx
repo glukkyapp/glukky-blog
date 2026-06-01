@@ -5,6 +5,9 @@ import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_remo
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
+import glucoseLowImg    from "@assets/low_1780283105898.png";
+import glucoseMediumImg from "@assets/medium_1780283105899.png";
+import glucoseHighImg   from "@assets/high_1780283105896.png";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
@@ -73,7 +76,11 @@ function parseAdvicePanels(advice: string): string[] {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  const bloodSugar = lines.find((l) => l.startsWith("🩸"));
+  const bloodSugar = lines.find(
+    (l) => l.startsWith("🩸") ||
+           l.toLowerCase().startsWith("blood sugar impact") ||
+           l.startsWith("血糖")
+  );
   const watchOut = lines.find((l) => l.startsWith("⚠️"));
   const rightNow = lines.find((l) => l.startsWith("⚡"));
   const nextTime = lines.find((l) => l.startsWith("📝"));
@@ -94,6 +101,14 @@ function parseAdvicePanels(advice: string): string[] {
   if (panels.length >= 2) return panels;
 
   return lines.slice(0, 3);
+}
+
+function detectGlucoseImpact(body: string): "low" | "medium" | "high" | null {
+  const t = body.toLowerCase().trim();
+  if (t === "low"    || t === "低")                  return "low";
+  if (t === "medium" || t === "中" || t === "中等") return "medium";
+  if (t === "high"   || t === "高")                  return "high";
+  return null;
 }
 
 function FocusPanelContent({ data }: { data: FocusPanelData }) {
@@ -699,6 +714,16 @@ export default function Snap() {
   const focusPanelData = adviceResult?.focusPanelData ?? null;
   const totalPanels = panels.length + (focusPanelData ? 1 : 0);
   const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
+  const impact = advicePanel === 0
+    ? detectGlucoseImpact((panels[0] ?? "").split(": ")[1] ?? "")
+    : null;
+
+  useEffect(() => {
+    [glucoseLowImg, glucoseMediumImg, glucoseHighImg].forEach(src => {
+      const img = new window.Image();
+      img.src = src;
+    });
+  }, []);
 
   return (
     <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
@@ -1092,22 +1117,36 @@ export default function Snap() {
               {isFocusPanel && focusPanelData ? (
                 <FocusPanelContent data={focusPanelData} />
               ) : (
-                <div className="text-sm leading-relaxed min-h-[64px] text-left flex flex-col gap-3">
-                  {(panels[advicePanel] ?? "").split("\n").map((line, i) => {
-                    const colonIdx = line.indexOf(": ");
-                    if (colonIdx === -1) {
-                      return <p key={i}>{line}</p>;
-                    }
-                    const heading = line.slice(0, colonIdx + 1);
-                    const body = line.slice(colonIdx + 2);
-                    return (
-                      <div key={i} className="flex flex-col gap-1">
-                        <p className="text-[21px] font-bold leading-snug">{heading}</p>
-                        <p>{body}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  {impact && (
+                    <img
+                      src={
+                        impact === "low"    ? glucoseLowImg :
+                        impact === "medium" ? glucoseMediumImg :
+                                             glucoseHighImg
+                      }
+                      alt=""
+                      aria-hidden="true"
+                      className="w-28 h-28 mx-auto mb-3"
+                    />
+                  )}
+                  <div className="text-sm leading-relaxed min-h-[64px] text-left flex flex-col gap-3">
+                    {(panels[advicePanel] ?? "").split("\n").map((line, i) => {
+                      const colonIdx = line.indexOf(": ");
+                      if (colonIdx === -1) {
+                        return <p key={i}>{line}</p>;
+                      }
+                      const heading = line.slice(0, colonIdx + 1);
+                      const body = line.slice(colonIdx + 2);
+                      return (
+                        <div key={i} className="flex flex-col gap-1">
+                          <p className="text-[21px] font-bold leading-snug">{heading}</p>
+                          <p className={impact === "high" ? "text-[28px] font-bold" : ""}>{body}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
 

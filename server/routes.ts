@@ -3221,14 +3221,14 @@ Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
   - zh-Hant → "這看起來是茶餐廳常餐。"
   - yue → "呢個望落係茶餐廳常餐。"
 
-Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the 🩸 line):
+Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line):
 
-🩸 Blood sugar impact: [High / Medium / Low]
+Blood sugar impact: [High / Medium / Low]
 ⚠️ Watch out: [the single biggest GI or sugar risk — 1 concise sentence]
 ⚡ Right now: [one specific thing to do with THIS meal right now — be concrete]
 📝 Next time: [one change for the next time this dish is prepared or ordered]
 
-If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (🩸, ⚡, 📝).
+If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (Blood sugar impact, ⚡, 📝).
 If there is a genuine concern, output all 4 lines.
 
 Evidence-based principles you MUST stay within (from Diabetes Care 2019 Consensus & WHO/ADA guidance). Do NOT invent principles outside this list and do NOT contradict them:

@@ -41,7 +41,7 @@ function buildFullComboId(foodId: string, portionId: string, sauceIds: string[],
 
 function buildAdviceText(impact: string, watchOut: string, rightNow: string, nextTime: string): string {
   const lines = [
-    `🩸 Blood sugar impact: ${impact}`,
+    `Blood sugar impact: ${impact}`,
     watchOut ? `⚠️ Watch out: ${watchOut}` : null,
     `⚡ Right now: ${rightNow}`,
     `📝 Next time: ${nextTime}`,
