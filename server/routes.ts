@@ -3214,6 +3214,12 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const val = line.split(":")[1]?.trim().toLowerCase();
         if (val === "low" || val === "medium" || val === "high") return val as "low" | "medium" | "high";
       }
+      if (line.startsWith("血糖影響")) {
+        const val = line.split(":")[1]?.trim();
+        if (val === "高") return "high";
+        if (val === "中") return "medium";
+        if (val === "低") return "low";
+      }
     }
     return null;
   }

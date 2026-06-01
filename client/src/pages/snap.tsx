@@ -394,6 +394,9 @@ export default function Snap() {
       return;
     }
 
+    // Reset stale state from any prior failed/cancelled attempt.
+    pendingLabelRef.current = null;
+    pendingLabelDoneRef.current = null;
     // Stash the compressed payload for paywall-resume flow.
     pendingLabelImageRef.current = { base64, mimeType };
     const promise = fetchLabel(base64, mimeType, isFirstLabel);
@@ -1235,7 +1238,7 @@ export default function Snap() {
                       if (colonIdx === -1) {
                         return <p key={i}>{line}</p>;
                       }
-                      const heading = line.slice(0, colonIdx + 1).replace(/^🩸\s*/, "");
+                      const heading = line.slice(0, colonIdx + 1).replace(/^\p{Extended_Pictographic}\uFE0F?\u20E3?\s*/u, "");
                       const body = line.slice(colonIdx + 2);
                       return (
                         <div key={i} className="flex flex-col gap-1">
