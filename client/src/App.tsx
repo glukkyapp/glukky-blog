@@ -32,6 +32,7 @@ import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
 import { identifyUser, resetUser, track, initPostHog } from "@/lib/posthog";
+import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
 declare global {
@@ -676,14 +677,16 @@ function AuthenticatedApp() {
       return;
     }
 
-    if (!g?.hasCreatedFirstWeeklyPlan) {
+    if (!g) return;
+
+    if (PLANNER_FEATURES_ENABLED && !g.hasCreatedFirstWeeklyPlan) {
       track("paywall_dismiss_route", {
         destination: PLANNER_ROUTE,
         gateStatusSource,
-        hasCreatedFirstWeeklyPlan: g?.hasCreatedFirstWeeklyPlan ?? false,
-        hasTriedFirstFoodSnap: g?.hasTriedFirstFoodSnap ?? false,
-        hardLockedAfterAdviceDismiss: g?.hardLockedAfterAdviceDismiss ?? false,
-        isPremium: g?.isPremium ?? false,
+        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
+        hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
+        hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
+        isPremium: g.isPremium,
       });
       pendingActionRef.current = null;
       if (location !== PLANNER_ROUTE) setLocation(PLANNER_ROUTE);

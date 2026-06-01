@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SnapSummaryItem {
@@ -71,8 +69,6 @@ interface Props {
 export function DailyFoodSummaryBanner({ tz }: Props) {
   const { t } = useTranslation();
   const yesterday = getYesterday(tz);
-  const dismissKey = `foodSummaryDismissed:${yesterday}`;
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(dismissKey) === "1");
   const hour = new Date().getHours();
 
   const { data, isLoading } = useQuery<{ snaps: SnapSummaryItem[]; irregularMealCount?: number }>({
@@ -82,19 +78,14 @@ export function DailyFoodSummaryBanner({ tz }: Props) {
       if (!res.ok) throw new Error("Failed to fetch daily summary");
       return res.json();
     },
-    enabled: hour >= 8 && !dismissed,
+    enabled: hour >= 8,
   });
 
-  if (hour < 8 || dismissed || isLoading) return null;
+  if (hour < 8 || isLoading) return null;
 
   const snaps = data?.snaps ?? [];
   const irregularMealCount = data?.irregularMealCount ?? 0;
   const { primary, secondary } = buildSummary(snaps, irregularMealCount);
-
-  function handleDismiss() {
-    localStorage.setItem(dismissKey, "1");
-    setDismissed(true);
-  }
 
   return (
     <Card
@@ -102,7 +93,7 @@ export function DailyFoodSummaryBanner({ tz }: Props) {
       data-testid="card-daily-food-summary"
     >
       <CardContent className="pt-3 pb-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground" data-testid="text-daily-summary-primary">
               {primary}
@@ -123,14 +114,6 @@ export function DailyFoodSummaryBanner({ tz }: Props) {
               {t("snap.advice_disclaimer")}
             </p>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors mt-0.5"
-            data-testid="button-daily-summary-dismiss"
-            aria-label="Dismiss"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       </CardContent>
     </Card>

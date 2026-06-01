@@ -30,9 +30,11 @@ type NotificationType =
   | "late_dinner"     // 2 PM local
   | "reengagement";   // 6 PM local when no logs in last 3 days
 
+const PLANNER_FEATURES_ENABLED = false;
+
 const ALL_TYPES: NotificationType[] = [
   "daily_checkin",
-  "weekly_report",
+  ...(!PLANNER_FEATURES_ENABLED ? [] : (["weekly_report"] as NotificationType[])),
   "late_dinner",
   "reengagement",
 ];

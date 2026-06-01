@@ -150,7 +150,7 @@ export default function Onboarding() {
       };
       track("onboarding_completed", onboardingProperties);
       setUserProperties(onboardingProperties);
-      setLocation("/plan");
+      setLocation("/snap");
     } catch (error: unknown) {
       hapticNotify("ERROR");
       toast({

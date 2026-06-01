@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DIET_TIP_I18N_KEYS, DIET_TIP_LADDERS } from "@shared/schema";
+import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { track } from "@/lib/posthog";
 import { motion, AnimatePresence } from "framer-motion";
 import { preloadStage4DietTipThumbnails, getStage4Promise } from "@/lib/preload-assets";
@@ -234,7 +235,10 @@ export default function HealthInfo() {
     }
   }, [data, isPlaceholderData]);
 
-  const activeTips = data?.activeTips ?? cachedTips?.activeTips ?? [];
+  const allKnownTips = Object.values(DIET_TIP_LADDERS).flat();
+  const activeTips = PLANNER_FEATURES_ENABLED
+    ? (data?.activeTips ?? cachedTips?.activeTips ?? [])
+    : allKnownTips;
   const hasCachedData = !!cachedTips;
 
   function handleSelect(tip: string) {

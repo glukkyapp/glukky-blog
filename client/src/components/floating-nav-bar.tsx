@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
+import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 
 const NAV_TAP = { scale: 0.82 };
 const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
@@ -27,7 +28,7 @@ export default function FloatingNavBar() {
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
     { key: "food", label: t("nav.food"), path: "/food-log", icon: Utensils },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
-    { key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays },
+    ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
     { key: "health_info", label: t("nav.health_info"), path: "/health-info", icon: Lightbulb },
     { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
   ];
@@ -58,16 +59,18 @@ export default function FloatingNavBar() {
     // except profile until they subscribe.
     if (gate.hardLockedAfterAdviceDismiss) return true;
 
-    // Soft lock A, funnel step 1 — no first plan yet. Only the
-    // planner tab is reachable so the user finishes their first plan
-    // before being handed off to the snap funnel.
-    if (!gate.hasCreatedFirstWeeklyPlan) {
-      return key !== "planner";
+    if (PLANNER_FEATURES_ENABLED) {
+      // Soft lock A, funnel step 1 — no first plan yet. Only the
+      // planner tab is reachable so the user finishes their first plan
+      // before being handed off to the snap funnel.
+      if (!gate.hasCreatedFirstWeeklyPlan) {
+        return key !== "planner";
+      }
     }
 
-    // Soft lock A, funnel step 2 — first plan done, no first snap
-    // yet. Only the snap tab is reachable so the user takes their
-    // first snap and sees the conversion moment.
+    // Soft lock A, funnel step 2 — first plan done (or planner
+    // bypassed), no first snap yet. Only the snap tab is reachable
+    // so the user takes their first snap and sees the conversion moment.
     if (!gate.hasTriedFirstFoodSnap) {
       return key !== "snap";
     }

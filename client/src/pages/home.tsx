@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1435,7 +1436,7 @@ export default function Home() {
 
       <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} />
 
-      {isCatchUp && !sundayCheckInDone && !recorded && (
+      {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
@@ -1451,7 +1452,7 @@ export default function Home() {
         </Card>
       )}
 
-      {singleMissedDay && !isCatchUp && (
+      {PLANNER_FEATURES_ENABLED && singleMissedDay && !isCatchUp && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-missed-day-catchup">
           <CardContent className="pt-4 pb-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -1591,14 +1592,14 @@ export default function Home() {
         </Card>
       )}
 
-      {catchupAdjMsg && !singleMissedDay && (
+      {PLANNER_FEATURES_ENABLED && catchupAdjMsg && !singleMissedDay && (
         <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2" data-testid="section-catchup-adj-msg">
           <Droplets className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700 dark:text-blue-300">{catchupAdjMsg}</p>
         </div>
       )}
 
-      {nextWeekPlanned && (
+      {PLANNER_FEATURES_ENABLED && nextWeekPlanned && (
         <>
           {!allSetDismissed && (
             <div className={`transition-opacity duration-500 ${allSetFading ? "opacity-0" : "opacity-100"}`}>
@@ -1622,7 +1623,7 @@ export default function Home() {
         </>
       )}
 
-      {!nextWeekPlanned && showReviewCard && (
+      {PLANNER_FEATURES_ENABLED && !nextWeekPlanned && showReviewCard && (
         <Card className="is-emphasis border-primary/30 bg-primary/5" data-testid="card-weekly-report-ready">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -1649,7 +1650,7 @@ export default function Home() {
         </Card>
       )}
 
-      {!nextWeekPlanned && (
+      {PLANNER_FEATURES_ENABLED && !nextWeekPlanned && (
         checkInDone ? (
           <>
             {hydrationAdvice && (
@@ -1678,7 +1679,7 @@ export default function Home() {
         )
       )}
 
-      {!nextWeekPlanned && calendarPlan?.isDinnerFocus && !calendarPlan?.dietStruggle && (
+      {PLANNER_FEATURES_ENABLED && !nextWeekPlanned && calendarPlan?.isDinnerFocus && !calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-dinner-focus">
@@ -1702,7 +1703,7 @@ export default function Home() {
         </Card>
       )}
 
-      {!nextWeekPlanned && calendarPlan?.dietStruggle && (
+      {PLANNER_FEATURES_ENABLED && !nextWeekPlanned && calendarPlan?.dietStruggle && (
         <Card>
           <CardContent className="pt-4 space-y-2">
             <div className="flex items-center gap-2" data-testid="section-home-diet-focus">
@@ -1714,7 +1715,7 @@ export default function Home() {
         </Card>
       )}
 
-      {(<Card className="is-calendar bg-primary/5 border-primary/20">
+      {PLANNER_FEATURES_ENABLED && (<Card className="is-calendar bg-primary/5 border-primary/20">
         <CardContent className="pt-4">
           <button
             className="flex items-center justify-between w-full"
