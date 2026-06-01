@@ -847,7 +847,9 @@
     "meal_type_breakfast": "Breakfast",
     "meal_type_lunch": "Lunch",
     "meal_type_dinner": "Dinner",
-    "meal_type_snack": "Snack"
+    "meal_type_snack": "Snack",
+    "meal_select_heading": "What meal is this?",
+    "meal_select_continue": "Continue"
   },
   "slides": {
     "s1_headline": "Your blood sugar,\nin your hands",

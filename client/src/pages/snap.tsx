@@ -6,9 +6,9 @@ import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_remo
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { compressImage } from "@/lib/compress-image";
-import glucoseLowImg    from "@assets/low_1780283105898.png";
-import glucoseMediumImg from "@assets/medium_1780283105899.png";
-import glucoseHighImg   from "@assets/high_1780283105896.png";
+import glucoseLowImg    from "@assets/glucose_low.png";
+import glucoseMediumImg from "@assets/glucose_medium.png";
+import glucoseHighImg   from "@assets/glucose_high.png";
 import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
@@ -18,7 +18,7 @@ import { timedFetch } from "@/lib/queryClient";
 
 const SNAP_TIMEOUT_MS = 45000;
 
-type Step = "upload" | "labeling" | "review" | "advising" | "advice";
+type Step = "upload" | "meal-select" | "labeling" | "review" | "advising" | "advice";
 
 interface LabelResult {
   name: string | null;
@@ -252,6 +252,9 @@ export default function Snap() {
 
   useGlobalLoading(step === "labeling" || step === "advising");
 
+  const pendingLabelRef = useRef<Promise<LabelResult | null> | null>(null);
+  const pendingLabelDoneRef = useRef<{ result: LabelResult | null } | null>(null);
+
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -273,41 +276,12 @@ export default function Snap() {
     setToppingManual(false);
     setSnapId(null);
     setMealType(inferClientMealType());
+    pendingLabelRef.current = null;
+    pendingLabelDoneRef.current = null;
   }
 
-  async function handleMealTypeChange(newType: string) {
-    setMealType(newType);
-    if (!snapId) return;
+  async function fetchLabel(base64: string, mimeType: string, isFirstLabel: boolean): Promise<LabelResult | null> {
     try {
-      await fetch(`/api/snap/${snapId}/meal-type`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ mealType: newType }),
-      });
-    } catch {
-      // non-fatal
-    }
-  }
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    dismissSnapTooltip();
-    setPreviewUrl(URL.createObjectURL(file));
-    setError(null);
-    setStep("labeling");
-    track("snap_started", { language: i18n.language });
-    const isFirstLabel = !gate?.hasTriedFirstFoodSnap;
-
-    try {
-      const { base64, mimeType } = await compressImage(file);
-      // Stash the compressed payload so we can re-POST after a paywall
-      // unlock without making the user re-take the photo. Single-shot:
-      // resumeFoodSnapAfterUnlock clears it as soon as it consumes it.
-      pendingLabelImageRef.current = { base64, mimeType };
       const res = await timedFetch("/api/snap/label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -323,7 +297,7 @@ export default function Snap() {
         setError(t("snap.error_limit_label", { limit }));
         setStep("upload");
         track("snap_label_failed", { reason: "rate_limited", limit });
-        return;
+        return null;
       }
 
       if (res.status === 422) {
@@ -339,7 +313,7 @@ export default function Snap() {
         }
         setStep("upload");
         track("snap_label_failed", { reason: code || "unprocessable" });
-        return;
+        return null;
       }
 
       if (!res.ok) {
@@ -347,7 +321,7 @@ export default function Snap() {
         setError(t("snap.error_generic"));
         setStep("upload");
         track("snap_label_failed", { reason: "http_error", status: res.status });
-        return;
+        return null;
       }
 
       const rawData = await res.json();
@@ -358,40 +332,89 @@ export default function Snap() {
         showPaywall(() => {
           resumeFoodSnapAfterUnlock();
         });
-        return;
+        return null;
       }
 
       hapticNotify("SUCCESS");
-      const data: LabelResult = rawData;
-      setLabelResult(data);
-      const sIds = data.sauceIds ?? [];
-      const tIds = data.toppingIds ?? [];
-      const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
-      const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
-      setForm({
-        name: data.name ?? "",
-        portion: data.portion ?? "",
-        portionId: data.portionId ?? null,
-        sauces: data.sauces ?? "",
-        sauceIds: sIds,
-        sauceResolutions: sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null })),
-        extras: data.extras ?? "",
-        toppingIds: tIds,
-        toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
-      });
-      setStep("review");
       track("snap_label_succeeded", {
-        comboSource: data.comboSource,
-        hasName: !!data.name,
+        comboSource: rawData.comboSource,
+        hasName: !!rawData.name,
       });
       if (isFirstLabel) track("onboarding_first_snap_completed");
+      return rawData as LabelResult;
     } catch (err) {
       hapticNotify("ERROR");
       setError(t("snap.error_generic"));
       setStep("upload");
       track("snap_label_failed", { reason: "exception" });
       trackException(err, { phase: "snap_label" });
+      return null;
     }
+  }
+
+  function applyLabelResult(data: LabelResult) {
+    setLabelResult(data);
+    const sIds = data.sauceIds ?? [];
+    const tIds = data.toppingIds ?? [];
+    const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    setForm({
+      name: data.name ?? "",
+      portion: data.portion ?? "",
+      portionId: data.portionId ?? null,
+      sauces: data.sauces ?? "",
+      sauceIds: sIds,
+      sauceResolutions: sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null })),
+      extras: data.extras ?? "",
+      toppingIds: tIds,
+      toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
+    });
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    dismissSnapTooltip();
+    setPreviewUrl(URL.createObjectURL(file));
+    setError(null);
+    setStep("meal-select");
+    track("snap_started", { language: i18n.language });
+    const isFirstLabel = !gate?.hasTriedFirstFoodSnap;
+
+    let base64: string;
+    let mimeType: string;
+    try {
+      ({ base64, mimeType } = await compressImage(file));
+    } catch {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      return;
+    }
+
+    // Stash the compressed payload for paywall-resume flow.
+    pendingLabelImageRef.current = { base64, mimeType };
+    const promise = fetchLabel(base64, mimeType, isFirstLabel);
+    pendingLabelRef.current = promise;
+    promise.then(result => { pendingLabelDoneRef.current = { result }; });
+  }
+
+  async function handleMealSelectContinue() {
+    hapticTap("SOFT");
+    const done = pendingLabelDoneRef.current;
+    if (done !== null) {
+      if (!done.result) return;
+      applyLabelResult(done.result);
+      setStep("review");
+      return;
+    }
+    setStep("labeling");
+    const result = await pendingLabelRef.current;
+    if (!result) return;
+    applyLabelResult(result);
+    setStep("review");
   }
 
   interface DisambigResult {
@@ -860,6 +883,43 @@ export default function Snap() {
         </div>
       )}
 
+      {step === "meal-select" && (
+        <div className="flex flex-col gap-5">
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt="Food photo"
+              className="w-full rounded-2xl object-cover max-h-56"
+              data-testid="img-meal-select-preview"
+            />
+          )}
+          <p className="text-sm font-semibold text-center">{t("snap.meal_select_heading")}</p>
+          <div className="flex gap-2 flex-wrap justify-center" data-testid="div-meal-select-chips">
+            {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => { hapticTap("SOFT"); setMealType(type); }}
+                data-testid={`chip-meal-select-${type}`}
+                className={`px-4 py-2 rounded-full text-sm border transition-colors ${
+                  mealType === type
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                }`}
+              >
+                {t(`snap.meal_type_${type}`)}
+              </button>
+            ))}
+          </div>
+          <Button
+            className="w-full"
+            onClick={handleMealSelectContinue}
+            data-testid="button-meal-select-continue"
+          >
+            {t("snap.meal_select_continue")}
+          </Button>
+        </div>
+      )}
+
       {step === "review" && (
         <div className="flex flex-col gap-4">
           <div>
@@ -1168,7 +1228,7 @@ export default function Snap() {
                       if (colonIdx === -1) {
                         return <p key={i}>{line}</p>;
                       }
-                      const heading = line.slice(0, colonIdx + 1);
+                      const heading = line.slice(0, colonIdx + 1).replace(/^🩸\s*/, "");
                       const body = line.slice(colonIdx + 2);
                       return (
                         <div key={i} className="flex flex-col gap-1">
@@ -1224,24 +1284,6 @@ export default function Snap() {
               </div>
             )}
 
-            {snapId !== null && (
-              <div className="flex gap-2 flex-wrap justify-center" data-testid="div-meal-type-chips">
-                {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => handleMealTypeChange(type)}
-                    data-testid={`chip-meal-type-${type}`}
-                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                      mealType === type
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {t(`snap.meal_type_${type}`)}
-                  </button>
-                ))}
-              </div>
-            )}
 
             {totalPanels > 1 && (
               <div className="flex items-center justify-center gap-2" data-testid="nav-snap-advice-dots">

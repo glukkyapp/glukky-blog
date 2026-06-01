@@ -851,7 +851,9 @@
     "meal_type_breakfast": "早餐",
     "meal_type_lunch": "午餐",
     "meal_type_dinner": "晚餐",
-    "meal_type_snack": "小食"
+    "meal_type_snack": "小食",
+    "meal_select_heading": "呢餐係咩餐？",
+    "meal_select_continue": "繼續"
   },
   "slides": {
     "s1_headline": "血糖，\n由你話事",

@@ -3357,7 +3357,7 @@ Important rules:
 
 Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
 - If the food items together suggest a recognizable cultural meal-type — Hong Kong 常餐 / 茶餐廳早餐 / 套餐, dim sum brunch, afternoon tea, English breakfast, Japanese bento, Korean BBQ set, mezze spread, charcuterie board, etc. — open the advice with ONE single-sentence cultural note in the user's locale, then continue with the normal health/dietary advice on the next line.
-- If the photo shows a single dish (e.g. just wonton noodles, just a pineapple bun) or the items don't clearly fit a known meal-type, SKIP this opening line entirely and start directly with the 🩸 line.
+- If the photo shows a single dish (e.g. just wonton noodles, just a pineapple bun) or the items don't clearly fit a known meal-type, SKIP this opening line entirely and start directly with the blood sugar impact line.
 - The cultural opener is plain prose (no emoji prefix, no label) and stays to ONE sentence.
 - Worked examples (use whichever locale matches your reply language):
   - en → "This looks like a classic Hong Kong cha chaan teng breakfast set."
@@ -3366,7 +3366,7 @@ Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
 
 Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line):
 
-Blood sugar impact: [High / Medium / Low]
+${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ⚠️ Watch out: [the single biggest GI or sugar risk — 1 concise sentence]
 ⚡ Right now: [one specific thing to do with THIS meal right now — be concrete]
 📝 Next time: [one change for the next time this dish is prepared or ordered]
