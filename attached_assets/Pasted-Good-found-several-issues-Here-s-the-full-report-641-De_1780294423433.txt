@@ -1,0 +1,81 @@
+Good — found several issues. Here's the full report:
+
+#641 Debug Report
+🔴 Bug 1 — getPrevMonth() produces wrong month string (Critical)
+ts
+const m = today.getMonth(); // 0-indexed — January = 0
+if (m === 0) return `${y - 1}-12`;
+return `${y}-${String(m).padStart(2, "0")}`;
+getMonth() is 0-indexed — January returns 0, December returns 11. So when m === 0 (January), the fallback to December prior year is correct. But for every other month, String(m) gives the previous month number without adding 1. For example in June (m = 5), it returns "2026-05" (May) instead of "2026-05" — wait, that actually happens to be correct by accident. Let's be precise:
+
+Month	getMonth()	String(m)	Returned	Correct?
+February	1	"1" → "01"	2026-01 (Jan)	✅
+June	5	"5" → "05"	2026-05 (May)	✅
+November	10	"10"	2026-10 (Oct)	✅
+December	11	"11"	2026-11 (Nov)	✅
+It's accidentally correct because "previous month" = current 0-indexed month value. However this is a latent readability/maintainability bug — any developer reading it will assume it's wrong and "fix" it by adding +1, breaking it. Add a comment or rewrite explicitly:
+
+ts
+function getPrevMonth(): string {
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1; // 1-indexed
+  const y = today.getFullYear();
+  if (currentMonth === 1) return `${y - 1}-12`;
+  return `${y}-${String(currentMonth - 1).padStart(2, "0")}`;
+}
+🔴 Bug 2 — timingRegularity and freqConsistency are identical (Critical)
+In computeScore server-side:
+
+ts
+const timingRegularity = days.length ? Math.round((regularDays / days.length) * 100) : 0;
+const freqConsistency = timingRegularity; // ← exact copy
+Both sub-scores are the same value — freqConsistency is just assigned timingRegularity directly. The spec defines them as distinct metrics:
+
+Timing regularity (30%) = % snapped days with no missed-meal condition
+
+Frequency consistency (30%) = % snapped days with ≥ 2 distinct main meals
+
+These are actually the same logical condition (d.size >= 2), so the spec may have intended them as one combined 60% weight. But as written in the UI they show as two separate lines with different labels, which will confuse users seeing identical numbers.
+
+Decision needed: Are these intentionally the same metric split across two display lines, or should frequency consistency be a different measure (e.g. % of days that had any snap at all, or % of days with all 3 main meals)? Until clarified, the composite score is effectively signalQuality × 0.4 + timingRegularity × 0.6, not the three-component split the spec describes.
+
+🔴 Bug 3 — weekEnd computed server-side but ignored in the query (Critical)
+In the weekly endpoint:
+
+ts
+const weekEnd = (() => {
+  const d = new Date(weekStart + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 6);
+  return d.toISOString().split("T")[0];
+})();
+const snaps = await storage.getMealSnapsByDateRange(userId, weekStart, weekEnd);
+weekEnd is computed correctly (+6 days from Monday = Sunday). However the client also computes weekEnd in getWeekRange() but only passes weekStart as the query param — weekEnd is never sent to the server. The server recomputes it, which is fine functionally. But the client's weekEnd value is computed and then silently unused, creating dead code. Either pass weekEnd as a query param too, or remove it from getWeekRange() return value on the client.
+
+🟡 Bug 4 — getWeekRange() client date helpers have same timezone issue as #640
+ts
+const fmt = (d: Date) => d.toLocaleDateString("en-CA"); // device timezone
+Same issue raised in #640 Bug 2 — uses device system timezone rather than the user's stored IANA timezone. For HK-based users this is unlikely to cause a problem in practice, but it's inconsistent with the server-side localDate storage. If weekStart lands on a different calendar date than what's stored in localDate, the query returns fewer rows than expected with no error. Apply the same Intl.DateTimeFormat fix as #640.
+
+🟡 Bug 5 — Monthly card title shows raw "YYYY-MM" string
+tsx
+<CardTitle className="text-base">{month} 月度報告</CardTitle>
+month is "2026-05", so the title renders as "2026-05 月度報告" — the hyphenated format looks unpolished. Should render as "2026年5月 月度報告" or simply "5月報告".
+
+Fix:
+
+ts
+const [y, m] = month.split("-");
+const title = `${y}年${parseInt(m, 10)}月報告`;
+🟢 Minor — worstDayName in spec but not returned
+The spec says the endpoint should return worstDayName alongside worstDay, but the implementation only returns worstDay (0–6 index). The client maps it via DOW_ZH[data.worstDay!] which works, but the spec contract is not fully honoured. Not a functional bug, just a spec deviation.
+
+Summary for Agent
+Bug 1 — getPrevMonth() is accidentally correct due to 0-indexed months but will get "fixed" incorrectly by future developers. Rewrite explicitly using currentMonth - 1 with a clear comment.
+
+Bug 2 — freqConsistency is assigned the same value as timingRegularity on the server. They render as two separate lines in the UI with identical numbers. Clarify whether this is intentional or define freqConsistency as a distinct metric (e.g. % of days with any snap recorded).
+
+Bug 3 — weekEnd is computed in getWeekRange() on the client but never passed to the server — it's dead code. Either pass it as a query param or remove it from the return value.
+
+Bug 4 — getWeekRange() uses toLocaleDateString("en-CA") (device timezone) instead of the user's IANA timezone — same issue as #640 Bug 2. Apply the same Intl.DateTimeFormat fix.
+
+Bug 5 — Monthly card title renders as "2026-05 月度報告". Format it as "2026年5月報告" before displaying.

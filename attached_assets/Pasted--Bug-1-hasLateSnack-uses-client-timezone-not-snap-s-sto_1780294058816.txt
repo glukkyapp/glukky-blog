@@ -1,0 +1,67 @@
+🔴 Bug 1 — hasLateSnack uses client timezone, not snap's stored timezone
+ts
+const h = new Date(s.snapTime).getHours(); // ← device local hour
+new Date(s.snapTime).getHours() returns the hour in the client's local timezone. But snapTime is a UTC timestamptz from the server. For a Hong Kong user this is fine most of the time — but if a snap was recorded near midnight in a different timezone context, the hour will be wrong. More importantly, this is inconsistent with how meal type was inferred server-side, which used the user's IANA timezone via Intl.DateTimeFormat. The late snack check should use the same timezone for consistency.
+
+Fix:
+
+ts
+const hasLateSnack = snaps.some(s => {
+  if (s.mealType !== "snack") return false;
+  const h = parseInt(
+    new Intl.DateTimeFormat("en", {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date(s.snapTime)),
+    10
+  );
+  return h >= 21;
+});
+Or simpler — since mealType is already stored and already timezone-corrected at snap time: just check mealType === "snack" alone. The spec says "mealType === snack and snapTime local hour ≥ 21", but if the user already overrode the type to "dinner", it won't be "snack" anyway. The hour check is mostly redundant given the meal type chip in #639. Worth clarifying what the intended logic really is.
+
+🔴 Bug 2 — getYesterday() doesn't respect the user's IANA timezone
+ts
+const d = new Date();
+d.setDate(d.getDate() - 1);
+return d.toLocaleDateString("en-CA"); // ← uses device local date
+toLocaleDateString("en-CA") uses the device system timezone, not the user's stored IANA timezone from their profile. This is fine for most users — but it's inconsistent with how localDate was written server-side in #639 (which used profile.deviceTimezone). If the device timezone and the stored IANA timezone ever diverge (e.g. user travelled, system timezone changed), yesterday's date will be wrong and the query returns zero rows with no error.
+
+Fix — use the same Intl.DateTimeFormat pattern as the server:
+
+ts
+function getYesterday(tz?: string): string {
+  const yesterday = new Date(Date.now() - 86400000);
+  try {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: tz || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(yesterday);
+    const y = parts.find(p => p.type === "year")?.value;
+    const m = parts.find(p => p.type === "month")?.value;
+    const d = parts.find(p => p.type === "day")?.value;
+    return `${y}-${m}-${d}`;
+  } catch {
+    return yesterday.toISOString().split("T")[0];
+  }
+}
+Pass the user's stored timezone in from wherever the profile is available in the component.
+
+🟡 Question 1 — lowCount is declared but never used
+In buildSummary:
+
+ts
+const lowCount = snaps.filter(s => s.glucoseImpact === "low").length;
+This variable is computed but never referenced in any sentence. TypeScript will warn on it. Either remove it or confirm it's reserved for future use.
+
+🟡 Question 2 — Banner shows when data.snaps is empty vs. not yet loaded
+The component returns null when !data (loading state). But once data loads with snaps: [] (no snaps yesterday), it renders the "昨日未見飲食記錄" message. This is correct behaviour — just confirming this is intentional and not an empty state that should be hidden silently.
+
+Summary for Agent
+Bug 1 — In DailyFoodSummaryBanner.tsx, hasLateSnack uses new Date(s.snapTime).getHours() which reads client device timezone, inconsistent with server-side timezone handling. Either use Intl.DateTimeFormat with the user's IANA timezone, or simplify to just mealType === "snack" since meal type is already timezone-corrected at insert time.
+
+Bug 2 — getYesterday() uses toLocaleDateString("en-CA") which reads device system timezone, not the user's stored IANA timezone. Mirror the Intl.DateTimeFormat pattern from the server's getLocalDate() helper, passing the user's profile timezone in.
+
+Question 1 — lowCount is declared but unused — remove it or it'll produce a TypeScript warning.
+
+Question 2 — Confirm the "昨日未見飲食記錄" message is intentionally shown when the user simply had no snaps yesterday, not just when data is missing.

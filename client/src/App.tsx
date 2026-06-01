@@ -55,6 +55,7 @@ const HealthInfo = lazy(() => import("@/pages/health-info"));
 const AppIntro = lazy(() => import("@/pages/app-intro"));
 const DevPanel = lazy(() => import("@/pages/dev-panel"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+const FoodReports = lazy(() => import("@/pages/food-reports"));
 
 const RouteFallback = () => (
   <div
@@ -1625,6 +1626,7 @@ function AuthenticatedApp() {
               <Switch>
                 <Route path="/profile" component={Profile} />
                 <Route path="/health-info" component={HealthInfo} />
+                <Route path="/food-reports" component={FoodReports} />
                 <Route component={WeeklyPlanner} />
               </Switch>
             </Suspense>
@@ -1672,6 +1674,7 @@ function AuthenticatedApp() {
                 <Route path="/profile" component={Profile} />
                 <Route path="/monthly" component={MonthlyReport} />
                 <Route path="/dev" component={DevPanel} />
+                <Route path="/food-reports" component={FoodReports} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

@@ -11,13 +11,17 @@ import {
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   type ScheduledNotification,
+  type MealSnap, type InsertMealSnap,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
+  mealSnaps,
+  snapDailyGlucose, snapMonthlyArchive,
+  type SnapMonthlyArchive, type InsertSnapMonthlyArchive,
   users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql, inArray, gt, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt } from "drizzle-orm";
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 
@@ -113,6 +117,16 @@ export interface IStorage {
   // reconciler can decide whether to cancel-and-requeue (real tz)
   // or leave alone (tz still missing).
   listFutureScheduledForReconciliation(now: Date): Promise<Array<ScheduledNotification & { deviceTimezone: string | null }>>;
+  insertMealSnap(snap: InsertMealSnap): Promise<MealSnap>;
+  updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
+  getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]>;
+  getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
+  upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void>;
+  upsertMonthlyArchive(record: InsertSnapMonthlyArchive): Promise<void>;
+  getMonthlyArchive(userId: string, month: string): Promise<SnapMonthlyArchive | null>;
+  getAllUnarchivedMonths(): Promise<Array<{ userId: string; month: string }>>;
+  fetchMealSnapsBeforeDate(cutoff: Date, batchSize: number): Promise<MealSnap[]>;
+  purgeMealSnapsByIds(ids: number[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -834,6 +848,135 @@ export class DatabaseStorage implements IStorage {
       ...r,
       deviceTimezone: r.deviceTimezone ?? null,
     }));
+  }
+
+  async insertMealSnap(snap: InsertMealSnap): Promise<MealSnap> {
+    const [inserted] = await db.insert(mealSnaps).values(snap).returning();
+    const daySnaps = await db.select({ mealType: mealSnaps.mealType })
+      .from(mealSnaps)
+      .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
+    const mainTypes = new Set(
+      daySnaps.map(s => s.mealType).filter(t => t === "breakfast" || t === "lunch" || t === "dinner")
+    );
+    const missed = mainTypes.size < 2;
+    await db.update(mealSnaps)
+      .set({ missedMealFlag: missed })
+      .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
+    return { ...inserted, missedMealFlag: missed };
+  }
+
+  async updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void> {
+    await db.update(mealSnaps)
+      .set({ mealType })
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
+    const [snap] = await db.select({ localDate: mealSnaps.localDate })
+      .from(mealSnaps)
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
+      .limit(1);
+    if (snap) {
+      const daySnaps = await db.select({ mealType: mealSnaps.mealType })
+        .from(mealSnaps)
+        .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.localDate, snap.localDate)));
+      const mainTypes = new Set(
+        daySnaps.map(s => s.mealType).filter(t => t === "breakfast" || t === "lunch" || t === "dinner")
+      );
+      const missed = mainTypes.size < 2;
+      await db.update(mealSnaps)
+        .set({ missedMealFlag: missed })
+        .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.localDate, snap.localDate)));
+    }
+  }
+
+  async getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]> {
+    return db.select().from(mealSnaps)
+      .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.localDate, localDate)))
+      .orderBy(mealSnaps.snapTime);
+  }
+
+  async getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]> {
+    return db.select().from(mealSnaps)
+      .where(and(
+        eq(mealSnaps.userId, userId),
+        gte(mealSnaps.localDate, startDate),
+        lte(mealSnaps.localDate, endDate),
+      ))
+      .orderBy(mealSnaps.snapTime);
+  }
+
+  async upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void> {
+    await db.execute(sql`
+      INSERT INTO snap_daily_glucose (user_id, local_date, low_count, medium_count, high_count, meal_count, has_late_meal)
+      VALUES (${userId}, ${localDate}, ${counts.low}, ${counts.medium}, ${counts.high}, ${counts.mealCount}, ${counts.hasLateMeal})
+      ON CONFLICT (user_id, local_date) DO UPDATE SET
+        low_count = snap_daily_glucose.low_count + EXCLUDED.low_count,
+        medium_count = snap_daily_glucose.medium_count + EXCLUDED.medium_count,
+        high_count = snap_daily_glucose.high_count + EXCLUDED.high_count,
+        meal_count = snap_daily_glucose.meal_count + EXCLUDED.meal_count,
+        has_late_meal = snap_daily_glucose.has_late_meal OR EXCLUDED.has_late_meal
+    `);
+  }
+
+  async upsertMonthlyArchive(record: InsertSnapMonthlyArchive): Promise<void> {
+    await db.execute(sql`
+      INSERT INTO snap_monthly_archive (
+        user_id, month, score, signal_quality, timing_regularity, freq_consistency,
+        missed_meal_days, irregular_meal_days, top_high_food, top_high_food_count,
+        top_low_food, top_low_food_count, archived_at
+      ) VALUES (
+        ${record.userId}, ${record.month}, ${record.score ?? null}, ${record.signalQuality ?? null},
+        ${record.timingRegularity ?? null}, ${record.freqConsistency ?? null},
+        ${record.missedMealDays ?? null}, ${record.irregularMealDays ?? null},
+        ${record.topHighFood ?? null}, ${record.topHighFoodCount ?? null},
+        ${record.topLowFood ?? null}, ${record.topLowFoodCount ?? null}, NOW()
+      )
+      ON CONFLICT (user_id, month) DO UPDATE SET
+        score = EXCLUDED.score,
+        signal_quality = EXCLUDED.signal_quality,
+        timing_regularity = EXCLUDED.timing_regularity,
+        freq_consistency = EXCLUDED.freq_consistency,
+        missed_meal_days = EXCLUDED.missed_meal_days,
+        irregular_meal_days = EXCLUDED.irregular_meal_days,
+        top_high_food = EXCLUDED.top_high_food,
+        top_high_food_count = EXCLUDED.top_high_food_count,
+        top_low_food = EXCLUDED.top_low_food,
+        top_low_food_count = EXCLUDED.top_low_food_count,
+        archived_at = NOW()
+    `);
+  }
+
+  async getMonthlyArchive(userId: string, month: string): Promise<SnapMonthlyArchive | null> {
+    const [row] = await db.select().from(snapMonthlyArchive)
+      .where(and(eq(snapMonthlyArchive.userId, userId), eq(snapMonthlyArchive.month, month)));
+    return row ?? null;
+  }
+
+  async getAllUnarchivedMonths(): Promise<Array<{ userId: string; month: string }>> {
+    const result = await db.execute(sql`
+      WITH snap_months AS (
+        SELECT DISTINCT user_id, TO_CHAR(local_date::date, 'YYYY-MM') AS month
+        FROM meal_snaps
+      )
+      SELECT sm.user_id AS "userId", sm.month
+      FROM snap_months sm
+      WHERE NOT EXISTS (
+        SELECT 1 FROM snap_monthly_archive sma
+        WHERE sma.user_id = sm.user_id AND sma.month = sm.month
+      )
+      ORDER BY sm.user_id, sm.month ASC
+    `);
+    return (result.rows as { userId: string; month: string }[]);
+  }
+
+  async fetchMealSnapsBeforeDate(cutoff: Date, batchSize: number): Promise<MealSnap[]> {
+    return db.select().from(mealSnaps)
+      .where(lt(mealSnaps.snapTime, cutoff))
+      .orderBy(mealSnaps.snapTime)
+      .limit(batchSize);
+  }
+
+  async purgeMealSnapsByIds(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await db.delete(mealSnaps).where(inArray(mealSnaps.id, ids));
   }
 }
 

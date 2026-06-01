@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Camera, Images, Loader2, RotateCcw, ChevronRight, ChevronDown, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
 import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
@@ -51,6 +52,7 @@ interface AdviceResult {
   sources?: AdviceSource[];
   adviceUsedToday: number;
   adviceLimit: number;
+  snapId?: number | null;
 }
 
 interface TokenResolution {
@@ -213,6 +215,7 @@ export default function Snap() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
   const { showPaywall, refetchGate, gate } = useGate();
+  const [, setLocation] = useLocation();
 
 
   const [step, setStep] = useState<Step>("upload");
@@ -230,6 +233,17 @@ export default function Snap() {
   const [snapTooltipDismissed, setSnapTooltipDismissed] = useState(
     () => localStorage.getItem("glukky_snap_tooltip_dismissed") === "1"
   );
+
+  function inferClientMealType(): string {
+    const hour = new Date().getHours();
+    if (hour >= 7 && hour < 11) return "breakfast";
+    if (hour >= 12 && hour < 14) return "lunch";
+    if (hour >= 18 && hour < 21) return "dinner";
+    return "snack";
+  }
+
+  const [snapId, setSnapId] = useState<number | null>(null);
+  const [mealType, setMealType] = useState<string>(() => inferClientMealType());
 
   function dismissSnapTooltip() {
     localStorage.setItem("glukky_snap_tooltip_dismissed", "1");
@@ -257,6 +271,23 @@ export default function Snap() {
     setDisambigIndex(0);
     setSauceManual(false);
     setToppingManual(false);
+    setSnapId(null);
+    setMealType(inferClientMealType());
+  }
+
+  async function handleMealTypeChange(newType: string) {
+    setMealType(newType);
+    if (!snapId) return;
+    try {
+      await fetch(`/api/snap/${snapId}/meal-type`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ mealType: newType }),
+      });
+    } catch {
+      // non-fatal
+    }
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -588,6 +619,7 @@ export default function Snap() {
 
       hapticNotify("SUCCESS");
       setAdviceResult(data as AdviceResult);
+      setSnapId(data.snapId ?? null);
       setStep("advice");
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
     } catch (err) {
@@ -1192,6 +1224,25 @@ export default function Snap() {
               </div>
             )}
 
+            {snapId !== null && (
+              <div className="flex gap-2 flex-wrap justify-center" data-testid="div-meal-type-chips">
+                {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleMealTypeChange(type)}
+                    data-testid={`chip-meal-type-${type}`}
+                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                      mealType === type
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {t(`snap.meal_type_${type}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {totalPanels > 1 && (
               <div className="flex items-center justify-center gap-2" data-testid="nav-snap-advice-dots">
                 {Array.from({ length: totalPanels }).map((_, i) => (
@@ -1250,6 +1301,13 @@ export default function Snap() {
             <RotateCcw className="w-3.5 h-3.5" />
             {t("snap.try_again")}
           </Button>
+          <button
+            onClick={() => { hapticTap("SOFT"); setLocation("/food-reports"); }}
+            className="w-full text-center text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors py-1"
+            data-testid="link-snap-food-reports"
+          >
+            查看飲食報告
+          </button>
         </div>
       )}
     </div>

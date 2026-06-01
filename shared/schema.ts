@@ -308,3 +308,61 @@ export type FoodLabel = typeof foodLabels.$inferSelect;
 export type InsertFoodLabel = z.infer<typeof insertFoodLabelSchema>;
 export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;
 export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
+
+export const mealSnaps = pgTable("meal_snaps", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  snapTime: timestamp("snap_time", { withTimezone: true }).defaultNow().notNull(),
+  localDate: date("local_date", { mode: "string" }).notNull(),
+  mealType: text("meal_type"),
+  foodName: text("food_name"),
+  portion: text("portion"),
+  sauces: text("sauces"),
+  extras: text("extras"),
+  glucoseImpact: text("glucose_impact"),
+  missedMealFlag: boolean("missed_meal_flag").notNull().default(false),
+}, (table) => ({
+  userDateIdx: index("meal_snaps_user_date_idx").on(table.userId, table.localDate),
+}));
+
+export const insertMealSnapSchema = createInsertSchema(mealSnaps).omit({ id: true, snapTime: true });
+export type MealSnap = typeof mealSnaps.$inferSelect;
+export type InsertMealSnap = z.infer<typeof insertMealSnapSchema>;
+
+export const snapDailyGlucose = pgTable("snap_daily_glucose", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  localDate: date("local_date", { mode: "string" }).notNull(),
+  lowCount: integer("low_count").notNull().default(0),
+  mediumCount: integer("medium_count").notNull().default(0),
+  highCount: integer("high_count").notNull().default(0),
+  mealCount: integer("meal_count").notNull().default(0),
+  hasLateMeal: boolean("has_late_meal").notNull().default(false),
+}, (table) => ({
+  userDateUniq: uniqueIndex("snap_daily_glucose_user_date_idx").on(table.userId, table.localDate),
+}));
+
+export type SnapDailyGlucose = typeof snapDailyGlucose.$inferSelect;
+export type InsertSnapDailyGlucose = typeof snapDailyGlucose.$inferInsert;
+
+export const snapMonthlyArchive = pgTable("snap_monthly_archive", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  score: integer("score"),
+  signalQuality: integer("signal_quality"),
+  timingRegularity: integer("timing_regularity"),
+  freqConsistency: integer("freq_consistency"),
+  missedMealDays: integer("missed_meal_days"),
+  irregularMealDays: integer("irregular_meal_days"),
+  topHighFood: varchar("top_high_food"),
+  topHighFoodCount: integer("top_high_food_count"),
+  topLowFood: varchar("top_low_food"),
+  topLowFoodCount: integer("top_low_food_count"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userMonthUniq: uniqueIndex("snap_monthly_archive_user_month_idx").on(table.userId, table.month),
+}));
+
+export type SnapMonthlyArchive = typeof snapMonthlyArchive.$inferSelect;
+export type InsertSnapMonthlyArchive = typeof snapMonthlyArchive.$inferInsert;

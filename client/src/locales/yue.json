@@ -847,7 +847,11 @@
     "portion_small": "小",
     "portion_medium": "中",
     "portion_large": "大",
-    "something_else": "其他"
+    "something_else": "其他",
+    "meal_type_breakfast": "早餐",
+    "meal_type_lunch": "午餐",
+    "meal_type_dinner": "晚餐",
+    "meal_type_snack": "小食"
   },
   "slides": {
     "s1_headline": "血糖，\n由你話事",

@@ -92,6 +92,82 @@ function computeFocusPanel(
   return null;
 }
 
+type SnapRow = {
+  mealType: string | null;
+  snapTime: Date;
+  glucoseImpact: string | null;
+  localDate: string;
+  foodName: string | null;
+};
+
+function isIrregularSnap(snap: { mealType: string | null; snapTime: Date | string }, tz?: string | null): boolean {
+  if (!snap.mealType || snap.mealType === "snack") return false;
+  const snapDate = snap.snapTime instanceof Date ? snap.snapTime : new Date(snap.snapTime as string);
+  const hour = parseInt(
+    new Intl.DateTimeFormat("en", {
+      timeZone: tz || "UTC",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(snapDate),
+    10,
+  );
+  if (snap.mealType === "breakfast") return hour < 7 || hour >= 11;
+  if (snap.mealType === "lunch") return hour < 12 || hour >= 14;
+  if (snap.mealType === "dinner") return hour < 18 || hour >= 21;
+  return false;
+}
+
+function computeMonthlyFromSnaps(snaps: SnapRow[], lastDay: number, tz: string | null) {
+  const signalQuality = snaps.filter(s => s.glucoseImpact === "low" || s.glucoseImpact === "medium").length / snaps.length;
+
+  const dayMealTypes = new Map<string, Set<string>>();
+  const dayHasIrregular = new Set<string>();
+  for (const snap of snaps) {
+    if (!dayMealTypes.has(snap.localDate)) dayMealTypes.set(snap.localDate, new Set());
+    if (snap.mealType === "breakfast" || snap.mealType === "lunch" || snap.mealType === "dinner") {
+      dayMealTypes.get(snap.localDate)!.add(snap.mealType);
+      if (isIrregularSnap(snap, tz)) dayHasIrregular.add(snap.localDate);
+    }
+  }
+  const snappedDays = dayMealTypes.size;
+  const timingRegularity = snappedDays > 0
+    ? [...dayMealTypes.values()].filter(s => s.size >= 2).length / snappedDays
+    : 0;
+  const freqConsistency = new Set(snaps.map(s => s.localDate)).size / lastDay;
+  const missedMealDays = [...dayMealTypes.values()].filter(s => s.size < 2).length;
+  const irregularMealDays = dayHasIrregular.size;
+
+  const score = Math.round(signalQuality * 40 + timingRegularity * 30 + freqConsistency * 30);
+
+  const highFoodCounts = new Map<string, number>();
+  const lowFoodCounts = new Map<string, number>();
+  for (const snap of snaps) {
+    if (!snap.foodName) continue;
+    if (snap.glucoseImpact === "high") highFoodCounts.set(snap.foodName, (highFoodCounts.get(snap.foodName) ?? 0) + 1);
+    if (snap.glucoseImpact === "low") lowFoodCounts.set(snap.foodName, (lowFoodCounts.get(snap.foodName) ?? 0) + 1);
+  }
+  const topFood = (map: Map<string, number>) => {
+    if (map.size < 2) return { name: null, count: null };
+    const [name, count] = [...map.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { name, count };
+  };
+  const topHigh = topFood(highFoodCounts);
+  const topLow = topFood(lowFoodCounts);
+
+  return {
+    score,
+    signalQuality: Math.round(signalQuality * 100),
+    timingRegularity: Math.round(timingRegularity * 100),
+    freqConsistency: Math.round(freqConsistency * 100),
+    missedMealDays,
+    irregularMealDays,
+    topHighFood: topHigh.name,
+    topHighFoodCount: topHigh.count,
+    topLowFood: topLow.name,
+    topLowFoodCount: topLow.count,
+  };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -3099,6 +3175,49 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     }
   });
 
+  function inferMealType(tz?: string | null): string {
+    const hour = parseInt(
+      new Intl.DateTimeFormat("en", {
+        timeZone: tz || "UTC",
+        hour: "numeric",
+        hourCycle: "h23",
+      }).format(new Date()),
+      10,
+    );
+    if (hour >= 7 && hour < 11) return "breakfast";
+    if (hour >= 12 && hour < 14) return "lunch";
+    if (hour >= 18 && hour < 21) return "dinner";
+    return "snack";
+  }
+
+  function getLocalDate(tz?: string | null): string {
+    try {
+      const parts = new Intl.DateTimeFormat("en", {
+        timeZone: tz || "UTC",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date());
+      const y = parts.find(p => p.type === "year")?.value;
+      const m = parts.find(p => p.type === "month")?.value;
+      const d = parts.find(p => p.type === "day")?.value;
+      return `${y}-${m}-${d}`;
+    } catch {
+      return new Date().toISOString().split("T")[0];
+    }
+  }
+
+  function deriveGlucoseImpact(adviceText: string): "low" | "medium" | "high" | null {
+    for (const line of adviceText.split("\n")) {
+      if (line.toLowerCase().startsWith("blood sugar impact")) {
+        const val = line.split(":")[1]?.trim().toLowerCase();
+        if (val === "low" || val === "medium" || val === "high") return val as "low" | "medium" | "high";
+      }
+    }
+    return null;
+  }
+
   app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -3152,6 +3271,26 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
+      async function insertSnapRecord(adviceText: string): Promise<number | null> {
+        try {
+          const snap = await storage.insertMealSnap({
+            userId,
+            localDate: getLocalDate(profile!.deviceTimezone),
+            mealType: inferMealType(profile!.deviceTimezone),
+            foodName: name,
+            portion: portion ?? null,
+            sauces: sauces ?? null,
+            extras: extras ?? null,
+            glucoseImpact: deriveGlucoseImpact(adviceText),
+            missedMealFlag: false,
+          });
+          return snap.id;
+        } catch (e: any) {
+          console.warn("[snap/advice] insertSnapRecord failed:", e?.message ?? e);
+          return null;
+        }
+      }
+
       if (label) {
         // Step 6 of the FoodSnap flow: exact combo match in library check 2.
         // food_labels.useCount is already bumped inside getFoodLabelByCombo above
@@ -3159,6 +3298,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
+          const snapId = await insertSnapRecord(cachedAdvice);
           return res.json({
             advice: cachedAdvice,
             focusPanelData,
@@ -3166,6 +3306,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
             adviceLimit: SNAP_LABEL_DAILY_LIMIT,
             adviceSource: "cache",
+            snapId,
           });
         }
       }
@@ -3173,6 +3314,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const existingCachedAdvice = !label ? await storage.getCachedAdvice(activeComboKey, lang) : null;
       if (existingCachedAdvice) {
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId);
+        const snapId = await insertSnapRecord(existingCachedAdvice);
         return res.json({
           advice: existingCachedAdvice,
           focusPanelData,
@@ -3180,6 +3322,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
           adviceLimit: SNAP_LABEL_DAILY_LIMIT,
           adviceSource: "cache",
+          snapId,
         });
       }
 
@@ -3368,6 +3511,7 @@ No explanation, just JSON.`,
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
       });
 
+      const snapId = await insertSnapRecord(userAdvice);
       res.json({
         advice: userAdvice,
         focusPanelData,
@@ -3375,11 +3519,242 @@ No explanation, just JSON.`,
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
         adviceLimit: SNAP_LABEL_DAILY_LIMIT,
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
+        snapId,
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);
       captureException(error, req.user?.claims?.sub, { route: "/api/snap/advice", method: "POST" });
       res.status(500).json({ message: "Diet advice generation failed. Please try again." });
+    }
+  });
+
+  app.patch("/api/snap/:snapId/meal-type", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const snapId = parseInt(req.params.snapId, 10);
+      if (isNaN(snapId)) return res.status(400).json({ message: "Invalid snapId" });
+      const { mealType } = req.body;
+      const allowed = ["breakfast", "lunch", "dinner", "snack"];
+      if (!mealType || !allowed.includes(mealType)) {
+        return res.status(400).json({ message: "mealType must be one of: breakfast, lunch, dinner, snack" });
+      }
+      await storage.updateMealSnapType(snapId, userId, mealType);
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("Snap meal-type PATCH error:", error);
+      res.status(500).json({ message: "Failed to update meal type." });
+    }
+  });
+
+  app.get("/api/snap/daily-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.query;
+      if (!date || typeof date !== "string") {
+        return res.status(400).json({ message: "date query param required (YYYY-MM-DD)" });
+      }
+      const [snaps, profile] = await Promise.all([
+        storage.getMealSnapsByLocalDate(userId, date),
+        storage.getProfile(userId),
+      ]);
+      const irregularMealCount = snaps.filter(s => isIrregularSnap(s, profile?.deviceTimezone)).length;
+      return res.json({
+        snaps: snaps.map(s => ({
+          glucoseImpact: s.glucoseImpact,
+          mealType: s.mealType,
+          snapTime: s.snapTime,
+        })),
+        irregularMealCount,
+      });
+    } catch (error: any) {
+      console.error("Snap daily-summary error:", error);
+      res.status(500).json({ message: "Failed to fetch daily summary." });
+    }
+  });
+
+  app.get("/api/snap/weekly-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { weekStart } = req.query;
+      if (!weekStart || typeof weekStart !== "string") {
+        return res.status(400).json({ message: "weekStart query param required (YYYY-MM-DD)" });
+      }
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const weekStartDate = new Date(weekStart + "T00:00:00Z");
+      const weekEndDate = new Date(weekStartDate.getTime() + 6 * 86400000);
+      const weekEnd = weekEndDate.toISOString().split("T")[0];
+
+      const snaps = await storage.getMealSnapsByDateRange(userId, weekStart, weekEnd);
+      const snapCount = snaps.length;
+      if (snapCount < 3) {
+        return res.json({ snapCount, insufficient: true });
+      }
+
+      const impactScore = (impact: string | null) =>
+        impact === "low" ? 1 : impact === "medium" ? 2 : impact === "high" ? 3 : null;
+
+      const lateMealCount = snaps.filter(s => {
+        if (s.mealType !== "snack") return false;
+        const hour = parseInt(
+          new Intl.DateTimeFormat("en", {
+            timeZone: profile.deviceTimezone || "UTC",
+            hour: "numeric",
+            hourCycle: "h23",
+          }).format(new Date(s.snapTime)),
+          10,
+        );
+        return hour >= 21;
+      }).length;
+
+      const dayMealTypes = new Map<string, Set<string>>();
+      for (const snap of snaps) {
+        if (!dayMealTypes.has(snap.localDate)) dayMealTypes.set(snap.localDate, new Set());
+        if (snap.mealType === "breakfast" || snap.mealType === "lunch" || snap.mealType === "dinner") {
+          dayMealTypes.get(snap.localDate)!.add(snap.mealType);
+        }
+      }
+      const missedMealDays = [...dayMealTypes.values()].filter(t => t.size < 2).length;
+
+      const mealTypeGroups: Record<string, number[]> = { breakfast: [], lunch: [], dinner: [] };
+      for (const snap of snaps) {
+        if (snap.mealType === "breakfast" || snap.mealType === "lunch" || snap.mealType === "dinner") {
+          const score = impactScore(snap.glucoseImpact);
+          if (score !== null) mealTypeGroups[snap.mealType].push(score);
+        }
+      }
+      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+      const mealTypeAvgs = {
+        breakfast: avg(mealTypeGroups.breakfast),
+        lunch: avg(mealTypeGroups.lunch),
+        dinner: avg(mealTypeGroups.dinner),
+      };
+
+      const dowGroups = new Map<number, number[]>();
+      for (const snap of snaps) {
+        const jsDay = new Date(snap.localDate + "T12:00:00Z").getUTCDay();
+        const monAnchored = jsDay === 0 ? 6 : jsDay - 1;
+        const score = impactScore(snap.glucoseImpact);
+        if (score !== null) {
+          if (!dowGroups.has(monAnchored)) dowGroups.set(monAnchored, []);
+          dowGroups.get(monAnchored)!.push(score);
+        }
+      }
+      let worstDay: number | null = null;
+      let worstAvg = -Infinity;
+      for (const [day, scores] of dowGroups) {
+        const a = scores.reduce((a, b) => a + b, 0) / scores.length;
+        if (a > worstAvg) { worstAvg = a; worstDay = day; }
+      }
+
+      const irregularDaySet = new Set<string>();
+      for (const snap of snaps) {
+        if (isIrregularSnap(snap, profile.deviceTimezone)) irregularDaySet.add(snap.localDate);
+      }
+      const irregularMealDays = irregularDaySet.size;
+
+      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay });
+    } catch (error: any) {
+      console.error("Snap weekly-summary error:", error);
+      res.status(500).json({ message: "Failed to fetch weekly summary." });
+    }
+  });
+
+  app.get("/api/snap/monthly-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { month } = req.query;
+      if (!month || typeof month !== "string" || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: "month query param required (YYYY-MM)" });
+      }
+
+      const [yStr, mStr] = month.split("-");
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10);
+      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+      const priorM = m === 1 ? 12 : m - 1;
+      const priorY = m === 1 ? y - 1 : y;
+      const priorMonth = `${priorY}-${String(priorM).padStart(2, "0")}`;
+
+      // 1. Archive-first: serve from snap_monthly_archive when available
+      const archived = await storage.getMonthlyArchive(userId, month);
+      if (archived) {
+        if (archived.score === null) {
+          return res.json({ snapCount: 0, insufficient: true, month });
+        }
+        const priorArchive = await storage.getMonthlyArchive(userId, priorMonth);
+        const priorScore = priorArchive?.score ?? null;
+        return res.json({
+          snapCount: 0,
+          insufficient: false,
+          month,
+          score: archived.score,
+          components: {
+            signalQuality: archived.signalQuality,
+            timingRegularity: archived.timingRegularity,
+            freqConsistency: archived.freqConsistency,
+          },
+          topHighFood: archived.topHighFood,
+          topLowFood: archived.topLowFood,
+          irregularMealDays: archived.irregularMealDays,
+          priorScore,
+          isFirstMonth: priorScore === null,
+        });
+      }
+
+      // 2. Safety net: compute from raw snaps (archive job may not have run yet)
+      const monthStart = `${y}-${String(m).padStart(2, "0")}-01`;
+      const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const priorLastDay = new Date(Date.UTC(priorY, priorM, 0)).getUTCDate();
+      const priorStart = `${priorY}-${String(priorM).padStart(2, "0")}-01`;
+      const priorEnd = `${priorY}-${String(priorM).padStart(2, "0")}-${String(priorLastDay).padStart(2, "0")}`;
+
+      const [snaps, priorSnaps, profile] = await Promise.all([
+        storage.getMealSnapsByDateRange(userId, monthStart, monthEnd),
+        storage.getMealSnapsByDateRange(userId, priorStart, priorEnd),
+        storage.getProfile(userId),
+      ]);
+
+      const snapCount = snaps.length;
+      if (snapCount < 5) {
+        storage.upsertMonthlyArchive({ userId, month }).catch(e =>
+          console.error("[snap/monthly-summary] Insufficient marker upsert failed:", e?.message),
+        );
+        return res.json({ snapCount, insufficient: true, month });
+      }
+
+      const tz = profile?.deviceTimezone ?? null;
+      const metrics = computeMonthlyFromSnaps(snaps, lastDay, tz);
+
+      storage.upsertMonthlyArchive({ userId, month, ...metrics }).catch(e =>
+        console.error("[snap/monthly-summary] Safety net archive upsert failed:", e?.message),
+      );
+
+      const priorScore = priorSnaps.length >= 5
+        ? computeMonthlyFromSnaps(priorSnaps, priorLastDay, tz).score
+        : null;
+
+      return res.json({
+        snapCount,
+        insufficient: false,
+        month,
+        score: metrics.score,
+        components: {
+          signalQuality: metrics.signalQuality,
+          timingRegularity: metrics.timingRegularity,
+          freqConsistency: metrics.freqConsistency,
+        },
+        topHighFood: metrics.topHighFood,
+        topLowFood: metrics.topLowFood,
+        irregularMealDays: metrics.irregularMealDays,
+        priorScore,
+        isFirstMonth: priorScore === null,
+      });
+    } catch (error: any) {
+      console.error("Snap monthly-summary error:", error);
+      res.status(500).json({ message: "Failed to fetch monthly summary." });
     }
   });
 
@@ -3743,6 +4118,120 @@ No explanation, just JSON.`,
       return res.status(500).json({ ok: false, error: "internal_error" });
     }
   });
+
+  // ── Snap scheduled jobs ──────────────────────────────────────────────────
+
+  async function runMonthlyArchiveJob() {
+    console.log("[snap/archive] Monthly archive job started.");
+    const pairs = await storage.getAllUnarchivedMonths();
+    console.log(`[snap/archive] ${pairs.length} (userId, month) pair(s) to archive.`);
+    for (const { userId, month } of pairs) {
+      try {
+        const [yStr, mStr] = month.split("-");
+        const yy = parseInt(yStr, 10);
+        const mm = parseInt(mStr, 10);
+        const lastDay = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+        const monthStart = `${yy}-${String(mm).padStart(2, "0")}-01`;
+        const monthEnd = `${yy}-${String(mm).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        const [snaps, profile] = await Promise.all([
+          storage.getMealSnapsByDateRange(userId, monthStart, monthEnd),
+          storage.getProfile(userId),
+        ]);
+        if (snaps.length < 5) {
+          await storage.upsertMonthlyArchive({ userId, month });
+        } else {
+          const metrics = computeMonthlyFromSnaps(snaps, lastDay, profile?.deviceTimezone ?? null);
+          await storage.upsertMonthlyArchive({ userId, month, ...metrics });
+        }
+        const dayMap = new Map<string, { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }>();
+        const tz = profile?.deviceTimezone || "UTC";
+        for (const snap of snaps) {
+          if (!dayMap.has(snap.localDate)) dayMap.set(snap.localDate, { low: 0, medium: 0, high: 0, mealCount: 0, hasLateMeal: false });
+          const entry = dayMap.get(snap.localDate)!;
+          entry.mealCount++;
+          if (snap.glucoseImpact === "low") entry.low++;
+          else if (snap.glucoseImpact === "medium") entry.medium++;
+          else if (snap.glucoseImpact === "high") entry.high++;
+          if (!entry.hasLateMeal && (snap.mealType === "dinner" || snap.mealType === "snack")) {
+            const snapDate = snap.snapTime instanceof Date ? snap.snapTime : new Date(snap.snapTime as any);
+            const hour = parseInt(new Intl.DateTimeFormat("en", { timeZone: tz, hour: "numeric", hourCycle: "h23" }).format(snapDate), 10);
+            if (hour >= 21) entry.hasLateMeal = true;
+          }
+        }
+        for (const [localDate, counts] of dayMap) {
+          await storage.upsertDailyGlucose(userId, localDate, counts);
+        }
+      } catch (innerErr: any) {
+        console.error(`[snap/archive] Failed for ${userId}/${month}:`, innerErr?.message);
+      }
+    }
+    console.log("[snap/archive] Monthly archive job completed.");
+  }
+
+  async function runDailyDeleteJob() {
+    console.log("[snap/delete] Daily delete job started.");
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    let totalDeleted = 0;
+    const tzCache = new Map<string, string>();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await storage.fetchMealSnapsBeforeDate(cutoff, 500);
+      if (batch.length === 0) break;
+      const userDayMap = new Map<string, Map<string, { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }>>();
+      for (const snap of batch) {
+        if (!userDayMap.has(snap.userId)) userDayMap.set(snap.userId, new Map());
+        const dayMap = userDayMap.get(snap.userId)!;
+        if (!dayMap.has(snap.localDate)) dayMap.set(snap.localDate, { low: 0, medium: 0, high: 0, mealCount: 0, hasLateMeal: false });
+        const entry = dayMap.get(snap.localDate)!;
+        entry.mealCount++;
+        if (snap.glucoseImpact === "low") entry.low++;
+        else if (snap.glucoseImpact === "medium") entry.medium++;
+        else if (snap.glucoseImpact === "high") entry.high++;
+        if (!entry.hasLateMeal && (snap.mealType === "dinner" || snap.mealType === "snack")) {
+          let tz = tzCache.get(snap.userId);
+          if (tz === undefined) {
+            const p = await storage.getProfile(snap.userId);
+            tz = p?.deviceTimezone || "UTC";
+            tzCache.set(snap.userId, tz);
+          }
+          const snapDate = snap.snapTime instanceof Date ? snap.snapTime : new Date(snap.snapTime as any);
+          const hour = parseInt(new Intl.DateTimeFormat("en", { timeZone: tz, hour: "numeric", hourCycle: "h23" }).format(snapDate), 10);
+          if (hour >= 21) entry.hasLateMeal = true;
+        }
+      }
+      for (const [userId, dayMap] of userDayMap) {
+        for (const [localDate, counts] of dayMap) {
+          await storage.upsertDailyGlucose(userId, localDate, counts);
+        }
+      }
+      await storage.purgeMealSnapsByIds(batch.map(s => s.id));
+      totalDeleted += batch.length;
+    }
+    console.log(`[snap/delete] Completed. Deleted ${totalDeleted} snap rows.`);
+  }
+
+  let _lastMonthlyArchiveRun: string | null = null;
+  let _lastDailyDeleteRun: string | null = null;
+
+  setInterval(() => {
+    const now = new Date();
+    const utcHour = now.getUTCHours();
+    const utcDate = now.getUTCDate();
+    const utcMonth = now.getUTCMonth() + 1;
+    const utcYear = now.getUTCFullYear();
+    const monthKey = `${utcYear}-${String(utcMonth).padStart(2, "0")}`;
+    const dateKey = `${utcYear}-${String(utcMonth).padStart(2, "0")}-${String(utcDate).padStart(2, "0")}`;
+    if (utcDate === 1 && utcHour === 0 && _lastMonthlyArchiveRun !== monthKey) {
+      _lastMonthlyArchiveRun = monthKey;
+      runMonthlyArchiveJob().catch(e => console.error("[snap/archive] Scheduler:", e?.message));
+    }
+    if (utcHour === 3 && _lastDailyDeleteRun !== dateKey) {
+      _lastDailyDeleteRun = dateKey;
+      runDailyDeleteJob().catch(e => console.error("[snap/delete] Scheduler:", e?.message));
+    }
+  }, 60 * 60 * 1000);
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return httpServer;
 }

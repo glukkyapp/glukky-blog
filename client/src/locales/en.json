@@ -843,7 +843,11 @@
     "portion_small": "Small",
     "portion_medium": "Medium",
     "portion_large": "Large",
-    "something_else": "Something else"
+    "something_else": "Something else",
+    "meal_type_breakfast": "Breakfast",
+    "meal_type_lunch": "Lunch",
+    "meal_type_dinner": "Dinner",
+    "meal_type_snack": "Snack"
   },
   "slides": {
     "s1_headline": "Your blood sugar,\nin your hands",

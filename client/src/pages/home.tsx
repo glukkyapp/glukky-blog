@@ -16,6 +16,7 @@ import giftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_prev
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
+import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -1431,6 +1432,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} />
 
       {isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">
