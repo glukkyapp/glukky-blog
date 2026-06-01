@@ -3764,6 +3764,38 @@ No explanation, just JSON.`,
     }
   });
 
+  app.get("/api/snap/meal-log", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { month } = req.query as { month?: string };
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: "month param required (YYYY-MM)" });
+      }
+      const [y, m] = month.split("-").map(Number);
+      const startDate = `${month}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+      const snaps = await storage.getMealSnapsByDateRange(userId, startDate, endDate);
+      const items = snaps
+        .sort((a, b) => {
+          if (b.localDate !== a.localDate) return b.localDate.localeCompare(a.localDate);
+          return new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime();
+        })
+        .map(s => ({
+          id: s.id,
+          snapTime: s.snapTime,
+          localDate: s.localDate,
+          mealType: s.mealType,
+          foodName: s.foodName,
+          glucoseImpact: s.glucoseImpact,
+        }));
+      res.json({ month, items });
+    } catch (error: any) {
+      console.error("Snap meal-log error:", error);
+      res.status(500).json({ message: "Failed to fetch meal log." });
+    }
+  });
+
   app.get("/api/health-info/diet-tips", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

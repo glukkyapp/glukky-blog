@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Home, TrendingUp, CalendarDays, User, Camera, Lightbulb, Lock } from "lucide-react";
+import { Home, Utensils, CalendarDays, User, Camera, Lightbulb, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
@@ -11,7 +11,6 @@ const NAV_TAP = { scale: 0.82 };
 const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
 
 const NAV_FEATURE_MAP: Record<string, string> = {
-  roadmap: "roadmap",
   snap: "food_snap_capture",
   planner: "weekly_plan_create",
   health_info: "insights",
@@ -26,7 +25,7 @@ export default function FloatingNavBar() {
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
-    { key: "roadmap", label: t("nav.roadmap"), path: "/roadmap", icon: TrendingUp },
+    { key: "food", label: t("nav.food"), path: "/food-log", icon: Utensils },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
     { key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays },
     { key: "health_info", label: t("nav.health_info"), path: "/health-info", icon: Lightbulb },
