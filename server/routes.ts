@@ -3222,7 +3222,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale } = req.body;
+      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
 
       const profile = await storage.getProfile(userId);
@@ -3276,7 +3276,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           const snap = await storage.insertMealSnap({
             userId,
             localDate: getLocalDate(profile!.deviceTimezone),
-            mealType: inferMealType(profile!.deviceTimezone),
+            mealType: (["breakfast","lunch","dinner","snack"].includes(clientMealType) ? clientMealType : null) ?? inferMealType(profile!.deviceTimezone),
             foodName: name,
             portion: portion ?? null,
             sauces: sauces ?? null,

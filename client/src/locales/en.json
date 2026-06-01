@@ -848,6 +848,7 @@
     "meal_type_lunch": "Lunch",
     "meal_type_dinner": "Dinner",
     "meal_type_snack": "Snack",
+    "meal_select_time_prefix": "It's",
     "meal_select_heading": "What meal is this?",
     "meal_select_continue": "Continue"
   },

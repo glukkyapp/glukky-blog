@@ -410,8 +410,11 @@ export default function Snap() {
       setStep("review");
       return;
     }
+    // Guard: compression not yet finished (< 100ms window) — stay on meal-select
+    const promise = pendingLabelRef.current;
+    if (!promise) return;
     setStep("labeling");
-    const result = await pendingLabelRef.current;
+    const result = await promise;
     if (!result) return;
     applyLabelResult(result);
     setStep("review");
@@ -594,6 +597,7 @@ export default function Snap() {
           sauceResolutions: finalSauceResolutions.length > 0 ? finalSauceResolutions : undefined,
           toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
           locale: i18n.language,
+          mealType,
         }),
         timeoutMs: SNAP_TIMEOUT_MS,
       });
@@ -893,6 +897,9 @@ export default function Snap() {
               data-testid="img-meal-select-preview"
             />
           )}
+          <p className="text-xs text-muted-foreground text-center" data-testid="text-meal-select-time">
+            {t("snap.meal_select_time_prefix")} {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </p>
           <p className="text-sm font-semibold text-center">{t("snap.meal_select_heading")}</p>
           <div className="flex gap-2 flex-wrap justify-center" data-testid="div-meal-select-chips">
             {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => (

@@ -852,6 +852,7 @@
     "meal_type_lunch": "午餐",
     "meal_type_dinner": "晚餐",
     "meal_type_snack": "小食",
+    "meal_select_time_prefix": "現在是",
     "meal_select_heading": "這是哪一餐？",
     "meal_select_continue": "繼續"
   },
