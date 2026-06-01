@@ -8,7 +8,12 @@ interface SnapSummaryItem {
   snapTime: string;
 }
 
-function getYesterday(tz?: string): string {
+function getYesterday(tz?: string, dateOverride?: string | null): string {
+  if (dateOverride) {
+    const [y, m, d] = dateOverride.split("-").map(Number);
+    const dObj = new Date(Date.UTC(y, m - 1, d - 1, 12, 0, 0));
+    return dObj.toISOString().split("T")[0];
+  }
   try {
     const effectiveTz = tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const yesterday = new Date(Date.now() - 86400000);
@@ -64,12 +69,14 @@ function buildSummary(snaps: SnapSummaryItem[], irregularMealCount: number): { p
 
 interface Props {
   tz?: string;
+  timeOverride?: number | null;
+  dateOverride?: string | null;
 }
 
-export function DailyFoodSummaryBanner({ tz }: Props) {
+export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props) {
   const { t } = useTranslation();
-  const yesterday = getYesterday(tz);
-  const hour = new Date().getHours();
+  const hour = timeOverride ?? new Date().getHours();
+  const yesterday = getYesterday(tz, dateOverride);
 
   const { data, isLoading } = useQuery<{ snaps: SnapSummaryItem[]; irregularMealCount?: number }>({
     queryKey: ["/api/snap/daily-summary", yesterday],

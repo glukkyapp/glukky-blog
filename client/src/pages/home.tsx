@@ -1434,7 +1434,7 @@ export default function Home() {
         </div>
       )}
 
-      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} />
+      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
 
       {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">
