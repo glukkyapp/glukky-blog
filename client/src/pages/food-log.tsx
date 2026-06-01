@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -89,6 +90,7 @@ const MEAL_PILL_COLOR: Record<string, string> = {
 
 export default function FoodLog() {
   const { i18n } = useTranslation();
+  const [, setLocation] = useLocation();
   const locale = i18n.language || "en";
   const isZh = locale.startsWith("zh") || locale.startsWith("yue");
 
@@ -119,9 +121,27 @@ export default function FoodLog() {
     return isZh ? (GLUCOSE_BADGE_ZH[impact] ?? impact) : (GLUCOSE_BADGE[impact]?.label ?? impact);
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation("/");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-28 pt-4">
       <div className="max-w-sm mx-auto px-4">
+        <button
+          data-testid="food-log-back"
+          onClick={handleBack}
+          className="flex items-center gap-1 text-sm text-muted-foreground mb-4 -ml-1 hover:text-foreground transition-colors"
+          aria-label={isZh ? "返回" : "Back"}
+        >
+          <ChevronLeft size={16} />
+          {isZh ? "返回" : "Back"}
+        </button>
+
         <div className="flex items-center justify-between mb-5">
           <button
             data-testid="food-log-prev-month"
