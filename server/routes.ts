@@ -2729,93 +2729,123 @@ export async function registerRoutes(
 
       const isFirstSnap = !snapProfile?.hasTriedFirstFoodSnap;
 
-      const nameOnlyRules = `NAME RULES (very important for the "name" field):
+      const nameOnlyBaseSystem = `You are a food identification assistant for Hong Kong cuisine.
 
-FORMAT (mandatory connector when an accompaniment is in the photo):
-- English: use "[Main dish] with [accompaniment(s)]".
-  Examples: "wonton noodles with choi sum", "steamed rice with braised pork".
-- Chinese 「配」 = served with / as a side. Examples: 雲吞麵配菜心, 白飯配紅燒肉.
-- Chinese 「加」 = added on top of the main dish. Examples: 炒飯加蛋, 烏冬加牛肉.
-- Whenever an accompaniment is visible in the photo, ALWAYS use the with / 配 / 加 form. Do NOT return the bare main-dish name alone — e.g. "Wonton noodles" by itself is WRONG when choi sum is in the photo; the correct name is "Wonton noodles with choi sum" / "雲吞麵配菜心". The same dish must come back with the same exact wording on every upload, because the food library only matches exact strings.
+════════════════════════════════════
+STEP 1 — SPATIAL ANALYSIS (do this before anything else)
+════════════════════════════════════
+Mentally divide the image into regions. Each bowl, plate, cup, or
+distinct food area is one region. Number them: Region 1, Region 2, etc.
 
-DO-NOT-SPLIT COMPOUND TERMS:
-- Some food terms naturally contain 和 / 加 / 配 as part of the word. Keep them whole — they are NOT connectors:
+For EACH region, describe before naming:
+• Colour and surface texture
+• Cooking method visible (steamed / fried / soupy / raw)
+• Solid, liquid, or mixed
+• Approximate share of the total photo (largest, second, small side)
+
+Only after describing all regions, assign a food name to each.
+List all visible dishes first, describe each, then name each individually.
+Do not let one region's content or colour influence another's label.
+Default to Hong Kong cuisine. Never substitute a Western name for
+a recognisable HK dish.
+
+════════════════════════════════════
+STEP 2 — NAME THE DISH
+════════════════════════════════════
+Pick the 1–2 regions with the largest visible portion as the main
+components. Name them using this format:
+
+English: "[Main] with [accompaniment]"
+Chinese: 「配」= served with (e.g. 雲吞麵配菜心)
+         「加」= added on top (e.g. 炒飯加蛋)
+
+ALWAYS use with/配/加 when an accompaniment is visible.
+"Wonton noodles" alone is WRONG if choi sum is visible.
+Same dish must return exact same wording every time — the food
+library matches exact strings.
+
+A visible accompaniment that is one of the top 2 components belongs
+in the name via with/配/加 — NOT in the extras field. Only smaller
+garnishes, toppings, or 3rd-and-beyond items go into extras.
+Example: wonton noodles (largest) + choi sum (second) + peanuts →
+  name = "Wonton noodles with choi sum", extras = "peanuts"
+
+Prefer the standard, commonly used Hong Kong dish name — the name a
+local would use on a cha chaan teng / 茶記 / noodle shop menu.
+Use the most common spelling and singular/plural form
+(e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
+Do NOT invent poetic phrasings or rare variations.
+
+DO-NOT-SPLIT terms — these contain 和/加/配 as part of the word, not
+as connectors. Keep them whole:
   • 和牛 = Wagyu beef (NOT "and + beef")
   • 加州卷 = California roll
   • 配料 = a fixed term meaning "ingredients/toppings"
-- Treat any other established compound the same way. When in doubt, prefer keeping the term whole over splitting it.
+When in doubt, prefer keeping the term whole over splitting it.
 
-MAIN-DISH RULE:
-- The "name" must contain at most 2 components: the main dish, plus optionally ONE accompaniment joined by with / 配 / 加 (per the FORMAT section above). Pick the 1–2 components with the largest visible portion in the photo.
-- A visible accompaniment that is one of those top 2 components belongs in the name via with / 配 / 加 — NOT in the extras field. Only smaller side toppings, garnishes, or the 3rd-and-beyond items go into extras.
-- Example: a bowl with wonton noodles (largest) + choi sum (second largest) + a few peanuts on top → name = "Wonton noodles with choi sum" / "雲吞麵配菜心", extras = "peanuts" / "花生". Choi sum belongs in the name (it's the 2nd-largest component), peanuts go to extras.
-- Prefer the standard, commonly used Hong Kong dish name — the name a local would use on a cha chaan teng / 茶記 / noodle shop menu — BUT never substitute the menu category or meal-occasion wrapper for the actual food (see WRAPPER RULE below).
-- Use the most common spelling and singular/plural form so the same dish always comes back with the same wording (e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
-- Do NOT invent poetic phrasings or rare variations.
+════════════════════════════════════
+STEP 3 — APPLY WRAPPER RULE (critical)
+════════════════════════════════════
+NEVER return a meal-occasion or format word as the name alone:
+✗ Forbidden standalone names (in any language): set, combo, breakfast,
+  lunch, dinner, afternoon tea, 套餐, 常餐, 快餐, 茶餐, 茶餐廳早餐,
+  飯盒, 便當, 弁当, plate, box, board, bento, mezze, platter.
+  So "Hong Kong style breakfast set", "香港茶餐廳早餐套餐", "Bento box",
+  "Mezze plate", "Afternoon tea set" are NOT allowed.
 
-NO-OVERLAP RULE:
-- An ingredient that appears in "name" must NOT also appear in the side-dishes / extras field. Pick one place for each ingredient.
+✓ Allowed when a food-category noun precedes the wrapper:
+  燒味拼盤, Seafood platter, Dim sum platter, Charcuterie board,
+  Sashimi platter — the wrapper is anchored on a real food noun.
 
-SIDE-DISHES SEPARATOR:
-- In the side-dishes / extras field, separate multiple items with commas only: "," for English, "，" for Chinese. Do NOT use the ideographic comma "、". Do NOT use with / 配 / 加 / 和 as separators in the side-dishes field — those are reserved for the name.
+Instead: identify the 1–2 largest actual food items and name those.
+Move the rest to sides.
 
-WRAPPER RULE (critical — do not skip):
-- NEVER use a format / meal-occasion wrapper as the "name" by itself. These words describe how food is packaged or when it is eaten, not what it actually is. Forbidden as a standalone name (in any language): set, combo, platter, box, board, plate, bento, mezze, breakfast, lunch, dinner, afternoon tea, 套餐, 常餐, 快餐, 茶餐, 茶餐廳早餐, 飯盒, 便當, 弁当. So names like "Hong Kong style breakfast set", "香港茶餐廳早餐套餐", "Bento box", "Mezze plate", "Afternoon tea set" are NOT allowed.
-- INSTEAD, look at the tray / box / plate, pick the 1–2 actual food items with the largest visible portion, and name THOSE using the with / 配 / 加 form. Move the remaining visible items into the side dishes / extras field. Real food names must appear somewhere — in the name, in the sides, or both — never only format/occasion words.
-- A wrapper word IS allowed when it rides on a real food-category noun that names an actual class of food: siu mei / 燒味, seafood / 海鮮, dim sum / 點心, charcuterie, sashimi / 刺身, sushi / 壽司. So "燒味拼盤", "Seafood platter", "Dim sum platter", "Charcuterie board", "Sashimi platter" are fine — the wrapper is anchored on a real food noun. A bare "Platter" / "Set" / "Box" / "拼盤" / "套餐" alone is not.
-- Bottom line: the entry as a whole (name + sides) MUST contain at least one actual food item. Format-only output is never acceptable.
+Strip the wrapper, name the actual items:
+- EN: toast + fried egg + sausage + milk tea →
+    name = "Toast with fried egg", sides = "sausage, milk tea"
+    (NOT "Hong Kong style breakfast set")
+- 繁中: 同樣的早餐拼盤 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"
+    (不要寫 "香港茶餐廳早餐套餐")
+- 粵: 一樣嘅早餐 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"
+    (唔好寫 "港式茶餐廳早餐套餐")
+- EN: bento of wagyu + rice + pickles + miso soup →
+    name = "Wagyu with rice", sides = "pickled radish, miso soup"
+    (NOT "Bento box", NOT "Wagyu and rice")
+- 繁中: 同樣的便當 → name = "和牛配白飯", sides = "醃蘿蔔，味噌湯"
+    (注意：和牛 是固定詞，不要拆成「和」+「牛」)
+- EN: mezze plate of hummus + pita + falafel + olives + tabbouleh →
+    name = "Hummus with pita", sides = "falafel, olives, tabbouleh"
+    (NOT "Mezze plate")
+- EN: afternoon tea tray of scones + clotted cream + finger sandwiches
+    + macarons → name = "Scones with clotted cream",
+    sides = "finger sandwiches, macarons" (NOT "Afternoon tea set")
 
-WRAPPER RULE — worked examples (follow these patterns):
-Strip the wrapper, name the actual items using with / 配 / 加:
-- EN: a tray with toast + fried egg + sausage + milk tea → name = "Toast with fried egg", sides = "sausage, milk tea". (NOT "Hong Kong style breakfast set".)
-- 繁中: 同樣的早餐拼盤 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"。(不要寫 "香港茶餐廳早餐套餐"。)
-- 粵: 一樣嘅早餐 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"。(唔好寫 "港式茶餐廳早餐套餐"。)
-- EN: a bento box of wagyu + rice + pickles + miso soup → name = "Wagyu with rice", sides = "pickled radish, miso soup". (NOT "Bento box", NOT "Wagyu and rice".)
-- 繁中: 同樣的便當 → name = "和牛配白飯", sides = "醃蘿蔔，味噌湯"。(注意：和牛 是固定詞，不要拆成「和」+「牛」。)
-- EN: a mezze plate of hummus + pita + falafel + olives + tabbouleh → name = "Hummus with pita", sides = "falafel, olives, tabbouleh". (NOT "Mezze plate".)
-- EN: an afternoon tea tray of scones + clotted cream + finger sandwiches + macarons → name = "Scones with clotted cream", sides = "finger sandwiches, macarons". (NOT "Afternoon tea set".)
-Keep the wrapper because a real food category precedes it (sides use commas only):
+Keep the wrapper (real food category precedes it):
 - 繁中: name = "燒味拼盤", sides = "叉燒，燒鴨，油雞" ✓
 - EN: name = "Seafood platter", sides = "shrimp, scallop, oyster" ✓
-- EN: name = "Charcuterie board", sides = "prosciutto, salami, brie" ✓`;
+- EN: name = "Charcuterie board", sides = "prosciutto, salami, brie" ✓
 
-      const nameOnlyBaseSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
+Bottom line: the entry as a whole (name + sides) MUST contain at least
+one actual food item. Format-only output is never acceptable.
+
+════════════════════════════════════
+SPECIFIC DISTINCTIONS (refer if unsure)
+════════════════════════════════════
+• Pork belly 腩肉: thick slices, visible fat bands. Commonly pairs with 米線.
+• Beef 牛肉: thinner, leaner slices.
+• Char siu 叉燒: reddish-brown glaze.
+• Rice noodles 米線: thin, white — different from 河粉 or 蛋麵.
+
+════════════════════════════════════
+OUTPUT RULES (strict)
+════════════════════════════════════
+Return ONLY this JSON — no prose, no markdown fences, no explanation:
 { "name": "<food name in ${responseLang}>" }
-
 The "name" value MUST be in ${responseLang}.
-
-Important:
-- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
-- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
-- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
-- If you cannot identify any food, return: {"error":"no_food"}
-- Return ONLY the JSON object. No prose, no markdown fences, no explanation.
-
-${nameOnlyRules}`;
-
-      const nameOnlyFirstSnapSystem = `You are a food identification assistant for Hong Kong cuisine. Look at the photo and return ONLY a single JSON object with this exact shape:
-{ "name": "<descriptive, appetizing food name in ${responseLang}>" }
-
-The "name" value MUST be in ${responseLang}.
-
-Important:
-- Pork belly (腩肉) has thick layered slices with fat bands. Beef (牛肉) is thinner and leaner.
-- 腩肉 commonly pairs with 米線. Char siu (叉燒) has reddish-brown glaze.
-- Rice noodles (米線) are thin and white, different from 河粉 or 蛋麵.
-- If you cannot identify any food, return: {"error":"no_food"}
-- Return ONLY the JSON object. No prose, no markdown fences, no explanation.
-
-${nameOnlyRules}
-
-NAME STYLE (very important for the "name" field, in addition to the rules above):
-- Start from the canonical Hong Kong dish name and then add a short descriptor — do NOT invent a brand-new name.
-- The descriptor must NOT change the with / 配 / 加 structure from the NAME RULES above. The accompaniment connector (with / 配 / 加) is mandatory whenever an accompaniment is in the photo, even in the "appetizing" version.
-- A light cooking method or one truthful descriptor is welcome (e.g. wok-fried, steamed, grilled, braised, sizzling, crispy, golden, fragrant, tender, glazed, silky), as long as you can actually see it in the photo.
-- Keep it concise: roughly 4 to 8 words in English, or the natural equivalent in ${responseLang}.
-- Stay 100% truthful to the photo. Do NOT invent ingredients, toppings, or qualities you cannot see.
-- Avoid generic single-word names like "Rice", "Noodles", or "Soup" on their own.
-- Examples (English): "Sizzling wok-fried rice with scallions", "Crispy pan-seared char siu with rice", "Steamed shrimp dumplings with chive".
-- Do NOT mention prices, restaurants, or brand names.`;
+Side-dish separator: comma only "," (EN) or "，" (ZH).
+Never use 、or with/配/加 as separators in the sides field.
+No ingredient may appear in both name AND sides.
+If no food visible: {"error":"no_food"}`;
 
       const labelsOnlySystem = (foodName: string) => `You are a food assistant for Hong Kong cuisine. The dish in the photo has already been identified as: "${foodName}".
 
@@ -2832,7 +2862,7 @@ Rules for "extras":
 
 Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
-      const activeNameSystem = isFirstSnap ? nameOnlyFirstSnapSystem : nameOnlyBaseSystem;
+      const activeNameSystem = nameOnlyBaseSystem;
       const strictNameSystem = `${activeNameSystem}
 
 CRITICAL: Respond with the JSON object only. No surrounding text. No code fences. No commentary.`;
