@@ -2822,8 +2822,13 @@ For EACH region, describe before naming:
 Only after describing all regions, assign a food name to each.
 List all visible dishes first, describe each, then name each individually.
 Do not let one region's content or colour influence another's label.
-Default to Hong Kong cuisine. Never substitute a Western name for
-a recognisable HK dish.
+When a dish could belong to HK, Mainland Chinese, or Taiwanese cuisine,
+default to the HK variant and HK naming convention.
+Example: use 魚蛋粉 not 魚丸米粉.
+Never substitute a Western name for a recognisable HK dish.
+Write your spatial analysis in the "_reasoning" field. This field is
+for internal reasoning only and will be stripped before the response
+is used — but you MUST complete it fully before producing the name.
 
 ════════════════════════════════════
 STEP 2 — NAME THE DISH
@@ -2849,8 +2854,9 @@ Use the most common spelling and singular/plural form
 (e.g. "Wonton noodles", "雲吞麵", "叉燒飯", "牛腩米線").
 Do NOT invent poetic phrasings or rare variations.
 
-DO-NOT-SPLIT terms — these contain 和/加/配 as part of the word, not
-as connectors. Keep them whole:
+Fixed compound terms — do not split these even though they contain
+和/加/配 as part of the word. These are exceptions to the 配/加
+connector rule above, not replacements for it:
   • 和牛 = Wagyu beef (NOT "and + beef")
   • 加州卷 = California roll
   • 配料 = a fixed term meaning "ingredients/toppings"
@@ -2871,32 +2877,14 @@ NEVER return a meal-occasion or format word as the name alone:
   Sashimi platter — the wrapper is anchored on a real food noun.
 
 Instead: identify the 1–2 largest actual food items and name those.
-Move the rest to sides.
-
 Strip the wrapper, name the actual items:
-- EN: toast + fried egg + sausage + milk tea →
-    name = "Toast with fried egg", sides = "sausage, milk tea"
-    (NOT "Hong Kong style breakfast set")
-- 繁中: 同樣的早餐拼盤 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"
-    (不要寫 "香港茶餐廳早餐套餐")
-- 粵: 一樣嘅早餐 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"
-    (唔好寫 "港式茶餐廳早餐套餐")
-- EN: bento of wagyu + rice + pickles + miso soup →
-    name = "Wagyu with rice", sides = "pickled radish, miso soup"
-    (NOT "Bento box", NOT "Wagyu and rice")
-- 繁中: 同樣的便當 → name = "和牛配白飯", sides = "醃蘿蔔，味噌湯"
-    (注意：和牛 是固定詞，不要拆成「和」+「牛」)
-- EN: mezze plate of hummus + pita + falafel + olives + tabbouleh →
-    name = "Hummus with pita", sides = "falafel, olives, tabbouleh"
-    (NOT "Mezze plate")
-- EN: afternoon tea tray of scones + clotted cream + finger sandwiches
-    + macarons → name = "Scones with clotted cream",
-    sides = "finger sandwiches, macarons" (NOT "Afternoon tea set")
+- EN: toast + fried egg → name = "Toast with fried egg", sides = "sausage, milk tea"
+- 繁中: 同樣的早餐 → name = "多士配煎蛋", sides = "煎腸仔，奶茶"
+- EN: bento of wagyu + rice → name = "Wagyu with rice", sides = "pickled radish, miso soup"
 
 Keep the wrapper (real food category precedes it):
 - 繁中: name = "燒味拼盤", sides = "叉燒，燒鴨，油雞" ✓
 - EN: name = "Seafood platter", sides = "shrimp, scallop, oyster" ✓
-- EN: name = "Charcuterie board", sides = "prosciutto, salami, brie" ✓
 
 Bottom line: the entry as a whole (name + sides) MUST contain at least
 one actual food item. Format-only output is never acceptable.
@@ -2908,12 +2896,22 @@ SPECIFIC DISTINCTIONS (refer if unsure)
 • Beef 牛肉: thinner, leaner slices.
 • Char siu 叉燒: reddish-brown glaze.
 • Rice noodles 米線: thin, white — different from 河粉 or 蛋麵.
+• Pig blood 豬紅: firm, dark reddish-brown cubes in soup or noodles. NOT tofu.
+• Silken tofu 豆腐花: smooth, white, soft — served in a bowl with syrup. NOT savoury.
+• Bamboo pith 竹笙: white, hollow, latticed cylindrical fungus. Often in clear soup.
+• Pig liver 豬潤: dark brown, dense, thinly sliced. Different from pork loin or pork belly.
+• Fish balls 魚蛋: smooth white or pale yellow spheres.
+• Beef balls 牛丸: darker, slightly rougher surface than fish balls.
+• Flat rice noodles 河粉: wide, flat, opaque white strips.
+• Rolled rice noodle 腸粉: thin rice sheet rolled into a cylinder, often with filling.
+• Rice vermicelli 米線: thin, round, white — thinner than 河粉, not rolled.
 
 ════════════════════════════════════
 OUTPUT RULES (strict)
 ════════════════════════════════════
 Return ONLY this JSON — no prose, no markdown fences, no explanation:
-{ "name": "<food name in ${responseLang}>" }
+{ "_reasoning": "<your full spatial analysis from Step 1>", "name": "<food name in ${responseLang}>" }
+The "_reasoning" field will be stripped server-side and is never shown to users.
 The "name" value MUST be in ${responseLang}.
 Side-dish separator: comma only "," (EN) or "，" (ZH).
 Never use 、or with/配/加 as separators in the sides field.
@@ -2961,7 +2959,7 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
       };
 
       // Step 1: name-only AI call.
-      const nameResponse = await callClaude(activeNameSystem, 400, "Identify this food and return the JSON object.");
+      const nameResponse = await callClaude(activeNameSystem, 700, "Identify this food and return the JSON object.");
       const nameRaw = readText(nameResponse);
       const nameParsed = extractJsonObject(nameRaw);
 
