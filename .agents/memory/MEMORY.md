@@ -1,1 +1,2 @@
 - [FoodSnap identification prompt](foodsnap-id-prompt.md) — library reference removed from vision prompt; single 400-token call, no retry.
+- [drizzle-kit-push-blocked](drizzle-kit-push-blocked.md) — drizzle-kit push blocks on interactive prompt for pre-existing apple_id unique constraint; apply new columns via executeSql instead.

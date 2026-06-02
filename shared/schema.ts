@@ -78,6 +78,10 @@ export const userProfiles = pgTable("user_profiles", {
   // sub instead of per Glukky user. Nullable: web/dev users with no
   // bridge stay null and fall through to the userId-keyed quota.
   rcCustomerId: text("rc_customer_id"),
+  fastingBaselineMmol: real("fasting_baseline_mmol"),
+  fastingBaselineEstimated: boolean("fasting_baseline_estimated").notNull().default(false),
+  glucometerNudgeShown: boolean("glucometer_nudge_shown").notNull().default(false),
+  consecutiveSkippedMeals: integer("consecutive_skipped_meals").notNull().default(0),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
@@ -321,6 +325,11 @@ export const mealSnaps = pgTable("meal_snaps", {
   extras: text("extras"),
   glucoseImpact: text("glucose_impact"),
   missedMealFlag: boolean("missed_meal_flag").notNull().default(false),
+  comboKey: text("combo_key"),
+  postMealGlucoseMmol: real("post_meal_glucose_mmol"),
+  postMealSymptom: text("post_meal_symptom"),
+  postMealRecordedAt: timestamp("post_meal_recorded_at", { withTimezone: true }),
+  postMealSkipped: boolean("post_meal_skipped").notNull().default(false),
 }, (table) => ({
   userDateIdx: index("meal_snaps_user_date_idx").on(table.userId, table.localDate),
 }));

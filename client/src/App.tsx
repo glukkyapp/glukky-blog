@@ -31,6 +31,7 @@ import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-dat
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
+import GlucometerNudge from "@/components/glucometer-nudge";
 import { identifyUser, resetUser, track, initPostHog } from "@/lib/posthog";
 import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
@@ -58,6 +59,7 @@ const DevPanel = lazy(() => import("@/pages/dev-panel"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const FoodReports = lazy(() => import("@/pages/food-reports"));
 const FoodLog = lazy(() => import("@/pages/food-log"));
+const GlucosePatterns = lazy(() => import("@/pages/glucose-patterns"));
 
 const RouteFallback = () => (
   <div
@@ -1632,12 +1634,14 @@ function AuthenticatedApp() {
                 <Route path="/health-info" component={HealthInfo} />
                 <Route path="/food-reports" component={FoodReports} />
                 <Route path="/food-log" component={FoodLog} />
+                <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route component={WeeklyPlanner} />
               </Switch>
             </Suspense>
           </div>
           <FloatingNavBar />
           <GlobalPiggyBankPopup />
+          <GlucometerNudge />
           {unlockingOverlay && <UnlockingOverlay />}
           {exitWarningBackdropOpen && createPortal(
             <div
@@ -1681,6 +1685,7 @@ function AuthenticatedApp() {
                 <Route path="/dev" component={DevPanel} />
                 <Route path="/food-reports" component={FoodReports} />
                 <Route path="/food-log" component={FoodLog} />
+                <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>
@@ -1688,6 +1693,7 @@ function AuthenticatedApp() {
         </div>
         <FloatingNavBar />
         <GlobalPiggyBankPopup />
+        <GlucometerNudge />
         {unlockingOverlay && <UnlockingOverlay />}
         {exitWarningBackdropOpen && createPortal(
           <div

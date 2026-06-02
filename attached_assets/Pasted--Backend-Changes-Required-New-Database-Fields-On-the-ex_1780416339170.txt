@@ -1,0 +1,59 @@
+
+Backend Changes Required
+New Database Fields
+On the existing meal_logs table — add 4 columns:
+
+Column	Type	Notes
+post_meal_glucose_mmol	float, nullable	User's glucometer reading
+post_meal_symptom	enum, nullable	normal / tired / blurred_vision / thirsty
+post_meal_recorded_at	timestamp, nullable	When the post-meal entry was submitted
+post_meal_skipped	boolean, default false	True if user tapped 跳過 or 2-hour window expired
+No new table needed. Everything attaches to the existing meal log row.
+
+New Computed Fields (calculated on the fly, not stored)
+Value	Formula	Where used
+spike	post_meal_glucose_mmol − user.fasting_baseline_mmol	Screen 3 card, Screen 4
+avg_spike_per_food	avg of all spikes grouped by food name	Screen 1 prediction, Screen 4
+entry_count_per_food	count of paired entries per food name	Confidence label in Screen 1
+total_paired_entries	count of meals with any post-meal record	Screen 4 lock/unlock
+New Field on users Table
+Column	Type	Notes
+fasting_baseline_mmol	float, nullable	Set whenever user first provides it; used for all spike calculations
+glucometer_nudge_shown	boolean, default false	Ensures Screen 5 popup fires only once
+consecutive_skipped_meals	integer, default 0	Increments on each skip/expiry; resets to 0 on any post-meal record; triggers Screen 5 at 5
+New Backend Logic (server-side)
+2-hour expiry job
+A scheduled task (cron or equivalent) runs every 5–10 minutes. For any meal logged more than 2 hours ago with no post-meal record and post_meal_skipped = false:
+
+Set post_meal_skipped = true
+
+Increment user.consecutive_skipped_meals
+
+If consecutive_skipped_meals >= 5 and glucometer_nudge_shown = false → flag user for Screen 5 popup on next app open
+
+Prediction query
+When FoodSnap identifies a food, server runs:
+
+text
+SELECT AVG(spike), COUNT(*)
+FROM meal_logs
+WHERE user_id = ? AND food_name = ? AND post_meal_glucose_mmol IS NOT NULL
+Returns average spike and entry count → determines which Screen 1 state to show.
+
+Screen 4 unlock query
+
+text
+SELECT COUNT(*)
+FROM meal_logs
+WHERE user_id = ?
+AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_symptom IS NOT NULL)
+Returns total paired entries → locks or unlocks 血糖規律 tab.
+
+What Does NOT Change
+Food identification logic — unchanged
+
+AI advice panel content generation — unchanged except Screen 1 panel now receives the prediction query result as additional context
+
+Existing meal log structure — only extended, nothing removed
+
+Authentication, photo storage, nutrition data — all unchanged

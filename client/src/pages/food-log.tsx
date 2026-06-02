@@ -11,6 +11,10 @@ interface MealLogItem {
   mealType: string | null;
   foodName: string | null;
   glucoseImpact: string | null;
+  postMealGlucoseMmol: number | null;
+  postMealSymptom: string | null;
+  postMealSkipped: boolean | null;
+  postMealSpikeFromBaseline: number | null;
 }
 
 interface MealLogResponse {
@@ -59,6 +63,11 @@ function formatTime(snapTime: string): string {
   }
 }
 
+function isWithin2h(snapTime: string): boolean {
+  const diff = Date.now() - new Date(snapTime).getTime();
+  return diff >= 0 && diff < 2 * 60 * 60 * 1000;
+}
+
 const MEAL_TYPE_LABEL: Record<string, string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",
@@ -74,25 +83,43 @@ const MEAL_TYPE_LABEL_ZH: Record<string, string> = {
 };
 
 const GLUCOSE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  low: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Low" },
-  medium: { bg: "bg-amber-100", text: "text-amber-700", label: "Med" },
-  high: { bg: "bg-red-100", text: "text-red-700", label: "High" },
+  low:    { bg: "bg-emerald-100", text: "text-emerald-700", label: "Low"  },
+  medium: { bg: "bg-amber-100",   text: "text-amber-700",   label: "Med"  },
+  high:   { bg: "bg-red-100",     text: "text-red-700",     label: "High" },
 };
 
-const GLUCOSE_BADGE_ZH: Record<string, string> = { low: "血糖影響：低", medium: "血糖影響：中", high: "血糖影響：高" };
+const GLUCOSE_BADGE_ZH: Record<string, string> = {
+  low:    "血糖影響：低",
+  medium: "血糖影響：中",
+  high:   "血糖影響：高",
+};
 
 const MEAL_PILL_COLOR: Record<string, string> = {
   breakfast: "bg-sky-100 text-sky-700",
-  lunch: "bg-lime-100 text-lime-700",
-  dinner: "bg-violet-100 text-violet-700",
-  snack: "bg-orange-100 text-orange-700",
+  lunch:     "bg-lime-100 text-lime-700",
+  dinner:    "bg-violet-100 text-violet-700",
+  snack:     "bg-orange-100 text-orange-700",
+};
+
+const SYMPTOM_LABEL_EN: Record<string, string> = {
+  normal:        "😊 Normal",
+  tired:         "😴 Tired",
+  blurred_vision:"👁 Blurred vision",
+  thirsty:       "😟 Thirsty",
+};
+
+const SYMPTOM_LABEL_ZH: Record<string, string> = {
+  normal:        "😊 正常",
+  tired:         "😴 疲倦",
+  blurred_vision:"👁 視力模糊",
+  thirsty:       "😟 口渴",
 };
 
 export default function FoodLog() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const locale = i18n.language || "en";
-  const isZh = locale.startsWith("zh") || locale.startsWith("yue");
+  const isZh = locale.startsWith("zh") || locale === "yue";
 
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
@@ -119,6 +146,11 @@ export default function FoodLog() {
 
   const glucoseLabel = (impact: string) => {
     return isZh ? (GLUCOSE_BADGE_ZH[impact] ?? impact) : (GLUCOSE_BADGE[impact]?.label ?? impact);
+  };
+
+  const symptomLabel = (sym: string | null) => {
+    if (!sym) return null;
+    return isZh ? (SYMPTOM_LABEL_ZH[sym] ?? sym) : (SYMPTOM_LABEL_EN[sym] ?? sym);
   };
 
   const handleBack = () => {
@@ -189,7 +221,7 @@ export default function FoodLog() {
 
         {!isLoading && grouped.size > 0 && (
           <div className="space-y-5">
-            {[...grouped.entries()].map(([date, items]) => (
+            {Array.from(grouped.entries()).map(([date, items]) => (
               <div key={date} data-testid={`food-log-day-${date}`}>
                 <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                   {formatDateHeading(date, locale)}
@@ -197,40 +229,84 @@ export default function FoodLog() {
                 <div className="space-y-2">
                   {items.map(item => {
                     const badge = item.glucoseImpact ? GLUCOSE_BADGE[item.glucoseImpact] : null;
-                    const pillColor = item.mealType ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600") : null;
+                    const pillColor = item.mealType
+                      ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600")
+                      : null;
+                    const hasPostMeal = item.postMealGlucoseMmol !== null && item.postMealGlucoseMmol !== undefined;
+                    const withinWindow = isWithin2h(item.snapTime);
+                    const needsGlucoseLog = withinWindow && !hasPostMeal && !item.postMealSkipped;
+                    const spike = item.postMealSpikeFromBaseline;
+
                     return (
                       <div
                         key={item.id}
                         data-testid={`food-log-item-${item.id}`}
-                        className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-2.5"
+                        className="bg-card border border-border rounded-xl px-3 py-2.5 flex flex-col gap-1.5"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {item.foodName ?? (isZh ? "食物" : "Food")}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatTime(item.snapTime)}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {item.foodName ?? (isZh ? "食物" : "Food")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatTime(item.snapTime)}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {item.mealType && pillColor && (
+                              <span
+                                data-testid={`food-log-meal-type-${item.id}`}
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${pillColor}`}
+                              >
+                                {mealLabel(item.mealType)}
+                              </span>
+                            )}
+                            {badge && (
+                              <span
+                                data-testid={`food-log-glucose-${item.id}`}
+                                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}
+                              >
+                                {glucoseLabel(item.glucoseImpact!)}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {item.mealType && pillColor && (
+                        {hasPostMeal && (
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span
-                              data-testid={`food-log-meal-type-${item.id}`}
-                              className={`text-xs font-medium px-2 py-0.5 rounded-full ${pillColor}`}
+                              data-testid={`food-log-post-meal-glucose-${item.id}`}
+                              className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700"
                             >
-                              {mealLabel(item.mealType)}
+                              {spike !== null
+                                ? t("glucose.spike_label", {
+                                    mmol: item.postMealGlucoseMmol!.toFixed(1),
+                                    spike: (spike >= 0 ? "+" : "") + spike.toFixed(1),
+                                  })
+                                : `🔴 ${item.postMealGlucoseMmol!.toFixed(1)} mmol/L`}
                             </span>
-                          )}
-                          {badge && (
-                            <span
-                              data-testid={`food-log-glucose-${item.id}`}
-                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}
-                            >
-                              {glucoseLabel(item.glucoseImpact!)}
-                            </span>
-                          )}
-                        </div>
+                            {item.postMealSymptom && (
+                              <span
+                                data-testid={`food-log-symptom-${item.id}`}
+                                className="text-xs text-muted-foreground"
+                              >
+                                {symptomLabel(item.postMealSymptom)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {needsGlucoseLog && (
+                          <button
+                            type="button"
+                            data-testid={`button-food-log-record-glucose-${item.id}`}
+                            onClick={() => setLocation("/")}
+                            className="self-start text-xs font-medium text-primary hover:underline transition-colors"
+                          >
+                            {t("glucose.log_button")}
+                          </button>
+                        )}
                       </div>
                     );
                   })}

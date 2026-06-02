@@ -21,7 +21,7 @@ import {
   users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt, isNull } from "drizzle-orm";
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 
@@ -127,6 +127,31 @@ export interface IStorage {
   getAllUnarchivedMonths(): Promise<Array<{ userId: string; month: string }>>;
   fetchMealSnapsBeforeDate(cutoff: Date, batchSize: number): Promise<MealSnap[]>;
   purgeMealSnapsByIds(ids: number[]): Promise<void>;
+
+  // Post-meal glucose tracking
+  updateMealSnapPostMeal(snapId: number, userId: string, data: { glucoseMmol?: number; symptom?: string; skipped?: boolean; recordedAt?: Date }): Promise<boolean>;
+  getPendingPostMealSnap(userId: string): Promise<MealSnap | null>;
+  getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgSpike: number | null; entryCount: number }>;
+  getTotalPairedEntries(userId: string): Promise<number>;
+  getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
+  getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
+  expireStalePostMealWindows(): Promise<{ expired: number }>;
+}
+
+export interface GlucosePatternEntry {
+  foodName: string;
+  avgSpike: number;
+  entryCount: number;
+  comboCount: number;
+}
+
+export interface GlucoseDrilldownEntry {
+  comboKey: string | null;
+  portion: string | null;
+  sauces: string | null;
+  extras: string | null;
+  avgSpike: number;
+  entryCount: number;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -977,6 +1002,178 @@ export class DatabaseStorage implements IStorage {
   async purgeMealSnapsByIds(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
     await db.delete(mealSnaps).where(inArray(mealSnaps.id, ids));
+  }
+
+  async updateMealSnapPostMeal(snapId: number, userId: string, data: { glucoseMmol?: number; symptom?: string; skipped?: boolean; recordedAt?: Date }): Promise<boolean> {
+    const updateData: Record<string, unknown> = {};
+    if (data.glucoseMmol !== undefined) updateData.postMealGlucoseMmol = data.glucoseMmol;
+    if (data.symptom !== undefined) updateData.postMealSymptom = data.symptom;
+    if (data.skipped !== undefined) updateData.postMealSkipped = data.skipped;
+    if (data.recordedAt !== undefined) updateData.postMealRecordedAt = data.recordedAt;
+    if (Object.keys(updateData).length === 0) return false;
+    const result = await db.update(mealSnaps)
+      .set(updateData as any)
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
+      .returning({ id: mealSnaps.id });
+    return result.length > 0;
+  }
+
+  async getPendingPostMealSnap(userId: string): Promise<MealSnap | null> {
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const [snap] = await db.select()
+      .from(mealSnaps)
+      .where(and(
+        eq(mealSnaps.userId, userId),
+        eq(mealSnaps.missedMealFlag, false),
+        eq(mealSnaps.postMealSkipped, false),
+        isNull(mealSnaps.postMealGlucoseMmol),
+        isNull(mealSnaps.postMealSymptom),
+        gte(mealSnaps.snapTime, cutoff),
+      ))
+      .orderBy(desc(mealSnaps.snapTime))
+      .limit(1);
+    return snap ?? null;
+  }
+
+  async getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgSpike: number | null; entryCount: number }> {
+    const result = await db.execute(sql`
+      SELECT
+        AVG(ms.post_meal_glucose_mmol - up.fasting_baseline_mmol) AS avg_spike,
+        COUNT(*)::int AS entry_count
+      FROM meal_snaps ms
+      JOIN user_profiles up ON ms.user_id = up.user_id
+      WHERE ms.user_id = ${userId}
+        AND ms.combo_key = ${comboKey}
+        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND up.fasting_baseline_mmol IS NOT NULL
+    `);
+    const row = result.rows[0] as any;
+    return {
+      avgSpike: row?.avg_spike != null ? parseFloat(row.avg_spike) : null,
+      entryCount: parseInt(row?.entry_count ?? "0", 10),
+    };
+  }
+
+  async getTotalPairedEntries(userId: string): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt
+      FROM meal_snaps
+      WHERE user_id = ${userId}
+        AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_symptom IS NOT NULL)
+    `);
+    return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
+  }
+
+  async getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }> {
+    const result = await db.execute(sql`
+      WITH paired AS (
+        SELECT
+          ms.food_name,
+          ms.portion,
+          ms.combo_key,
+          ms.post_meal_glucose_mmol - up.fasting_baseline_mmol AS spike
+        FROM meal_snaps ms
+        JOIN user_profiles up ON ms.user_id = up.user_id
+        WHERE ms.user_id = ${userId}
+          AND ms.post_meal_glucose_mmol IS NOT NULL
+          AND up.fasting_baseline_mmol IS NOT NULL
+          AND ms.food_name IS NOT NULL
+      ),
+      portion_counts AS (
+        SELECT food_name, portion, COUNT(*) AS cnt
+        FROM paired
+        GROUP BY food_name, portion
+      ),
+      top_portions AS (
+        SELECT DISTINCT ON (food_name) food_name, portion
+        FROM portion_counts
+        ORDER BY food_name, cnt DESC
+      ),
+      food_stats AS (
+        SELECT
+          p.food_name,
+          AVG(p.spike) AS avg_spike,
+          COUNT(*) AS entry_count,
+          COUNT(DISTINCT p.combo_key) AS combo_count
+        FROM paired p
+        JOIN top_portions tp ON p.food_name = tp.food_name AND (p.portion = tp.portion OR (p.portion IS NULL AND tp.portion IS NULL))
+        GROUP BY p.food_name
+      )
+      SELECT food_name, avg_spike, entry_count::int, combo_count::int
+      FROM food_stats
+      ORDER BY avg_spike DESC
+    `);
+    return {
+      topList: (result.rows as any[]).map(row => ({
+        foodName: row.food_name,
+        avgSpike: parseFloat(row.avg_spike),
+        entryCount: parseInt(row.entry_count, 10),
+        comboCount: parseInt(row.combo_count, 10),
+      })),
+    };
+  }
+
+  async getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]> {
+    const result = await db.execute(sql`
+      SELECT
+        ms.combo_key,
+        ms.portion,
+        ms.sauces,
+        ms.extras,
+        AVG(ms.post_meal_glucose_mmol - up.fasting_baseline_mmol) AS avg_spike,
+        COUNT(*)::int AS entry_count
+      FROM meal_snaps ms
+      JOIN user_profiles up ON ms.user_id = up.user_id
+      WHERE ms.user_id = ${userId}
+        AND ms.food_name = ${foodName}
+        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND up.fasting_baseline_mmol IS NOT NULL
+      GROUP BY ms.combo_key, ms.portion, ms.sauces, ms.extras
+      ORDER BY avg_spike DESC
+    `);
+    return (result.rows as any[]).map(row => ({
+      comboKey: row.combo_key ?? null,
+      portion: row.portion ?? null,
+      sauces: row.sauces ?? null,
+      extras: row.extras ?? null,
+      avgSpike: parseFloat(row.avg_spike),
+      entryCount: parseInt(row.entry_count, 10),
+    }));
+  }
+
+  async expireStalePostMealWindows(): Promise<{ expired: number }> {
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const staleSnaps = await db.select({ userId: mealSnaps.userId, id: mealSnaps.id })
+      .from(mealSnaps)
+      .where(and(
+        eq(mealSnaps.postMealSkipped, false),
+        eq(mealSnaps.missedMealFlag, false),
+        isNull(mealSnaps.postMealGlucoseMmol),
+        isNull(mealSnaps.postMealSymptom),
+        lt(mealSnaps.snapTime, cutoff),
+      ));
+    if (staleSnaps.length === 0) return { expired: 0 };
+    await db.update(mealSnaps)
+      .set({ postMealSkipped: true })
+      .where(and(
+        eq(mealSnaps.postMealSkipped, false),
+        eq(mealSnaps.missedMealFlag, false),
+        isNull(mealSnaps.postMealGlucoseMmol),
+        isNull(mealSnaps.postMealSymptom),
+        lt(mealSnaps.snapTime, cutoff),
+      ));
+    const userGroups = new Map<string, number>();
+    for (const snap of staleSnaps) {
+      userGroups.set(snap.userId, (userGroups.get(snap.userId) ?? 0) + 1);
+    }
+    for (const [uid, count] of userGroups) {
+      await db.execute(sql`
+        UPDATE user_profiles
+        SET consecutive_skipped_meals = consecutive_skipped_meals + ${count}
+        WHERE user_id = ${uid}
+      `);
+    }
+    return { expired: staleSnaps.length };
   }
 }
 

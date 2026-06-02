@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Home, Utensils, CalendarDays, User, Camera, Lightbulb, Lock } from "lucide-react";
+import { Home, Utensils, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
@@ -29,6 +29,7 @@ export default function FloatingNavBar() {
     { key: "food", label: t("nav.food"), path: "/food-log", icon: Utensils },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
     ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
+    { key: "glucose", label: t("glucose.patterns_nav"), path: "/glucose-patterns", icon: TrendingUp },
     { key: "health_info", label: t("nav.health_info"), path: "/health-info", icon: Lightbulb },
     { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
   ];

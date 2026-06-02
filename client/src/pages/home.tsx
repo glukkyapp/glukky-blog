@@ -18,6 +18,7 @@ import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
+import PostMealCard from "@/components/PostMealCard";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -64,6 +65,15 @@ export default function Home() {
   };
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
+  const { data: pendingSnapData } = useQuery<{ snap: { id: number } | null }>({
+    queryKey: ["/api/snap/pending-post-meal"],
+    queryFn: async () => {
+      const res = await fetch("/api/snap/pending-post-meal", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
 
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
@@ -1435,6 +1445,14 @@ export default function Home() {
       )}
 
       <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
+
+      {pendingSnapData?.snap && (
+        <PostMealCard
+          snapId={pendingSnapData.snap.id}
+          hasFastingBaseline={profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined}
+          onDone={() => queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] })}
+        />
+      )}
 
       {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">

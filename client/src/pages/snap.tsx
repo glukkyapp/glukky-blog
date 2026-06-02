@@ -53,6 +53,7 @@ interface AdviceResult {
   adviceUsedToday: number;
   adviceLimit: number;
   snapId?: number | null;
+  glucosePrediction?: { avgSpikeMmol: number | null; pairedCount: number; state: "A" | "B" | "C" } | null;
 }
 
 interface TokenResolution {
@@ -139,6 +140,33 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
           </p>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PredictionLayer({ prediction }: {
+  prediction: NonNullable<AdviceResult["glucosePrediction"]> | null;
+}) {
+  const { t } = useTranslation();
+  if (!prediction) return null;
+  if (prediction.state === "C") {
+    return (
+      <div className="rounded-xl bg-muted/50 p-3 flex flex-col gap-1 text-xs" data-testid="text-snap-glucose-prediction">
+        <p className="font-semibold text-muted-foreground">{t("glucose.prediction_state_c_title")}</p>
+        <p className="text-muted-foreground">{t("glucose.prediction_state_c_body")}</p>
+      </div>
+    );
+  }
+  const isA = prediction.state === "A";
+  const text = isA
+    ? t("glucose.prediction_state_a", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount })
+    : t("glucose.prediction_state_b", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount });
+  return (
+    <div
+      className={`rounded-xl p-3 text-xs font-medium ${isA ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
+      data-testid="text-snap-glucose-prediction"
+    >
+      {text}
     </div>
   );
 }
@@ -1252,6 +1280,10 @@ export default function Snap() {
                 </>
               )}
             </div>
+
+            {advicePanel === 0 && !isFocusPanel && adviceResult.glucosePrediction !== undefined && (
+              <PredictionLayer prediction={adviceResult.glucosePrediction ?? null} />
+            )}
 
             {!isFocusPanel && adviceResult?.sources && adviceResult.sources.length > 0 && (
               <div className="flex flex-col gap-2 text-[10px] leading-snug text-muted-foreground">

@@ -3259,6 +3259,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
+      const glucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
+
       async function insertSnapRecord(adviceText: string): Promise<number | null> {
         try {
           const snap = await storage.insertMealSnap({
@@ -3271,6 +3273,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             extras: extras ?? null,
             glucoseImpact: deriveGlucoseImpact(adviceText),
             missedMealFlag: false,
+            comboKey: activeComboKey,
           });
           return snap.id;
         } catch (e: any) {
@@ -3295,6 +3298,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             adviceLimit: SNAP_LABEL_DAILY_LIMIT,
             adviceSource: "cache",
             snapId,
+            glucosePrediction,
           });
         }
       }
@@ -3311,6 +3315,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           adviceLimit: SNAP_LABEL_DAILY_LIMIT,
           adviceSource: "cache",
           snapId,
+          glucosePrediction,
         });
       }
 
@@ -3508,6 +3513,7 @@ No explanation, just JSON.`,
         adviceLimit: SNAP_LABEL_DAILY_LIMIT,
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
         snapId,
+        glucosePrediction,
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);
@@ -3757,7 +3763,11 @@ No explanation, just JSON.`,
       const startDate = `${month}-01`;
       const lastDay = new Date(y, m, 0).getDate();
       const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
-      const snaps = await storage.getMealSnapsByDateRange(userId, startDate, endDate);
+      const [snaps, profile] = await Promise.all([
+        storage.getMealSnapsByDateRange(userId, startDate, endDate),
+        storage.getProfile(userId),
+      ]);
+      const baseline = profile?.fastingBaselineMmol ?? null;
       const items = snaps
         .sort((a, b) => {
           if (b.localDate !== a.localDate) return b.localDate.localeCompare(a.localDate);
@@ -3770,11 +3780,101 @@ No explanation, just JSON.`,
           mealType: s.mealType,
           foodName: s.foodName,
           glucoseImpact: s.glucoseImpact,
+          postMealGlucoseMmol: s.postMealGlucoseMmol ?? null,
+          postMealSymptom: s.postMealSymptom ?? null,
+          postMealSkipped: s.postMealSkipped,
+          postMealSpikeFromBaseline: (s.postMealGlucoseMmol !== null && s.postMealGlucoseMmol !== undefined && baseline !== null)
+            ? parseFloat((s.postMealGlucoseMmol - baseline).toFixed(1))
+            : null,
         }));
       res.json({ month, items });
     } catch (error: any) {
       console.error("Snap meal-log error:", error);
       res.status(500).json({ message: "Failed to fetch meal log." });
+    }
+  });
+
+  app.post("/api/snap/post-meal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { snapId, glucoseMmol, symptom, skip, fastingBaseline, fastingBaselineEstimated } = req.body;
+      if (!snapId || typeof snapId !== "number") return res.status(400).json({ message: "snapId required" });
+      if (glucoseMmol !== undefined && (typeof glucoseMmol !== "number" || glucoseMmol < 2.0 || glucoseMmol > 30.0)) {
+        return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
+      }
+      const VALID_SYMPTOMS = ["normal", "tired", "blurred_vision", "thirsty"];
+      if (symptom !== undefined && !VALID_SYMPTOMS.includes(symptom)) {
+        return res.status(400).json({ message: "invalid symptom value" });
+      }
+      const updated = await storage.updateMealSnapPostMeal(snapId, userId, {
+        glucoseMmol,
+        symptom,
+        skipped: skip === true,
+        recordedAt: new Date(),
+      });
+      if (!updated) return res.status(404).json({ message: "Snap not found" });
+      if (!skip) {
+        await storage.updateProfile(userId, { consecutiveSkippedMeals: 0 });
+      }
+      if (glucoseMmol !== undefined && fastingBaseline !== undefined) {
+        const profile = await storage.getProfile(userId);
+        if (profile && profile.fastingBaselineMmol === null) {
+          await storage.updateProfile(userId, {
+            fastingBaselineMmol: fastingBaseline,
+            fastingBaselineEstimated: fastingBaselineEstimated === true,
+          });
+        }
+      }
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("post-meal error:", error);
+      res.status(500).json({ message: "Failed to save post-meal record." });
+    }
+  });
+
+  app.get("/api/snap/pending-post-meal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const snap = await storage.getPendingPostMealSnap(userId);
+      res.json({ snap });
+    } catch (error: any) {
+      console.error("pending-post-meal error:", error);
+      res.status(500).json({ message: "Failed to fetch pending snap." });
+    }
+  });
+
+  app.get("/api/snap/glucose-patterns", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { food } = req.query as { food?: string };
+      if (food) {
+        const drilldown = await storage.getGlucosePatternDrilldown(userId, food);
+        return res.json({ drilldown });
+      }
+      const [totalPaired, patterns] = await Promise.all([
+        storage.getTotalPairedEntries(userId),
+        storage.getGlucosePatterns(userId),
+      ]);
+      res.json({ totalPaired, topList: patterns.topList });
+    } catch (error: any) {
+      console.error("glucose-patterns error:", error);
+      res.status(500).json({ message: "Failed to fetch glucose patterns." });
+    }
+  });
+
+  app.get("/api/snap/nudge-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.json({ showNudge: false });
+      const shouldShow = (profile.consecutiveSkippedMeals ?? 0) >= 5 && !profile.glucometerNudgeShown;
+      if (shouldShow) {
+        await storage.updateProfile(userId, { glucometerNudgeShown: true });
+      }
+      res.json({ showNudge: shouldShow });
+    } catch (error: any) {
+      console.error("nudge-status error:", error);
+      res.status(500).json({ message: "Failed to fetch nudge status." });
     }
   });
 
@@ -4229,6 +4329,12 @@ No explanation, just JSON.`,
     }
     console.log(`[snap/delete] Completed. Deleted ${totalDeleted} snap rows.`);
   }
+
+  setInterval(() => {
+    storage.expireStalePostMealWindows().catch(e =>
+      console.error("[post-meal/expire] Error:", e?.message)
+    );
+  }, 5 * 60 * 1000);
 
   let _lastMonthlyArchiveRun: string | null = null;
   let _lastDailyDeleteRun: string | null = null;
