@@ -2898,7 +2898,7 @@ SPECIFIC DISTINCTIONS (refer if unsure)
 • Rice noodles 米線: thin, white — different from 河粉 or 蛋麵.
 • Pig blood 豬紅: firm, dark reddish-brown cubes in soup or noodles. NOT tofu.
 • Silken tofu 豆腐花: smooth, white, soft — served in a bowl with syrup. NOT savoury.
-• Bamboo pith 竹笙: white, hollow, latticed cylindrical fungus. Often in clear soup.
+• Bamboo pith 竹笙: pale white, hollow, latticed tube, soft — always in soup/braised. NOT flat/golden/crispy (炸魚皮), NOT solid (魚蛋).
 • Pig liver 豬潤: dark brown, dense, thinly sliced. Different from pork loin or pork belly.
 • Fish balls 魚蛋: smooth white or pale yellow spheres.
 • Beef balls 牛丸: darker, slightly rougher surface than fish balls.
