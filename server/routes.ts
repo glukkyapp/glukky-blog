@@ -2837,9 +2837,6 @@ Chinese: 「配」= served with (e.g. 雲吞麵配菜心)
 
 ALWAYS use with/配/加 when an accompaniment is visible.
 "Wonton noodles" alone is WRONG if choi sum is visible.
-Same dish must return exact same wording every time — the food
-library matches exact strings.
-
 A visible accompaniment that is one of the top 2 components belongs
 in the name via with/配/加 — NOT in the extras field. Only smaller
 garnishes, toppings, or 3rd-and-beyond items go into extras.
@@ -2939,9 +2936,6 @@ Rules for "extras":
 Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
       const activeNameSystem = nameOnlyBaseSystem;
-      const strictNameSystem = `${activeNameSystem}
-
-CRITICAL: Respond with the JSON object only. No surrounding text. No code fences. No commentary.`;
 
       const callClaude = async (system: string, maxTokens: number, userText: string) =>
         anthropic.messages.create({
@@ -2967,19 +2961,9 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       };
 
       // Step 1: name-only AI call.
-      let nameResponse = await callClaude(activeNameSystem, 200, "Identify this food and return the JSON object.");
-      let nameRaw = readText(nameResponse);
-      let nameParsed = extractJsonObject(nameRaw);
-      const nameTruncated = nameResponse?.stop_reason === "max_tokens";
-      if (!nameParsed || nameTruncated) {
-        try {
-          nameResponse = await callClaude(strictNameSystem, 400, "Identify this food and return the JSON object.");
-          nameRaw = readText(nameResponse);
-          nameParsed = extractJsonObject(nameRaw);
-        } catch (retryErr) {
-          console.error("Snap label name retry error:", retryErr);
-        }
-      }
+      const nameResponse = await callClaude(activeNameSystem, 400, "Identify this food and return the JSON object.");
+      const nameRaw = readText(nameResponse);
+      const nameParsed = extractJsonObject(nameRaw);
 
       if (!nameParsed) {
         return res.status(422).json({ code: "PARSE_FAILED", message: "Could not parse label response." });

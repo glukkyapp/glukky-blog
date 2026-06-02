@@ -1,0 +1,1 @@
+- [FoodSnap identification prompt](foodsnap-id-prompt.md) — library reference removed from vision prompt; single 400-token call, no retry.
