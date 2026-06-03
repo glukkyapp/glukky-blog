@@ -1,0 +1,26 @@
+Yes, all correct. A few notes on specific steps:
+
+Small things worth double-checking
+Bug 2 — transformGlucosePrediction threshold
+Your spec uses entryCount >= 5 → state A, but the earlier ticket said entryCount >= 10 → state A. Make sure this matches whatever threshold you're using in the Panel 0 UI to decide when to show the "confident average" badge. Pick one number and keep it consistent across backend helper, frontend render, and the 血糖規律 unlock threshold.
+
+Bug 4 — hasFastingBaseline hardcoded to false
+You're passing hasFastingBaseline={false} into PostMealCard from the food-log sheet. This is fine as a safe default, but if PostMealCard uses that prop to decide whether to show the "set as fasting baseline" prompt, first-time users logging from the food-log page will never see it. Consider passing the real value:
+
+ts
+hasFastingBaseline={profile?.hasFastingBaseline ?? false}
+Bug 4 — Double invalidation
+You noted "PostMealCard already internally calls the three invalidateQueries — the onDone ones above are a redundant safety". That's fine, but make sure PostMealCard's internal onDone doesn't also call setGlucoseSheetSnapId(null) by side effect (e.g. if it internally navigates). If it does, onDone in the Sheet wrapper fires on an already-unmounted component. Safest pattern:
+
+ts
+onDone={() => {
+  setGlucoseSheetSnapId(null); // close sheet first
+  // PostMealCard handles its own invalidations internally
+}}
+And remove the redundant invalidateQueries from onDone in the sheet wrapper, trusting PostMealCard's internals.
+
+Bug 3 — Exporting WeeklyCard
+When you export WeeklyCard and use it directly in home.tsx, make sure it doesn't internally trigger the food-reports page-level queries (e.g. a useQuery for monthly data) on mount. If food-reports.tsx has a top-level query that fires when the module loads, importing it into home will cause that query to run on every home page open. Check that WeeklyCard only fires the weekly query, not the full page's data fetching.
+
+Bug 1 — Prefix on snaps.length === 1
+snaps.length < 2 catches both 0 and 1. You already handle length === 0 above it with an early return, so in practice lowMealPrefix only ever fires for length === 1. This is correct — just confirming the logic flows as intended.

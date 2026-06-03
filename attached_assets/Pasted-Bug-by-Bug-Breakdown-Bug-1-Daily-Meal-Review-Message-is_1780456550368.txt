@@ -1,0 +1,82 @@
+Bug-by-Bug Breakdown
+Bug 1 — Daily Meal Review Message is Inaccurate
+What you see: "昨日飲食整體穩定，部分餐點血糖影響中等。" (Yesterday's diet was stable, some meals had medium glucose impact.)
+
+Root cause (likely): Two possible issues:
+
+The home screen message is not scoped to today's date — it's generating a summary over all meals or a cached result, not yesterday's actual meals.
+
+Your message generation may also be ignoring meal count — if there's only 1 meal logged for today or yesterday, the copy should default to something like:
+
+"今日只有1餐記錄，繼續記錄以獲得更完整的飲食分析。"
+(Only 1 meal logged today. Keep recording for a fuller picture.)
+
+Fix: Before generating the summary message, first check: how many meals were logged yesterday? If count < 2, show a generic "still accumulating" message instead of a full dietary summary.
+
+Bug 2 — Panel 0 shows "+0.0 mmol (次紀錄)"
+What you see: "初步平均：+0.0 mmol（次記錄，仍在累積）"
+
+Root cause: The app is rendering a placeholder value (0.0) and a broken string for entryCount = 0. The (次紀錄) part is literally reading a count of 0 and injecting it as "0次紀錄" — which renders as nothing visible in front of 次紀錄.
+
+What it should say (from our earlier discussion): When entryCount = 0 (no glucose logged yet), Panel 0 state C should show:
+
+"📊 未有個人血糖紀錄"
+"記錄餐後血糖，即可看到此食物對你的個人影響。"
+
+No number, no mmol. Don't show +0.0 at all — only show the average spike when entryCount >= 1.
+
+Fix: Conditionally render the spike line: if entryCount > 0 → show average, else → show prompt to start logging.
+
+Bug 3 — 飲食報告 is Not Meaningful
+What you see: "本週飲食摘要 — 繼續使用 Food Snap 記錄飲食，下週將生成完整報告（已記錄0餐）"
+
+Root cause: The report page has no data and no fallback design — it just shows "not enough data" with 0 meals, which is useless.
+
+Fix options:
+
+If meals have been logged (you have several in the food log screen), the report is likely not querying the right user or date range — check the API query filter.
+
+The report should also show something useful even with < 7 meals, e.g. a simple list of what was eaten this week with their glucose impact labels, rather than waiting for a "complete report."
+
+Bug 4 — Tapping "記錄血糖" Redirects to Homepage but Nothing Happens
+Root cause: The button likely triggers a navigation to home (/home) but does not open any glucose logging modal or screen. The intent was probably to navigate to the specific snap entry and open the post-meal logging screen (Screen 2 from our earlier discussion — POST /api/snap/post-meal).
+
+Fix: The "記錄血糖 +" button on the food log row should:
+
+Navigate to that specific snap's detail/post-meal screen, not the homepage.
+
+Or open an inline bottom sheet asking for the glucose reading without leaving the food log page.
+
+Bug 5 — No Glucose Reminder on Homepage After Meal is Logged
+What you see: Homepage shows the daily summary card but nothing prompting glucose logging after a meal.
+
+Fix: After a meal snap is saved (and no post-meal glucose has been entered yet), the homepage should show a reminder card, e.g.:
+
+"🍽 你剛吃了黑椒牛肉飯 — 記得在1-2小時後記錄血糖！"
+
+記錄血糖\] button
+This should only appear if:
+
+A meal was logged in the last 2 hours, AND
+
+No glucose reading has been submitted for that snap yet (post_meal_glucose IS NULL).
+
+Bug 6 — 血糖規律 Stays at 0 Even After a Meal is Logged
+What you see: 血糖規律 screen shows "0 / 10" and remains locked.
+
+Root cause: The GET /api/snap/glucose-patterns endpoint counts paired entries (meals with a post-meal glucose reading), not just meals. Since you logged meals but haven't submitted any glucose reading yet via POST /api/snap/post-meal, the count is legitimately 0 from the API's perspective.
+
+However there is likely also a secondary bug: even if glucose was recorded, the count may not update because:
+
+The skip counter reset logic isn't connected to the 血糖規律 unlock counter.
+
+The front end may be caching the old 0/10 value.
+
+Fix:
+
+Make sure the 血糖規律 counter is driven by totalPairedEntryCount returned by GET /api/snap/glucose-patterns, and that the client re-fetches this every time Screen 4 is opened (not just on app launch).
+
+Communicate clearly to users on Screen 4 that they need to log a post-meal glucose reading (not just a meal snap) to increment the counter. The lock screen copy should say:
+
+"記錄10次餐後血糖即可解鎖" (not just 記錄10次)
+
