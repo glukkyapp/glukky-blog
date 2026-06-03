@@ -3259,7 +3259,18 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
-      const glucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
+      const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
+      const glucosePrediction = (() => {
+        const { avgSpike, entryCount } = rawGlucosePrediction;
+        if (entryCount === 0 || avgSpike === null) {
+          return { avgSpikeMmol: null, pairedCount: entryCount, state: "C" as const };
+        }
+        return {
+          avgSpikeMmol: avgSpike,
+          pairedCount:  entryCount,
+          state: entryCount >= 10 ? "A" as const : "B" as const,
+        };
+      })();
 
       async function insertSnapRecord(adviceText: string): Promise<number | null> {
         try {

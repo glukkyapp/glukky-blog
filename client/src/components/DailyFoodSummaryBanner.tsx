@@ -40,17 +40,19 @@ function buildSummary(snaps: SnapSummaryItem[], irregularMealCount: number): { p
       secondary: [],
     };
   }
+  const lowMealPrefix = snaps.length < 2 ? `昨日只記錄了${snaps.length}餐。` : "";
+
   const highCount = snaps.filter(s => s.glucoseImpact === "high").length;
   const mediumCount = snaps.filter(s => s.glucoseImpact === "medium").length;
   const hasSnack = snaps.some(s => s.mealType === "snack");
 
   let primary: string;
   if (highCount > 0) {
-    primary = `昨日有${highCount}餐血糖影響偏高。`;
+    primary = lowMealPrefix + `昨日有${highCount}餐血糖影響偏高。`;
   } else if (mediumCount > 0) {
-    primary = "昨日飲食整體穩定，部分餐點血糖影響中等。";
+    primary = lowMealPrefix + "昨日飲食整體穩定，部分餐點血糖影響中等。";
   } else {
-    primary = "昨日飲食整體穩定，血糖影響輕微。";
+    primary = lowMealPrefix + "昨日飲食整體穩定，血糖影響輕微。";
   }
 
   const secondary: string[] = [];

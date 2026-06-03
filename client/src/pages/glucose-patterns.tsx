@@ -57,6 +57,7 @@ export default function GlucosePatterns() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
+    refetchOnMount: "always",
   });
 
   const { data: drilldownData, isLoading: drilldownLoading } = useQuery<DrilldownData>({

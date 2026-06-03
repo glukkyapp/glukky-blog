@@ -49,14 +49,14 @@ function localDateString(date: Date, tz?: string): string {
   }
 }
 
-function getWeekStart(tz?: string): string {
+export function getWeekStart(tz?: string): string {
   const today = new Date();
   const localStr = localDateString(today, tz);
   const [y, m, d] = localStr.split("-").map(Number);
   const localDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   const dow = localDate.getUTCDay();
   const daysToThisMonday = dow === 0 ? -6 : 1 - dow;
-  const prevMondayTime = Date.UTC(y, m - 1, d + daysToThisMonday, 12, 0, 0) - 7 * 86400000;
+  const prevMondayTime = Date.UTC(y, m - 1, d + daysToThisMonday, 12, 0, 0);
   return new Date(prevMondayTime).toISOString().split("T")[0];
 }
 
@@ -68,7 +68,7 @@ function getPrevMonth(): string {
   return `${y}-${String(currentMonth - 1).padStart(2, "0")}`;
 }
 
-function WeeklyCard({ weekStart }: { weekStart: string }) {
+export function WeeklyCard({ weekStart }: { weekStart: string }) {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery<WeeklySummary>({
     queryKey: ["/api/snap/weekly-summary", weekStart],

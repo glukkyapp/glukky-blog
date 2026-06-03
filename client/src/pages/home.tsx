@@ -19,6 +19,7 @@ import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 import PostMealCard from "@/components/PostMealCard";
+import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -1445,6 +1446,8 @@ export default function Home() {
       )}
 
       <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
+
+      <WeeklyCard weekStart={getWeekStart(profile?.deviceTimezone ?? undefined)} />
 
       {pendingSnapData?.snap && (
         <PostMealCard

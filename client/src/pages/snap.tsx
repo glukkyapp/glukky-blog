@@ -680,6 +680,7 @@ export default function Snap() {
       setSnapId(data.snapId ?? null);
       setStep("advice");
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
     } catch (err) {
       hapticNotify("ERROR");

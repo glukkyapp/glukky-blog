@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import PostMealCard from "@/components/PostMealCard";
+import { queryClient } from "@/lib/queryClient";
 
 interface MealLogItem {
   id: number;
@@ -115,6 +118,10 @@ const SYMPTOM_LABEL_ZH: Record<string, string> = {
   thirsty:       "😟 口渴",
 };
 
+interface ProfileData {
+  fastingBaselineMmol: number | null;
+}
+
 export default function FoodLog() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
@@ -123,6 +130,9 @@ export default function FoodLog() {
 
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
+  const [glucoseSheetSnapId, setGlucoseSheetSnapId] = useState<number | null>(null);
+
+  const { data: profile } = useQuery<ProfileData>({ queryKey: ["/api/profile"] });
 
   const { data, isLoading } = useQuery<MealLogResponse>({
     queryKey: ["/api/snap/meal-log", month],
@@ -301,7 +311,7 @@ export default function FoodLog() {
                           <button
                             type="button"
                             data-testid={`button-food-log-record-glucose-${item.id}`}
-                            onClick={() => setLocation("/")}
+                            onClick={() => setGlucoseSheetSnapId(item.id)}
                             className="self-start text-xs font-medium text-primary hover:underline transition-colors"
                           >
                             {t("glucose.log_button")}
@@ -316,6 +326,24 @@ export default function FoodLog() {
           </div>
         )}
       </div>
+
+      <Sheet
+        open={glucoseSheetSnapId !== null}
+        onOpenChange={(open) => { if (!open) setGlucoseSheetSnapId(null); }}
+      >
+        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-4">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-base">{t("glucose.log_button")}</SheetTitle>
+          </SheetHeader>
+          {glucoseSheetSnapId !== null && (
+            <PostMealCard
+              snapId={glucoseSheetSnapId}
+              hasFastingBaseline={profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined}
+              onDone={() => setGlucoseSheetSnapId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
