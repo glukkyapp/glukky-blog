@@ -3691,6 +3691,47 @@ No explanation, just JSON.`,
         if (a > worstAvg) { worstAvg = a; worstDay = day; }
       }
 
+      // Worst meal type + food on the worst day
+      let worstMeal: string | null = null;
+      let worstFood: string | null = null;
+      if (worstDay !== null) {
+        const worstDaySnaps = snaps.filter(s => {
+          const jsDay = new Date(s.localDate + "T12:00:00Z").getUTCDay();
+          return (jsDay === 0 ? 6 : jsDay - 1) === worstDay;
+        });
+        const mealBuckets: Record<string, { total: number; count: number; topScore: number; topFood: string | null }> = {};
+        for (const snap of worstDaySnaps) {
+          if (!snap.mealType || snap.mealType === "snack") continue;
+          const score = impactScore(snap.glucoseImpact);
+          if (score === null) continue;
+          if (!mealBuckets[snap.mealType]) mealBuckets[snap.mealType] = { total: 0, count: 0, topScore: -Infinity, topFood: null };
+          mealBuckets[snap.mealType].total += score;
+          mealBuckets[snap.mealType].count++;
+          if (score > mealBuckets[snap.mealType].topScore) {
+            mealBuckets[snap.mealType].topScore = score;
+            mealBuckets[snap.mealType].topFood = snap.foodName ?? null;
+          }
+        }
+        let worstMealAvg = -Infinity;
+        for (const [mt, b] of Object.entries(mealBuckets)) {
+          const avg = b.total / b.count;
+          if (avg > worstMealAvg) { worstMealAvg = avg; worstMeal = mt; worstFood = b.topFood; }
+        }
+      }
+
+      // Most common irregular meal type this week (for frontend naming)
+      const irregularTypeCounts: Record<string, number> = {};
+      for (const snap of snaps) {
+        if (isIrregularSnap(snap, profile.deviceTimezone) && snap.mealType) {
+          irregularTypeCounts[snap.mealType] = (irregularTypeCounts[snap.mealType] ?? 0) + 1;
+        }
+      }
+      let irregularMealType: string | null = null;
+      let maxIrregCount = 0;
+      for (const [mt, cnt] of Object.entries(irregularTypeCounts)) {
+        if (cnt > maxIrregCount) { maxIrregCount = cnt; irregularMealType = mt; }
+      }
+
       const irregularDaySet = new Set<string>();
       for (const snap of snaps) {
         if (isIrregularSnap(snap, profile.deviceTimezone)) irregularDaySet.add(snap.localDate);
@@ -3737,7 +3778,7 @@ No explanation, just JSON.`,
       const dayBreakdown = { stable: gridStable, medium: gridMedium, high: gridHigh, total: gridStable + gridMedium + gridHigh };
       const hasAiDays = dayBreakdown.total > 0;
 
-      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, dayBreakdown, dailyGrid, hasAiDays });
+      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, worstMeal, worstFood, irregularMealType, dayBreakdown, dailyGrid, hasAiDays });
     } catch (error: any) {
       console.error("Snap weekly-summary error:", error);
       res.status(500).json({ message: "Failed to fetch weekly summary." });

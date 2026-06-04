@@ -12,8 +12,11 @@ interface WeeklySummary {
   lateMealCount?: number;
   missedMealDays?: number;
   irregularMealDays?: number;
+  irregularMealType?: string | null;
   mealTypeAvgs?: { breakfast: number | null; lunch: number | null; dinner: number | null };
   worstDay?: number | null;
+  worstMeal?: string | null;
+  worstFood?: string | null;
   dayBreakdown?: { stable: number; medium: number; high: number; total: number };
   dailyGrid?: DayGrid[];
   hasAiDays?: boolean;
@@ -208,21 +211,60 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
     );
   }
 
-  const lines: string[] = [];
-  if ((data.lateMealCount ?? 0) > 2) lines.push(`本週有${data.lateMealCount}餐宵夜 — 夜晚進食會影響隔日空腹血糖。`);
-  if ((data.missedMealDays ?? 0) > 0) lines.push(t("food.missed_meal_days_notice", { count: data.missedMealDays }));
-  if ((data.irregularMealDays ?? 0) > 0) lines.push(`本週有${data.irregularMealDays}日進餐時間不規律（正餐在非預期時段進食）。`);
+  const loggedDays = data.dailyGrid
+    ? data.dailyGrid.filter(d => !d.isFuture && (d.breakfast || d.lunch || d.dinner || (d.snackImpacts?.length ?? 0) > 0)).length
+    : null;
+
+  const bullets: { insight: string; suggestion?: string }[] = [];
+
+  if (loggedDays !== null) {
+    bullets.push({ insight: `本週已記錄${loggedDays}日的飲食` });
+  }
+  if ((data.missedMealDays ?? 0) > 0) {
+    bullets.push({
+      insight: `${data.missedMealDays}日的飲食記錄不完整`,
+      suggestion: "建議每天記錄至少2餐，有助分析血糖趨勢。",
+    });
+  }
+  if ((data.lateMealCount ?? 0) > 2) {
+    bullets.push({
+      insight: `本週有${data.lateMealCount}餐宵夜`,
+      suggestion: "夜晚進食會影響隔日空腹血糖，建議睡前3小時避免進食。",
+    });
+  }
+  if ((data.irregularMealDays ?? 0) > 0) {
+    const mealName = data.irregularMealType ? (MEAL_TYPE_ZH[data.irregularMealType] ?? "正餐") : "正餐";
+    const example = data.irregularMealType === "breakfast" ? "（如早上11時後才食早餐）"
+      : data.irregularMealType === "lunch" ? "（如下午2時後才食午餐）"
+      : data.irregularMealType === "dinner" ? "（如晚上9時後才食晚餐）"
+      : "";
+    bullets.push({
+      insight: `本週${mealName}有進食時間不規律的情況${example}`,
+      suggestion: "規律進食時間有助穩定全日血糖。",
+    });
+  }
   const avgs = data.mealTypeAvgs;
   if (avgs) {
     const withData = (["breakfast", "lunch", "dinner"] as const).filter(k => avgs[k] !== null) as ("breakfast" | "lunch" | "dinner")[];
     if (withData.length >= 2) {
       const best = withData.reduce((a, b) => (avgs[a]! < avgs[b]! ? a : b));
       const worst = withData.reduce((a, b) => (avgs[a]! > avgs[b]! ? a : b));
-      if (best !== worst) lines.push(`${MEAL_TYPE_ZH[best]}是本週血糖影響最低的一餐。${MEAL_TYPE_ZH[worst]}影響最高。`);
+      if (best !== worst) {
+        bullets.push({
+          insight: `${MEAL_TYPE_ZH[worst]}是本週血糖影響最高的一餐，${MEAL_TYPE_ZH[best]}最低`,
+          suggestion: `可嘗試減少${MEAL_TYPE_ZH[worst]}的高糖、高精製碳水食物。`,
+        });
+      }
     }
   }
   if (data.worstDay !== null && data.worstDay !== undefined) {
-    lines.push(`${DOW_ZH[data.worstDay]}的飲食血糖影響最大 — 留意當日的飲食模式。`);
+    const dayLabel = DOW_ZH[data.worstDay];
+    const mealLabel = data.worstMeal ? (MEAL_TYPE_ZH[data.worstMeal] ?? "") : "";
+    const foodLabel = data.worstFood ? `（${data.worstFood}）` : "";
+    bullets.push({
+      insight: `${dayLabel}${mealLabel}${foodLabel}血糖影響最高`,
+      suggestion: mealLabel ? `可在下週${mealLabel}選擇升糖指數較低的食物。` : "留意當日的飲食模式，嘗試選擇升糖指數較低的食物。",
+    });
   }
 
   return (
@@ -237,12 +279,17 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
         {variant === "reports" && data.dailyGrid && data.dailyGrid.length > 0 && (
           <WeeklyGrid grid={data.dailyGrid} />
         )}
-        {lines.length === 0 ? (
+        {bullets.length === 0 ? (
           <p className="text-sm text-muted-foreground" data-testid="text-weekly-no-issues">本週飲食模式良好，繼續保持！</p>
         ) : (
-          lines.map((line, i) => (
-            <p key={i} className="text-sm text-foreground" data-testid={`text-weekly-insight-${i}`}>{line}</p>
-          ))
+          <ul className="flex flex-col gap-2" data-testid="list-weekly-insights">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex flex-col gap-0.5" data-testid={`text-weekly-insight-${i}`}>
+                <span className="text-sm text-foreground flex gap-1.5"><span className="shrink-0 select-none">•</span>{b.insight}</span>
+                {b.suggestion && <span className="text-xs text-muted-foreground pl-4">{b.suggestion}</span>}
+              </li>
+            ))}
+          </ul>
         )}
         <div className="mt-1">
           <button

@@ -75,6 +75,21 @@ function getYesterday(tz?: string, dateOverride?: string | null): string {
   }
 }
 
+function isIrregularEntry(mealType: string | null, snapTime: string): boolean {
+  if (!mealType || mealType === "snack") return false;
+  const hour = getLocalHour(snapTime);
+  if (mealType === "breakfast") return hour < 7 || hour >= 11;
+  if (mealType === "lunch") return hour < 12 || hour >= 14;
+  if (mealType === "dinner") return hour < 18 || hour >= 21;
+  return false;
+}
+
+const IRREGULAR_EXAMPLE: Record<string, string> = {
+  breakfast: "（如早上11時後才食早餐）",
+  lunch: "（如下午2時後才食午餐）",
+  dinner: "（如晚上9時後才食晚餐）",
+};
+
 function buildSummary(snaps: SnapEntry[], irregularMealCount: number): { primary: string; secondary: string[] } {
   if (snaps.length === 0) {
     return {
@@ -83,13 +98,17 @@ function buildSummary(snaps: SnapEntry[], irregularMealCount: number): { primary
     };
   }
   const lowMealPrefix = snaps.length < 2 ? `昨日只記錄了${snaps.length}餐。` : "";
+  const highSnaps = snaps.filter(s => s.glucoseImpact === "high" && s.mealType && s.mealType !== "snack");
   const highCount = snaps.filter(s => s.glucoseImpact === "high").length;
   const mediumCount = snaps.filter(s => s.glucoseImpact === "medium").length;
   const hasSnack = snaps.some(s => s.mealType === "snack");
 
   let primary: string;
   if (highCount > 0) {
-    primary = lowMealPrefix + `昨日有${highCount}餐血糖影響偏高。`;
+    const highMealNames = Array.from(new Set(highSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
+    primary = lowMealPrefix + (highMealNames
+      ? `昨日${highMealNames}血糖影響偏高。`
+      : `昨日有${highCount}餐血糖影響偏高。`);
   } else if (mediumCount > 0) {
     primary = lowMealPrefix + "昨日飲食整體穩定，部分餐點血糖影響中等。";
   } else {
@@ -97,9 +116,18 @@ function buildSummary(snaps: SnapEntry[], irregularMealCount: number): { primary
   }
 
   const secondary: string[] = [];
-  if (highCount >= 2) secondary.push("昨日血糖波幅可能較高，建議今天選擇血糖友善食物。");
-  if (hasSnack) secondary.push("留意宵夜對血糖穩定的影響。");
-  if (irregularMealCount > 0) secondary.push(`昨日有${irregularMealCount}餐在非預期時段進食。`);
+  if (highCount >= 2) secondary.push("昨日血糖波幅可能較高，建議今天多選擇低升糖食物。");
+  if (hasSnack) secondary.push("留意宵夜對血糖穩定的影響。建議睡前3小時避免進食。");
+  if (irregularMealCount > 0) {
+    const irregularSnaps = snaps.filter(s => isIrregularEntry(s.mealType, s.snapTime));
+    const irregNames = Array.from(new Set(irregularSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
+    const example = irregularSnaps.length > 0 ? (IRREGULAR_EXAMPLE[irregularSnaps[0].mealType!] ?? "") : "";
+    secondary.push(
+      irregNames
+        ? `昨日${irregNames}進食時間不規律${example}。規律進食有助穩定全日血糖。`
+        : `昨日有${irregularMealCount}餐在非預期時段進食。規律進食有助穩定全日血糖。`
+    );
+  }
 
   return { primary, secondary };
 }
