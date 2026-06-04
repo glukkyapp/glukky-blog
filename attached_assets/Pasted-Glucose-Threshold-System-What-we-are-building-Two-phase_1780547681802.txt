@@ -1,0 +1,35 @@
+Glucose Threshold System
+What we are building
+Two phases that classify a meal's glucose impact using the user's actual post-meal reading (HStix) for those who log. Phase 1 uses fixed clinical thresholds based on the user's condition. Phase 2 personalises those thresholds once enough readings are collected. Both phases always cap at the universal clinical ceiling.
+
+Onboarding change
+The existing onboarding health question (do you have the following conditions) needs two changes. First, remove the "prefer not to answer" option — the question is mandatory. Second, map the answers to two groups: healthy and pre-diabetes users go into the healthy group; Type 2 diabetes users go into the t2dm group. Store this as a new field on the user profile.
+
+firstly, we are not using glucose spike as record anymore. we use post meal glucose instead. so no baseline value adding is needed. some parts need modifications, find them. some i can think of are in food page where each food pairs with the glucose spike, and the sparkbar in for food glucose in panel 0, and the food ranking with glucose values each. now they are changed to show post meal glucose. the display is the same.
+
+Phase 1 — Fixed thresholds
+
+Once the user's group is known, classify every post-meal reading using these values:
+Healthy / Pre-DM group
+Low: 5.9 mmol/L or below
+Medium: 6.0 to 7.8 mmol/L
+High: above 7.8 mmol/L
+
+T2DM group
+Low: 7.5 mmol/L or below
+Medium: 7.6 to 9.9 mmol/L
+High: 10.0 mmol/L or above
+
+Apply these thresholds everywhere a meal impact colour or label is shown — the home page weekly summary (chart 1), the daily report/todays meal dotstrip (chart 2), food ranking with colors (chart 4/5), weekly grid (chart 6) the monthly donut (chart 7).
+
+Phase 2 — Personalised thresholds
+Once a user has recorded 15 or more post-meal readings, the app switches to personalised thresholds automatically.
+The personalised thresholds are calculated from the user's own reading history:
+The medium/low boundary is set at the point where 75% of their readings fall below it
+The high boundary is set at the point where 90% of their readings fall below it — but it can never exceed the Phase 1 "high" threshold for their group. e.g if ones 90% is 8.1, but the universal definition for high is 7.8, today they log a meal hstix and its 7.9, it is still showing as high, not medium. The clinical ceiling is always enforced.
+These thresholds are recalculated nightly. No user action is needed.
+
+If fewer than 15 readings exist, continue using Phase 1 thresholds and show the user a small progress line in food pattern saying how many more readings they need to unlock personalised mode. small and static is enough. no pop up.
+When personalised mode activates for the first time, show a one-time popup (like other previous pop ups) telling the user their thresholds are now based on their personal history.
+Persistent disclaimer shown wherever personalised thresholds are active:
+「個人化數值基於你的歷史記錄，僅供參考，不代表醫療建議。如有疑問請諮詢醫生。」

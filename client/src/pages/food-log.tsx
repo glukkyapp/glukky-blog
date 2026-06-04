@@ -17,7 +17,6 @@ interface MealLogItem {
   postMealGlucoseMmol: number | null;
   postMealSymptom: string | null;
   postMealSkipped: boolean | null;
-  postMealSpikeFromBaseline: number | null;
 }
 
 interface MealLogResponse {
@@ -245,7 +244,6 @@ export default function FoodLog() {
                     const hasPostMeal = item.postMealGlucoseMmol !== null && item.postMealGlucoseMmol !== undefined;
                     const withinWindow = isWithin2h(item.snapTime);
                     const needsGlucoseLog = withinWindow && !hasPostMeal && !item.postMealSkipped;
-                    const spike = item.postMealSpikeFromBaseline;
 
                     return (
                       <div
@@ -289,12 +287,7 @@ export default function FoodLog() {
                               data-testid={`food-log-post-meal-glucose-${item.id}`}
                               className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700"
                             >
-                              {spike !== null
-                                ? t("glucose.spike_label", {
-                                    mmol: item.postMealGlucoseMmol!.toFixed(1),
-                                    spike: (spike >= 0 ? "+" : "") + spike.toFixed(1),
-                                  })
-                                : `🔴 ${item.postMealGlucoseMmol!.toFixed(1)} mmol/L`}
+                              {t("glucose.spike_label", { mmol: item.postMealGlucoseMmol!.toFixed(1) })}
                             </span>
                             {item.postMealSymptom && (
                               <span

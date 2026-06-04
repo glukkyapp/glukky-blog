@@ -178,6 +178,7 @@ export default function Onboarding() {
     if (step === 6) return !dinnerTime;
     if (step === 7) return !sleepPattern;
     if (step === 8) return !eatingOutFrequency;
+    if (step === 10) return !healthCondition;
     return false;
   };
 
@@ -651,12 +652,6 @@ export default function Onboarding() {
                 selected={healthCondition === "no_but_health"}
                 onClick={() => setHealthCondition("no_but_health")}
                 testId="option-no-but-health"
-              />
-              <IconTileOption
-                label={t("onboarding.q6_prefer_not_tell")}
-                selected={healthCondition === "prefer_not_tell"}
-                onClick={() => setHealthCondition("prefer_not_tell")}
-                testId="option-prefer-not-tell"
               />
             </div>
           </OnboardingCard>

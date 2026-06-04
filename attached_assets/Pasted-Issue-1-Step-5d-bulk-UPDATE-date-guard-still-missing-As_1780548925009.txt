@@ -1,0 +1,15 @@
+Issue 1 — Step 5d bulk UPDATE date guard still missing
+As flagged in the previous review: the bulk reclassification of meal_snaps needs WHERE snap_time >= NOW() - INTERVAL '30 days'. Snaps older than 30 days are already purged — the UPDATE will scan for non-existent rows. This is now in the final plan but the date guard is still not mentioned. Flag this explicitly to the agent.
+
+Issue 2 — Step 5e re-aggregation scope
+"Re-aggregate snap_daily_glucose for all affected user+date pairs" is correct but vague. The agent needs to know this means: for each unique localDate where a snap was updated in Step 5d, recompute lowCount/mediumCount/highCount from the current meal_snaps rows for that user+date and overwrite the snap_daily_glucose row. If this is left ambiguous the agent may skip it or implement it incorrectly.
+
+Issue 3 — SpikeChip needs glucoseGroup prop
+Step 8 updates SpikeChip to show absolute mmol with threshold colours, but glucoseGroup is not listed as a prop addition. The colour bands differ between healthy and t2dm users — the component needs the group passed in from the user profile context, otherwise it will apply one group's colours universally. This is missing from the plan.
+
+Issue 4 — glucosePersonalisedSeen first-activation logic race condition
+Step 5c sets glucosePersonalisedSeen = false when firstActivatedAt was null. But the nightly job runs for all users simultaneously — if two users cross 15 readings on the same night, both get the flag set correctly. The issue is subtler: if the nightly job fails halfway through, some users get the flag set and some don't, with no way to retry cleanly. Suggest the agent adds a check: only set glucosePersonalisedSeen = false if firstActivatedAt IS NULL AND isPersonalised is being set to true for the first time in this run. This is idempotent and safe to retry.
+
+Issue 5 — Progress line visibility on Glucose Patterns page
+The plan shows the line when readingCount < 15 and the page is already unlocked at 10. But readingCount here refers to HStix readings (real post-meal values), while the page unlock threshold of 10 refers to totalPaired entries (from getGlucosePatterns). These may be different numbers if some paired entries lack a valid postMealGlucoseMmol. Confirm with the agent which count to use for the progress line — it should be the HStix count from user_glucose_thresholds.readingCount, not totalPaired.
+

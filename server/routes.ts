@@ -246,8 +246,11 @@ export async function registerRoutes(
       const sortedStruggles = sortStruggles(struggles || []);
       const hasLateDinner = dinnerTime === "after_9pm";
 
+      const { deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
+      const glucoseGroup = deriveGlucoseGroupFromCondition(healthCondition) ?? undefined;
+
       const existingProfile = await storage.getProfile(userId);
-      const profileData = {
+      const profileData: any = {
         walksPerWeek: walksPerWeek || 0,
         walkDuration: walkDuration || 10,
         dinnerTime: dinnerTime || "before_9pm",
@@ -265,6 +268,7 @@ export async function registerRoutes(
         goal: goal || null,
         healthCondition: healthCondition || null,
         referralSource: referralSource || null,
+        glucoseGroup: glucoseGroup ?? null,
       };
 
       let profile;
@@ -3261,14 +3265,15 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
       const glucosePredictionBase = (() => {
-        const { avgSpike, entryCount } = rawGlucosePrediction;
-        if (entryCount === 0 || avgSpike === null) {
-          return { avgSpikeMmol: null, pairedCount: entryCount, state: "C" as const };
+        const { avgPostMeal, entryCount } = rawGlucosePrediction;
+        if (entryCount === 0 || avgPostMeal === null) {
+          return { avgPostMealMmol: null, pairedCount: entryCount, state: "C" as const, glucoseGroup: profile.glucoseGroup ?? null };
         }
         return {
-          avgSpikeMmol: avgSpike,
-          pairedCount:  entryCount,
-          state: entryCount >= 10 ? "A" as const : "B" as const,
+          avgPostMealMmol: avgPostMeal,
+          pairedCount:     entryCount,
+          state:           entryCount >= 10 ? "A" as const : "B" as const,
+          glucoseGroup:    profile.glucoseGroup ?? null,
         };
       })();
       const spikeHistory = name ? await storage.getGlucoseSpikeHistoryByFoodName(userId, name, 6) : [];
@@ -3878,9 +3883,6 @@ No explanation, just JSON.`,
           postMealGlucoseMmol: s.postMealGlucoseMmol ?? null,
           postMealSymptom: s.postMealSymptom ?? null,
           postMealSkipped: s.postMealSkipped,
-          postMealSpikeFromBaseline: (s.postMealGlucoseMmol !== null && s.postMealGlucoseMmol !== undefined && baseline !== null)
-            ? parseFloat((s.postMealGlucoseMmol - baseline).toFixed(1))
-            : null,
         }));
       res.json({ month, items });
     } catch (error: any) {
@@ -3920,10 +3922,68 @@ No explanation, just JSON.`,
           });
         }
       }
+      // Reclassify glucoseImpact using clinical thresholds when real glucose is provided
+      if (glucoseMmol !== undefined) {
+        try {
+          const { classifyPostMealMmol, PHASE1_THRESHOLDS } = await import("./glucose-thresholds");
+          const profile3 = await storage.getProfile(userId);
+          const glucoseGroup = profile3?.glucoseGroup as "healthy" | "t2dm" | undefined;
+          if (glucoseGroup && PHASE1_THRESHOLDS[glucoseGroup]) {
+            const thresholdRow = await storage.getUserGlucoseThresholds(userId);
+            const impact = classifyPostMealMmol(
+              glucoseMmol,
+              glucoseGroup,
+              thresholdRow?.isPersonalised ? { lowMedBoundary: thresholdRow.lowMedBoundary, medHighBoundary: thresholdRow.medHighBoundary } : undefined,
+            );
+            const localDate = await storage.reclassifySnapGlucoseImpact(snapId, impact);
+            if (localDate) {
+              await storage.reaggregateDailyGlucoseForDate(userId, localDate);
+            }
+          }
+        } catch (reclassErr: any) {
+          console.error("[post-meal/reclassify] Error:", reclassErr?.message);
+        }
+      }
       res.json({ ok: true });
     } catch (error: any) {
       console.error("post-meal error:", error);
       res.status(500).json({ message: "Failed to save post-meal record." });
+    }
+  });
+
+  app.get("/api/user/glucose-thresholds", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      const glucoseGroup = profile?.glucoseGroup ?? null;
+      const { PHASE1_THRESHOLDS } = await import("./glucose-thresholds");
+      const row = await storage.getUserGlucoseThresholds(userId);
+      if (!row && !glucoseGroup) {
+        return res.json({ glucoseGroup: null, lowMedBoundary: null, medHighBoundary: null, readingCount: 0, isPersonalised: false, glucosePersonalisedSeen: true });
+      }
+      const phase1 = glucoseGroup ? PHASE1_THRESHOLDS[glucoseGroup as "healthy" | "t2dm"] : null;
+      return res.json({
+        glucoseGroup,
+        lowMedBoundary:           row?.lowMedBoundary  ?? phase1?.lowMedBoundary  ?? null,
+        medHighBoundary:          row?.medHighBoundary ?? phase1?.medHighBoundary ?? null,
+        readingCount:             row?.readingCount    ?? 0,
+        isPersonalised:           row?.isPersonalised  ?? false,
+        glucosePersonalisedSeen:  profile?.glucosePersonalisedSeen ?? true,
+      });
+    } catch (error: any) {
+      console.error("glucose-thresholds error:", error);
+      res.status(500).json({ message: "Failed to fetch glucose thresholds." });
+    }
+  });
+
+  app.post("/api/user/glucose-personalised-seen", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.updateProfile(userId, { glucosePersonalisedSeen: true });
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("glucose-personalised-seen error:", error);
+      res.status(500).json({ message: "Failed to update." });
     }
   });
 
@@ -4450,8 +4510,50 @@ No explanation, just JSON.`,
     );
   }, 5 * 60 * 1000);
 
+  async function runNightlyThresholdJob() {
+    const { computePersonalisedThresholds, PHASE1_THRESHOLDS, PERSONALISED_THRESHOLD } = await import("./glucose-thresholds");
+    const usersWithGroup = await storage.getUsersWithGlucoseGroup();
+    for (const { userId, glucoseGroup } of usersWithGroup) {
+      try {
+        const phase1 = PHASE1_THRESHOLDS[glucoseGroup as "healthy" | "t2dm"];
+        if (!phase1) continue;
+        const readingCount = await storage.getHStixReadingCount(userId);
+        const thresholdRow = await storage.getUserGlucoseThresholds(userId);
+        if (readingCount >= PERSONALISED_THRESHOLD) {
+          const readings = await storage.getRecentHStixReadings(userId);
+          const personalised = computePersonalisedThresholds(readings, glucoseGroup as "healthy" | "t2dm");
+          const wasPersonalised = thresholdRow?.isPersonalised ?? false;
+          await storage.upsertUserGlucoseThresholds({
+            userId,
+            lowMedBoundary:  personalised.lowMedBoundary,
+            medHighBoundary: personalised.medHighBoundary,
+            readingCount,
+            isPersonalised:  true,
+            firstActivatedAt: wasPersonalised ? thresholdRow!.firstActivatedAt : new Date(),
+          });
+          if (!wasPersonalised) {
+            await storage.updateProfile(userId, { glucosePersonalisedSeen: false });
+          }
+        } else {
+          await storage.upsertUserGlucoseThresholds({
+            userId,
+            lowMedBoundary:  phase1.lowMedBoundary,
+            medHighBoundary: phase1.medHighBoundary,
+            readingCount,
+            isPersonalised:  false,
+            firstActivatedAt: null,
+          });
+        }
+      } catch (e: any) {
+        console.error(`[glucose/thresholds] Error for user ${userId}:`, e?.message);
+      }
+    }
+    console.log(`[glucose/thresholds] Nightly job complete. Processed ${usersWithGroup.length} users.`);
+  }
+
   let _lastMonthlyArchiveRun: string | null = null;
   let _lastDailyDeleteRun: string | null = null;
+  let _lastThresholdRun: string | null = null;
 
   setInterval(() => {
     const now = new Date();
@@ -4468,6 +4570,10 @@ No explanation, just JSON.`,
     if (utcHour === 3 && _lastDailyDeleteRun !== dateKey) {
       _lastDailyDeleteRun = dateKey;
       runDailyDeleteJob().catch(e => console.error("[snap/delete] Scheduler:", e?.message));
+    }
+    if (utcHour === 2 && _lastThresholdRun !== dateKey) {
+      _lastThresholdRun = dateKey;
+      runNightlyThresholdJob().catch(e => console.error("[glucose/thresholds] Scheduler:", e?.message));
     }
   }, 60 * 60 * 1000);
 

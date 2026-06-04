@@ -12,11 +12,13 @@ import {
   type FoodAdviceCache,
   type ScheduledNotification,
   type MealSnap, type InsertMealSnap,
+  type UserGlucoseThresholds,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
   mealSnaps,
   snapDailyGlucose, snapMonthlyArchive,
+  userGlucoseThresholds,
   type SnapMonthlyArchive, type InsertSnapMonthlyArchive,
   users, sessions,
 } from "@shared/schema";
@@ -131,7 +133,7 @@ export interface IStorage {
   // Post-meal glucose tracking
   updateMealSnapPostMeal(snapId: number, userId: string, data: { glucoseMmol?: number; symptom?: string; skipped?: boolean; recordedAt?: Date }): Promise<boolean>;
   getPendingPostMealSnap(userId: string): Promise<MealSnap | null>;
-  getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgSpike: number | null; entryCount: number }>;
+  getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }>;
   getTotalPairedEntries(userId: string): Promise<number>;
   getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
   getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
@@ -140,6 +142,22 @@ export interface IStorage {
   getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]>;
   getDailyGlucoseForMonth(userId: string, month: string): Promise<Array<{ localDate: string; lowCount: number; mediumCount: number; highCount: number }>>;
   getMonthlySymptomCounts(userId: string, month: string): Promise<{ symptoms: Record<string, number>; totalWithSymptom: number; snackCount: number }>;
+
+  // Glucose threshold system
+  getUserGlucoseThresholds(userId: string): Promise<UserGlucoseThresholds | null>;
+  upsertUserGlucoseThresholds(data: {
+    userId: string;
+    lowMedBoundary: number;
+    medHighBoundary: number;
+    readingCount: number;
+    isPersonalised: boolean;
+    firstActivatedAt?: Date | null;
+  }): Promise<void>;
+  getHStixReadingCount(userId: string): Promise<number>;
+  getRecentHStixReadings(userId: string): Promise<number[]>;
+  reclassifySnapGlucoseImpact(snapId: number, glucoseImpact: string): Promise<string | null>;
+  getUsersWithGlucoseGroup(): Promise<Array<{ userId: string; glucoseGroup: string }>>;
+  reaggregateDailyGlucoseForDate(userId: string, localDate: string): Promise<void>;
 }
 
 export interface AiFoodEntry {
@@ -150,9 +168,9 @@ export interface AiFoodEntry {
 
 export interface GlucosePatternEntry {
   foodName: string;
-  avgSpike: number;
-  entryCount: number;
-  comboCount: number;
+  avgPostMealMmol: number;
+  readingCount: number;
+  hasMultipleCombos: boolean;
 }
 
 export interface GlucoseDrilldownEntry {
@@ -160,8 +178,8 @@ export interface GlucoseDrilldownEntry {
   portion: string | null;
   sauces: string | null;
   extras: string | null;
-  avgSpike: number;
-  entryCount: number;
+  avgPostMealMmol: number;
+  readingCount: number;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1045,21 +1063,19 @@ export class DatabaseStorage implements IStorage {
     return snap ?? null;
   }
 
-  async getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgSpike: number | null; entryCount: number }> {
+  async getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }> {
     const result = await db.execute(sql`
       SELECT
-        AVG(ms.post_meal_glucose_mmol - up.fasting_baseline_mmol) AS avg_spike,
+        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
         COUNT(*)::int AS entry_count
       FROM meal_snaps ms
-      JOIN user_profiles up ON ms.user_id = up.user_id
       WHERE ms.user_id = ${userId}
         AND ms.combo_key = ${comboKey}
         AND ms.post_meal_glucose_mmol IS NOT NULL
-        AND up.fasting_baseline_mmol IS NOT NULL
     `);
     const row = result.rows[0] as any;
     return {
-      avgSpike: row?.avg_spike != null ? parseFloat(row.avg_spike) : null,
+      avgPostMeal: row?.avg_post_meal != null ? parseFloat(row.avg_post_meal) : null,
       entryCount: parseInt(row?.entry_count ?? "0", 10),
     };
   }
@@ -1081,12 +1097,10 @@ export class DatabaseStorage implements IStorage {
           ms.food_name,
           ms.portion,
           ms.combo_key,
-          ms.post_meal_glucose_mmol - up.fasting_baseline_mmol AS spike
+          ms.post_meal_glucose_mmol AS post_meal
         FROM meal_snaps ms
-        JOIN user_profiles up ON ms.user_id = up.user_id
         WHERE ms.user_id = ${userId}
           AND ms.post_meal_glucose_mmol IS NOT NULL
-          AND up.fasting_baseline_mmol IS NOT NULL
           AND ms.food_name IS NOT NULL
       ),
       portion_counts AS (
@@ -1102,23 +1116,23 @@ export class DatabaseStorage implements IStorage {
       food_stats AS (
         SELECT
           p.food_name,
-          AVG(p.spike) AS avg_spike,
+          AVG(p.post_meal) AS avg_post_meal,
           COUNT(*) AS entry_count,
           COUNT(DISTINCT p.combo_key) AS combo_count
         FROM paired p
         JOIN top_portions tp ON p.food_name = tp.food_name AND (p.portion = tp.portion OR (p.portion IS NULL AND tp.portion IS NULL))
         GROUP BY p.food_name
       )
-      SELECT food_name, avg_spike, entry_count::int, combo_count::int
+      SELECT food_name, avg_post_meal, entry_count::int, combo_count::int
       FROM food_stats
-      ORDER BY avg_spike DESC
+      ORDER BY avg_post_meal DESC
     `);
     return {
       topList: (result.rows as any[]).map(row => ({
         foodName: row.food_name,
-        avgSpike: parseFloat(row.avg_spike),
-        entryCount: parseInt(row.entry_count, 10),
-        comboCount: parseInt(row.combo_count, 10),
+        avgPostMealMmol: parseFloat(row.avg_post_meal),
+        readingCount: parseInt(row.entry_count, 10),
+        hasMultipleCombos: parseInt(row.combo_count, 10) > 1,
       })),
     };
   }
@@ -1130,24 +1144,22 @@ export class DatabaseStorage implements IStorage {
         ms.portion,
         ms.sauces,
         ms.extras,
-        AVG(ms.post_meal_glucose_mmol - up.fasting_baseline_mmol) AS avg_spike,
+        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
         COUNT(*)::int AS entry_count
       FROM meal_snaps ms
-      JOIN user_profiles up ON ms.user_id = up.user_id
       WHERE ms.user_id = ${userId}
         AND ms.food_name = ${foodName}
         AND ms.post_meal_glucose_mmol IS NOT NULL
-        AND up.fasting_baseline_mmol IS NOT NULL
       GROUP BY ms.combo_key, ms.portion, ms.sauces, ms.extras
-      ORDER BY avg_spike DESC
+      ORDER BY avg_post_meal DESC
     `);
     return (result.rows as any[]).map(row => ({
       comboKey: row.combo_key ?? null,
       portion: row.portion ?? null,
       sauces: row.sauces ?? null,
       extras: row.extras ?? null,
-      avgSpike: parseFloat(row.avg_spike),
-      entryCount: parseInt(row.entry_count, 10),
+      avgPostMealMmol: parseFloat(row.avg_post_meal),
+      readingCount: parseInt(row.entry_count, 10),
     }));
   }
 
@@ -1188,18 +1200,16 @@ export class DatabaseStorage implements IStorage {
 
   async getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number = 6): Promise<number[]> {
     const result = await db.execute(sql`
-      SELECT ms.post_meal_glucose_mmol - up.fasting_baseline_mmol AS spike
+      SELECT ms.post_meal_glucose_mmol AS post_meal
       FROM meal_snaps ms
-      JOIN user_profiles up ON ms.user_id = up.user_id
       WHERE ms.user_id = ${userId}
         AND ms.food_name = ${foodName}
         AND ms.post_meal_glucose_mmol IS NOT NULL
-        AND up.fasting_baseline_mmol IS NOT NULL
         AND ms.snap_time >= NOW() - INTERVAL '30 days'
       ORDER BY ms.snap_time ASC
       LIMIT ${limit}
     `);
-    return (result.rows as any[]).map(row => parseFloat(row.spike));
+    return (result.rows as any[]).map(row => parseFloat(row.post_meal));
   }
 
   async getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]> {
@@ -1207,10 +1217,8 @@ export class DatabaseStorage implements IStorage {
       WITH hstix_foods AS (
         SELECT DISTINCT ms2.food_name
         FROM meal_snaps ms2
-        JOIN user_profiles up2 ON ms2.user_id = up2.user_id
         WHERE ms2.user_id = ${userId}
           AND ms2.post_meal_glucose_mmol IS NOT NULL
-          AND up2.fasting_baseline_mmol IS NOT NULL
           AND ms2.food_name IS NOT NULL
       )
       SELECT
@@ -1240,6 +1248,105 @@ export class DatabaseStorage implements IStorage {
         snapCount: parseInt(row.snap_count, 10),
         impactLevel: score >= 2.5 ? "high" : score >= 1.5 ? "medium" : "low",
       } as AiFoodEntry;
+    });
+  }
+
+  async getUserGlucoseThresholds(userId: string): Promise<UserGlucoseThresholds | null> {
+    const rows = await db.select().from(userGlucoseThresholds).where(eq(userGlucoseThresholds.userId, userId)).limit(1);
+    return rows[0] ?? null;
+  }
+
+  async upsertUserGlucoseThresholds(data: {
+    userId: string;
+    lowMedBoundary: number;
+    medHighBoundary: number;
+    readingCount: number;
+    isPersonalised: boolean;
+    firstActivatedAt?: Date | null;
+  }): Promise<void> {
+    await db.execute(sql`
+      INSERT INTO user_glucose_thresholds
+        (user_id, low_med_boundary, med_high_boundary, reading_count, is_personalised, first_activated_at, updated_at)
+      VALUES
+        (${data.userId}, ${data.lowMedBoundary}, ${data.medHighBoundary}, ${data.readingCount}, ${data.isPersonalised}, ${data.firstActivatedAt ?? null}, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        low_med_boundary   = EXCLUDED.low_med_boundary,
+        med_high_boundary  = EXCLUDED.med_high_boundary,
+        reading_count      = EXCLUDED.reading_count,
+        is_personalised    = EXCLUDED.is_personalised,
+        first_activated_at = COALESCE(user_glucose_thresholds.first_activated_at, EXCLUDED.first_activated_at),
+        updated_at         = NOW()
+    `);
+  }
+
+  async getHStixReadingCount(userId: string): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt
+      FROM meal_snaps
+      WHERE user_id = ${userId}
+        AND post_meal_glucose_mmol IS NOT NULL
+        AND snap_time >= NOW() - INTERVAL '30 days'
+    `);
+    return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
+  }
+
+  async getRecentHStixReadings(userId: string): Promise<number[]> {
+    const result = await db.execute(sql`
+      SELECT post_meal_glucose_mmol AS mmol
+      FROM meal_snaps
+      WHERE user_id = ${userId}
+        AND post_meal_glucose_mmol IS NOT NULL
+        AND snap_time >= NOW() - INTERVAL '30 days'
+      ORDER BY snap_time ASC
+    `);
+    return (result.rows as any[]).map(row => parseFloat(row.mmol));
+  }
+
+  async reclassifySnapGlucoseImpact(snapId: number, glucoseImpact: string): Promise<string | null> {
+    const rows = await db.update(mealSnaps)
+      .set({ glucoseImpact })
+      .where(eq(mealSnaps.id, snapId))
+      .returning({ localDate: mealSnaps.localDate });
+    return rows[0]?.localDate ?? null;
+  }
+
+  async getUsersWithGlucoseGroup(): Promise<Array<{ userId: string; glucoseGroup: string }>> {
+    const result = await db.execute(sql`
+      SELECT user_id, glucose_group
+      FROM user_profiles
+      WHERE glucose_group IS NOT NULL
+    `);
+    return (result.rows as any[]).map(row => ({
+      userId: row.user_id,
+      glucoseGroup: row.glucose_group,
+    }));
+  }
+
+  async reaggregateDailyGlucoseForDate(userId: string, localDate: string): Promise<void> {
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS meal_count,
+        SUM(CASE WHEN glucose_impact = 'low' THEN 1 ELSE 0 END)::int AS low_count,
+        SUM(CASE WHEN glucose_impact = 'medium' THEN 1 ELSE 0 END)::int AS medium_count,
+        SUM(CASE WHEN glucose_impact = 'high' THEN 1 ELSE 0 END)::int AS high_count
+      FROM meal_snaps
+      WHERE user_id = ${userId}
+        AND local_date = ${localDate}
+        AND missed_meal_flag = false
+    `);
+    const row = result.rows[0] as any;
+    if (!row) return;
+    const existing = await db.execute(sql`
+      SELECT has_late_meal FROM snap_daily_glucose
+      WHERE user_id = ${userId} AND local_date = ${localDate}
+    `);
+    const hasLateMeal = (existing.rows[0] as any)?.has_late_meal ?? false;
+    await this.upsertDailyGlucose(userId, localDate, {
+      low:       parseInt(row.low_count ?? "0", 10),
+      medium:    parseInt(row.medium_count ?? "0", 10),
+      high:      parseInt(row.high_count ?? "0", 10),
+      mealCount: parseInt(row.meal_count ?? "0", 10),
+      hasLateMeal,
     });
   }
 

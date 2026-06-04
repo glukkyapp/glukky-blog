@@ -53,7 +53,7 @@ interface AdviceResult {
   adviceUsedToday: number;
   adviceLimit: number;
   snapId?: number | null;
-  glucosePrediction?: { avgSpikeMmol: number | null; pairedCount: number; state: "A" | "B" | "C"; spikeHistory?: number[] } | null;
+  glucosePrediction?: { avgPostMealMmol: number | null; pairedCount: number; state: "A" | "B" | "C"; spikeHistory?: number[]; glucoseGroup?: string | null } | null;
 }
 
 interface TokenResolution {
@@ -144,17 +144,23 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
   );
 }
 
-function SparkBars({ spikes }: { spikes: number[] }) {
-  const MAX_SPIKE = 4.0;
+function SparkBars({ spikes, glucoseGroup }: { spikes: number[]; glucoseGroup: string | null }) {
+  const MAX_MMOL = 15.0;
+  const BASE_MMOL = 3.5;
+  const getColor = (mmol: number) => {
+    if (glucoseGroup === "t2dm") {
+      return mmol >= 10.0 ? "#ef4444" : mmol >= 7.5 ? "#f59e0b" : "#22c55e";
+    }
+    return mmol >= 7.8 ? "#ef4444" : mmol >= 5.9 ? "#f59e0b" : "#22c55e";
+  };
   return (
     <div className="flex items-end gap-0.5 h-8 mt-2" data-testid="chart-spark-bars">
-      {spikes.map((spike, i) => {
-        const pct = Math.min(100, Math.max(6, (spike / MAX_SPIKE) * 100));
-        const color = spike >= 3.0 ? "#ef4444" : spike >= 1.5 ? "#f59e0b" : "#22c55e";
+      {spikes.map((mmol, i) => {
+        const pct = Math.min(100, Math.max(6, ((mmol - BASE_MMOL) / (MAX_MMOL - BASE_MMOL)) * 100));
         return (
           <div
             key={i}
-            style={{ height: `${pct}%`, backgroundColor: color, flex: 1, borderRadius: "2px 2px 0 0", opacity: 0.85 }}
+            style={{ height: `${pct}%`, backgroundColor: getColor(mmol), flex: 1, borderRadius: "2px 2px 0 0", opacity: 0.85 }}
           />
         );
       })}
@@ -177,8 +183,8 @@ function PredictionLayer({ prediction }: {
   }
   const isA = prediction.state === "A";
   const text = isA
-    ? t("glucose.prediction_state_a", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount })
-    : t("glucose.prediction_state_b", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount });
+    ? t("glucose.prediction_state_a", { mmol: (prediction.avgPostMealMmol ?? 0).toFixed(1), count: prediction.pairedCount })
+    : t("glucose.prediction_state_b", { mmol: (prediction.avgPostMealMmol ?? 0).toFixed(1), count: prediction.pairedCount });
   const hasBars = (prediction.spikeHistory?.length ?? 0) >= 2;
   return (
     <div
@@ -186,7 +192,7 @@ function PredictionLayer({ prediction }: {
       data-testid="text-snap-glucose-prediction"
     >
       {text}
-      {hasBars && <SparkBars spikes={prediction.spikeHistory!} />}
+      {hasBars && <SparkBars spikes={prediction.spikeHistory!} glucoseGroup={prediction.glucoseGroup ?? null} />}
     </div>
   );
 }
@@ -822,7 +828,16 @@ export default function Snap() {
     }
   }
 
-  const panels = adviceResult ? parseAdvicePanels(adviceResult.advice) : [];
+  const rawPanels = adviceResult ? parseAdvicePanels(adviceResult.advice) : [];
+  const predState = adviceResult?.glucosePrediction?.state;
+  const hasRealGlucose = predState === "A" || predState === "B";
+  const panels = hasRealGlucose
+    ? rawPanels.filter((p) =>
+        !p.startsWith("🩸") &&
+        !p.toLowerCase().startsWith("blood sugar impact") &&
+        !p.startsWith("血糖")
+      )
+    : rawPanels;
   const focusPanelData = adviceResult?.focusPanelData ?? null;
   const totalPanels = panels.length + (focusPanelData ? 1 : 0);
   const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;

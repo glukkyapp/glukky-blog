@@ -82,6 +82,8 @@ export const userProfiles = pgTable("user_profiles", {
   fastingBaselineEstimated: boolean("fasting_baseline_estimated").notNull().default(false),
   glucometerNudgeShown: boolean("glucometer_nudge_shown").notNull().default(false),
   consecutiveSkippedMeals: integer("consecutive_skipped_meals").notNull().default(0),
+  glucoseGroup: text("glucose_group"),
+  glucosePersonalisedSeen: boolean("glucose_personalised_seen").notNull().default(true),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
@@ -378,3 +380,18 @@ export const snapMonthlyArchive = pgTable("snap_monthly_archive", {
 
 export type SnapMonthlyArchive = typeof snapMonthlyArchive.$inferSelect;
 export type InsertSnapMonthlyArchive = typeof snapMonthlyArchive.$inferInsert;
+
+export const userGlucoseThresholds = pgTable("user_glucose_thresholds", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().unique(),
+  lowMedBoundary: real("low_med_boundary").notNull(),
+  medHighBoundary: real("med_high_boundary").notNull(),
+  readingCount: integer("reading_count").notNull().default(0),
+  isPersonalised: boolean("is_personalised").notNull().default(false),
+  firstActivatedAt: timestamp("first_activated_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserGlucoseThresholdsSchema = createInsertSchema(userGlucoseThresholds).omit({ id: true, updatedAt: true });
+export type InsertUserGlucoseThresholds = z.infer<typeof insertUserGlucoseThresholdsSchema>;
+export type UserGlucoseThresholds = typeof userGlucoseThresholds.$inferSelect;
