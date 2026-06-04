@@ -90,10 +90,15 @@ const IRREGULAR_EXAMPLE: Record<string, string> = {
   dinner: "（如晚上9時後才食晚餐）",
 };
 
-function buildSummary(snaps: SnapEntry[], irregularMealCount: number): { primary: string; secondary: string[] } {
+function buildSummary(snaps: SnapEntry[], irregularMealCount: number): {
+  primary: string;
+  primarySuggestion?: string;
+  secondary: { insight: string; suggestion?: string }[];
+} {
   if (snaps.length === 0) {
     return {
-      primary: "昨日未見飲食記錄。定時進食有助穩定全日血糖。",
+      primary: "昨日未見飲食記錄。",
+      primarySuggestion: "定時進食有助穩定全日血糖。",
       secondary: [],
     };
   }
@@ -104,32 +109,40 @@ function buildSummary(snaps: SnapEntry[], irregularMealCount: number): { primary
   const hasSnack = snaps.some(s => s.mealType === "snack");
 
   let primary: string;
+  let primarySuggestion: string | undefined;
   if (highCount > 0) {
     const highMealNames = Array.from(new Set(highSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
     primary = lowMealPrefix + (highMealNames
       ? `昨日${highMealNames}血糖影響偏高。`
       : `昨日有${highCount}餐血糖影響偏高。`);
+    primarySuggestion = "建議今天多選擇低升糖食物。";
   } else if (mediumCount > 0) {
     primary = lowMealPrefix + "昨日飲食整體穩定，部分餐點血糖影響中等。";
+    primarySuggestion = "留意是否可進一步選擇低升糖食物。";
   } else {
     primary = lowMealPrefix + "昨日飲食整體穩定，血糖影響輕微。";
   }
 
-  const secondary: string[] = [];
-  if (highCount >= 2) secondary.push("昨日血糖波幅可能較高，建議今天多選擇低升糖食物。");
-  if (hasSnack) secondary.push("留意宵夜對血糖穩定的影響。建議睡前3小時避免進食。");
+  const secondary: { insight: string; suggestion?: string }[] = [];
+  if (hasSnack) {
+    secondary.push({
+      insight: "昨日有宵夜記錄。",
+      suggestion: "建議睡前3小時避免進食，有助穩定血糖。",
+    });
+  }
   if (irregularMealCount > 0) {
     const irregularSnaps = snaps.filter(s => isIrregularEntry(s.mealType, s.snapTime));
     const irregNames = Array.from(new Set(irregularSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
     const example = irregularSnaps.length > 0 ? (IRREGULAR_EXAMPLE[irregularSnaps[0].mealType!] ?? "") : "";
-    secondary.push(
-      irregNames
-        ? `昨日${irregNames}進食時間不規律${example}。規律進食有助穩定全日血糖。`
-        : `昨日有${irregularMealCount}餐在非預期時段進食。規律進食有助穩定全日血糖。`
-    );
+    secondary.push({
+      insight: irregNames
+        ? `昨日${irregNames}進食時間不規律${example}。`
+        : `昨日有${irregularMealCount}餐在非預期時段進食。`,
+      suggestion: "規律進食時間有助穩定全日血糖。",
+    });
   }
 
-  return { primary, secondary };
+  return { primary, primarySuggestion, secondary };
 }
 
 interface TooltipState {
@@ -166,7 +179,7 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
 
   const snaps = data?.snaps ?? [];
   const irregularMealCount = data?.irregularMealCount ?? 0;
-  const { primary, secondary } = buildSummary(snaps, irregularMealCount);
+  const { primary, primarySuggestion, secondary } = buildSummary(snaps, irregularMealCount);
 
   const handleDotClick = (e: React.MouseEvent, snap: SnapEntry, active: boolean) => {
     e.stopPropagation();
@@ -237,10 +250,18 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
           <p className="text-sm font-medium text-foreground" data-testid="text-daily-summary-primary">
             {primary}
           </p>
+          {primarySuggestion && (
+            <p className="text-xs text-muted-foreground mt-0.5">{primarySuggestion}</p>
+          )}
           {secondary.map((s, i) => (
-            <p key={i} className="text-xs text-muted-foreground mt-1" data-testid={`text-daily-summary-secondary-${i}`}>
-              {s}
-            </p>
+            <div key={i} className="mt-1">
+              <p className="text-xs text-muted-foreground" data-testid={`text-daily-summary-secondary-${i}`}>
+                {s.insight}
+              </p>
+              {s.suggestion && (
+                <p className="text-xs text-muted-foreground/60 mt-0.5">{s.suggestion}</p>
+              )}
+            </div>
           ))}
           <div className="mt-2">
             <button

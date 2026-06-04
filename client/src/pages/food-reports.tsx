@@ -17,6 +17,8 @@ interface WeeklySummary {
   worstDay?: number | null;
   worstMeal?: string | null;
   worstFood?: string | null;
+  worstMeals?: string[];
+  worstFoods?: (string | null)[];
   dayBreakdown?: { stable: number; medium: number; high: number; total: number };
   dailyGrid?: DayGrid[];
   hasAiDays?: boolean;
@@ -259,12 +261,31 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
   }
   if (data.worstDay !== null && data.worstDay !== undefined) {
     const dayLabel = DOW_ZH[data.worstDay];
-    const mealLabel = data.worstMeal ? (MEAL_TYPE_ZH[data.worstMeal] ?? "") : "";
-    const foodLabel = data.worstFood ? `（${data.worstFood}）` : "";
-    bullets.push({
-      insight: `${dayLabel}${mealLabel}${foodLabel}血糖影響最高`,
-      suggestion: mealLabel ? `可在下週${mealLabel}選擇升糖指數較低的食物。` : "留意當日的飲食模式，嘗試選擇升糖指數較低的食物。",
-    });
+    const meals = data.worstMeals?.length ? data.worstMeals : (data.worstMeal ? [data.worstMeal] : []);
+    const foods = data.worstFoods ?? (data.worstFood ? [data.worstFood] : []);
+    if (meals.length === 0) {
+      bullets.push({
+        insight: `${dayLabel}血糖影響最高`,
+        suggestion: "留意當日的飲食模式，嘗試選擇升糖指數較低的食物。",
+      });
+    } else if (meals.length === 1) {
+      const mealLabel = MEAL_TYPE_ZH[meals[0]] ?? meals[0];
+      const foodLabel = foods[0] ? `（${foods[0]}）` : "";
+      bullets.push({
+        insight: `${dayLabel}${mealLabel}${foodLabel}血糖影響最高`,
+        suggestion: `可在下週${mealLabel}選擇升糖指數較低的食物。`,
+      });
+    } else {
+      const parts = meals.map((m, j) => {
+        const mealLabel = MEAL_TYPE_ZH[m] ?? m;
+        const foodLabel = foods[j] ? `（${foods[j]}）` : "";
+        return `${mealLabel}${foodLabel}`;
+      }).join("及");
+      bullets.push({
+        insight: `${dayLabel}${parts}血糖影響同樣最高`,
+        suggestion: "可在下週這兩餐選擇升糖指數較低的食物。",
+      });
+    }
   }
 
   return (

@@ -3691,9 +3691,11 @@ No explanation, just JSON.`,
         if (a > worstAvg) { worstAvg = a; worstDay = day; }
       }
 
-      // Worst meal type + food on the worst day
+      // Worst meal type(s) + food on the worst day; collect ties
       let worstMeal: string | null = null;
       let worstFood: string | null = null;
+      let worstMeals: string[] = [];
+      let worstFoods: (string | null)[] = [];
       if (worstDay !== null) {
         const worstDaySnaps = snaps.filter(s => {
           const jsDay = new Date(s.localDate + "T12:00:00Z").getUTCDay();
@@ -3715,8 +3717,17 @@ No explanation, just JSON.`,
         let worstMealAvg = -Infinity;
         for (const [mt, b] of Object.entries(mealBuckets)) {
           const avg = b.total / b.count;
-          if (avg > worstMealAvg) { worstMealAvg = avg; worstMeal = mt; worstFood = b.topFood; }
+          if (avg > worstMealAvg) {
+            worstMealAvg = avg;
+            worstMeals = [mt];
+            worstFoods = [b.topFood];
+          } else if (avg === worstMealAvg) {
+            worstMeals.push(mt);
+            worstFoods.push(b.topFood);
+          }
         }
+        worstMeal = worstMeals[0] ?? null;
+        worstFood = worstFoods[0] ?? null;
       }
 
       // Most common irregular meal type this week (for frontend naming)
@@ -3778,7 +3789,7 @@ No explanation, just JSON.`,
       const dayBreakdown = { stable: gridStable, medium: gridMedium, high: gridHigh, total: gridStable + gridMedium + gridHigh };
       const hasAiDays = dayBreakdown.total > 0;
 
-      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, worstMeal, worstFood, irregularMealType, dayBreakdown, dailyGrid, hasAiDays });
+      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, worstMeal, worstFood, worstMeals, worstFoods, irregularMealType, dayBreakdown, dailyGrid, hasAiDays });
     } catch (error: any) {
       console.error("Snap weekly-summary error:", error);
       res.status(500).json({ message: "Failed to fetch weekly summary." });
