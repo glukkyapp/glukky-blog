@@ -28,6 +28,7 @@ interface AiFoodEntry {
 
 interface PatternsData {
   totalPaired: number;
+  totalSnaps: number;
   topList: GlucosePatternEntry[];
   aiOnlyList?: AiFoodEntry[];
 }
@@ -124,13 +125,14 @@ export default function GlucosePatterns() {
   };
 
   const totalPaired = data?.totalPaired ?? 0;
-  const isLocked = totalPaired < LOCKED_THRESHOLD;
-  const remaining = Math.max(0, LOCKED_THRESHOLD - totalPaired);
+  const totalSnaps = data?.totalSnaps ?? 0;
+  const isLocked = totalSnaps < LOCKED_THRESHOLD;
+  const remaining = Math.max(0, LOCKED_THRESHOLD - totalSnaps);
   const glucoseGroup = thresholdsData?.glucoseGroup ?? null;
   const readingCount = thresholdsData?.readingCount ?? 0;
   const isPersonalised = thresholdsData?.isPersonalised ?? false;
   const showPersonalisedPopup = isPersonalised && thresholdsData?.glucosePersonalisedSeen === false;
-  const showPersonalisedProgress = !isPersonalised && readingCount >= 10 && readingCount < PERSONALISED_THRESHOLD;
+  const showPersonalisedProgress = !isPersonalised && readingCount < PERSONALISED_THRESHOLD;
 
   return (
     <div className="min-h-screen bg-background pb-28 pt-4">
@@ -195,12 +197,12 @@ export default function GlucosePatterns() {
             <div className="w-full max-w-[200px] bg-muted rounded-full h-2">
               <div
                 className="bg-primary rounded-full h-2 transition-all"
-                style={{ width: `${Math.min(100, (totalPaired / LOCKED_THRESHOLD) * 100)}%` }}
+                style={{ width: `${Math.min(100, (totalSnaps / LOCKED_THRESHOLD) * 100)}%` }}
                 data-testid="glucose-patterns-progress"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {totalPaired} / {LOCKED_THRESHOLD}
+              {totalSnaps} / {LOCKED_THRESHOLD}
             </p>
           </div>
         )}

@@ -4088,12 +4088,13 @@ No explanation, just JSON.`,
         const drilldown = await storage.getGlucosePatternDrilldown(userId, food);
         return res.json({ drilldown });
       }
-      const [totalPaired, patterns, aiOnlyList] = await Promise.all([
+      const [totalPaired, totalSnaps, patterns, aiOnlyList] = await Promise.all([
         storage.getTotalPairedEntries(userId),
+        storage.getTotalSnaps(userId),
         storage.getGlucosePatterns(userId),
         storage.getAiOnlyFoodRanking(userId),
       ]);
-      res.json({ totalPaired, topList: patterns.topList, aiOnlyList });
+      res.json({ totalPaired, totalSnaps, topList: patterns.topList, aiOnlyList });
     } catch (error: any) {
       console.error("glucose-patterns error:", error);
       res.status(500).json({ message: "Failed to fetch glucose patterns." });

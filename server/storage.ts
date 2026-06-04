@@ -135,6 +135,7 @@ export interface IStorage {
   getPendingPostMealSnap(userId: string): Promise<MealSnap | null>;
   getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }>;
   getTotalPairedEntries(userId: string): Promise<number>;
+  getTotalSnaps(userId: string): Promise<number>;
   getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
   getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
   expireStalePostMealWindows(): Promise<{ expired: number }>;
@@ -1086,6 +1087,15 @@ export class DatabaseStorage implements IStorage {
       FROM meal_snaps
       WHERE user_id = ${userId}
         AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_symptom IS NOT NULL)
+    `);
+    return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
+  }
+
+  async getTotalSnaps(userId: string): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt
+      FROM meal_snaps
+      WHERE user_id = ${userId}
     `);
     return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
   }

@@ -1039,7 +1039,7 @@
     "symptom_line_thirsty": "😟 飯後感覺：口渴",
     "patterns_nav": "血糖規律",
     "patterns_heading": "血糖規律",
-    "patterns_locked_desc": "再記錄 {{remaining}} 次餐後血糖即可解鎖",
+    "patterns_locked_desc": "再記錄 {{remaining}} 餐飲食即可解鎖",
     "patterns_unlocked_heading": "你嘅食物餐後血糖排名",
     "patterns_avg": "+{{n}} 平均",
     "patterns_count": "{{n}}次",

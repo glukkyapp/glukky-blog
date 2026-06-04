@@ -1035,7 +1035,7 @@
     "symptom_line_thirsty": "😟 Post-meal feeling: Thirsty",
     "patterns_nav": "Glucose",
     "patterns_heading": "Glucose Patterns",
-    "patterns_locked_desc": "Log {{remaining}} more post-meal glucose readings to unlock",
+    "patterns_locked_desc": "Log {{remaining}} more meals to unlock",
     "patterns_unlocked_heading": "Your foods, ranked by post-meal glucose",
     "patterns_avg": "+{{n}} avg",
     "patterns_count": "{{n}} readings",
