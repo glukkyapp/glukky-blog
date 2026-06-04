@@ -1453,7 +1453,7 @@ export default function Home() {
         />
       )}
 
-      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
+      {profile && <DailyFoodSummaryBanner tz={profile.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />}
 
       <WeeklyCard weekStart={getWeekStart(profile?.deviceTimezone ?? undefined)} />
 

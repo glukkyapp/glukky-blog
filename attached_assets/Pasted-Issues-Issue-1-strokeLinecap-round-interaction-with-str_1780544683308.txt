@@ -1,0 +1,32 @@
+Issues
+Issue 1 — strokeLinecap="round" interaction with strokeDashoffset (medium severity)
+
+The rounded caps in SVG extend beyond the stroke's actual start/end points by strokeWidth / 2 on each side. With a thick donut ring (sw = R - innerR), the cap overshoot is substantial. The agent's 3% minimum guard helps, but there's a second problem: when two adjacent segments sit close together, the rounded end of one segment visually overlaps the start of the next, making the donut look like segments are bleeding into each other.
+
+The fix is to add a small gap between segments by slightly reducing each segment's dashLen:
+
+tsx
+const GAP = 2; // px gap between segments
+const dashLen = frac * circum - GAP;
+const gapLen = circum - dashLen;
+Apply this only when there are 2+ visible segments (arcs.length > 1). Single-segment donuts (all stable week) don't need the gap.
+
+Issue 2 — Chart 8 pill bars: rounded-full on the track container conflicts with items-end
+
+tsx
+<div className="w-full flex items-end rounded-full" style={{ height: 56 }}>
+  <div className="w-full rounded-full" style={{ height: `${heightPct}%` }} />
+</div>
+The outer rounded-full on the track container has no background, so the rounding does nothing visible. The inner bar is rounded-full which rounds both top and bottom — but because it's bottom-aligned inside a flex container, the bottom of the bar sits flush against the container's floor, making the bottom radius invisible and the bar look flat-bottomed.
+
+To actually match the reference's pill shape (rounded top, visible rounded bottom floating above the axis line), you need the bar to not touch the bottom edge. Fix:
+
+tsx
+{/* Track with visible background */}
+<div className="w-full bg-muted/30 rounded-full" style={{ height: 56, display: "flex", alignItems: "flex-end", padding: "3px" }}>
+  <div
+    className="w-full rounded-full"
+    style={{ height: `${Math.max(heightPct, 8)}%`, backgroundColor: color }}
+  />
+</div>
+The padding: "3px" on the track creates the floor gap so the bar's bottom radius is actually visible inside the container, matching the reference's floating pill style.

@@ -18,9 +18,16 @@ interface GlucoseDrilldownEntry {
   readingCount: number;
 }
 
+interface AiFoodEntry {
+  foodName: string;
+  impactLevel: "low" | "medium" | "high";
+  snapCount: number;
+}
+
 interface PatternsData {
   totalPaired: number;
   topList: GlucosePatternEntry[];
+  aiOnlyList?: AiFoodEntry[];
 }
 
 interface DrilldownData {
@@ -143,6 +150,24 @@ export default function GlucosePatterns() {
 
         {!isLoading && !isLocked && !selectedFood && (
           <div data-testid="glucose-patterns-list">
+            {(data?.aiOnlyList ?? []).length > 0 && (
+              <div className="mb-4" data-testid="div-ai-food-ranking">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">近30日 AI 評估食物</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(data!.aiOnlyList ?? []).map((item, i) => {
+                    const colorCls =
+                      item.impactLevel === "high" ? "bg-red-100 text-red-700" :
+                      item.impactLevel === "medium" ? "bg-amber-100 text-amber-700" :
+                      "bg-emerald-100 text-emerald-700";
+                    return (
+                      <span key={i} className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${colorCls}`} data-testid={`chip-ai-food-${i}`}>
+                        {item.foodName}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <p className="text-sm text-muted-foreground mb-3">
               {t("glucose.patterns_unlocked_heading")}
             </p>

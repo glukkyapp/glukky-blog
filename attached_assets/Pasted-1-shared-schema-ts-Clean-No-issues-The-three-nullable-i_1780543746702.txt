@@ -1,0 +1,117 @@
+1. shared/schema.ts ✅ Clean
+No issues. The three nullable integer columns are correct additions.
+
+2. server/storage.ts — 3 bugs
+Bug S1 — getGlucoseSpikeHistoryByFoodName: wrong column name
+
+sql
+AND ms.food_name = ${foodName}
+Your schema stores the primary food name as dish_names (an array) or food_label, not food_name. Check your actual meal_snaps column — if it's dish_names[0] or a separate food_name text column. If the column doesn't exist the query silently returns 0 rows and Chart 3 always shows the empty state.
+
+Bug S2 — getDailyGlucoseForMonth: upper bound is fragile
+
+sql
+AND local_date <= ${monthEnd}  -- monthEnd = "YYYY-MM-31"
+Months with 28/29/30 days will still work because no rows exist for day 31, but February will miss nothing — this is safe. However if you ever add validation on the local_date column format this will silently fail. Use a proper last-day calculation like you already do in getMonthlySymptomCounts. Low severity but inconsistent.
+
+Bug S3 — getAiOnlyFoodRanking: 30-day window missing
+The query has no date filter. After 30 days, meal_snaps rows are purged, so this naturally shrinks — but during the first 30 days a user could see AI rankings for foods they ate months ago if the purge hasn't run yet. More importantly, the query runs against all historical snaps with no window, which may return stale rankings. Add:
+
+sql
+AND ms.snap_time >= NOW() - INTERVAL '30 days'
+3. server/routes.ts — 4 bugs
+Bug R1 — weekly-summary: dayBreakdown classification is wrong
+
+js
+if (hasHigh) high++;
+else if (hasMed && !hasLow) medium++;
+else if (hasLow) stable++;
+A day with both low and medium meals falls through all three branches and is not counted — it disappears from total. This means mixed days are silently dropped. The correct logic matching your spec: if highCount > 0 → high, else if mediumCount > 0 → medium (regardless of low), else stable. Fix:
+
+js
+if (hasHigh) high++;
+else if (hasMed) medium++;
+else stable++;
+Bug R2 — advice route: variable name name is undefined
+
+js
+const spikeHistory = name
+  ? await storage.getGlucoseSpikeHistoryByFoodName(userId, name, 6)
+  : [];
+name is not declared in scope here. You need to extract the food name from the request body or the existing snap analysis. It should likely be req.body.foodName or whatever variable holds the identified dish name in that route. This will throw a ReferenceError at runtime.
+
+Bug R3 — monthly-summary safety-net path: stableDays declared twice
+In section 3d, computeMonthlyFromSnaps has:
+
+js
+let stableDays = 0, mediumDays = 0, highDays = 0;
+// ... loop ...
+let stableDays = 0, mediumDays = 0, highDays = 0;  // second declaration
+The plan shows two separate code blocks that both declare let stableDays. This will cause a SyntaxError: Identifier 'stableDays' has already been declared. Remove the first block and keep only the dayImpact map approach.
+
+Bug R4 — glucose-patterns endpoint: topList sort order not guaranteed
+
+js
+topList: patterns.topList.map(item => ({ ... }))
+Chart 4's stat tiles assume topList[0] is the worst food and topList[topList.length - 1] is the best. But getGlucosePatterns must return the list sorted descending by avgSpike for this to hold. Confirm the storage method sorts by avgSpike DESC — if it sorts by entry count or food name, the tiles will show wrong foods.
+
+4. DonutChart.tsx — 1 bug
+Bug D1 — zero-total renders nothing without feedback
+
+js
+if (total === 0) return null;
+This returns null silently. In WeeklyCard variant="home", the parent checks total === 0 separately and shows a text fallback — so this is safe only if the parent always guards before rendering <DonutChart>. Currently WeeklyCard passes the segments array directly without checking total first. Either add the guard in WeeklyCard (preferred) or change DonutChart to return a visible empty-state SVG instead of null.
+
+5. DailyFoodSummaryBanner.tsx — 2 bugs
+Bug B1 — tooltip uses position: absolute inside a card
+The tooltip z-20 absolute div will be clipped by any parent with overflow: hidden. Most Card components set overflow: hidden for border-radius clipping. The top dots (early morning meals) will have their tooltip clipped upward. Use a portal or set overflow: visible on the card content wrapper.
+
+Bug B2 — xPct uses new Date(snapTime) without timezone
+
+js
+const hour = new Date(snapTime).getHours()
+snapTime is a UTC ISO string from the server. getHours() returns the local browser time, which is correct for a HK user — but if the server stores snapTime in UTC and a user snaps at 7pm HKT (11am UTC), new Date(snapTime).getHours() returns 11 not 19, placing the dot at 11am on the strip. You need to convert to the user's timezone first, same pattern as getYesterday().
+
+6. snap.tsx (Chart 3) ✅ Mostly clean
+One minor issue: when history.length === 0 and prediction.state === "A" or "B", the component falls back to the translation string — but the t("glucose.prediction_state_a/b") strings were written for the old text-only panel. They likely include "初步平均" phrasing. Confirm those i18n strings still make sense in the new layout context, or update them.
+
+7. glucose-patterns.tsx — 1 bug
+Bug G1 — stat tiles show when topList.length >= 2 but worst/best may be same food
+
+js
+{(data?.topList ?? []).length >= 2 && (
+If the list has exactly 2 foods, topList[0] (worst) and topList[topList.length - 1] (best) are different foods — correct. But the guard should also check that topList[0].avgSpikeMmol !== topList[last].avgSpikeMmol to avoid showing "worst: 白飯 +1.2 mmol" and "best: 蒸魚 +1.2 mmol" as if they're meaningfully different.
+
+8. food-reports.tsx — 2 bugs
+Bug F1 — slot[mealType] TypeScript index error
+
+js
+const impact = slot[mealType];
+mealType is "breakfast" | "lunch" | "dinner" (from MEAL_ROWS as const) but DailyGridSlot is a typed interface, not an index-accessible object. TypeScript will error: "Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'DailyGridSlot'". Fix:
+
+js
+const impact = slot[mealType as keyof DailyGridSlot] as string | null;
+Bug F2 — Chart 8 symptom bar "normal" key not reliably last
+
+js
+symptoms: Record<string, number>
+The rendering iterates Object.entries(symptoms). "normal" (→ "沒有症狀") is supposed to always be last and green, but Object.entries order depends on insertion order. The API returns a plain Record with no ordering guarantee. Add an explicit sort before rendering:
+
+js
+const sortedSymptoms = Object.entries(symptoms).sort(([a], [b]) =>
+  a === "normal" ? 1 : b === "normal" ? -1 : 0
+);
+Priority Summary
+Severity	Bug	File
+🔴 Runtime crash	R2 — name undefined	routes.ts
+🔴 Runtime crash	R3 — duplicate let stableDays	routes.ts
+🔴 Wrong data	B2 — UTC vs local time for dot position	DailyFoodSummaryBanner
+🔴 Wrong data	S1 — food_name column may not exist	storage.ts
+🟡 Logic error	R1 — mixed days dropped from total	routes.ts
+🟡 Logic error	R4 — topList sort not confirmed	routes.ts
+🟡 Wrong UI	B1 — tooltip clipped by overflow:hidden	DailyFoodSummaryBanner
+🟡 Wrong UI	F2 — 沒有症狀 not guaranteed last	food-reports.tsx
+🟠 Type error	F1 — index access on typed interface	food-reports.tsx
+🟠 Minor	D1 — silent null vs visible fallback	DonutChart.tsx
+⚪ Low	S2 — fragile month-end upper bound	storage.ts
+⚪ Low	S3 — no 30-day window on AI ranking	storage.ts

@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DonutChart } from "@/components/DonutChart";
 
 interface WeeklySummary {
   snapCount: number;
@@ -13,6 +14,19 @@ interface WeeklySummary {
   irregularMealDays?: number;
   mealTypeAvgs?: { breakfast: number | null; lunch: number | null; dinner: number | null };
   worstDay?: number | null;
+  dayBreakdown?: { stable: number; medium: number; high: number; total: number };
+  dailyGrid?: DayGrid[];
+  hasAiDays?: boolean;
+}
+
+interface DayGrid {
+  date: string;
+  dayOfWeek: number;
+  breakfast: string | null;
+  lunch: string | null;
+  dinner: string | null;
+  snackImpacts: string[];
+  isFuture: boolean;
 }
 
 interface MonthlySummary {
@@ -26,19 +40,31 @@ interface MonthlySummary {
   irregularMealDays?: number | null;
   priorScore?: number | null;
   isFirstMonth?: boolean;
+  stableDays?: number | null;
+  mediumDays?: number | null;
+  highDays?: number | null;
+  loggedDays?: number | null;
+  hasAiDays?: boolean;
 }
 
+interface SymptomData {
+  symptoms: Record<string, number>;
+  totalWithSymptom: number;
+  snackCount: number;
+}
+
+const IMPACT_COLOR: Record<string, string> = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
+const DOW_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DOW_ZH = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
 const MEAL_TYPE_ZH: Record<string, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐" };
+const SYMPTOM_ZH: Record<string, string> = { tired: "疲倦", blurred_vision: "視力模糊", thirsty: "口渴" };
+const SYMPTOM_COLOR: Record<string, string> = { tired: "#f59e0b", blurred_vision: "#ef4444", thirsty: "#3b82f6" };
 
 function localDateString(date: Date, tz?: string): string {
   try {
     const parts = new Intl.DateTimeFormat("en", {
       timeZone: tz || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit", hourCycle: "h23",
     }).formatToParts(date);
     const y = parts.find(p => p.type === "year")?.value;
     const m = parts.find(p => p.type === "month")?.value;
@@ -68,7 +94,82 @@ function getPrevMonth(): string {
   return `${y}-${String(currentMonth - 1).padStart(2, "0")}`;
 }
 
-export function WeeklyCard({ weekStart }: { weekStart: string }) {
+function WeeklyDonut({ breakdown }: { breakdown: NonNullable<WeeklySummary["dayBreakdown"]> }) {
+  const segments = [
+    { value: breakdown.stable, color: IMPACT_COLOR.low },
+    { value: breakdown.medium, color: IMPACT_COLOR.medium },
+    { value: breakdown.high, color: IMPACT_COLOR.high },
+  ];
+  const labels = ["穩定", "中等", "偏高"];
+  return (
+    <div className="flex items-center gap-4 py-1" data-testid="div-weekly-donut">
+      <DonutChart segments={segments} size={72} strokeWidth={11}>
+        <div className="flex flex-col items-center leading-none">
+          <span className="text-lg font-bold text-foreground">{breakdown.total}</span>
+          <span className="text-[9px] text-muted-foreground mt-0.5">天</span>
+        </div>
+      </DonutChart>
+      <div className="flex flex-col gap-1 flex-1">
+        {segments.map((s, i) => s.value > 0 && (
+          <div key={i} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-xs text-muted-foreground flex-1">{labels[i]}</span>
+            <span className="text-xs font-medium text-foreground">{s.value}天</span>
+          </div>
+        ))}
+        {breakdown.total === 0 && <p className="text-xs text-muted-foreground">本週暫無血糖數據</p>}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyGrid({ grid }: { grid: DayGrid[] }) {
+  const meals: (keyof Pick<DayGrid, "breakfast" | "lunch" | "dinner">)[] = ["breakfast", "lunch", "dinner"];
+  const mealLabels = ["早", "午", "晚"];
+  return (
+    <div className="w-full" data-testid="table-weekly-grid">
+      <table className="w-full border-collapse text-[10px]">
+        <thead>
+          <tr>
+            <td className="w-5 pr-0.5" />
+            {grid.map((d, i) => (
+              <th key={i} className="text-center font-medium text-muted-foreground pb-1">
+                {DOW_LABELS[d.dayOfWeek]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {meals.map((meal, ri) => (
+            <tr key={meal}>
+              <td className="text-muted-foreground/70 font-medium text-right align-middle pr-0.5">
+                {mealLabels[ri]}
+              </td>
+              {grid.map((d, ci) => {
+                const impact = d[meal];
+                const color = impact ? IMPACT_COLOR[impact] : null;
+                return (
+                  <td key={ci} className="text-center align-middle py-0.5">
+                    <div
+                      className="mx-auto rounded-full"
+                      style={{
+                        width: 10, height: 10,
+                        backgroundColor: color ?? (d.isFuture ? "transparent" : "hsl(var(--muted)/0.4)"),
+                        border: d.isFuture ? "1px dashed hsl(var(--muted-foreground)/0.25)" : "none",
+                      }}
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string; variant?: "home" | "reports" }) {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery<WeeklySummary>({
     queryKey: ["/api/snap/weekly-summary", weekStart],
@@ -107,29 +208,18 @@ export function WeeklyCard({ weekStart }: { weekStart: string }) {
   }
 
   const lines: string[] = [];
-
-  if ((data.lateMealCount ?? 0) > 2) {
-    lines.push(`本週有${data.lateMealCount}餐宵夜 — 夜晚進食會影響隔日空腹血糖。`);
-  }
-  if ((data.missedMealDays ?? 0) > 0) {
-    lines.push(t("food.missed_meal_days_notice", { count: data.missedMealDays }));
-  }
-  if ((data.irregularMealDays ?? 0) > 0) {
-    lines.push(`本週有${data.irregularMealDays}日進餐時間不規律（正餐在非預期時段進食）。`);
-  }
-
+  if ((data.lateMealCount ?? 0) > 2) lines.push(`本週有${data.lateMealCount}餐宵夜 — 夜晚進食會影響隔日空腹血糖。`);
+  if ((data.missedMealDays ?? 0) > 0) lines.push(t("food.missed_meal_days_notice", { count: data.missedMealDays }));
+  if ((data.irregularMealDays ?? 0) > 0) lines.push(`本週有${data.irregularMealDays}日進餐時間不規律（正餐在非預期時段進食）。`);
   const avgs = data.mealTypeAvgs;
   if (avgs) {
     const withData = (["breakfast", "lunch", "dinner"] as const).filter(k => avgs[k] !== null) as ("breakfast" | "lunch" | "dinner")[];
     if (withData.length >= 2) {
       const best = withData.reduce((a, b) => (avgs[a]! < avgs[b]! ? a : b));
       const worst = withData.reduce((a, b) => (avgs[a]! > avgs[b]! ? a : b));
-      if (best !== worst) {
-        lines.push(`${MEAL_TYPE_ZH[best]}是本週血糖影響最低的一餐。${MEAL_TYPE_ZH[worst]}影響最高。`);
-      }
+      if (best !== worst) lines.push(`${MEAL_TYPE_ZH[best]}是本週血糖影響最低的一餐。${MEAL_TYPE_ZH[worst]}影響最高。`);
     }
   }
-
   if (data.worstDay !== null && data.worstDay !== undefined) {
     lines.push(`${DOW_ZH[data.worstDay]}的飲食血糖影響最大 — 留意當日的飲食模式。`);
   }
@@ -139,7 +229,13 @@ export function WeeklyCard({ weekStart }: { weekStart: string }) {
       <CardHeader className="pb-2 pt-4">
         <CardTitle className="text-base">本週飲食摘要</CardTitle>
       </CardHeader>
-      <CardContent className="pb-4 flex flex-col gap-2">
+      <CardContent className="pb-4 flex flex-col gap-3">
+        {variant === "home" && data.hasAiDays && data.dayBreakdown && (
+          <WeeklyDonut breakdown={data.dayBreakdown} />
+        )}
+        {variant === "reports" && data.dailyGrid && data.dailyGrid.length > 0 && (
+          <WeeklyGrid grid={data.dailyGrid} />
+        )}
         {lines.length === 0 ? (
           <p className="text-sm text-muted-foreground" data-testid="text-weekly-no-issues">本週飲食模式良好，繼續保持！</p>
         ) : (
@@ -147,11 +243,67 @@ export function WeeklyCard({ weekStart }: { weekStart: string }) {
             <p key={i} className="text-sm text-foreground" data-testid={`text-weekly-insight-${i}`}>{line}</p>
           ))
         )}
-        <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed" data-testid="text-weekly-disclaimer">
+        <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-weekly-disclaimer">
           {t("snap.advice_disclaimer")}
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function MonthlyDonut({ data, totalDays }: { data: MonthlySummary; totalDays: number }) {
+  const segments = [
+    { value: data.stableDays ?? 0, color: IMPACT_COLOR.low },
+    { value: data.mediumDays ?? 0, color: IMPACT_COLOR.medium },
+    { value: data.highDays ?? 0, color: IMPACT_COLOR.high },
+  ];
+  const labels = ["穩定", "中等", "偏高"];
+  const loggedDays = data.loggedDays ?? 0;
+  return (
+    <div className="flex items-center gap-4 py-1" data-testid="div-monthly-donut">
+      <DonutChart segments={segments} size={72} strokeWidth={11}>
+        <div className="flex flex-col items-center leading-none">
+          <span className="text-base font-bold text-foreground">{loggedDays}</span>
+          <span className="text-[9px] text-muted-foreground mt-0.5">/{totalDays}天</span>
+        </div>
+      </DonutChart>
+      <div className="flex flex-col gap-1 flex-1">
+        {segments.map((s, i) => s.value > 0 && (
+          <div key={i} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-xs text-muted-foreground flex-1">{labels[i]}</span>
+            <span className="text-xs font-medium text-foreground">{s.value}天</span>
+          </div>
+        ))}
+        {loggedDays === 0 && <p className="text-xs text-muted-foreground">暫無血糖日數據</p>}
+      </div>
+    </div>
+  );
+}
+
+function SymptomBars({ symptomsData }: { symptomsData: SymptomData }) {
+  const entries = Object.entries(symptomsData.symptoms)
+    .filter(([k]) => k !== "normal")
+    .sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return null;
+  const maxCount = Math.max(...entries.map(([, c]) => c));
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="div-symptom-bars">
+      <p className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wide">餐後症狀</p>
+      {entries.map(([key, count]) => {
+        const barPct = Math.max(4, (count / maxCount) * 100);
+        const color = SYMPTOM_COLOR[key] ?? "#6b7280";
+        return (
+          <div key={key} className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground w-16 flex-shrink-0">{SYMPTOM_ZH[key] ?? key}</span>
+            <div className="flex-1 bg-muted/30 rounded-full overflow-hidden" style={{ height: 8, padding: "2px" }}>
+              <div className="h-full rounded-full" style={{ width: `${barPct}%`, backgroundColor: color }} />
+            </div>
+            <span className="text-[10px] font-medium text-foreground w-4 text-right flex-shrink-0">{count}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -161,6 +313,7 @@ function MonthlyCard() {
   const month = getPrevMonth();
   const [y, m] = month.split("-").map(Number);
   const monthTitle = `${y}年${m}月報告`;
+  const totalDays = new Date(Date.UTC(y, m, 0)).getUTCDate();
 
   const { data, isLoading } = useQuery<MonthlySummary>({
     queryKey: ["/api/snap/monthly-summary", month],
@@ -169,6 +322,16 @@ function MonthlyCard() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
+  });
+
+  const { data: symptomsData } = useQuery<SymptomData>({
+    queryKey: ["/api/snap/monthly-symptoms", month],
+    queryFn: async () => {
+      const res = await fetch(`/api/snap/monthly-symptoms?month=${month}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !isLoading && !(data?.insufficient),
   });
 
   if (isLoading) {
@@ -203,10 +366,8 @@ function MonthlyCard() {
     score >= 80 ? "飲食控制良好，繼續保持。"
     : score >= 60 ? "飲食表現尚可，仍有進步空間。"
     : "本月飲食有待改善，繼續記錄有助了解規律。";
-
   const priorDelta = !data.isFirstMonth && data.priorScore !== null && data.priorScore !== undefined
-    ? score - data.priorScore
-    : null;
+    ? score - data.priorScore : null;
 
   return (
     <Card data-testid="card-monthly-report">
@@ -220,11 +381,9 @@ function MonthlyCard() {
             <p className="text-sm text-muted-foreground">{verdict}</p>
             {priorDelta !== null && (
               <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid="text-monthly-delta">
-                {priorDelta > 0
-                  ? `↑ 比上月高 ${priorDelta} 分`
-                  : priorDelta < 0
-                    ? `↓ 比上月低 ${Math.abs(priorDelta)} 分`
-                    : "與上月持平"}
+                {priorDelta > 0 ? `↑ 比上月高 ${priorDelta} 分`
+                  : priorDelta < 0 ? `↓ 比上月低 ${Math.abs(priorDelta)} 分`
+                  : "與上月持平"}
               </p>
             )}
           </div>
@@ -253,6 +412,12 @@ function MonthlyCard() {
               <span className="font-medium" data-testid="text-freq-consistency">{data.components.freqConsistency}%</span>
             </div>
           </div>
+        )}
+
+        {data.hasAiDays && <MonthlyDonut data={data} totalDays={totalDays} />}
+
+        {symptomsData && symptomsData.totalWithSymptom > 0 && (
+          <SymptomBars symptomsData={symptomsData} />
         )}
 
         {data.isFirstMonth && (
@@ -295,7 +460,6 @@ export default function FoodReports() {
   const { data: profile } = useQuery<{ deviceTimezone?: string | null }>({
     queryKey: ["/api/profile"],
   });
-
   const weekStart = getWeekStart(profile?.deviceTimezone ?? undefined);
 
   return (
@@ -313,9 +477,8 @@ export default function FoodReports() {
           <h1 className="text-base font-semibold text-foreground">飲食報告</h1>
         </div>
       </div>
-
       <div className="px-4 pt-4 flex flex-col gap-4">
-        <WeeklyCard weekStart={weekStart} />
+        <WeeklyCard weekStart={weekStart} variant="reports" />
         <MonthlyCard />
       </div>
     </div>

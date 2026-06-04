@@ -136,6 +136,16 @@ export interface IStorage {
   getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
   getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
   expireStalePostMealWindows(): Promise<{ expired: number }>;
+  getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number): Promise<number[]>;
+  getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]>;
+  getDailyGlucoseForMonth(userId: string, month: string): Promise<Array<{ localDate: string; lowCount: number; mediumCount: number; highCount: number }>>;
+  getMonthlySymptomCounts(userId: string, month: string): Promise<{ symptoms: Record<string, number>; totalWithSymptom: number; snackCount: number }>;
+}
+
+export interface AiFoodEntry {
+  foodName: string;
+  impactLevel: "low" | "medium" | "high";
+  snapCount: number;
 }
 
 export interface GlucosePatternEntry {
@@ -1174,6 +1184,118 @@ export class DatabaseStorage implements IStorage {
       `);
     }
     return { expired: staleSnaps.length };
+  }
+
+  async getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number = 6): Promise<number[]> {
+    const result = await db.execute(sql`
+      SELECT ms.post_meal_glucose_mmol - up.fasting_baseline_mmol AS spike
+      FROM meal_snaps ms
+      JOIN user_profiles up ON ms.user_id = up.user_id
+      WHERE ms.user_id = ${userId}
+        AND ms.food_name = ${foodName}
+        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND up.fasting_baseline_mmol IS NOT NULL
+        AND ms.snap_time >= NOW() - INTERVAL '30 days'
+      ORDER BY ms.snap_time ASC
+      LIMIT ${limit}
+    `);
+    return (result.rows as any[]).map(row => parseFloat(row.spike));
+  }
+
+  async getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]> {
+    const result = await db.execute(sql`
+      WITH hstix_foods AS (
+        SELECT DISTINCT ms2.food_name
+        FROM meal_snaps ms2
+        JOIN user_profiles up2 ON ms2.user_id = up2.user_id
+        WHERE ms2.user_id = ${userId}
+          AND ms2.post_meal_glucose_mmol IS NOT NULL
+          AND up2.fasting_baseline_mmol IS NOT NULL
+          AND ms2.food_name IS NOT NULL
+      )
+      SELECT
+        ms.food_name,
+        AVG(CASE
+          WHEN ms.glucose_impact = 'low'    THEN 1
+          WHEN ms.glucose_impact = 'medium' THEN 2
+          WHEN ms.glucose_impact = 'high'   THEN 3
+          ELSE 2
+        END)::float AS avg_score,
+        COUNT(*)::int AS snap_count
+      FROM meal_snaps ms
+      LEFT JOIN hstix_foods hf ON ms.food_name = hf.food_name
+      WHERE ms.user_id = ${userId}
+        AND ms.food_name IS NOT NULL
+        AND ms.glucose_impact IS NOT NULL
+        AND hf.food_name IS NULL
+        AND ms.snap_time >= NOW() - INTERVAL '30 days'
+      GROUP BY ms.food_name
+      ORDER BY avg_score DESC
+      LIMIT 20
+    `);
+    return (result.rows as any[]).map(row => {
+      const score = parseFloat(row.avg_score);
+      return {
+        foodName: row.food_name,
+        snapCount: parseInt(row.snap_count, 10),
+        impactLevel: score >= 2.5 ? "high" : score >= 1.5 ? "medium" : "low",
+      } as AiFoodEntry;
+    });
+  }
+
+  async getDailyGlucoseForMonth(userId: string, month: string): Promise<Array<{ localDate: string; lowCount: number; mediumCount: number; highCount: number }>> {
+    const [y, m] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const monthStart = `${month}-01`;
+    const monthEnd = `${month}-${String(lastDay).padStart(2, "0")}`;
+    const result = await db.execute(sql`
+      SELECT local_date, low_count, medium_count, high_count
+      FROM snap_daily_glucose
+      WHERE user_id = ${userId}
+        AND local_date >= ${monthStart}
+        AND local_date <= ${monthEnd}
+      ORDER BY local_date
+    `);
+    return (result.rows as any[]).map(row => ({
+      localDate: row.local_date,
+      lowCount: parseInt(row.low_count, 10),
+      mediumCount: parseInt(row.medium_count, 10),
+      highCount: parseInt(row.high_count, 10),
+    }));
+  }
+
+  async getMonthlySymptomCounts(userId: string, month: string): Promise<{ symptoms: Record<string, number>; totalWithSymptom: number; snackCount: number }> {
+    const [y, m] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const monthStart = `${month}-01`;
+    const monthEnd = `${month}-${String(lastDay).padStart(2, "0")}`;
+    const [symptomsResult, snackResult] = await Promise.all([
+      db.execute(sql`
+        SELECT post_meal_symptom, COUNT(*)::int AS cnt
+        FROM meal_snaps
+        WHERE user_id = ${userId}
+          AND local_date >= ${monthStart}
+          AND local_date <= ${monthEnd}
+          AND post_meal_symptom IS NOT NULL
+        GROUP BY post_meal_symptom
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int AS cnt
+        FROM meal_snaps
+        WHERE user_id = ${userId}
+          AND local_date >= ${monthStart}
+          AND local_date <= ${monthEnd}
+          AND meal_type = 'snack'
+      `),
+    ]);
+    const symptoms: Record<string, number> = {};
+    let totalWithSymptom = 0;
+    for (const row of symptomsResult.rows as any[]) {
+      symptoms[row.post_meal_symptom] = parseInt(row.cnt, 10);
+      totalWithSymptom += parseInt(row.cnt, 10);
+    }
+    const snackCount = parseInt((snackResult.rows[0] as any)?.cnt ?? "0", 10);
+    return { symptoms, totalWithSymptom, snackCount };
   }
 }
 

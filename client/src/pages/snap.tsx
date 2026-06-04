@@ -53,7 +53,7 @@ interface AdviceResult {
   adviceUsedToday: number;
   adviceLimit: number;
   snapId?: number | null;
-  glucosePrediction?: { avgSpikeMmol: number | null; pairedCount: number; state: "A" | "B" | "C" } | null;
+  glucosePrediction?: { avgSpikeMmol: number | null; pairedCount: number; state: "A" | "B" | "C"; spikeHistory?: number[] } | null;
 }
 
 interface TokenResolution {
@@ -144,6 +144,24 @@ function FocusPanelContent({ data }: { data: FocusPanelData }) {
   );
 }
 
+function SparkBars({ spikes }: { spikes: number[] }) {
+  const MAX_SPIKE = 4.0;
+  return (
+    <div className="flex items-end gap-0.5 h-8 mt-2" data-testid="chart-spark-bars">
+      {spikes.map((spike, i) => {
+        const pct = Math.min(100, Math.max(6, (spike / MAX_SPIKE) * 100));
+        const color = spike >= 3.0 ? "#ef4444" : spike >= 1.5 ? "#f59e0b" : "#22c55e";
+        return (
+          <div
+            key={i}
+            style={{ height: `${pct}%`, backgroundColor: color, flex: 1, borderRadius: "2px 2px 0 0", opacity: 0.85 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function PredictionLayer({ prediction }: {
   prediction: NonNullable<AdviceResult["glucosePrediction"]> | null;
 }) {
@@ -161,12 +179,14 @@ function PredictionLayer({ prediction }: {
   const text = isA
     ? t("glucose.prediction_state_a", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount })
     : t("glucose.prediction_state_b", { spike: (prediction.avgSpikeMmol ?? 0).toFixed(1), count: prediction.pairedCount });
+  const hasBars = (prediction.spikeHistory?.length ?? 0) >= 2;
   return (
     <div
       className={`rounded-xl p-3 text-xs font-medium ${isA ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
       data-testid="text-snap-glucose-prediction"
     >
       {text}
+      {hasBars && <SparkBars spikes={prediction.spikeHistory!} />}
     </div>
   );
 }

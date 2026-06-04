@@ -3260,7 +3260,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
 
       const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
-      const glucosePrediction = (() => {
+      const glucosePredictionBase = (() => {
         const { avgSpike, entryCount } = rawGlucosePrediction;
         if (entryCount === 0 || avgSpike === null) {
           return { avgSpikeMmol: null, pairedCount: entryCount, state: "C" as const };
@@ -3271,6 +3271,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           state: entryCount >= 10 ? "A" as const : "B" as const,
         };
       })();
+      const spikeHistory = name ? await storage.getGlucoseSpikeHistoryByFoodName(userId, name, 6) : [];
+      const glucosePrediction = { ...glucosePredictionBase, spikeHistory };
 
       async function insertSnapRecord(adviceText: string): Promise<number | null> {
         try {
@@ -3568,6 +3570,7 @@ No explanation, just JSON.`,
           glucoseImpact: s.glucoseImpact,
           mealType: s.mealType,
           snapTime: s.snapTime,
+          foodName: s.foodName ?? null,
         })),
         irregularMealCount,
       });
@@ -3659,7 +3662,47 @@ No explanation, just JSON.`,
       }
       const irregularMealDays = irregularDaySet.size;
 
-      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay });
+      // Per-day grid for Charts 1 & 6
+      const todayStr = getLocalDate(profile.deviceTimezone);
+      const snapsByDay = new Map<string, typeof snaps>();
+      for (const snap of snaps) {
+        if (!snapsByDay.has(snap.localDate)) snapsByDay.set(snap.localDate, []);
+        snapsByDay.get(snap.localDate)!.push(snap);
+      }
+
+      let gridStable = 0, gridMedium = 0, gridHigh = 0;
+      const dailyGrid = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(weekStartDate.getTime() + i * 86400000);
+        const date = d.toISOString().split("T")[0];
+        const jsDay = d.getUTCDay();
+        const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
+        const isFuture = date > todayStr;
+        const daySnaps = snapsByDay.get(date) ?? [];
+
+        const breakfast = daySnaps.find(s => s.mealType === "breakfast")?.glucoseImpact ?? null;
+        const lunch     = daySnaps.find(s => s.mealType === "lunch")?.glucoseImpact ?? null;
+        const dinner    = daySnaps.find(s => s.mealType === "dinner")?.glucoseImpact ?? null;
+        const snackImpacts = daySnaps.filter(s => s.mealType === "snack").map(s => s.glucoseImpact ?? "low");
+
+        if (!isFuture) {
+          const mainMeals = daySnaps.filter(s => s.mealType !== "snack");
+          if (mainMeals.length > 0) {
+            const hasHigh = mainMeals.some(s => s.glucoseImpact === "high");
+            const hasMed  = mainMeals.some(s => s.glucoseImpact === "medium");
+            const hasLow  = mainMeals.some(s => s.glucoseImpact === "low");
+            if (hasHigh) gridHigh++;
+            else if (hasMed) gridMedium++;
+            else if (hasLow) gridStable++;
+          }
+        }
+
+        return { date, dayOfWeek, breakfast, lunch, dinner, snackImpacts, isFuture };
+      });
+
+      const dayBreakdown = { stable: gridStable, medium: gridMedium, high: gridHigh, total: gridStable + gridMedium + gridHigh };
+      const hasAiDays = dayBreakdown.total > 0;
+
+      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, dayBreakdown, dailyGrid, hasAiDays });
     } catch (error: any) {
       console.error("Snap weekly-summary error:", error);
       res.status(500).json({ message: "Failed to fetch weekly summary." });
@@ -3689,8 +3732,21 @@ No explanation, just JSON.`,
         if (archived.score === null) {
           return res.json({ snapCount: 0, insufficient: true, month });
         }
-        const priorArchive = await storage.getMonthlyArchive(userId, priorMonth);
+        const [priorArchive, dailyRows] = await Promise.all([
+          storage.getMonthlyArchive(userId, priorMonth),
+          storage.getDailyGlucoseForMonth(userId, month),
+        ]);
         const priorScore = priorArchive?.score ?? null;
+        let archStable: number | null = null, archMedium: number | null = null, archHigh: number | null = null, archLogged: number | null = null;
+        if (dailyRows.length > 0) {
+          archStable = 0; archMedium = 0; archHigh = 0;
+          archLogged = dailyRows.filter(r => r.lowCount + r.mediumCount + r.highCount > 0).length;
+          for (const r of dailyRows) {
+            if (r.highCount > 0) archHigh++;
+            else if (r.mediumCount > 0) archMedium++;
+            else if (r.lowCount > 0) archStable++;
+          }
+        }
         return res.json({
           snapCount: 0,
           insufficient: false,
@@ -3706,6 +3762,11 @@ No explanation, just JSON.`,
           irregularMealDays: archived.irregularMealDays,
           priorScore,
           isFirstMonth: priorScore === null,
+          stableDays: archStable,
+          mediumDays: archMedium,
+          highDays: archHigh,
+          loggedDays: archLogged,
+          hasAiDays: archLogged !== null && archLogged > 0,
         });
       }
 
@@ -3741,6 +3802,24 @@ No explanation, just JSON.`,
         ? computeMonthlyFromSnaps(priorSnaps, priorLastDay, tz).score
         : null;
 
+      // Day breakdown for Chart 7 donut
+      const snDayImpact = new Map<string, { hasHigh: boolean; hasMed: boolean; hasLow: boolean }>();
+      for (const snap of snaps) {
+        if (snap.mealType === "snack") continue;
+        if (!snDayImpact.has(snap.localDate)) snDayImpact.set(snap.localDate, { hasHigh: false, hasMed: false, hasLow: false });
+        const di = snDayImpact.get(snap.localDate)!;
+        if (snap.glucoseImpact === "high")   di.hasHigh = true;
+        if (snap.glucoseImpact === "medium") di.hasMed  = true;
+        if (snap.glucoseImpact === "low")    di.hasLow  = true;
+      }
+      let snStable = 0, snMedium = 0, snHigh = 0;
+      for (const di of snDayImpact.values()) {
+        if (di.hasHigh) snHigh++;
+        else if (di.hasMed) snMedium++;
+        else if (di.hasLow) snStable++;
+      }
+      const snLogged = snDayImpact.size;
+
       return res.json({
         snapCount,
         insufficient: false,
@@ -3756,6 +3835,11 @@ No explanation, just JSON.`,
         irregularMealDays: metrics.irregularMealDays,
         priorScore,
         isFirstMonth: priorScore === null,
+        stableDays: snStable,
+        mediumDays: snMedium,
+        highDays: snHigh,
+        loggedDays: snLogged,
+        hasAiDays: snLogged > 0,
       });
     } catch (error: any) {
       console.error("Snap monthly-summary error:", error);
@@ -3862,14 +3946,30 @@ No explanation, just JSON.`,
         const drilldown = await storage.getGlucosePatternDrilldown(userId, food);
         return res.json({ drilldown });
       }
-      const [totalPaired, patterns] = await Promise.all([
+      const [totalPaired, patterns, aiOnlyList] = await Promise.all([
         storage.getTotalPairedEntries(userId),
         storage.getGlucosePatterns(userId),
+        storage.getAiOnlyFoodRanking(userId),
       ]);
-      res.json({ totalPaired, topList: patterns.topList });
+      res.json({ totalPaired, topList: patterns.topList, aiOnlyList });
     } catch (error: any) {
       console.error("glucose-patterns error:", error);
       res.status(500).json({ message: "Failed to fetch glucose patterns." });
+    }
+  });
+
+  app.get("/api/snap/monthly-symptoms", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { month } = req.query as { month?: string };
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: "month required (YYYY-MM)" });
+      }
+      const result = await storage.getMonthlySymptomCounts(userId, month);
+      res.json(result);
+    } catch (error: any) {
+      console.error("monthly-symptoms error:", error);
+      res.status(500).json({ message: "Failed to fetch monthly symptoms." });
     }
   });
 
@@ -4335,6 +4435,9 @@ No explanation, just JSON.`,
           await storage.upsertDailyGlucose(userId, localDate, counts);
         }
       }
+      // snap_daily_glucose is PERMANENT — only meal_snaps rows are purged here,
+      // after their glucose counts have been aggregated into snap_daily_glucose.
+      // Never add snap_daily_glucose purge logic to this job.
       await storage.purgeMealSnapsByIds(batch.map(s => s.id));
       totalDeleted += batch.length;
     }
