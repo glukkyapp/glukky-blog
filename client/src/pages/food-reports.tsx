@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DonutChart } from "@/components/DonutChart";
 
@@ -103,18 +103,18 @@ function WeeklyDonut({ breakdown }: { breakdown: NonNullable<WeeklySummary["dayB
   const labels = ["穩定", "中等", "偏高"];
   return (
     <div className="flex items-center gap-4 py-1" data-testid="div-weekly-donut">
-      <DonutChart segments={segments} size={72} strokeWidth={11}>
+      <DonutChart segments={segments} size={101} strokeWidth={15}>
         <div className="flex flex-col items-center leading-none">
-          <span className="text-lg font-bold text-foreground">{breakdown.total}</span>
+          <span className="text-xl font-bold text-foreground">{breakdown.total}</span>
           <span className="text-[9px] text-muted-foreground mt-0.5">天</span>
         </div>
       </DonutChart>
-      <div className="flex flex-col gap-1 flex-1">
+      <div className="flex flex-col gap-0.5 flex-1">
         {segments.map((s, i) => s.value > 0 && (
           <div key={i} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-            <span className="text-xs text-muted-foreground flex-1">{labels[i]}</span>
-            <span className="text-xs font-medium text-foreground">{s.value}天</span>
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-[11px] text-muted-foreground flex-1">{labels[i]}</span>
+            <span className="text-[11px] font-medium text-foreground">{s.value}天</span>
           </div>
         ))}
         {breakdown.total === 0 && <p className="text-xs text-muted-foreground">本週暫無血糖數據</p>}
@@ -171,6 +171,7 @@ function WeeklyGrid({ grid }: { grid: DayGrid[] }) {
 
 export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string; variant?: "home" | "reports" }) {
   const { t } = useTranslation();
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const { data, isLoading } = useQuery<WeeklySummary>({
     queryKey: ["/api/snap/weekly-summary", weekStart],
     queryFn: async () => {
@@ -243,9 +244,21 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
             <p key={i} className="text-sm text-foreground" data-testid={`text-weekly-insight-${i}`}>{line}</p>
           ))
         )}
-        <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-weekly-disclaimer">
-          {t("snap.advice_disclaimer")}
-        </p>
+        <div className="mt-1">
+          <button
+            data-testid="button-weekly-disclaimer-toggle"
+            onClick={() => setDisclaimerOpen(v => !v)}
+            className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+            aria-label="免責聲明"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+          {disclaimerOpen && (
+            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-weekly-disclaimer">
+              {t("snap.advice_disclaimer")}
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -261,18 +274,18 @@ function MonthlyDonut({ data, totalDays }: { data: MonthlySummary; totalDays: nu
   const loggedDays = data.loggedDays ?? 0;
   return (
     <div className="flex items-center gap-4 py-1" data-testid="div-monthly-donut">
-      <DonutChart segments={segments} size={72} strokeWidth={11}>
+      <DonutChart segments={segments} size={101} strokeWidth={15}>
         <div className="flex flex-col items-center leading-none">
-          <span className="text-base font-bold text-foreground">{loggedDays}</span>
+          <span className="text-xl font-bold text-foreground">{loggedDays}</span>
           <span className="text-[9px] text-muted-foreground mt-0.5">/{totalDays}天</span>
         </div>
       </DonutChart>
-      <div className="flex flex-col gap-1 flex-1">
+      <div className="flex flex-col gap-0.5 flex-1">
         {segments.map((s, i) => s.value > 0 && (
           <div key={i} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-            <span className="text-xs text-muted-foreground flex-1">{labels[i]}</span>
-            <span className="text-xs font-medium text-foreground">{s.value}天</span>
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-[11px] text-muted-foreground flex-1">{labels[i]}</span>
+            <span className="text-[11px] font-medium text-foreground">{s.value}天</span>
           </div>
         ))}
         {loggedDays === 0 && <p className="text-xs text-muted-foreground">暫無血糖日數據</p>}
@@ -310,6 +323,7 @@ function SymptomBars({ symptomsData }: { symptomsData: SymptomData }) {
 function MonthlyCard() {
   const { t } = useTranslation();
   const [scoreExpanded, setScoreExpanded] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const month = getPrevMonth();
   const [y, m] = month.split("-").map(Number);
   const monthTitle = `${y}年${m}月報告`;
@@ -447,9 +461,21 @@ function MonthlyCard() {
           </p>
         )}
 
-        <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-monthly-disclaimer">
-          {t("snap.advice_disclaimer")}
-        </p>
+        <div className="mt-1">
+          <button
+            data-testid="button-monthly-disclaimer-toggle"
+            onClick={() => setDisclaimerOpen(v => !v)}
+            className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+            aria-label="免責聲明"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+          {disclaimerOpen && (
+            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-monthly-disclaimer">
+              {t("snap.advice_disclaimer")}
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

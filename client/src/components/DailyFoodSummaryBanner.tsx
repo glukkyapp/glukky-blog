@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SnapEntry {
@@ -121,6 +122,7 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
   const yesterday = getYesterday(tz, dateOverride);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   const { data, isLoading } = useQuery<{ snaps: SnapEntry[]; irregularMealCount?: number }>({
     queryKey: ["/api/snap/daily-summary", yesterday],
@@ -212,9 +214,21 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
               {s}
             </p>
           ))}
-          <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed" data-testid="text-daily-summary-disclaimer">
-            {t("snap.advice_disclaimer")}
-          </p>
+          <div className="mt-2">
+            <button
+              data-testid="button-daily-disclaimer-toggle"
+              onClick={() => setDisclaimerOpen(v => !v)}
+              className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+              aria-label="免責聲明"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+            {disclaimerOpen && (
+              <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-daily-summary-disclaimer">
+                {t("snap.advice_disclaimer")}
+              </p>
+            )}
+          </div>
         </div>
       </CardContent>
 

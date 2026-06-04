@@ -90,10 +90,10 @@ const GLUCOSE_BADGE: Record<string, { bg: string; text: string; label: string }>
   high:   { bg: "bg-red-100",     text: "text-red-700",     label: "High" },
 };
 
-const GLUCOSE_BADGE_ZH: Record<string, string> = {
-  low:    "血糖影響：低",
-  medium: "血糖影響：中",
-  high:   "血糖影響：高",
+const GLUCOSE_PILL_SOLID: Record<string, string> = {
+  low:    "#22c55e",
+  medium: "#f59e0b",
+  high:   "#ef4444",
 };
 
 const MEAL_PILL_COLOR: Record<string, string> = {
@@ -153,9 +153,7 @@ export default function FoodLog() {
     return isZh ? (MEAL_TYPE_LABEL_ZH[type] ?? type) : (MEAL_TYPE_LABEL[type] ?? type);
   };
 
-  const glucoseLabel = (impact: string) => {
-    return isZh ? (GLUCOSE_BADGE_ZH[impact] ?? impact) : (GLUCOSE_BADGE[impact]?.label ?? impact);
-  };
+  const glucoseLabel = (impact: string) => GLUCOSE_BADGE[impact]?.label ?? impact;
 
   const symptomLabel = (sym: string | null) => {
     if (!sym) return null;
@@ -270,13 +268,13 @@ export default function FoodLog() {
                                 {mealLabel(item.mealType)}
                               </span>
                             )}
-                            {badge && (
+                            {item.glucoseImpact && GLUCOSE_PILL_SOLID[item.glucoseImpact] && (
                               <span
                                 data-testid={`food-log-glucose-${item.id}`}
-                                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}
-                              >
-                                {glucoseLabel(item.glucoseImpact!)}
-                              </span>
+                                className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: GLUCOSE_PILL_SOLID[item.glucoseImpact] }}
+                                aria-label={glucoseLabel(item.glucoseImpact)}
+                              />
                             )}
                           </div>
                         </div>
