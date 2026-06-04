@@ -1,0 +1,35 @@
+Chart 1 — Weekly Impact Donut
+Screen: 主頁 本週摘要 card
+
+A ring chart split into green / amber / red segments based on how many days this week had low, medium, or high glucose impact meals. The centre shows a single number like "5 / 7天穩定". Below it, one auto-generated sentence summarises the week — e.g. "本週整體穩定" or "留意星期三，血糖影響偏高."
+
+Why: Replaces 3 text bullet points. An elderly user can see at a glance whether the week was mostly green without reading anything. Only logged days are counted — unlogged days are excluded so the data is honest.
+
+Chart 2 — Meal Timing Dot Strip
+Screen: 主頁 本週摘要 card, directly below Chart 1
+
+A horizontal strip representing yesterday's meals as coloured dots placed at the time they were eaten. Green dot at 9am = low-impact breakfast. Red dot at 11pm = high-impact late-night meal. No dot = no meal logged at that time.
+
+Why: Replaces the "有1日進餐不規律" bullet point. Late eating and skipped meals are immediately visible without reading. Snacks are excluded here — they appear only in the food log list.
+
+Chart 3 — Personal Food Spark-bar
+Screen: 食物快拍 Panel 0 (state B and A only — when entryCount ≥ 1)
+
+A row of 4–6 small vertical bars showing the user's last few glucose readings after eating that specific food. The average spike is shown in large text beside it, e.g. "+2.4 mmol 平均（4次記錄）".
+
+Why: Replaces the generic state C empty card once personal data exists. It's personal, specific to that exact food combo, and immediately tells the user whether this food consistently pushes their blood sugar up. Never shown for state C — state C always shows the text prompt instead.
+
+Chart 4 — Best vs Worst Stat Cards
+Screen: 血糖規律 (unlocked), above the bar list
+
+Two side-by-side tiles at the top of the screen. Left tile: the food with the highest average spike (e.g. "炒飯配青菜 +2.8 mmol"). Right tile: the friendliest food (e.g. "粥 +0.5 mmol"). Both show the food name and average in large text, colour-coded red and green.
+
+Why: Not a chart in the traditional sense — just two big numbers. But they give elderly users the single most important conclusion ("avoid this, eat that") before they even read the bars below. The bar list provides the detail; these tiles provide the headline.
+
+Chart 5 — Food Impact Horizontal Bar List
+Screen: 血糖規律 (unlocked), below Chart 4
+
+Already planned. Foods ranked from worst to best glucose impact, each shown as a horizontal coloured bar with the food name, average spike, and entry count. The top foods are red, the bottom are green.
+
+Why: Horizontal bars work better than vertical on mobile — the food name label sits beside the bar and is easy to read. The ranking from worst to best directly answers "which food should I avoid?"
+
