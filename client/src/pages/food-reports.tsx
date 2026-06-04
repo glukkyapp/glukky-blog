@@ -112,7 +112,7 @@ export function WeeklyCard({ weekStart }: { weekStart: string }) {
     lines.push(`本週有${data.lateMealCount}餐宵夜 — 夜晚進食會影響隔日空腹血糖。`);
   }
   if ((data.missedMealDays ?? 0) > 0) {
-    lines.push(`本週有${data.missedMealDays}日進餐時間不規律 — 建議固定每日用餐時間。`);
+    lines.push(t("food.missed_meal_days_notice", { count: data.missedMealDays }));
   }
   if ((data.irregularMealDays ?? 0) > 0) {
     lines.push(`本週有${data.irregularMealDays}日進餐時間不規律（正餐在非預期時段進食）。`);

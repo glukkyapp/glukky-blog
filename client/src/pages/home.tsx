@@ -1445,10 +1445,6 @@ export default function Home() {
         </div>
       )}
 
-      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
-
-      <WeeklyCard weekStart={getWeekStart(profile?.deviceTimezone ?? undefined)} />
-
       {pendingSnapData?.snap && (
         <PostMealCard
           snapId={pendingSnapData.snap.id}
@@ -1456,6 +1452,10 @@ export default function Home() {
           onDone={() => queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] })}
         />
       )}
+
+      <DailyFoodSummaryBanner tz={profile?.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />
+
+      <WeeklyCard weekStart={getWeekStart(profile?.deviceTimezone ?? undefined)} />
 
       {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">

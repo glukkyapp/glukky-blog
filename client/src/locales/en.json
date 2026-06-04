@@ -796,6 +796,9 @@
       "body": "Pick one of our advices to improve your health and wellbeing!"
     }
   },
+  "food": {
+    "missed_meal_days_notice": "{{count}} day(s) this week had fewer food records — logging regularly gives better results."
+  },
   "snap": {
     "heading": "Foodsnap",
     "title": "Food Snap",

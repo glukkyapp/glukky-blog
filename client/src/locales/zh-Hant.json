@@ -800,6 +800,9 @@
       "body": "選一個我們的建議，改善你的健康！"
     }
   },
+  "food": {
+    "missed_meal_days_notice": "本週有{{count}}天較少食物紀錄，定時紀錄，效果更好。"
+  },
   "snap": {
     "heading": "食物快拍",
     "title": "食物快拍",
