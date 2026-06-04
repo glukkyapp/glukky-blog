@@ -8,7 +8,8 @@ import { userProfiles } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { sendPushNotification } from "./onesignal";
+import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
+import { CONTENTS } from "./notifications";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData,
@@ -3293,6 +3294,35 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             missedMealFlag: false,
             comboKey: activeComboKey,
           });
+
+          // Fire-and-forget: schedule HStix reminder 60 min from now.
+          // Cancels any pending reminder from a previous snap first.
+          void (async () => {
+            try {
+              const p = await storage.getProfile(userId);
+              if (p?.hstixReminderNotificationId) {
+                await cancelOneSignalNotification(p.hstixReminderNotificationId);
+              }
+              const useAlias = !!p?.onesignalExternalId;
+              if (!useAlias && !p?.onesignalPlayerId) return;
+              const hstixContent = CONTENTS["hstix_reminder"];
+              const result = await sendPushNotification({
+                title:    { en: hstixContent.en.title,    "zh-Hant": hstixContent.zhHant.title },
+                subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
+                message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
+                deepLink: hstixContent.deepLink,
+                send_after: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
+                playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],
+              });
+              if (result.notificationId) {
+                await storage.updateProfile(userId, { hstixReminderNotificationId: result.notificationId });
+              }
+            } catch (e: any) {
+              console.warn("[snap/hstix-reminder] scheduling failed:", e?.message ?? e);
+            }
+          })();
+
           return snap.id;
         } catch (e: any) {
           console.warn("[snap/advice] insertSnapRecord failed:", e?.message ?? e);

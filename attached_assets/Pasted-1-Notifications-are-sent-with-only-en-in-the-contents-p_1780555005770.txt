@@ -1,0 +1,15 @@
+1. Notifications are sent with only  "en"  in the contents payload (most common)
+OneSignal’s API requires a  contents  object with language codes as keys. If your server only sends  {"en": "your message"} , every device receives English regardless of its language setting — OneSignal falls back to  en  when no matching language key exists for the device.[gridly]
+How to check: Inspect the notification payload your server sends to OneSignal. Look for the  contents  field — if it only has  "en" , that’s the cause.
+2. OneSignal never detected the device language
+OneSignal auto-detects language from the device OS at SDK initialisation time.  If the SDK initialised before the user set their language, or if there’s a bug in the native build’s SDK setup, the device profile in OneSignal may be stored as  en  permanently.[onesignal]
+How to check: Go to OneSignal dashboard → Audience → find a test device → check what language is recorded on its profile. If it shows  en  for a device you know is set to Chinese, detection failed at the SDK level.
+3. The language code format is wrong
+OneSignal expects ISO 639-1 two-letter codes ( zh-Hans ,  zh-Hant ,  zh-TW ) — not custom strings. A malformed code causes silent fallback to English.[github]
+How to check: Check what language code your app passes to OneSignal (if you’re setting it manually via  OneSignal.User.setLanguage() ), and verify it matches OneSignal’s supported language list.
+4. Language is being set manually and overriding device detection
+If your code calls  OneSignal.User.setLanguage("en")  anywhere — perhaps hardcoded during initial setup by the Replit agent — it permanently overrides the auto-detected device language.[onesignal]
+How to check: Search your codebase for  setLanguage  — if it’s hardcoded to  "en" , that’s the culprit.
+5. Notification content is only authored in English on the server
+Even if OneSignal detects the device language correctly, if your backend only generates English notification text and sends a single-language payload, localisation never fires. OneSignal’s language routing only works if you provide translated content for each language in the payload.[gridly]
+How to check: Check the notification-sending function on your server — is the message text dynamically localised before being sent, or is it always an English string?

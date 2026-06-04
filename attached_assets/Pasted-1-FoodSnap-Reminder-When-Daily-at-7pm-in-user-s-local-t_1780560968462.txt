@@ -1,0 +1,80 @@
+1. FoodSnap Reminder
+When: Daily at 7pm in user's local time
+Purpose: Remind user to snap their dinner if not yet logged
+
+Implementation:
+
+Use delayed_option: "timezone" + delivery_time_of_day: "7:00PM"
+
+OneSignal handles per-user timezone automatically — no timestamp math needed
+
+Server schedules this once per day for users with no dinner log yet
+
+No cancellation needed — reschedule fresh each day
+
+2. HStix Log Reminder
+When: 60 minutes after a meal snap is logged
+Purpose: Remind user to do their HStix reading after eating
+
+Implementation:
+
+On meal snap saved → call Create Notification API with send_after = meal_timestamp + 60min as ISO 8601 UTC string
+
+Store the returned notification_id against the user
+
+If user logs another meal before 60min is up → call Cancel API on the stored notification_id first, then schedule a new one
+
+No log = no notification. Never fires unprompted.
+
+3. Daily Report
+When: 8am next day in user's local time
+Purpose: Yesterday's nutrition and health summary
+
+Implementation:
+
+Use delayed_option: "timezone" + delivery_time_of_day: "8:00AM"
+
+Scheduled at end of each day (e.g. midnight cron)
+
+Store the returned notification_id
+
+Cancel this via Delete API on mornings when weekly or monthly report fires instead
+
+4. Weekly Report
+When: 8am on first day of next week (Monday or Sunday, matching app's existing week definition)
+Purpose: 7-day trends summary
+
+Implementation:
+
+Use send_after = first day of next week at 8am, converted to UTC per user's timezone
+
+Scheduled at end of each week
+
+Store the returned notification_id
+
+Before firing: cancel that morning's pending daily report notification_id via Delete API
+
+5. Monthly Report
+When: 1st of next month at 8am in user's local time
+Purpose: Monthly trends and progress
+
+Implementation:
+
+Use send_after = 1st of next month at 8am, converted to UTC per user's timezone
+
+Scheduled at end of each month
+
+Before firing: cancel that morning's pending daily report. If 1st falls on a Monday, cancel weekly report too
+
+What to Store in DB
+One table, one row per user per active scheduled notification:
+
+text
+user_id | type ("daily"|"weekly"|"monthly"|"hstix"|"foodsnap") | onesignal_message_id
+Rule: always cancel and delete the existing row before inserting a new one of the same type for the same user.
+
+OneSignal API Methods Used
+Method	Used for
+Create Notification + delayed_option: "timezone" + delivery_time_of_day	FoodSnap, Daily report
+Create Notification + send_after (ISO 8601 UTC)	HStix, Weekly report, Monthly report
+Cancel Notification DELETE /notifications/{id}	HStix debounce, Daily cancelled by weekly/monthly

@@ -66,6 +66,7 @@ export const userProfiles = pgTable("user_profiles", {
   onesignalExternalId: text("onesignal_external_id"),
   deviceTimezone: text("device_timezone"),
   lastReengagementNotification: timestamp("last_reengagement_notification"),
+  hstixReminderNotificationId: varchar("hstix_reminder_notification_id"),
   hasCreatedFirstWeeklyPlan: boolean("has_created_first_weekly_plan").notNull().default(false),
   hasTriedFirstFoodSnap: boolean("has_tried_first_food_snap").notNull().default(false),
   hasReachedPaywall: boolean("has_reached_paywall").notNull().default(false),

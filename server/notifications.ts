@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, users } from "@shared/schema";
+import { userProfiles, mealSnaps } from "@shared/schema";
 import { eq, and, isNotNull, sql } from "drizzle-orm";
 import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
 import { storage } from "./storage";
@@ -25,59 +25,69 @@ const LOOKAHEAD_MS = LOOKAHEAD_HOURS * 60 * 60 * 1000;
 const PASS_INTERVAL_MS = 60 * 60 * 1000;
 
 type NotificationType =
-  | "daily_checkin"   // 10 PM local
-  | "weekly_report"   // 10 PM local on Sunday
-  | "late_dinner"     // 2 PM local
-  | "reengagement";   // 6 PM local when no logs in last 3 days
+  | "foodsnap_reminder" // 7 PM local — conditional: no dinner snap today
+  | "hstix_reminder"    // event-triggered — 60 min after snap (not pre-scheduled)
+  | "daily_report"      // 8 AM local next morning
+  | "weekly_report"     // 8 AM local on Monday
+  | "monthly_report";   // 8 AM local on the 1st of the month
 
-const PLANNER_FEATURES_ENABLED = false;
-
+// hstix_reminder is excluded — it is scheduled directly from the snap
+// route, not by the pre-scheduler loop.
 const ALL_TYPES: NotificationType[] = [
-  "daily_checkin",
-  ...(!PLANNER_FEATURES_ENABLED ? [] : (["weekly_report"] as NotificationType[])),
-  "late_dinner",
-  "reengagement",
+  "monthly_report",    // must be first — owns the 1st-of-month 8 AM slot
+  "weekly_report",     // must precede daily_report — owns Monday 8 AM slot
+  "foodsnap_reminder", // independent
+  "daily_report",      // conflict-checks the two above — must be last
 ];
 
-interface NotificationContent {
+interface NotificationLocale {
   title: string;
   subtitle: string;
   message: string;
+}
+
+interface NotificationContent {
+  en: NotificationLocale;
+  zhHant: NotificationLocale;
   deepLink: string;
 }
 
-const CONTENTS: Record<NotificationType, NotificationContent> = {
-  daily_checkin: {
-    title: "Glukky",
-    subtitle: "Daily check-in",
-    message: "Your daily check-in is open — tap to log your day!",
+export const CONTENTS: Record<NotificationType, NotificationContent> = {
+  foodsnap_reminder: {
+    en:     { title: "Glukky", subtitle: "", message: "Time to snap your dinner!" },
+    zhHant: { title: "Glukky", subtitle: "", message: "記錄今晚晚餐的時間到了！" },
+    deepLink: "/",
+  },
+  hstix_reminder: {
+    en:     { title: "Glukky", subtitle: "", message: "Ready to log your HStix reading?" },
+    zhHant: { title: "Glukky", subtitle: "", message: "準備好量度你的血糖了嗎？" },
+    deepLink: "/",
+  },
+  daily_report: {
+    en:     { title: "Glukky", subtitle: "", message: "Your daily summary is ready." },
+    zhHant: { title: "Glukky", subtitle: "", message: "你的每日報告已準備好。" },
     deepLink: "/",
   },
   weekly_report: {
-    title: "Glukky",
-    subtitle: "Weekly review",
-    message: "Your weekly review is ready! Check your progress and plan next week.",
-    deepLink: "/plan",
-  },
-  late_dinner: {
-    title: "Glukky",
-    subtitle: "Dinner reminder",
-    message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
+    en:     { title: "Glukky", subtitle: "", message: "Your weekly report is ready." },
+    zhHant: { title: "Glukky", subtitle: "", message: "你的每週報告已準備好。" },
     deepLink: "/",
   },
-  reengagement: {
-    title: "Glukky",
-    subtitle: "We miss you!",
-    message: "Your plan is waiting — even a small step counts.",
+  monthly_report: {
+    en:     { title: "Glukky", subtitle: "", message: "Your monthly report is ready." },
+    zhHant: { title: "Glukky", subtitle: "", message: "你的每月報告已準備好。" },
     deepLink: "/",
   },
 };
 
-const TRIGGER_HOUR_LOCAL: Record<NotificationType, number> = {
-  daily_checkin: 22, // 10 PM
-  weekly_report: 22, // 10 PM
-  late_dinner: 14,   // 2 PM
-  reengagement: 18,  // 6 PM
+// hstix_reminder is intentionally absent — it has no fixed trigger hour.
+// The reconciler's existing `if (triggerHour === undefined)` guard handles
+// any stale rows of that type gracefully without changes to that function.
+const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
+  foodsnap_reminder: 19, // 7 PM
+  daily_report:      8,  // 8 AM
+  weekly_report:     8,  // 8 AM
+  monthly_report:    8,  // 8 AM
 };
 
 interface ScheduledUser {
@@ -277,89 +287,58 @@ type EligibilityResult =
 
 async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
   switch (ctx.type) {
-    case "daily_checkin":
-      // 10 PM local every day except Sunday (Sunday slot is
-      // owned by the weekly_report).
-      if (ctx.next.weekday === 0) return { eligible: false, reason: "sunday_owned_by_weekly_report" };
-      return { eligible: true };
-    case "weekly_report":
-      // Only fires on Sunday's 10 PM local slot.
-      if (ctx.next.weekday !== 0) return { eligible: false, reason: "non_sunday" };
-      return { eligible: true };
-    case "late_dinner": {
-      // Only when the user has lateDinnerScheduled=true on the
-      // weekly_plan_day matching the local trigger date's weekday.
-      const planRows = await db.select({
-        lateDinnerScheduled: weeklyPlanDays.lateDinnerScheduled,
-      })
-        .from(weeklyPlanDays)
-        .innerJoin(weeklyPlans, eq(weeklyPlanDays.weeklyPlanId, weeklyPlans.id))
-        .innerJoin(userProfiles, eq(weeklyPlans.userId, userProfiles.userId))
+
+    case "foodsnap_reminder": {
+      // Only fire if the user has NOT snapped anything today.
+      // meal_snaps.local_date is stored in the user's local timezone,
+      // so a direct string match against localTriggerDate is correct.
+      const snapped = await db.select({ id: mealSnaps.id })
+        .from(mealSnaps)
         .where(and(
-          eq(weeklyPlans.userId, ctx.user.userId),
-          eq(weeklyPlans.weekNumber, userProfiles.currentWeek),
-          // Plan-day weekday uses Mon=0..Sun=6 (see notifications.ts
-          // original logic: `(now.getDay() + 6) % 7`). Convert from
-          // JS weekday (0=Sun..6=Sat).
-          eq(weeklyPlanDays.dayOfWeek, (ctx.next.weekday + 6) % 7),
-          eq(weeklyPlanDays.lateDinnerScheduled, true),
+          eq(mealSnaps.userId, ctx.user.userId),
+          eq(mealSnaps.localDate, ctx.next.localTriggerDate),
         ))
         .limit(1);
-      if (planRows.length === 0) return { eligible: false, reason: "no_late_dinner_today" };
+      if (snapped.length > 0) return { eligible: false, reason: "already_snapped_today" };
       return { eligible: true };
     }
-    case "reengagement": {
-      // Three independent guards, ALL must pass:
-      //   1. Account is at least 3 days old. A user who finished
-      //      onboarding today doesn't need a "We miss you!" push
-      //      tonight — they were here ten minutes ago. Without
-      //      this guard the inactivity check below trivially
-      //      passes for every brand-new account that hasn't logged
-      //      anything yet.
-      //   2. The user has logged SOMETHING ever. A user who has
-      //      never logged a single day cannot meaningfully be
-      //      "re-engaged" — there's nothing to re-engage with.
-      //   3. They have not logged anything in the last 3 days.
-      // Plus the existing 3-day cooldown so even an eligible user
-      // doesn't get a second push for at least 3 days.
-      const profile = await storage.getProfile(ctx.user.userId);
-      if (!profile) return { eligible: false, reason: "no_profile" };
 
-      const userRows = await db.select({ createdAt: users.createdAt })
-        .from(users)
-        .where(eq(users.id, ctx.user.userId))
-        .limit(1);
-      const accountCreatedAt = userRows[0]?.createdAt;
-      if (!accountCreatedAt) return { eligible: false, reason: "no_account_record" };
-      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-      if (ctx.now.getTime() - accountCreatedAt.getTime() < THREE_DAYS_MS) {
-        return { eligible: false, reason: "account_too_new" };
-      }
-
-      const everLogged = await db.select({ id: dailyLogs.id })
-        .from(dailyLogs)
-        .where(eq(dailyLogs.userId, ctx.user.userId))
-        .limit(1);
-      if (everLogged.length === 0) return { eligible: false, reason: "no_logs_ever" };
-
-      if (profile.lastReengagementNotification) {
-        const cooldownEnd = new Date(profile.lastReengagementNotification);
-        cooldownEnd.setDate(cooldownEnd.getDate() + 3);
-        if (ctx.now < cooldownEnd) return { eligible: false, reason: "cooldown" };
-      }
-      const threeDaysAgo = new Date(ctx.now);
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-      const threeDaysAgoStr = threeDaysAgo.toISOString().split("T")[0];
-      const recent = await db.select({ id: dailyLogs.id })
-        .from(dailyLogs)
-        .where(and(
-          eq(dailyLogs.userId, ctx.user.userId),
-          sql`${dailyLogs.date} >= ${threeDaysAgoStr}`,
-        ))
-        .limit(1);
-      if (recent.length > 0) return { eligible: false, reason: "active_in_last_3_days" };
+    case "daily_report": {
+      // Skip if weekly_report or monthly_report already owns the same
+      // 8 AM slot for this user. Check in JS with two cheap reads so
+      // we don't need to import scheduledNotifications directly.
+      const weeklyConflict = await storage.getScheduledNotification(
+        ctx.user.userId, "weekly_report", ctx.next.localTriggerDate,
+      );
+      if (weeklyConflict) return { eligible: false, reason: "weekly_report_owns_this_morning" };
+      const monthlyConflict = await storage.getScheduledNotification(
+        ctx.user.userId, "monthly_report", ctx.next.localTriggerDate,
+      );
+      if (monthlyConflict) return { eligible: false, reason: "monthly_report_owns_this_morning" };
       return { eligible: true };
     }
+
+    case "weekly_report": {
+      // Only fires on Monday (weekday === 1, 0=Sun..6=Sat).
+      if (ctx.next.weekday !== 1) return { eligible: false, reason: "non_monday" };
+      // Skip if monthly_report already owns this Monday (1st of month).
+      const monthlyConflict = await storage.getScheduledNotification(
+        ctx.user.userId, "monthly_report", ctx.next.localTriggerDate,
+      );
+      if (monthlyConflict) return { eligible: false, reason: "monthly_report_owns_this_monday" };
+      return { eligible: true };
+    }
+
+    case "monthly_report": {
+      // Only fires on the 1st of the month.
+      const dd = ctx.next.localTriggerDate.slice(8, 10); // "YYYY-MM-DD" → "DD"
+      if (dd !== "01") return { eligible: false, reason: "not_first_of_month" };
+      return { eligible: true };
+    }
+
+    case "hstix_reminder":
+      // Never reaches isEligible — excluded from ALL_TYPES.
+      return { eligible: false, reason: "event_triggered_only" };
   }
 }
 
@@ -393,9 +372,9 @@ async function queueOneNotification(
   }
 
   const result = await sendPushNotification({
-    title: content.title,
-    subtitle: content.subtitle,
-    message: content.message,
+    title:    { en: content.en.title,    "zh-Hant": content.zhHant.title },
+    subtitle: { en: content.en.subtitle, "zh-Hant": content.zhHant.subtitle },
+    message:  { en: content.en.message,  "zh-Hant": content.zhHant.message },
     deepLink: content.deepLink,
     send_after: sendAfter,
     externalIds: useAlias ? [user.onesignalExternalId as string] : undefined,
@@ -584,17 +563,6 @@ async function preScheduleAll(): Promise<void> {
 
           await storage.setScheduledNotificationId(reservedId, r.notificationId);
           counters.queued++;
-          // Reengagement tracking: stamp profile so the 3-day
-          // cooldown holds even if the dedup row is later GC'd.
-          if (type === "reengagement") {
-            try {
-              await db.update(userProfiles)
-                .set({ lastReengagementNotification: new Date() })
-                .where(eq(userProfiles.userId, user.userId));
-            } catch (e: any) {
-              log(`notif/cooldown-stamp-failed user=${emailForLog} ${e?.message ?? e}`, "notifications");
-            }
-          }
         }
       } catch (e: any) {
         counters.errored++;

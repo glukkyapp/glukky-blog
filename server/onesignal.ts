@@ -8,9 +8,9 @@ const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
 const ONESIGNAL_API_URL = "https://api.onesignal.com/notifications";
 
 interface NotificationPayload {
-  title: string;
-  subtitle: string;
-  message: string;
+  title: Record<string, string>;
+  subtitle: Record<string, string>;
+  message: Record<string, string>;
   deepLink: string;
   // Targeting: prefer external_ids when present (alias-based);
   // fall back to playerIds (subscription-id based) for users
@@ -40,9 +40,9 @@ interface OneSignalRequestBody {
   // RULE A — required when include_aliases is used. Without this
   // OneSignal silently delivers nothing on the alias path.
   target_channel?: "push";
-  headings: { en: string };
-  subtitle: { en: string };
-  contents: { en: string };
+  headings: Record<string, string>;
+  subtitle: Record<string, string>;
+  contents: Record<string, string>;
   url: string;
   data: { deepLink: string };
   send_after?: string;
@@ -213,9 +213,9 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
 
     const body: OneSignalRequestBody = {
       app_id: ONESIGNAL_APP_ID,
-      headings: { en: payload.title },
-      subtitle: { en: payload.subtitle },
-      contents: { en: payload.message },
+      headings: payload.title,
+      subtitle: payload.subtitle,
+      contents: payload.message,
       url: payload.deepLink,
       data: { deepLink: payload.deepLink },
     };
