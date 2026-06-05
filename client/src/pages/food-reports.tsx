@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DonutChart } from "@/components/DonutChart";
 
@@ -107,7 +107,7 @@ function WeeklyDonut({ breakdown }: { breakdown: NonNullable<WeeklySummary["dayB
   ];
   const labels = ["穩定", "中等", "偏高"];
   return (
-    <div className="flex items-center gap-4 py-1" data-testid="div-weekly-donut">
+    <div className="flex items-center gap-4 py-4" data-testid="div-weekly-donut">
       <DonutChart segments={segments} size={101} strokeWidth={15}>
         <div className="flex flex-col items-center leading-none">
           <span className="text-xl font-bold text-foreground">{breakdown.total}</span>
@@ -176,7 +176,6 @@ function WeeklyGrid({ grid }: { grid: DayGrid[] }) {
 
 export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string; variant?: "home" | "reports" }) {
   const { t } = useTranslation();
-  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const { data, isLoading } = useQuery<WeeklySummary>({
     queryKey: ["/api/snap/weekly-summary", weekStart],
     queryFn: async () => {
@@ -217,11 +216,71 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
     ? data.dailyGrid.filter(d => !d.isFuture && (d.breakfast || d.lunch || d.dinner || (d.snackImpacts?.length ?? 0) > 0)).length
     : null;
 
+  let bestDayLabel: string | null = null;
+  let worstDayFromGrid: string | null = null;
+  if (data.dailyGrid) {
+    const daySnaps = data.dailyGrid
+      .filter(d => !d.isFuture && (d.breakfast || d.lunch || d.dinner || (d.snackImpacts?.length ?? 0) > 0))
+      .map(d => {
+        const all = [d.breakfast, d.lunch, d.dinner, ...(d.snackImpacts ?? [])].filter(Boolean) as string[];
+        return {
+          dow: d.dayOfWeek,
+          highCount: all.filter(x => x === "high").length,
+          lowCount: all.filter(x => x === "low").length,
+        };
+      });
+    if (daySnaps.length >= 2) {
+      const best = daySnaps.reduce((a, b) =>
+        a.highCount < b.highCount || (a.highCount === b.highCount && a.lowCount > b.lowCount) ? a : b
+      );
+      const worst = daySnaps.reduce((a, b) => a.highCount > b.highCount ? a : b);
+      if (best.dow !== worst.dow && worst.highCount > 0) {
+        bestDayLabel = DOW_ZH[best.dow];
+        worstDayFromGrid = DOW_ZH[worst.dow];
+      }
+    }
+  }
+
+  const noHighMealsThisWeek = (data.dayBreakdown?.high ?? 0) === 0 && (data.dayBreakdown?.total ?? 0) > 0;
+
   const bullets: { insight: string; suggestion?: string }[] = [];
 
   if (loggedDays !== null) {
     bullets.push({ insight: `本週已記錄${loggedDays}日的飲食` });
   }
+
+  if (bestDayLabel && worstDayFromGrid) {
+    bullets.push({
+      insight: `${bestDayLabel}飲食最好，${worstDayFromGrid}飲食要多加留意。`,
+      suggestion: `可在下週${worstDayFromGrid}選擇升糖指數較低的食物。`,
+    });
+  } else if (data.worstDay !== null && data.worstDay !== undefined) {
+    const dayLabel = DOW_ZH[data.worstDay];
+    const meals = data.worstMeals?.length ? data.worstMeals : (data.worstMeal ? [data.worstMeal] : []);
+    if (meals.length === 0) {
+      bullets.push({
+        insight: `${dayLabel}血糖影響最高`,
+        suggestion: "留意當日的飲食模式，嘗試選擇升糖指數較低的食物。",
+      });
+    } else if (meals.length === 1) {
+      const mealLabel = MEAL_TYPE_ZH[meals[0]] ?? meals[0];
+      bullets.push({
+        insight: `${dayLabel}${mealLabel}血糖影響最高`,
+        suggestion: `可在下週${mealLabel}選擇升糖指數較低的食物。`,
+      });
+    } else {
+      const parts = meals.map(m => MEAL_TYPE_ZH[m] ?? m).join("及");
+      bullets.push({
+        insight: `${dayLabel}${parts}血糖影響同樣最高`,
+        suggestion: "可在下週這兩餐選擇升糖指數較低的食物。",
+      });
+    }
+  }
+
+  if (noHighMealsThisWeek) {
+    bullets.push({ insight: "你這星期的飲食選擇做得極好！繼續保持！" });
+  }
+
   if ((data.missedMealDays ?? 0) > 0) {
     bullets.push({
       insight: `${data.missedMealDays}日的飲食記錄不完整`,
@@ -236,12 +295,8 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
   }
   if ((data.irregularMealDays ?? 0) > 0) {
     const mealName = data.irregularMealType ? (MEAL_TYPE_ZH[data.irregularMealType] ?? "正餐") : "正餐";
-    const example = data.irregularMealType === "breakfast" ? "（如早上11時後才食早餐）"
-      : data.irregularMealType === "lunch" ? "（如下午2時後才食午餐）"
-      : data.irregularMealType === "dinner" ? "（如晚上9時後才食晚餐）"
-      : "";
     bullets.push({
-      insight: `本週${mealName}有進食時間不規律的情況${example}`,
+      insight: `本週${mealName}有進食時間不規律的情況`,
       suggestion: "規律進食時間有助穩定全日血糖。",
     });
   }
@@ -259,34 +314,6 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
       }
     }
   }
-  if (data.worstDay !== null && data.worstDay !== undefined) {
-    const dayLabel = DOW_ZH[data.worstDay];
-    const meals = data.worstMeals?.length ? data.worstMeals : (data.worstMeal ? [data.worstMeal] : []);
-    const foods = data.worstFoods ?? (data.worstFood ? [data.worstFood] : []);
-    if (meals.length === 0) {
-      bullets.push({
-        insight: `${dayLabel}血糖影響最高`,
-        suggestion: "留意當日的飲食模式，嘗試選擇升糖指數較低的食物。",
-      });
-    } else if (meals.length === 1) {
-      const mealLabel = MEAL_TYPE_ZH[meals[0]] ?? meals[0];
-      const foodLabel = foods[0] ? `（${foods[0]}）` : "";
-      bullets.push({
-        insight: `${dayLabel}${mealLabel}${foodLabel}血糖影響最高`,
-        suggestion: `可在下週${mealLabel}選擇升糖指數較低的食物。`,
-      });
-    } else {
-      const parts = meals.map((m, j) => {
-        const mealLabel = MEAL_TYPE_ZH[m] ?? m;
-        const foodLabel = foods[j] ? `（${foods[j]}）` : "";
-        return `${mealLabel}${foodLabel}`;
-      }).join("及");
-      bullets.push({
-        insight: `${dayLabel}${parts}血糖影響同樣最高`,
-        suggestion: "可在下週這兩餐選擇升糖指數較低的食物。",
-      });
-    }
-  }
 
   return (
     <Card data-testid="card-weekly-report">
@@ -301,32 +328,22 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
           <WeeklyGrid grid={data.dailyGrid} />
         )}
         {bullets.length === 0 ? (
-          <p className="text-sm text-muted-foreground" data-testid="text-weekly-no-issues">本週飲食模式良好，繼續保持！</p>
+          <div className="rounded-lg bg-muted/30 px-3 py-2.5" data-testid="text-weekly-no-issues">
+            <p className="text-lg font-semibold leading-relaxed text-foreground">本週飲食模式良好，繼續保持！</p>
+          </div>
         ) : (
-          <ul className="flex flex-col gap-2" data-testid="list-weekly-insights">
+          <div className="flex flex-col gap-2.5" data-testid="list-weekly-insights">
             {bullets.map((b, i) => (
-              <li key={i} className="flex flex-col gap-0.5" data-testid={`text-weekly-insight-${i}`}>
-                <span className="text-sm text-foreground flex gap-1.5"><span className="shrink-0 select-none">•</span>{b.insight}</span>
-                {b.suggestion && <span className="text-xs text-muted-foreground pl-4">{b.suggestion}</span>}
-              </li>
+              <div key={i} className="rounded-lg bg-muted/30 px-3 py-2.5 flex flex-col gap-1" data-testid={`text-weekly-insight-${i}`}>
+                <p className="text-lg font-semibold leading-relaxed text-foreground">{b.insight}</p>
+                {b.suggestion && <p className="text-base text-muted-foreground leading-relaxed">{b.suggestion}</p>}
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-        <div className="mt-1">
-          <button
-            data-testid="button-weekly-disclaimer-toggle"
-            onClick={() => setDisclaimerOpen(v => !v)}
-            className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
-            aria-label="免責聲明"
-          >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-          {disclaimerOpen && (
-            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-weekly-disclaimer">
-              {t("snap.advice_disclaimer")}
-            </p>
-          )}
-        </div>
+        <p className="text-[9px] text-muted-foreground/40 leading-relaxed px-1" data-testid="text-weekly-disclaimer">
+          {t("snap.advice_disclaimer")}
+        </p>
       </CardContent>
     </Card>
   );
@@ -341,7 +358,7 @@ function MonthlyDonut({ data, totalDays }: { data: MonthlySummary; totalDays: nu
   const labels = ["穩定", "中等", "偏高"];
   const loggedDays = data.loggedDays ?? 0;
   return (
-    <div className="flex items-center gap-4 py-1" data-testid="div-monthly-donut">
+    <div className="flex items-center gap-4 py-4" data-testid="div-monthly-donut">
       <DonutChart segments={segments} size={101} strokeWidth={15}>
         <div className="flex flex-col items-center leading-none">
           <span className="text-xl font-bold text-foreground">{loggedDays}</span>
@@ -391,7 +408,6 @@ function SymptomBars({ symptomsData }: { symptomsData: SymptomData }) {
 function MonthlyCard() {
   const { t } = useTranslation();
   const [scoreExpanded, setScoreExpanded] = useState(false);
-  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const month = getPrevMonth();
   const [y, m] = month.split("-").map(Number);
   const monthTitle = `${y}年${m}月報告`;
@@ -529,21 +545,9 @@ function MonthlyCard() {
           </p>
         )}
 
-        <div className="mt-1">
-          <button
-            data-testid="button-monthly-disclaimer-toggle"
-            onClick={() => setDisclaimerOpen(v => !v)}
-            className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
-            aria-label="免責聲明"
-          >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-          {disclaimerOpen && (
-            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-monthly-disclaimer">
-              {t("snap.advice_disclaimer")}
-            </p>
-          )}
-        </div>
+        <p className="text-[9px] text-muted-foreground/40 leading-relaxed px-1" data-testid="text-monthly-disclaimer">
+          {t("snap.advice_disclaimer")}
+        </p>
       </CardContent>
     </Card>
   );

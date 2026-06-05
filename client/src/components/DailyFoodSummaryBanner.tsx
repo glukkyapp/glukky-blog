@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SnapEntry {
@@ -28,6 +27,19 @@ const MEAL_ZH: Record<string, string> = {
 const HOUR_START = 6;
 const HOUR_END = 24;
 
+const SUGGESTION_LOOKUP: Record<string, string[]> = {
+  lunch: ["烚蛋蔬菜飯", "清湯米線配時蔬", "蒸魚配糙米飯", "雞胸肉沙律", "豆腐配蔬菜粥", "清湯河粉配菜心", "冬菇蒸雞配少量白飯"],
+  dinner: ["烚蛋蔬菜飯", "清湯米線配時蔬", "蒸魚配糙米飯", "雞胸肉沙律", "豆腐配蔬菜粥", "清湯河粉配菜心", "冬菇蒸雞配少量白飯"],
+  breakfast: ["白煮蛋配全麥多士", "無糖燕麥粥", "豆漿配無糖麵包", "雞蛋配蔬菜"],
+  snack: ["少量無糖豆漿", "清淡湯水或熱茶", "少量合桃", "藍莓配無糖乳酪"],
+};
+
+function pickSuggestion(mealType: string | null): string {
+  const options = SUGGESTION_LOOKUP[mealType ?? "lunch"] ?? SUGGESTION_LOOKUP.lunch;
+  const dow = new Date().getDay();
+  return options[dow % options.length];
+}
+
 function getLocalHour(snapTime: string, tz?: string): number {
   try {
     const effectiveTz = tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -42,6 +54,25 @@ function getLocalHour(snapTime: string, tz?: string): number {
     return h + m / 60;
   } catch {
     return new Date(snapTime).getHours();
+  }
+}
+
+function formatLocalTime(snapTime: string, tz?: string): string {
+  try {
+    const effectiveTz = tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: effectiveTz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(snapTime));
+    const h = parseInt(parts.find(p => p.type === "hour")?.value ?? "12", 10);
+    const min = parts.find(p => p.type === "minute")?.value ?? "00";
+    const period = h < 12 ? "上午" : "下午";
+    const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${period}${String(displayH).padStart(2, "0")}:${min}`;
+  } catch {
+    return "";
   }
 }
 
@@ -75,22 +106,16 @@ function getYesterday(tz?: string, dateOverride?: string | null): string {
   }
 }
 
-function isIrregularEntry(mealType: string | null, snapTime: string): boolean {
+function isIrregularEntry(mealType: string | null, snapTime: string, tz?: string): boolean {
   if (!mealType || mealType === "snack") return false;
-  const hour = getLocalHour(snapTime);
+  const hour = getLocalHour(snapTime, tz);
   if (mealType === "breakfast") return hour < 7 || hour >= 11;
   if (mealType === "lunch") return hour < 12 || hour >= 14;
   if (mealType === "dinner") return hour < 18 || hour >= 21;
   return false;
 }
 
-const IRREGULAR_EXAMPLE: Record<string, string> = {
-  breakfast: "（如早上11時後才食早餐）",
-  lunch: "（如下午2時後才食午餐）",
-  dinner: "（如晚上9時後才食晚餐）",
-};
-
-function buildSummary(snaps: SnapEntry[], irregularMealCount: number): {
+function buildSummary(snaps: SnapEntry[], irregularMealCount: number, tz?: string): {
   primary: string;
   primarySuggestion?: string;
   secondary: { insight: string; suggestion?: string }[];
@@ -102,6 +127,7 @@ function buildSummary(snaps: SnapEntry[], irregularMealCount: number): {
       secondary: [],
     };
   }
+
   const lowMealPrefix = snaps.length < 2 ? `昨日只記錄了${snaps.length}餐。` : "";
   const highSnaps = snaps.filter(s => s.glucoseImpact === "high" && s.mealType && s.mealType !== "snack");
   const highCount = snaps.filter(s => s.glucoseImpact === "high").length;
@@ -110,33 +136,56 @@ function buildSummary(snaps: SnapEntry[], irregularMealCount: number): {
 
   let primary: string;
   let primarySuggestion: string | undefined;
+
   if (highCount > 0) {
-    const highMealNames = Array.from(new Set(highSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
-    primary = lowMealPrefix + (highMealNames
-      ? `昨日${highMealNames}血糖影響偏高。`
-      : `昨日有${highCount}餐血糖影響偏高。`);
-    primarySuggestion = "建議今天多選擇低升糖食物。";
+    if (highSnaps.length > 0) {
+      const snap = highSnaps[0];
+      const mealName = MEAL_ZH[snap.mealType!] ?? "";
+      const foodPart = snap.foodName ? `（${snap.foodName}）` : "";
+      primary = lowMealPrefix + `昨日${mealName}${foodPart}血糖影響偏高。`;
+      const suggestion = pickSuggestion(snap.mealType);
+      primarySuggestion = `今天可試試${MEAL_ZH[snap.mealType!] ?? "正餐"}選：${suggestion}。`;
+    } else {
+      primary = lowMealPrefix + `昨日有${highCount}餐血糖影響偏高。`;
+      primarySuggestion = "建議今天多選擇低升糖食物。";
+    }
   } else if (mediumCount > 0) {
     primary = lowMealPrefix + "昨日飲食整體穩定，部分餐點血糖影響中等。";
     primarySuggestion = "留意是否可進一步選擇低升糖食物。";
   } else {
-    primary = lowMealPrefix + "昨日飲食整體穩定，血糖影響輕微。";
+    const lowSnaps = snaps.filter(s => s.glucoseImpact === "low" && s.mealType && s.mealType !== "snack");
+    if (lowSnaps.length > 0) {
+      const mealCounts: Record<string, number> = {};
+      for (const s of lowSnaps) {
+        if (s.mealType) mealCounts[s.mealType] = (mealCounts[s.mealType] ?? 0) + 1;
+      }
+      const bestMeal = Object.entries(mealCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      const mealName = bestMeal ? (MEAL_ZH[bestMeal] ?? "") : "";
+      primary = lowMealPrefix + (mealName
+        ? `繼續保持昨日${mealName}的良好選擇！`
+        : "昨日飲食整體穩定，血糖影響輕微。");
+    } else {
+      primary = lowMealPrefix + "昨日飲食整體穩定，血糖影響輕微。";
+    }
   }
 
   const secondary: { insight: string; suggestion?: string }[] = [];
+
   if (hasSnack) {
     secondary.push({
       insight: "昨日有宵夜記錄。",
       suggestion: "建議睡前3小時避免進食，有助穩定血糖。",
     });
   }
+
   if (irregularMealCount > 0) {
-    const irregularSnaps = snaps.filter(s => isIrregularEntry(s.mealType, s.snapTime));
+    const irregularSnaps = snaps.filter(s => isIrregularEntry(s.mealType, s.snapTime, tz));
     const irregNames = Array.from(new Set(irregularSnaps.map(s => MEAL_ZH[s.mealType!] ?? "").filter(Boolean))).join("、");
-    const example = irregularSnaps.length > 0 ? (IRREGULAR_EXAMPLE[irregularSnaps[0].mealType!] ?? "") : "";
+    const timeStr = irregularSnaps.length > 0 ? formatLocalTime(irregularSnaps[0].snapTime, tz) : "";
+    const timePart = timeStr ? `（${timeStr}進食）` : "";
     secondary.push({
       insight: irregNames
-        ? `昨日${irregNames}進食時間不規律${example}。`
+        ? `昨日${irregNames}進食時間不規律${timePart}。`
         : `昨日有${irregularMealCount}餐在非預期時段進食。`,
       suggestion: "規律進食時間有助穩定全日血糖。",
     });
@@ -163,7 +212,6 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
   const yesterday = getYesterday(tz, dateOverride);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   const { data, isLoading } = useQuery<{ snaps: SnapEntry[]; irregularMealCount?: number }>({
     queryKey: ["/api/snap/daily-summary", yesterday],
@@ -179,7 +227,7 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
 
   const snaps = data?.snaps ?? [];
   const irregularMealCount = data?.irregularMealCount ?? 0;
-  const { primary, primarySuggestion, secondary } = buildSummary(snaps, irregularMealCount);
+  const { primary, primarySuggestion, secondary } = buildSummary(snaps, irregularMealCount, tz);
 
   const handleDotClick = (e: React.MouseEvent, snap: SnapEntry, active: boolean) => {
     e.stopPropagation();
@@ -199,7 +247,7 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
             <p className="text-[10px] text-muted-foreground/60 mb-1.5 font-medium tracking-wide uppercase">
               昨日飲食時間軸
             </p>
-            <div className="relative h-5 mx-1" data-testid="strip-meal-timeline">
+            <div className="relative h-7 mx-1" data-testid="strip-meal-timeline">
               <div className="absolute inset-0 bg-muted/30 rounded-full" />
               {[9, 12, 15, 18, 21].map(h => (
                 <div
@@ -246,38 +294,28 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
           </div>
         )}
 
-        <div className="flex flex-col">
-          <p className="text-sm font-medium text-foreground" data-testid="text-daily-summary-primary">
-            {primary}
-          </p>
-          {primarySuggestion && (
-            <p className="text-xs text-muted-foreground mt-0.5">{primarySuggestion}</p>
-          )}
+        <div className="flex flex-col gap-2">
+          <div className="rounded-lg bg-background/60 px-3 py-2.5 flex flex-col gap-1">
+            <p className="text-lg font-semibold leading-relaxed text-foreground" data-testid="text-daily-summary-primary">
+              {primary}
+            </p>
+            {primarySuggestion && (
+              <p className="text-base text-muted-foreground leading-relaxed">{primarySuggestion}</p>
+            )}
+          </div>
           {secondary.map((s, i) => (
-            <div key={i} className="mt-1">
-              <p className="text-xs text-muted-foreground" data-testid={`text-daily-summary-secondary-${i}`}>
+            <div key={i} className="rounded-lg bg-background/60 px-3 py-2.5 flex flex-col gap-1">
+              <p className="text-lg font-semibold leading-relaxed text-foreground" data-testid={`text-daily-summary-secondary-${i}`}>
                 {s.insight}
               </p>
               {s.suggestion && (
-                <p className="text-xs text-muted-foreground/60 mt-0.5">{s.suggestion}</p>
+                <p className="text-base text-muted-foreground leading-relaxed">{s.suggestion}</p>
               )}
             </div>
           ))}
-          <div className="mt-2">
-            <button
-              data-testid="button-daily-disclaimer-toggle"
-              onClick={() => setDisclaimerOpen(v => !v)}
-              className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
-              aria-label="免責聲明"
-            >
-              <Info className="w-3.5 h-3.5" />
-            </button>
-            {disclaimerOpen && (
-              <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed" data-testid="text-daily-summary-disclaimer">
-                {t("snap.advice_disclaimer")}
-              </p>
-            )}
-          </div>
+          <p className="text-[9px] text-muted-foreground/40 leading-relaxed mt-1 px-1" data-testid="text-daily-summary-disclaimer">
+            {t("snap.advice_disclaimer")}
+          </p>
         </div>
       </CardContent>
 
