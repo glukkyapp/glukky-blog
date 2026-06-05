@@ -1,0 +1,40 @@
+Noodles
+米粉 — thin, white, round rice threads, dry or in soup. Thinner than 米線, straight.
+米線 — white, round, slightly thicker than 米粉, smooth surface, always in soup.
+河粉 — wide, flat, opaque white strips, silky surface, often stir-fried or in soup.
+幼麵 — thin yellow egg noodles, wiry and springy, always in soup or tossed.
+粗麵 — thick yellow egg noodles, chewy, wider than 幼麵.
+公仔麵 — yellow, wavy/crimped instant noodles.
+腸粉 — rolled rice noodle sheets, soft, shiny, tube-like.
+
+Rice and Congee
+白飯 — plain white, loose steamed grains, bright white colour.
+紅米飯 — reddish-brown rice, visibly darker than white rice.
+白粥 — plain pale congee, smooth and watery.
+皮蛋瘦肉粥 — congee with visible dark translucent egg pieces.
+
+Cha Chaan Teng Drinks
+For drinks, prefer container + colour + garnish cues over guessing by shade alone.
+
+凍檸茶 — cold amber tea in glass or plastic cup with ice, lemon slice visible on rim or inside.
+熱檸茶 — same amber tea, served hot in ceramic cup or glass, lemon slice, no ice.
+凍奶茶 — cold milky brown tea in glass with ice, opaque from milk.
+熱奶茶 — hot milky brown tea, often in ceramic tea cup.
+好立克 — milk white, creamy drink.
+阿華田 — similar to milk tea but more reddish-brown; milk tea is more yellowish-brown. If you see a ceramic tea cup with sugar cube or packed sugar next to the cup, make it hot milk tea. A drink without sugar cube or packed sugar does not mean it is not milk tea. If uncertain between 奶茶 and 阿華田, return both choices. --> if system receives this, ask the user to pick in pop up. take reference to the pop up setting for sauce/topping.
+
+Cha Chaan Teng Food
+炒滑蛋 — soft pale-yellow scrambled egg, glossy, no browning. NOT salmon.
+煎蛋 — fried egg with set white and visible yolk, edges may be crispy.
+奶油豬 — thick white bun/bread with butter and condensed milk on top.
+蒜蓉包 — bun with visible garlic topping, golden-brown surface.
+多士 — thin and toasted only.
+西多士 — deep-fried French toast, golden-brown and thick, served with butter and syrup.
+
+Meat
+牛扒 — thick slab or sliced thin of beef, clear grill marks or seared brown surface, served on plate or on noodles
+叉燒 — reddish-brown glazed pork, sliced or in chunks, caramelised shiny surface. Never a whole slab.
+豬潤 — dark sliced liver in soup, smoother and less meaty-looking than beef.
+牛肉 — thinner beef slices, less dense than 牛扒.
+牛丸 — darker, slightly textured beef ball.
+魚蛋 — pale yellow/white, smooth fish ball.
