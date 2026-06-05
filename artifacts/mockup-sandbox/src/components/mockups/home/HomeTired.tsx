@@ -50,9 +50,9 @@ function DailyTimeline() {
   const pct = (h: number) => `${((h - START) / RANGE) * 100}%`;
 
   const meals = [
-    { hour: 8,    color: "#F97316" }, // breakfast ~8am orange
+    { hour: 8,    color: "#EAB308" }, // breakfast ~8am yellow
     { hour: 13,   color: "#EF4444" }, // lunch ~1pm red
-    { hour: 21.5, color: "#F97316" }, // dinner ~9:30pm orange
+    { hour: 21.5, color: "#EAB308" }, // dinner ~9:30pm yellow
   ];
 
   const ticks = [6, 9, 12, 15, 18, 21, 24];
@@ -140,7 +140,7 @@ export default function HomeTired() {
         </div>
 
         {/* Goal speech bubble */}
-        <div style={{ marginBottom: -6 }}>
+        <div>
           <div className="goal-bubble">
             <p className="text-[18px] leading-snug" style={{ color: COLORS.ink }}>
               Remember your goal — to have <strong style={{ color: COLORS.ink }}>better skin</strong>! Keep it up!

@@ -49,9 +49,9 @@ function DailyTimeline() {
   const pct = (h: number) => `${((h - START) / RANGE) * 100}%`;
 
   const meals = [
-    { hour: 8,    color: "#F97316" },
+    { hour: 8,    color: "#EAB308" },
     { hour: 13,   color: "#EF4444" },
-    { hour: 21.5, color: "#F97316" },
+    { hour: 21.5, color: "#EAB308" },
   ];
 
   const ticks = [6, 9, 12, 15, 18, 21, 24];
@@ -79,7 +79,7 @@ function DailyTimeline() {
           </span>
         ))}
       </div>
-      <p className="text-[13px] mt-1" style={{ color: COLORS.muted }}>
+      <p className="text-[23px] mt-1" style={{ color: COLORS.muted }}>
         晚餐遲了吃，明天建議提早 😊
       </p>
     </div>
@@ -134,7 +134,7 @@ export default function HomeTiredZhHant() {
         </div>
 
         {/* Goal speech bubble */}
-        <div style={{ marginBottom: -6 }}>
+        <div>
           <div className="goal-bubble">
             <p className="text-[18px] leading-snug" style={{ color: COLORS.ink }}>
               記住你的目標——擁有<strong style={{ color: COLORS.ink }}>更好的皮膚</strong>！繼續加油！
@@ -160,17 +160,17 @@ export default function HomeTiredZhHant() {
             </div>
             {/* Right column */}
             <div className="flex-1 space-y-2 pt-1">
-              <p className="text-[15px] font-semibold" style={{ color: COLORS.ink }}>本週分數：<span style={{ color: COLORS.greenDeep }}>87分</span></p>
-              <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
+              <p className="text-[25px] font-semibold" style={{ color: COLORS.ink }}>本週分數：<span style={{ color: COLORS.greenDeep }}>87分</span></p>
+              <p className="text-[22px] leading-snug" style={{ color: COLORS.muted }}>
                 觀察到你這星期的午餐吃了較多精製麵類，令血糖升高。
               </p>
-              <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
+              <p className="text-[22px] leading-snug" style={{ color: COLORS.muted }}>
                 下星期午餐可選擇冬粉或蕎麥麵，少吃更好！
               </p>
             </div>
           </div>
           {/* Legend */}
-          <div className="flex items-center gap-3 text-[11px]" style={{ color: COLORS.muted }}>
+          <div className="flex items-center gap-3 text-[21px]" style={{ color: COLORS.muted }}>
             <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#5F9D7A" }} />達標</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EAB308" }} />進步中</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />需改善</span>
