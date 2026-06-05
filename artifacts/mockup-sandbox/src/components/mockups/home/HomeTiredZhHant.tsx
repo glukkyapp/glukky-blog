@@ -152,28 +152,27 @@ export default function HomeTiredZhHant() {
         </div>
 
         {/* Weekly Report card */}
-        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        <div className="rounded-[28px] p-[22px]" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
           <div className="flex items-start gap-4">
-            {/* Donut */}
-            <div className="shrink-0">
+            {/* Left: donut + legend */}
+            <div className="shrink-0 flex flex-col items-center gap-2">
               <DonutChart size={108} />
+              <div className="flex flex-col gap-1 text-[18px]" style={{ color: COLORS.muted }}>
+                <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#5F9D7A" }} />達標</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EAB308" }} />進步中</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />需改善</span>
+              </div>
             </div>
-            {/* Right column */}
+            {/* Right: texts */}
             <div className="flex-1 space-y-2 pt-1">
-              <p className="text-[25px] font-semibold" style={{ color: COLORS.ink }}>本週分數：<span style={{ color: COLORS.greenDeep }}>87分</span></p>
-              <p className="text-[22px] leading-snug" style={{ color: COLORS.muted }}>
+              <p className="text-[22px] font-semibold" style={{ color: COLORS.ink }}>本週分數：<span style={{ color: COLORS.greenDeep }}>87分</span></p>
+              <p className="text-[19px] leading-snug" style={{ color: COLORS.muted }}>
                 觀察到你這星期的午餐吃了較多精製麵類，令血糖升高。
               </p>
-              <p className="text-[22px] leading-snug" style={{ color: COLORS.muted }}>
+              <p className="text-[19px] leading-snug" style={{ color: COLORS.muted }}>
                 下星期午餐可選擇冬粉或蕎麥麵，少吃更好！
               </p>
             </div>
-          </div>
-          {/* Legend */}
-          <div className="flex items-center gap-3 text-[21px]" style={{ color: COLORS.muted }}>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#5F9D7A" }} />達標</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EAB308" }} />進步中</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />需改善</span>
           </div>
         </div>
       </div>
