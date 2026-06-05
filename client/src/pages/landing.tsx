@@ -161,7 +161,7 @@ export default function Landing() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ subject: resp.subject, email: resp.email }),
+                body: JSON.stringify({ subject: resp.subject, email: resp.email, authorizationCode: resp.authorizationCode }),
               });
               if (!res.ok) {
                 const data = await res.json();

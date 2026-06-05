@@ -26,6 +26,7 @@ import { db } from "./db";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt, isNull } from "drizzle-orm";
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
+import { revokeAppleRefreshToken } from "./apple-auth";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -559,10 +560,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUserCompletely(userId: string): Promise<Record<string, number>> {
     // Step 1: capture external service IDs BEFORE the delete transaction
-    // runs. The transaction below deletes user_profiles, so by the time
-    // we try to call OneSignal/RevenueCat the rows would already be gone.
-    // If the profile lookup fails, we still proceed with the local delete:
-    // external cleanup is best-effort and must not block deletion.
+    // runs. The transaction below deletes user_profiles (and users), so by
+    // the time we try to call OneSignal/RevenueCat/Apple the rows would
+    // already be gone. If a lookup fails we still proceed with the local
+    // delete: external cleanup is best-effort and must not block deletion.
     let onesignalPlayerId: string | null = null;
     let onesignalExternalId: string | null = null;
     try {
@@ -581,10 +582,21 @@ export class DatabaseStorage implements IStorage {
       console.warn(`[deleteUserCompletely] external-id lookup failed for ${userId}: ${e?.message ?? e}`);
     }
 
-    // Step 2: best-effort external cleanup (OneSignal + RevenueCat). Both
-    // calls swallow their own errors and never throw. The RC app_user_id
-    // is the Replit user id (purchases.login(userId, ...) is called at
-    // auth resolve), so we pass userId directly.
+    let appleRefreshToken: string | null = null;
+    try {
+      const [u] = await db
+        .select({ appleRefreshToken: users.appleRefreshToken })
+        .from(users)
+        .where(eq(users.id, userId));
+      if (u) appleRefreshToken = u.appleRefreshToken ?? null;
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] apple-token lookup failed for ${userId}: ${e?.message ?? e}`);
+    }
+
+    // Step 2: best-effort external cleanup (OneSignal + RevenueCat + Apple).
+    // All calls swallow their own errors and never throw. The RC app_user_id
+    // is the Replit user id (purchases.login(userId, ...) is called at auth
+    // resolve), so we pass userId directly.
     //
     // Ordering note: external cleanup races any immediate re-registration
     // with the same email. That is acceptable - external services are
@@ -612,10 +624,18 @@ export class DatabaseStorage implements IStorage {
     } catch (e: any) {
       console.warn(`[deleteUserCompletely] RevenueCat delete threw for ${userId}: ${e?.message ?? e}`);
     }
+    // Apple token revocation — required by Apple guidelines §5.1.1.
+    // Silently skipped for email-based accounts or Apple accounts that
+    // signed up before refresh-token storage was introduced.
+    let appleResult: { ok: boolean; status: number | null } = { ok: false, status: null };
+    if (appleRefreshToken) {
+      appleResult = await revokeAppleRefreshToken(appleRefreshToken);
+    }
     console.log(
       `[deleteUserCompletely] external cleanup user=${userId} ` +
         `onesignal={ok=${onesignalResult.ok},via=${onesignalResult.via},status=${onesignalResult.status}} ` +
-        `revenuecat={ok=${rcResult.ok},status=${rcResult.status}}`,
+        `revenuecat={ok=${rcResult.ok},status=${rcResult.status}} ` +
+        `apple={ok=${appleResult.ok},status=${appleResult.status},hadToken=${!!appleRefreshToken}}`,
     );
 
     // Step 3: atomic local delete. Every user-scoped table is wiped

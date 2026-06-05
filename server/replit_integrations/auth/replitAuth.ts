@@ -3,6 +3,7 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import { authStorage } from "./storage";
+import { exchangeAuthCodeForRefreshToken } from "../../apple-auth";
 
 declare module "express-session" {
   interface SessionData {
@@ -99,7 +100,7 @@ export async function setupAuth(app: Express) {
   // Apple Sign In — unified login + silent register
   app.post("/api/auth/apple-signin", async (req, res) => {
     try {
-      const { subject, email } = req.body;
+      const { subject, email, authorizationCode } = req.body;
       if (!subject) {
         return res.status(400).json({ message: "Apple subject is required" });
       }
@@ -109,6 +110,23 @@ export async function setupAuth(app: Express) {
       if (!user) {
         // First-time Apple user — create account silently, no error shown to UI
         user = await authStorage.createAppleUser(subject, email || undefined);
+      }
+
+      // Exchange the one-time authorizationCode for a refresh token so we can
+      // revoke it if the user later deletes their account (Apple §5.1.1).
+      // Best-effort: failure must never prevent sign-in.
+      if (authorizationCode) {
+        exchangeAuthCodeForRefreshToken(authorizationCode)
+          .then((refreshToken) => {
+            if (refreshToken) {
+              return authStorage.storeAppleRefreshToken(user!.id, refreshToken);
+            }
+          })
+          .catch((e: any) => {
+            console.warn(
+              `[apple-signin] Token exchange failed for user=${user!.id}: ${e?.message ?? e}`,
+            );
+          });
       }
 
       // req.session.userId matches exactly what /api/auth/login writes

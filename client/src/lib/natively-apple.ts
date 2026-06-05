@@ -3,12 +3,13 @@
 
 export interface NativelyAppleSignInResp {
   status: boolean;
-  subject?: string;    // stable unique ID: iCloud account scoped to this app
-  email?: string;      // only present on the very first sign-in
+  subject?: string;          // stable unique ID: iCloud account scoped to this app
+  email?: string;            // only present on the very first sign-in
   givenname?: string;
   familyname?: string;
-  initial?: boolean;   // true = user's first-ever sign-in to this app
-  message?: string;    // present when status = false
+  initial?: boolean;         // true = user's first-ever sign-in to this app
+  message?: string;          // present when status = false
+  authorizationCode?: string; // one-time code for server-side token exchange; present on every sign-in per Apple SDK
 }
 
 // Ambient declaration for the Build Natively injected global.

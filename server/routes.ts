@@ -201,19 +201,27 @@ export async function registerRoutes(
       if (provided !== adminSecret) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const schema = z.object({ email: z.string().email() });
+      const schema = z.object({
+        email: z.string().email().optional(),
+        userId: z.string().optional(),
+      }).refine((d) => d.email || d.userId, { message: "Provide email or userId" });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
       }
-      const email = parsed.data.email.toLowerCase();
-      const user = await authStorage.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ message: "User not found", email });
+      let user: { id: string; email: string | null | undefined } | undefined;
+      if (parsed.data.email) {
+        const email = parsed.data.email.toLowerCase();
+        user = await authStorage.getUserByEmail(email) ?? undefined;
+        if (!user) return res.status(404).json({ message: "User not found", email });
+      } else {
+        user = await authStorage.getUser(parsed.data.userId!) ?? undefined;
+        if (!user) return res.status(404).json({ message: "User not found", userId: parsed.data.userId });
       }
       const deleted = await storage.deleteUserCompletely(user.id);
-      console.log(`[admin/wipe-user] Wiped ${email} (id=${user.id})`, deleted);
-      res.json({ ok: true, email, userId: user.id, deleted });
+      const label = user.email ?? parsed.data.userId ?? user.id;
+      console.log(`[admin/wipe-user] Wiped ${label} (id=${user.id})`, deleted);
+      res.json({ ok: true, email: user.email ?? null, userId: user.id, deleted });
     } catch (error: any) {
       console.error("Error wiping user:", error);
       res.status(500).json({ message: error?.message || "Failed to wipe user" });

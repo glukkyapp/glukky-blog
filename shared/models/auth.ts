@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   email: varchar("email").unique(),
   password: varchar("password"),
   appleId: text("apple_id").unique(),
+  appleRefreshToken: text("apple_refresh_token"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

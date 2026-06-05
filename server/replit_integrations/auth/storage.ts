@@ -8,6 +8,7 @@ export interface IAuthStorage {
   createUser(email: string, hashedPassword: string): Promise<User>;
   getUserByAppleId(appleId: string): Promise<User | undefined>;
   createAppleUser(appleId: string, email?: string): Promise<User>;
+  storeAppleRefreshToken(userId: string, refreshToken: string): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -40,6 +41,10 @@ class AuthStorage implements IAuthStorage {
       .values({ appleId, email: email ?? null, password: null })
       .returning();
     return user;
+  }
+
+  async storeAppleRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    await db.update(users).set({ appleRefreshToken: refreshToken }).where(eq(users.id, userId));
   }
 }
 
