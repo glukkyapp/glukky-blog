@@ -1059,6 +1059,15 @@
     "impact_medium": "中影響",
     "impact_low": "低影響",
     "nudge_learn": "了解更多",
-    "nudge_skip": "不需要，繼續"
+    "nudge_skip": "不需要，繼續",
+    "alert_scroll_hint": "上下滑動選擇數值",
+    "alert_low_title": "⚠️ 血糖偏低",
+    "alert_low_body": "立即進食 15 克快速碳水化合物：蜜糖、果汁或方糖。\n等待 15 分鐘後重新測量血糖。\n如症狀持續或未有改善，請立即就醫。",
+    "alert_high_title": "⚠️ 血糖偏高",
+    "alert_high_body": "多喝清水，避免高糖食物及飲料。\n如出現以下症狀，請立即就醫：極度口渴、頻繁排尿、視力模糊、噁心或嘔吐、呼吸困難、或異常疲倦。",
+    "alert_disclaimer": "以上僅為一般自我護理資訊，請務必遵從醫生的個人指示。",
+    "alert_confirm": "我明白，繼續記錄",
+    "alert_cancel_record": "取消記錄",
+    "alert_cancel": "取消"
   }
 }

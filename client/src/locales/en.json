@@ -1055,6 +1055,15 @@
     "impact_medium": "Medium",
     "impact_low": "Low",
     "nudge_learn": "Learn more",
-    "nudge_skip": "No thanks, continue"
+    "nudge_skip": "No thanks, continue",
+    "alert_scroll_hint": "Scroll up or down to select",
+    "alert_low_title": "⚠️ Low Blood Glucose",
+    "alert_low_body": "Take 15 g of fast-acting carbs right now: honey, fruit juice, or sugar cubes.\nWait 15 minutes, then check your glucose again.\nIf symptoms persist or do not improve, seek medical attention immediately.",
+    "alert_high_title": "⚠️ High Blood Glucose",
+    "alert_high_body": "Drink water and avoid high-sugar foods and drinks.\nSeek medical attention if you notice any of the following: extreme thirst, frequent urination, blurred vision, nausea or vomiting, difficulty breathing, or unusual fatigue.",
+    "alert_disclaimer": "This is general self-care information only. Always follow your doctor's personal guidance.",
+    "alert_confirm": "I understand, continue recording",
+    "alert_cancel_record": "Cancel recording",
+    "alert_cancel": "Cancel"
   }
 }
