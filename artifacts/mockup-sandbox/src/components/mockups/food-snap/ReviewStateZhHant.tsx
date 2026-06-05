@@ -86,12 +86,12 @@ export default function ReviewStateZhHant() {
             </div>
           </div>
 
-          <div className="relative mx-4 my-4" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
+          <div className="relative mx-4 my-8" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
             <Pointer pos="tl" /><Pointer pos="tr" /><Pointer pos="bl" /><Pointer pos="br" />
             <img src={`${import.meta.env.BASE_URL}images/wonton-noodle-soup.png`} alt="" className="w-full rounded-2xl object-cover max-h-48" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-2 gap-3 mt-6">
             <Field icon={Droplets} label="醬料／調味料" value="醬油、辣油" />
             <Field icon={Cherry} label="額外／配料" value="菜心" alignRight />
           </div>

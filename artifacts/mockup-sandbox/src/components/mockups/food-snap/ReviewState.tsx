@@ -87,12 +87,12 @@ export default function ReviewState() {
             </div>
           </div>
 
-          <div className="relative mx-4 my-4" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
+          <div className="relative mx-4 my-8" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
             <Pointer pos="tl" /><Pointer pos="tr" /><Pointer pos="bl" /><Pointer pos="br" />
             <img src={`${import.meta.env.BASE_URL}images/wonton-noodle-soup.png`} alt="" className="w-full rounded-2xl object-cover max-h-56" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-2 gap-3 mt-6">
             <Field icon={Droplets} label="Sauces / Condiments" value="Soy sauce, chili oil" />
             <Field icon={Cherry} label="Extras / Toppings" value="Choi sum" alignRight />
           </div>
