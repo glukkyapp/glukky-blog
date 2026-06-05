@@ -64,7 +64,7 @@ export default function ReviewStateZhHant() {
               <div className="flex flex-wrap gap-1.5 justify-end h-[3.5rem] items-center">
                 {[
                   { k: "small", l: "細" },
-                  { k: "medium", l: "中碗" },
+                  { k: "medium", l: "中" },
                   { k: "large", l: "大" },
                 ].map(o => {
                   const active = o.k === "medium";
