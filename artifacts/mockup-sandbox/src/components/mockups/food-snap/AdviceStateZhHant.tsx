@@ -16,7 +16,7 @@ function Section({ icon, label, children, hairline }: { icon: string; label: str
         <span className="text-base">{icon}</span>
         <span className="text-[22px] font-bold uppercase tracking-wider" style={{ color: COLORS.muted }}>{label}</span>
       </div>
-      <div className="text-[26px] leading-relaxed" style={{ color: COLORS.ink }}>{children}</div>
+      <div className="text-[26px] leading-[1.4]" style={{ color: COLORS.ink }}>{children}</div>
     </div>
   );
 }
@@ -33,8 +33,11 @@ export default function AdviceStateZhHant() {
         <h2 className="text-[18px] font-bold mt-1" style={{ color: COLORS.ink }}>你的飲食建議</h2>
 
         <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
-          <div className="px-5 pt-4 pb-2">
-            <img src={glucoseHighImg} alt="血糖走勢圖" className="w-full rounded-xl" style={{ maxHeight: 100, objectFit: "contain", objectPosition: "left" }} />
+          <div className="px-5 pt-4 pb-3 flex items-center gap-3">
+            <img src={glucoseHighImg} alt="血糖走勢圖" className="rounded-xl shrink-0" style={{ height: 80, width: "auto", maxWidth: "55%" }} />
+            <p className="text-[28px] leading-snug" style={{ color: COLORS.ink }}>
+              雲吞麵指數：<span className="font-bold" style={{ color: "#e53e3e" }}>高</span>
+            </p>
           </div>
           <Section icon="💡" label="即時建議" hairline>
             加點灼菜心或蔬菜以增加纖維，有助減慢葡萄糖吸收。先吃蔬菜。

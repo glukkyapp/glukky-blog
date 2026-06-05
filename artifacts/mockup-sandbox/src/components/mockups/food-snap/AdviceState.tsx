@@ -1,4 +1,4 @@
-import { RotateCw, Camera } from "lucide-react";
+import { Camera } from "lucide-react";
 import glucoseHighImg from "@assets/glucose_high.png";
 
 const COLORS = {
@@ -16,7 +16,7 @@ function Section({ icon, label, children, hairline }: { icon: string; label: str
         <span className="text-base">{icon}</span>
         <span className="text-[22px] font-bold uppercase tracking-wider" style={{ color: COLORS.muted }}>{label}</span>
       </div>
-      <div className="text-[26px] leading-relaxed" style={{ color: COLORS.ink }}>{children}</div>
+      <div className="text-[24px] leading-[1.4]" style={{ color: COLORS.ink }}>{children}</div>
     </div>
   );
 }
@@ -33,8 +33,11 @@ export default function AdviceState() {
         <h2 className="text-[18px] font-bold mt-1" style={{ color: COLORS.ink }}>Your diet advice</h2>
 
         <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
-          <div className="px-5 pt-4 pb-2">
-            <img src={glucoseHighImg} alt="Glucose chart" className="w-full rounded-xl" style={{ maxHeight: 100, objectFit: "contain", objectPosition: "left" }} />
+          <div className="px-5 pt-4 pb-3 flex items-center gap-3">
+            <img src={glucoseHighImg} alt="Glucose chart" className="rounded-xl shrink-0" style={{ height: 80, width: "auto", maxWidth: "55%" }} />
+            <p className="text-[26px] leading-snug" style={{ color: COLORS.ink }}>
+              Wonton noodle soup: <span className="font-bold" style={{ color: "#e53e3e" }}>High</span>
+            </p>
           </div>
           <Section icon="💡" label="Instant Advice" hairline>
             Order a side of blanched choi sum or vegetables to add fibre, which slows glucose absorption. Finish the veggies first.
