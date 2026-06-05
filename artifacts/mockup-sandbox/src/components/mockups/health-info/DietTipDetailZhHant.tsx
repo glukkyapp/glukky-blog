@@ -50,7 +50,7 @@ export default function DietTipDetailZhHant() {
           <div className="mt-4 px-1">
             <p className="font-bold text-[25px] mb-2" style={{ color: COLORS.ink }}>先蒸後略煎</p>
             <p className="text-[23px] leading-relaxed" style={{ color: COLORS.muted }}>
-              油炸食物含大量脂肪熱量，長期下來會導致體重增加——這是胰島素失效的主要成因。先蒸熟食物，之後只需短暫煎香，無需大量用油。
+              油炸食物含大量脂肪熱量，長期下來會導致體重增加——這是胰島素失效的主要成因。先<strong style={{ color: COLORS.greenDeep }}>蒸</strong>熟食物，之後只需短暫<strong style={{ color: COLORS.greenDeep }}>煎</strong>香，無需大量用油。
             </p>
           </div>
         </div>

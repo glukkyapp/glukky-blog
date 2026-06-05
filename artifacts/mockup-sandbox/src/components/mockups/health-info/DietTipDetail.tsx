@@ -50,7 +50,7 @@ export default function DietTipDetail() {
           <div className="mt-4 px-1">
             <p className="font-bold text-[15px] mb-2" style={{ color: COLORS.ink }}>Steam your food first, then sear briefly</p>
             <p className="text-[13px] leading-relaxed" style={{ color: COLORS.muted }}>
-              Deep-frying adds significant fat calories, which over time contributes to weight gain — a key driver of insulin resistance. Steaming first cooks the food through without excess oil, so only a brief sear is needed for texture.
+              Deep-frying adds significant fat calories, which over time contributes to weight gain — a key driver of insulin resistance. <strong style={{ color: COLORS.greenDeep }}>Steaming</strong> first cooks the food through without excess oil, so only a brief <strong style={{ color: COLORS.greenDeep }}>sear</strong> is needed for texture.
             </p>
           </div>
         </div>

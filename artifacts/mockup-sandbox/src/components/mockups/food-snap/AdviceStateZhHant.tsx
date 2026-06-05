@@ -40,10 +40,10 @@ export default function AdviceStateZhHant() {
             </p>
           </div>
           <Section icon="💡" label="即時建議" hairline>
-            加點灼菜心或蔬菜以增加纖維，有助減慢葡萄糖吸收。先吃蔬菜。
+            加點灼<strong style={{ color: COLORS.greenDeep }}>菜心</strong>或蔬菜以增加纖維，有助減慢葡萄糖吸收。先吃蔬菜。
           </Section>
           <Section icon="🔄" label="下次建議" hairline>
-            下次試試減少麵條份量。如果不容易，把鹼水麵換成冬粉——升糖指數相對較低，血糖不會升得那麼急。
+            下次試試減少麵條份量。如果不容易，把鹼水麵換成<strong style={{ color: COLORS.greenDeep }}>冬粉</strong>——升糖指數相對较低，血糖不會升得那麼急。
           </Section>
         </div>
       </div>

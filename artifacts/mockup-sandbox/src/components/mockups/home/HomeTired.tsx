@@ -117,7 +117,7 @@ export default function HomeTired() {
         </div>
 
         {/* TODAY card */}
-        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 8px 28px rgba(44,72,56,0.14)" }}>
           <div className="flex items-center gap-2 text-[14px] uppercase" style={{ color: COLORS.muted, letterSpacing: "0.05em" }}>
             <span className="font-semibold text-[21px]" style={{ color: COLORS.ink }}>TODAY</span>
             <span>— Wed, 2 Apr</span>
@@ -126,7 +126,7 @@ export default function HomeTired() {
         </div>
 
         {/* Weekly Report card */}
-        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 8px 28px rgba(44,72,56,0.14)" }}>
           <div className="flex items-start gap-4">
             {/* Donut */}
             <div className="shrink-0">
@@ -136,10 +136,10 @@ export default function HomeTired() {
             <div className="flex-1 space-y-2 pt-1">
               <p className="text-[15px] font-semibold" style={{ color: COLORS.ink }}>Weekly score: <span style={{ color: COLORS.greenDeep }}>87 pts</span></p>
               <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
-                We noticed your lunches this week included more refined noodles, raising your blood sugar.
+                We noticed your lunches this week included more <strong style={{ color: COLORS.greenDeep }}>refined noodles</strong>, raising your blood sugar.
               </p>
               <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
-                Next week, try glass noodles or soba for lunch — less is even better!
+                Next week, try <strong style={{ color: COLORS.greenDeep }}>glass noodles</strong> or <strong style={{ color: COLORS.greenDeep }}>soba</strong> for lunch — less is even better!
               </p>
             </div>
           </div>

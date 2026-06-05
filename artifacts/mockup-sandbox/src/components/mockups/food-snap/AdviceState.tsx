@@ -40,10 +40,10 @@ export default function AdviceState() {
             </p>
           </div>
           <Section icon="💡" label="Instant Advice" hairline>
-            Order a side of blanched choi sum or vegetables to add fibre, which slows glucose absorption. Finish the veggies first.
+            Order a side of <strong style={{ color: COLORS.greenDeep }}>blanched choi sum</strong> or vegetables to add fibre, which slows glucose absorption. Finish the <strong style={{ color: COLORS.greenDeep }}>veggies</strong> first.
           </Section>
           <Section icon="🔄" label="Next Time" hairline>
-            Try reducing the portion of noodles next time. If that's tricky, swap the alkaline noodles for bean thread vermicelli — they have a lower glycaemic index and won't spike your blood sugar as sharply.
+            Try reducing the portion of noodles next time. If that's tricky, swap the alkaline noodles for <strong style={{ color: COLORS.greenDeep }}>bean thread vermicelli</strong> — they have a lower glycaemic index and won't spike your blood sugar as sharply.
           </Section>
         </div>
       </div>

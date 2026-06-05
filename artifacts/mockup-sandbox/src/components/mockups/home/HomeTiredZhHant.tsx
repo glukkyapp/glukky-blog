@@ -96,7 +96,7 @@ export default function HomeTiredZhHant() {
         <div>
           <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>星期三</h1>
           <div className="flex items-center justify-between gap-3 mt-2">
-            <p className="pf text-[42px] font-bold leading-none flex-1 min-w-0 whitespace-nowrap" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，Olivia！</p>
+            <p className="pf text-[42px] font-bold leading-none flex-1 min-w-0 whitespace-nowrap" style={{ color: COLORS.ink, letterSpacing: "-0.02em" }}>你好，淑芬！</p>
             <img src={`${import.meta.env.BASE_URL}images/gift-prod.png`} alt="" className="w-16 h-16 shrink-0" />
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function HomeTiredZhHant() {
         </div>
 
         {/* TODAY card */}
-        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 8px 28px rgba(44,72,56,0.14)" }}>
           <div className="flex items-center gap-2 text-[14px]" style={{ color: COLORS.muted, letterSpacing: "0.05em" }}>
             <span className="font-semibold text-[21px]" style={{ color: COLORS.ink }}>今天</span>
             <span>— 4月2日（三）</span>
@@ -120,7 +120,7 @@ export default function HomeTiredZhHant() {
         </div>
 
         {/* Weekly Report card */}
-        <div className="rounded-[28px] p-[22px]" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
+        <div className="rounded-[28px] p-[22px]" style={{ backgroundColor: COLORS.card, boxShadow: "0 8px 28px rgba(44,72,56,0.14)" }}>
           <div className="flex items-start gap-4">
             {/* Left: donut + legend */}
             <div className="shrink-0 flex flex-col items-center gap-2">
@@ -135,10 +135,10 @@ export default function HomeTiredZhHant() {
             <div className="flex-1 space-y-2 pt-1">
               <p className="text-[22px] font-semibold" style={{ color: COLORS.ink }}>本週分數：<span style={{ color: COLORS.greenDeep }}>87分</span></p>
               <p className="text-[19px] leading-snug" style={{ color: COLORS.muted }}>
-                觀察到你這星期的午餐吃了較多精製麵類，令血糖升高。
+                觀察到你這星期的午餐吃了較多<strong style={{ color: COLORS.greenDeep }}>精製麵類</strong>，令血糖升高。
               </p>
               <p className="text-[19px] leading-snug" style={{ color: COLORS.muted }}>
-                下星期午餐可選擇冬粉或蕎麥麵，少吃更好！
+                下星期午餐可選擇<strong style={{ color: COLORS.greenDeep }}>冬粉</strong>或<strong style={{ color: COLORS.greenDeep }}>蕎麥麵</strong>，少吃更好！
               </p>
             </div>
           </div>
