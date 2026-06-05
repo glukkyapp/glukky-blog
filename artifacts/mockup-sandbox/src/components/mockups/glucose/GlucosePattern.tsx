@@ -1,4 +1,4 @@
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Home, Camera, Lightbulb, Utensils, User, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -11,16 +11,48 @@ const COLORS = {
   yellow: "#EAB308",
 };
 
+function NavBar() {
+  const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
+    { Icon: Home, label: "Home" },
+    { Icon: Utensils, label: "Food" },
+    { Icon: Camera, label: "Snap" },
+    { Icon: TrendingUp, label: "Glucose", active: true },
+    { Icon: Lightbulb, label: "Tips" },
+    { Icon: User, label: "Profile" },
+  ];
+  return (
+    <nav
+      className="absolute left-1/2 -translate-x-1/2 flex items-center px-2"
+      style={{
+        bottom: 16,
+        width: "calc(100% - 32px)",
+        maxWidth: 360,
+        height: 58,
+        backgroundColor: "rgba(187,222,214,0.85)",
+        borderRadius: 160,
+        boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
+      }}
+    >
+      {items.map(({ Icon, label, active }) => (
+        <div key={label} className="flex-1 flex flex-col items-center justify-center" style={{ color: "#0D5E4F" }}>
+          <Icon size={active ? 22 : 20} strokeWidth={active ? 2.5 : 2} />
+          {active && <span className="text-[11px] font-medium leading-tight mt-0.5">{label}</span>}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 function SummaryCard({ label, food, color }: { label: string; food: string; color: string }) {
   return (
     <div
       className="flex-1 rounded-[20px] p-4 space-y-1"
       style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.07)" }}
     >
-      <p className="text-[12px] uppercase font-semibold tracking-wide" style={{ color: COLORS.muted }}>
+      <p className="text-[17px] uppercase font-semibold tracking-wide" style={{ color: COLORS.muted }}>
         {label}
       </p>
-      <p className="text-[17px] font-bold leading-snug" style={{ color }}>
+      <p className="text-[22px] font-bold leading-snug" style={{ color }}>
         {food}
       </p>
     </div>
@@ -34,12 +66,9 @@ function BarChart({ rows }: { rows: BarRow[] }) {
     <div className="space-y-4">
       {rows.map(({ label, pct, color }) => (
         <div key={label} className="space-y-1.5">
-          <p className="text-[15px] font-medium" style={{ color: COLORS.ink }}>{label}</p>
+          <p className="text-[20px] font-medium" style={{ color: COLORS.ink }}>{label}</p>
           <div className="h-5 rounded-full overflow-hidden" style={{ backgroundColor: "#EEE8D8" }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${pct}%`, backgroundColor: color }}
-            />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
           </div>
         </div>
       ))}
@@ -59,11 +88,11 @@ export default function GlucosePattern() {
       className="relative w-[390px] h-[844px] overflow-hidden"
       style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
-      <div className="px-6 pt-14 pb-8 space-y-5 h-full overflow-y-auto">
+      <div className="px-6 pt-14 pb-24 space-y-5 h-full overflow-y-auto">
         {/* Page title */}
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-6 h-6" style={{ color: COLORS.green }} strokeWidth={2.5} />
-          <h1 className="text-[26px] font-bold leading-tight" style={{ color: COLORS.ink }}>
+          <TrendingUp className="w-7 h-7" style={{ color: COLORS.green }} strokeWidth={2.5} />
+          <h1 className="text-[31px] font-bold leading-tight" style={{ color: COLORS.ink }}>
             Glucose Pattern
           </h1>
         </div>
@@ -76,7 +105,7 @@ export default function GlucosePattern() {
 
         {/* Bar chart section */}
         <div>
-          <p className="text-[14px] font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.muted }}>
+          <p className="text-[19px] font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.muted }}>
             Your Food Glucose Chart
           </p>
           <div
@@ -88,7 +117,7 @@ export default function GlucosePattern() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-[12px]" style={{ color: COLORS.muted }}>
+        <div className="flex items-center gap-4 text-[17px]" style={{ color: COLORS.muted }}>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.red }} />
             High spike
@@ -103,6 +132,7 @@ export default function GlucosePattern() {
           </span>
         </div>
       </div>
+      <NavBar />
     </div>
   );
 }

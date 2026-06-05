@@ -47,7 +47,7 @@ function Tip({ src, label, selected }: { src: string; label: string; selected?: 
         <img src={src} alt={label} className="w-full h-full object-cover" />
       </div>
       <span
-        className={`text-[11px] font-medium text-center leading-tight max-w-[100px] ${selected ? "" : "opacity-70"}`}
+        className={`text-[21px] font-medium text-center leading-tight max-w-[100px] ${selected ? "" : "opacity-70"}`}
         style={{ color: selected ? COLORS.ink : COLORS.muted }}
       >
         {label}
@@ -62,15 +62,15 @@ export default function DietTipDetailZhHant() {
       <div className="pt-12 pb-24 h-full overflow-hidden">
         <div className="flex items-center gap-3 px-5">
           <img src={`${import.meta.env.BASE_URL}images/lightbulb-heading.png`} alt="" className="w-14 h-14 shrink-0" />
-          <h1 className="text-[24px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>健康資訊</h1>
+          <h1 className="text-[34px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>健康資訊</h1>
         </div>
 
-        <p className="text-[13px] text-center mt-3 mb-6 px-5" style={{ color: COLORS.muted }}>
+        <p className="text-[23px] text-center mt-3 mb-6 px-5" style={{ color: COLORS.muted }}>
           不記得飲食建議也不用擔心——你隨時可以回來重溫。
         </p>
 
         <div className="px-5">
-          <h2 className="text-[18px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>飲食建議</h2>
+          <h2 className="text-[28px] font-bold uppercase tracking-wide mb-4" style={{ color: COLORS.ink }}>飲食建議</h2>
           <div className="flex gap-[18px] py-2 pl-1">
             <Tip src={`${import.meta.env.BASE_URL}images/tip-juice.png`} label="選擇無糖飲品/果汁加1:1清水稀釋" />
             <Tip src={`${import.meta.env.BASE_URL}images/tip-yogurt.png`} label="以無糖乳酪加漿果代替甜品" />
@@ -78,8 +78,8 @@ export default function DietTipDetailZhHant() {
           </div>
 
           <div className="mt-4 px-1">
-            <p className="font-bold text-[15px] mb-2" style={{ color: COLORS.ink }}>先蒸後略煎</p>
-            <p className="text-[13px] leading-relaxed" style={{ color: COLORS.muted }}>
+            <p className="font-bold text-[25px] mb-2" style={{ color: COLORS.ink }}>先蒸後略煎</p>
+            <p className="text-[23px] leading-relaxed" style={{ color: COLORS.muted }}>
               油炸食物含大量脂肪熱量，長期下來會導致體重增加——這是胰島素失效的主要成因。先蒸熟食物，之後只需短暫煎香，無需大量用油。
             </p>
           </div>
