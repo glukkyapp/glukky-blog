@@ -57,7 +57,7 @@ function SpikeChip({ mmol, glucoseGroup }: { mmol: number; glucoseGroup: string 
     color = mmol >= 7.8 ? "bg-red-100 text-red-700" : mmol >= 5.9 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
   }
   return (
-    <span className={`text-sm font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${color}`} data-testid="chip-spike-mmol">
+    <span className={`text-base font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${color}`} data-testid="chip-spike-mmol">
       {mmol.toFixed(1)}
     </span>
   );
@@ -70,6 +70,7 @@ export default function GlucosePatterns() {
   const isZh = locale.startsWith("zh") || locale === "yue";
 
   const [selectedFood, setSelectedFood] = useState<string | null>(null);
+  const [expandedAiFoods, setExpandedAiFoods] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery<PatternsData>({
     queryKey: ["/api/snap/glucose-patterns"],
@@ -209,46 +210,62 @@ export default function GlucosePatterns() {
 
         {!isLoading && !isLocked && !selectedFood && (
           <div data-testid="glucose-patterns-list">
-            {(data?.aiOnlyList ?? []).length > 0 && (
-              <div className="mb-4" data-testid="div-ai-food-ranking">
-                <p className="text-xs text-muted-foreground mb-2 font-medium">近30日 AI 評估食物</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(data!.aiOnlyList ?? []).map((item, i) => {
-                    const colorCls =
-                      item.impactLevel === "high" ? "bg-red-100 text-red-700" :
-                      item.impactLevel === "medium" ? "bg-amber-100 text-amber-700" :
-                      "bg-emerald-100 text-emerald-700";
-                    return (
-                      <span key={i} className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${colorCls}`} data-testid={`chip-ai-food-${i}`}>
-                        {item.foodName}
-                      </span>
-                    );
-                  })}
+            {(data?.aiOnlyList ?? []).length > 0 && (() => {
+              const highList = (data!.aiOnlyList ?? []).filter(f => f.impactLevel === "high");
+              const medList = (data!.aiOnlyList ?? []).filter(f => f.impactLevel === "medium");
+              const lowList = (data!.aiOnlyList ?? []).filter(f => f.impactLevel === "low");
+              const cols = [
+                { list: highList, bg: "bg-red-50", labelCls: "text-red-600", label: t("glucose.impact_high") },
+                { list: medList, bg: "bg-amber-50", labelCls: "text-amber-600", label: t("glucose.impact_medium") },
+                { list: lowList, bg: "bg-emerald-50", labelCls: "text-emerald-600", label: t("glucose.impact_low") },
+              ];
+              return (
+                <div className="mb-4" data-testid="div-ai-food-ranking">
+                  <p className="text-sm text-muted-foreground mb-2 font-medium">近30日 AI 評估食物</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {cols.map(({ list, bg, labelCls, label }, colIdx) => (
+                      <div key={colIdx} className={`rounded-lg p-2 ${bg}`}>
+                        <p className={`text-xs font-semibold mb-1.5 ${labelCls}`}>{label}</p>
+                        <div className="space-y-1">
+                          {list.map((item, i) => {
+                            const key = `col${colIdx}-${i}`;
+                            const isExpanded = expandedAiFoods.has(key);
+                            return (
+                              <p
+                                key={i}
+                                className={`text-xs leading-snug cursor-pointer ${isExpanded ? "" : "line-clamp-2"}`}
+                                onClick={() => setExpandedAiFoods(prev => {
+                                  const next = new Set(prev);
+                                  if (isExpanded) next.delete(key); else next.add(key);
+                                  return next;
+                                })}
+                                data-testid={`ai-food-col${colIdx}-item-${i}`}
+                              >
+                                {item.foodName}
+                              </p>
+                            );
+                          })}
+                          {list.length === 0 && <p className="text-xs opacity-30">—</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-base text-muted-foreground mb-3">
               {t("glucose.patterns_unlocked_heading")}
             </p>
 
             {showPersonalisedProgress && (
-              <div className="mb-3 rounded-xl bg-muted/60 p-3" data-testid="div-personalised-progress">
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  {t("glucose.personalised_progress_label", { count: readingCount })}
-                </p>
-                <div className="w-full bg-muted rounded-full h-1.5">
-                  <div
-                    className="bg-primary rounded-full h-1.5 transition-all"
-                    style={{ width: `${(readingCount / PERSONALISED_THRESHOLD) * 100}%` }}
-                    data-testid="progress-personalised"
-                  />
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground mb-3 bg-muted/60 rounded-xl px-3 py-2.5" data-testid="text-personalised-progress">
+                {t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}
+              </p>
             )}
 
             {isPersonalised && !showPersonalisedPopup && (
-              <p className="text-xs text-muted-foreground mb-3 italic" data-testid="text-personalised-disclaimer">
+              <p className="text-sm text-muted-foreground mb-3 italic" data-testid="text-personalised-disclaimer">
                 {t("glucose.personalised_disclaimer", { count: readingCount })}
               </p>
             )}
@@ -264,8 +281,8 @@ export default function GlucosePatterns() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.foodName}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-base font-medium text-foreground truncate">{item.foodName}</p>
+                    <p className="text-sm text-muted-foreground">
                       {t("glucose.patterns_count", { n: item.readingCount })}
                     </p>
                   </div>

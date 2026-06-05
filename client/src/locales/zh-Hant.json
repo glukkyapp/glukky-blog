@@ -1054,7 +1054,10 @@
     "personalised_popup_body": "你已累積 {{count}} 次記錄 — 血糖顏色分類已根據你的個人規律調整。",
     "personalised_popup_dismiss": "明白了",
     "personalised_disclaimer": "顏色分類已個人化（{{count}} 次記錄）",
-    "personalised_progress_label": "邁向個人閾值（{{count}}/15）",
+    "personalised_progress_label": "立刻開始紀錄你的飯後血糖！再紀錄 {{remaining}} 次即可獲得個人化建議",
+    "impact_high": "高影響",
+    "impact_medium": "中影響",
+    "impact_low": "低影響",
     "nudge_learn": "了解更多",
     "nudge_skip": "不需要，繼續"
   }

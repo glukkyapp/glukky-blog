@@ -1050,7 +1050,10 @@
     "personalised_popup_body": "You now have {{count}} readings — your glucose colour bands have been personalised to your own patterns.",
     "personalised_popup_dismiss": "Got it",
     "personalised_disclaimer": "Colour bands are personalised ({{count}} readings)",
-    "personalised_progress_label": "Towards personal thresholds ({{count}}/15)",
+    "personalised_progress_label": "Start recording your post-meal blood sugar now! Record {{remaining}} more times to unlock personalised insights.",
+    "impact_high": "High",
+    "impact_medium": "Medium",
+    "impact_low": "Low",
     "nudge_learn": "Learn more",
     "nudge_skip": "No thanks, continue"
   }
