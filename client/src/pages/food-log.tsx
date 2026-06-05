@@ -331,6 +331,7 @@ export default function FoodLog() {
               snapId={glucoseSheetSnapId}
               hasFastingBaseline={profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined}
               onDone={() => setGlucoseSheetSnapId(null)}
+              initialStep="keypad"
             />
           )}
         </SheetContent>
