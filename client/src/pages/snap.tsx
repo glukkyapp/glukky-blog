@@ -539,6 +539,8 @@ export default function Snap() {
       s.replace(/\{\{[^|]+\|[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
     const saucesForDisambig = stripTokensFromText(form.sauces);
     const extrasForDisambig = stripTokensFromText(form.extras);
+    const saucesHaveTokens = saucesForDisambig !== form.sauces.trim();
+    const extrasHaveTokens = extrasForDisambig !== form.extras.trim();
 
     const hasUnresolvedSauces = saucesForDisambig && (
       form.sauceResolutions.length === 0 ||
@@ -549,8 +551,12 @@ export default function Snap() {
       form.toppingResolutions.some(r => r.resolvedId === null)
     );
 
-    let finalSauceResolutions = form.sauceResolutions;
-    let finalToppingResolutions = form.toppingResolutions;
+    // When tokens exist but stripped text is empty, applyLabelResult left stale
+    // token-text entries in form.sauceResolutions/toppingResolutions with
+    // resolvedId: null. Clear them now so they never reach the server as pseudo-IDs.
+    // (When stripped text is non-empty, disambiguateField returns fresh resolutions.)
+    let finalSauceResolutions = (saucesHaveTokens && !saucesForDisambig) ? [] : form.sauceResolutions;
+    let finalToppingResolutions = (extrasHaveTokens && !extrasForDisambig) ? [] : form.toppingResolutions;
     const queue: DisambigItem[] = [];
 
     if (hasUnresolvedSauces) {
@@ -626,8 +632,13 @@ export default function Snap() {
           return src.replace(token, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
         };
         if (targetField === "sauces") {
+          // Remove any stale resolution entry whose text is the {{A|B}} token
+          pendingResolutionsRef.current.sauceResolutions =
+            pendingResolutionsRef.current.sauceResolutions.filter(r => r.text !== token);
           pendingResolutionsRef.current.resolvedSaucesText = resolveInText(form.sauces);
         } else {
+          pendingResolutionsRef.current.toppingResolutions =
+            pendingResolutionsRef.current.toppingResolutions.filter(r => r.text !== token);
           pendingResolutionsRef.current.resolvedExtrasText = resolveInText(form.extras);
         }
         setForm(f => ({ ...f, [targetField]: resolveInText(f[targetField] as string) }));
