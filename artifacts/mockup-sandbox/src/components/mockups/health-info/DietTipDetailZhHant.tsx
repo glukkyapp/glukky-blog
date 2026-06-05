@@ -1,4 +1,4 @@
-import { Camera, CalendarDays, Lightbulb, User, type LucideIcon } from "lucide-react";
+import { Camera, Home, Lightbulb, TrendingUp, User, Utensils, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -9,10 +9,12 @@ const COLORS = {
 
 function NavBar() {
   const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
+    { Icon: Home, label: "主頁" },
+    { Icon: Utensils, label: "食物" },
     { Icon: Camera, label: "快拍" },
-    { Icon: CalendarDays, label: "計劃" },
-    { Icon: Lightbulb, label: "健康資訊", active: true },
-    { Icon: User, label: "個人" },
+    { Icon: TrendingUp, label: "血糖" },
+    { Icon: Lightbulb, label: "健康", active: true },
+    { Icon: User, label: "我的" },
   ];
   return (
     <nav

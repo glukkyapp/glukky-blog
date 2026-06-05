@@ -86,7 +86,7 @@ export default function ReviewStateZhHant() {
             </div>
           </div>
 
-          <div className="relative mx-4 my-1" style={{ overflow: "visible" }}>
+          <div className="relative mx-4 my-4" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
             <Pointer pos="tl" /><Pointer pos="tr" /><Pointer pos="bl" /><Pointer pos="br" />
             <img src={`${import.meta.env.BASE_URL}images/wonton-noodle-soup.png`} alt="" className="w-full rounded-2xl object-cover max-h-48" />
           </div>
