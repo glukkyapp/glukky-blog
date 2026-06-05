@@ -844,6 +844,8 @@
     "other": "Other",
     "did_you_mean": "\"{{text}}\" — did you mean:",
     "keep_as_typed": "Keep as typed",
+    "name_choice_prompt": "Which drink is this?",
+    "name_choice_none": "None of these",
     "portion_small": "Small",
     "portion_medium": "Medium",
     "portion_large": "Large",

@@ -2897,19 +2897,54 @@ one actual food item. Format-only output is never acceptable.
 ════════════════════════════════════
 SPECIFIC DISTINCTIONS (refer if unsure)
 ════════════════════════════════════
-• Pork belly 腩肉: thick slices, visible fat bands. Commonly pairs with 米線.
-• Beef 牛肉: thinner, leaner slices.
-• Char siu 叉燒: reddish-brown glaze.
-• Rice noodles 米線: thin, white — different from 河粉 or 蛋麵.
-• Pig blood 豬紅: firm, dark reddish-brown cubes in soup or noodles. NOT tofu.
-• Silken tofu 豆腐花: smooth, white, soft — served in a bowl with syrup. NOT savoury.
-• Bamboo pith 竹笙: pale white, hollow, latticed tube, soft — always in soup/braised. NOT flat/golden/crispy (炸魚皮), NOT solid (魚蛋).
-• Pig liver 豬潤: dark brown, dense, thinly sliced. Different from pork loin or pork belly.
-• Fish balls 魚蛋: smooth white or pale yellow spheres.
-• Beef balls 牛丸: darker, slightly rougher surface than fish balls.
-• Flat rice noodles 河粉: wide, flat, opaque white strips.
-• Rolled rice noodle 腸粉: thin rice sheet rolled into a cylinder, often with filling.
-• Rice vermicelli 米線: thin, round, white — thinner than 河粉, not rolled.
+
+Noodles
+• 米粉 — thin, white, round rice threads; thinner than 米線; straight (not wavy).
+• 米線 — white, round, slightly thicker than 米粉; smooth surface; always in soup.
+• 河粉 — wide, flat, opaque white strips; silky surface; often stir-fried or in soup.
+• 幼麵 — thin yellow egg noodles; wiry and springy; in soup or tossed.
+• 粗麵 — thick yellow egg noodles; chewy; wider than 幼麵.
+• 公仔麵 — yellow, wavy/crimped instant noodles.
+• 腸粉 — rolled rice noodle sheets; soft, shiny, tube-like; often with filling.
+
+Rice and Congee
+• 白飯 — plain white, loose steamed grains; bright white colour.
+• 紅米飯 — reddish-brown rice; visibly darker than white rice.
+• 白粥 — plain pale congee; smooth and watery; no visible solid toppings.
+• 皮蛋瘦肉粥 — congee with visible dark translucent egg pieces.
+
+Cha Chaan Teng Drinks
+For drinks, prefer container shape + liquid colour + garnish cues over shade alone.
+• 凍檸茶 — cold amber tea in a glass or plastic cup with ice; lemon slice on rim or inside.
+• 熱檸茶 — same amber tea served hot in a ceramic cup or glass; lemon slice visible; no ice.
+• 凍奶茶 — cold milky yellowish-brown tea in a glass with ice; opaque from milk.
+• 熱奶茶 — hot milky yellowish-brown tea; often in a ceramic tea cup. Sometimes served with sugar cube or packed sugar packet.
+• 好立克 — milk-white, creamy drink; paler than milk tea.
+• 阿華田 — similar to milk tea but more reddish-brown; milk tea is more yellowish-brown.
+• If still uncertain between 奶茶 and 阿華田, default to 奶茶.
+
+Cha Chaan Teng Food
+• 炒滑蛋 — soft, pale-yellow scrambled egg; glossy surface; no browning. NOT salmon.
+• 煎蛋 — fried egg with a set white and a visible yolk; edges may be crispy.
+• 奶油豬 — thick white bun or bread with butter and condensed milk on top.
+• 蒜蓉包 — bun with a visible garlic topping; golden-brown surface.
+• 多士 — thin bread, toasted only; NOT deep-fried.
+• 西多士 — deep-fried French toast; golden-brown and thick; served with butter and syrup.
+
+Meat
+• 牛扒 — thick slab or thinly sliced beef with clear grill marks or seared brown surface;
+  served on a plate or over noodles.
+• 牛肉 — thinner beef slices; less dense than 牛扒; no grill marks.
+• 叉燒 — reddish-brown glazed pork; sliced or in chunks; caramelised shiny surface.
+  Never a whole slab.
+• 腩肉 — thick pork-belly slices with visible fat bands. Commonly pairs with 米線.
+• 豬潤 — dark sliced liver in soup; smoother and less meaty-looking than beef slices.
+• 豬紅 — firm, dark reddish-brown cubes in soup or noodles. NOT tofu.
+• 豆腐花 — smooth, white, soft; served in a bowl with syrup. NOT savoury.
+• 竹笙 — pale white, hollow, latticed tube, soft; always in soup/braised.
+  NOT flat/golden/crispy (炸魚皮), NOT solid (魚蛋).
+• 牛丸 — darker, slightly textured beef ball.
+• 魚蛋 — pale yellow/white, smooth fish ball.
 
 ════════════════════════════════════
 OUTPUT RULES (strict)
@@ -2934,7 +2969,58 @@ Rules for "extras":
 - Do NOT list any ingredient that is already part of the dish name "${foodName}". If an ingredient is in the name, it does NOT belong in extras.
 - Only list small accompaniments, side toppings, or garnishes that you can actually see in the photo.
 - If there are no additional toppings/sides, return null.
-- When there are 2+ items, separate them with commas ONLY: "," for English, "，" for Chinese. Do NOT use the ideographic comma "、". Do NOT use with / 配 / 加 / 和 / and / 及 as separators in the extras field — those are connector words reserved for the dish name. Example (correct): "煎腸仔，奶茶" or "sausage, milk tea". Example (WRONG): "菜心配雞蛋", "sausage and milk tea".
+- When there are 2+ items, separate them with commas ONLY: "," for English, "，" for Chinese. Do NOT use the ideographic comma "、".
+  Do NOT use with / 配 / 加 / 和 / and / 及 as separators — those are connector words reserved for the dish name.
+  Example (correct): "煎腸仔，奶茶" or "sausage, milk tea"
+  Example (WRONG): "菜心配雞蛋", "sausage and milk tea"
+
+════════════════════════════════════
+SPECIFIC DISTINCTIONS (refer if unsure)
+════════════════════════════════════
+
+Cha Chaan Teng Drinks
+For drinks, prefer container shape + liquid colour + garnish cues over shade alone.
+• 凍檸茶 — cold amber tea in a glass or plastic cup with ice; lemon slice on rim or inside.
+• 熱檸茶 — same amber tea served hot in a ceramic cup or glass; lemon slice visible; no ice.
+• 凍奶茶 — cold milky yellowish-brown tea in a glass with ice; opaque from milk.
+• 熱奶茶 — hot milky yellowish-brown tea; often in a ceramic tea cup. Sometimes served with sugar cube or packed sugar packet.
+• 好立克 — milk-white, creamy drink; paler than milk tea.
+• 阿華田 — similar to milk tea but more reddish-brown; milk tea is more yellowish-brown.
+
+Cha Chaan Teng Food
+• 炒滑蛋 — soft, pale-yellow scrambled egg; glossy surface; no browning. NOT salmon.
+• 煎蛋 — fried egg with a set white and a visible yolk; edges may be crispy.
+• 奶油豬 — thick white bun or bread with butter and condensed milk on top.
+• 蒜蓉包 — bun with a visible garlic topping; golden-brown surface.
+• 多士 — thin bread, toasted only; NOT deep-fried.
+• 西多士 — deep-fried French toast; golden-brown and thick; served with butter and syrup.
+
+Meat
+• 牛扒 — thick slab or thinly sliced beef with clear grill marks or seared brown surface;
+  served on a plate or over noodles.
+• 牛肉 — thinner beef slices; less dense than 牛扒; no grill marks.
+• 叉燒 — reddish-brown glazed pork; sliced or in chunks; caramelised shiny surface.
+  Never a whole slab.
+• 腩肉 — thick pork-belly slices with visible fat bands. Commonly pairs with 米線.
+• 豬潤 — dark sliced liver in soup; smoother and less meaty-looking than beef slices.
+• 豬紅 — firm, dark reddish-brown cubes in soup or noodles. NOT tofu.
+• 豆腐花 — smooth, white, soft; served in a bowl with syrup. NOT savoury.
+• 竹笙 — pale white, hollow, latticed tube, soft; always in soup/braised.
+  NOT flat/golden/crispy (炸魚皮), NOT solid (魚蛋).
+• 牛丸 — darker, slightly textured beef ball.
+• 魚蛋 — pale yellow/white, smooth fish ball.
+
+DRINK AMBIGUITY RULE (奶茶 vs 阿華田)
+• If you can confidently identify the drink, write its name normally.
+• If you CANNOT confidently distinguish 奶茶 from 阿華田, write the
+  ambiguous drink as {{奶茶|阿華田}} in whichever field (sauces or
+  extras) it would normally appear in.
+• All other items in that same field stay as normal text. Only the
+  uncertain drink uses the {{A|B}} notation.
+  Example: extras contains 洋蔥 and an uncertain drink →
+    "extras": "洋蔥，{{奶茶|阿華田}}"
+• Only use {{A|B}} for this specific 奶茶/阿華田 pair. For every other
+  item, give your single best guess.
 
 Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
@@ -3215,8 +3301,12 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      const { name, portion, sauces, extras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
+      const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
+      const stripAmbigToken = (s?: string | null): string | null =>
+        s?.replace(/\{\{[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim() || null;
+      const sauces = stripAmbigToken(rawSauces);
+      const extras = stripAmbigToken(rawExtras);
 
       const profile = await storage.getProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });

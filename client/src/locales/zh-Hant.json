@@ -848,6 +848,8 @@
     "other": "其他",
     "did_you_mean": "「{{text}}」— 你是不是想選：",
     "keep_as_typed": "保持原樣",
+    "name_choice_prompt": "這是哪款飲品？",
+    "name_choice_none": "以上皆非",
     "portion_small": "小",
     "portion_medium": "中",
     "portion_large": "大",

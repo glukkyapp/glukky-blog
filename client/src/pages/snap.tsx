@@ -259,9 +259,10 @@ function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
 }
 
 interface DisambigItem {
-  field: "sauce" | "topping";
+  field: "sauce" | "topping" | "name-choice";
   text: string;
-  matches: { internalId: string; label: string }[];
+  matches: { internalId: string | null; label: string }[];
+  fieldTarget?: "sauces" | "extras";
 }
 
 export default function Snap() {
@@ -518,6 +519,8 @@ export default function Snap() {
   const pendingResolutionsRef = useRef<{
     sauceResolutions: TokenResolution[];
     toppingResolutions: TokenResolution[];
+    resolvedSaucesText?: string;
+    resolvedExtrasText?: string;
   }>({ sauceResolutions: [], toppingResolutions: [] });
 
   // Stashed image payload for the label-step paywall auto-resume.
@@ -553,6 +556,36 @@ export default function Snap() {
       queue.push(...result.ambiguous);
     }
 
+    // Detect {{A|B}} ambiguity tokens written by the Step 2 vision prompt
+    const tokenRe = /\{\{([^|]+)\|([^}]+)\}\}/g;
+    let tokenMatch: RegExpExecArray | null;
+    tokenRe.lastIndex = 0;
+    while ((tokenMatch = tokenRe.exec(form.sauces)) !== null) {
+      queue.push({
+        field: "name-choice",
+        text: tokenMatch[0],
+        matches: [
+          { internalId: tokenMatch[1], label: tokenMatch[1] },
+          { internalId: tokenMatch[2], label: tokenMatch[2] },
+          { internalId: null, label: t("snap.name_choice_none") },
+        ],
+        fieldTarget: "sauces",
+      });
+    }
+    tokenRe.lastIndex = 0;
+    while ((tokenMatch = tokenRe.exec(form.extras)) !== null) {
+      queue.push({
+        field: "name-choice",
+        text: tokenMatch[0],
+        matches: [
+          { internalId: tokenMatch[1], label: tokenMatch[1] },
+          { internalId: tokenMatch[2], label: tokenMatch[2] },
+          { internalId: null, label: t("snap.name_choice_none") },
+        ],
+        fieldTarget: "extras",
+      });
+    }
+
     setForm(f => ({
       ...f,
       sauceResolutions: finalSauceResolutions,
@@ -577,17 +610,32 @@ export default function Snap() {
   function handleDisambigSelect(internalId: string | null) {
     const current = disambigQueue[disambigIndex];
     if (current) {
-      const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
-      if (current.field === "sauce") {
-        pendingResolutionsRef.current.sauceResolutions = [
-          ...pendingResolutionsRef.current.sauceResolutions,
-          resolution,
-        ];
+      if (current.field === "name-choice") {
+        const targetField = current.fieldTarget!;
+        const token = current.text;
+        const resolveInText = (src: string) => {
+          if (internalId !== null) return src.replace(token, internalId);
+          return src.replace(token, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
+        };
+        if (targetField === "sauces") {
+          pendingResolutionsRef.current.resolvedSaucesText = resolveInText(form.sauces);
+        } else {
+          pendingResolutionsRef.current.resolvedExtrasText = resolveInText(form.extras);
+        }
+        setForm(f => ({ ...f, [targetField]: resolveInText(f[targetField] as string) }));
       } else {
-        pendingResolutionsRef.current.toppingResolutions = [
-          ...pendingResolutionsRef.current.toppingResolutions,
-          resolution,
-        ];
+        const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
+        if (current.field === "sauce") {
+          pendingResolutionsRef.current.sauceResolutions = [
+            ...pendingResolutionsRef.current.sauceResolutions,
+            resolution,
+          ];
+        } else {
+          pendingResolutionsRef.current.toppingResolutions = [
+            ...pendingResolutionsRef.current.toppingResolutions,
+            resolution,
+          ];
+        }
       }
     }
     hapticTap("LIGHT");
@@ -596,6 +644,8 @@ export default function Snap() {
     } else {
       const finalSauce = pendingResolutionsRef.current.sauceResolutions;
       const finalTopping = pendingResolutionsRef.current.toppingResolutions;
+      const resolvedSaucesText = pendingResolutionsRef.current.resolvedSaucesText;
+      const resolvedExtrasText = pendingResolutionsRef.current.resolvedExtrasText;
       setForm(f => ({
         ...f,
         sauceResolutions: finalSauce,
@@ -605,7 +655,10 @@ export default function Snap() {
       }));
       setDisambigQueue([]);
       setDisambigIndex(0);
-      callAdviceApi(finalSauce, finalTopping);
+      callAdviceApi(finalSauce, finalTopping, false, {
+        ...(resolvedSaucesText !== undefined ? { sauces: resolvedSaucesText || null } : {}),
+        ...(resolvedExtrasText !== undefined ? { extras: resolvedExtrasText || null } : {}),
+      });
     }
   }
 
@@ -1215,26 +1268,30 @@ export default function Snap() {
           {disambigQueue.length > 0 && disambigQueue[disambigIndex] && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3" data-testid="dialog-disambiguate">
               <p className="text-sm font-medium text-center">
-                {t("snap.did_you_mean", { text: disambigQueue[disambigIndex].text })}
+                {disambigQueue[disambigIndex].field === "name-choice"
+                  ? t("snap.name_choice_prompt")
+                  : t("snap.did_you_mean", { text: disambigQueue[disambigIndex].text })}
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {disambigQueue[disambigIndex].matches.map((m) => (
+                {disambigQueue[disambigIndex].matches.map((m, i) => (
                   <button
-                    key={m.internalId}
+                    key={m.internalId ?? `none-${i}`}
                     onClick={() => handleDisambigSelect(m.internalId)}
                     className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#F4EBE4] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
-                    data-testid={`chip-disambig-${m.internalId}`}
+                    data-testid={`chip-disambig-${m.internalId ?? "none"}`}
                   >
                     {m.label}
                   </button>
                 ))}
-                <button
-                  onClick={() => handleDisambigSelect(null)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-input hover:bg-muted/80 transition-colors"
-                  data-testid="button-disambig-keep"
-                >
-                  {t("snap.keep_as_typed")}
-                </button>
+                {disambigQueue[disambigIndex].field !== "name-choice" && (
+                  <button
+                    onClick={() => handleDisambigSelect(null)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-input hover:bg-muted/80 transition-colors"
+                    data-testid="button-disambig-keep"
+                  >
+                    {t("snap.keep_as_typed")}
+                  </button>
+                )}
               </div>
             </div>
           )}
