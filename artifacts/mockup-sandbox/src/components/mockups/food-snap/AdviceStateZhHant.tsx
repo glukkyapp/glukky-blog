@@ -9,14 +9,17 @@ const COLORS = {
   hairline: "#E6E1D4",
 };
 
-function Section({ icon, label, children, hairline }: { icon: string; label: string; children: React.ReactNode; hairline?: boolean }) {
+function Section({ icon, label, children, hairline, chartSrc }: { icon: string; label: string; children: React.ReactNode; hairline?: boolean; chartSrc?: string }) {
   return (
     <div className="px-5 py-4" style={hairline ? { borderTop: `1px solid ${COLORS.hairline}` } : undefined}>
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-base">{icon}</span>
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.muted }}>{label}</span>
+        <span className="text-[22px] font-bold uppercase tracking-wider" style={{ color: COLORS.muted }}>{label}</span>
       </div>
-      <div className="text-[13px] leading-relaxed" style={{ color: COLORS.ink }}>{children}</div>
+      {chartSrc && (
+        <img src={chartSrc} alt="血糖走勢圖" className="w-full rounded-xl mb-2" style={{ maxHeight: 90, objectFit: "contain", objectPosition: "left" }} />
+      )}
+      <div className="text-[26px] leading-relaxed" style={{ color: COLORS.ink }}>{children}</div>
     </div>
   );
 }
@@ -33,7 +36,7 @@ export default function AdviceStateZhHant() {
         <h2 className="text-[18px] font-bold mt-1" style={{ color: COLORS.ink }}>你的飲食建議</h2>
 
         <div className="rounded-3xl overflow-hidden" style={{ backgroundColor: "#fff", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
-          <Section icon="🩸" label="血糖影響">
+          <Section icon="🩸" label="血糖影響" chartSrc="/glucose_high.png">
             雲吞麵的升糖指數頗高。
           </Section>
           <Section icon="💡" label="即時建議" hairline>
