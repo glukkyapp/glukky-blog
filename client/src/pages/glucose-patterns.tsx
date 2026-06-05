@@ -141,10 +141,10 @@ export default function GlucosePatterns() {
 
         {showPersonalisedPopup && (
           <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4" data-testid="div-personalised-popup">
-            <p className="text-sm font-semibold text-emerald-800 mb-1">
+            <p className="text-base font-semibold text-emerald-800 mb-1">
               {t("glucose.personalised_popup_title")}
             </p>
-            <p className="text-xs text-emerald-700 mb-3">
+            <p className="text-sm text-emerald-700 mb-3">
               {t("glucose.personalised_popup_body", { count: readingCount })}
             </p>
             <Button
@@ -192,7 +192,7 @@ export default function GlucosePatterns() {
             <p className="text-base font-semibold text-foreground">
               {t("glucose.patterns_heading")}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               {t("glucose.patterns_locked_desc", { remaining })}
             </p>
             <div className="w-full max-w-[200px] bg-muted rounded-full h-2">
@@ -202,7 +202,7 @@ export default function GlucosePatterns() {
                 data-testid="glucose-patterns-progress"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {totalSnaps} / {LOCKED_THRESHOLD}
             </p>
           </div>
@@ -225,7 +225,7 @@ export default function GlucosePatterns() {
                   <div className="grid grid-cols-3 gap-2">
                     {cols.map(({ list, bg, labelCls, label }, colIdx) => (
                       <div key={colIdx} className={`rounded-lg p-2 ${bg}`}>
-                        <p className={`text-xs font-semibold mb-1.5 ${labelCls}`}>{label}</p>
+                        <p className={`text-sm font-semibold mb-1.5 ${labelCls}`}>{label}</p>
                         <div className="space-y-1">
                           {list.map((item, i) => {
                             const key = `col${colIdx}-${i}`;
@@ -233,7 +233,7 @@ export default function GlucosePatterns() {
                             return (
                               <p
                                 key={i}
-                                className={`text-xs leading-snug cursor-pointer ${isExpanded ? "" : "line-clamp-2"}`}
+                                className={`text-sm leading-snug cursor-pointer ${isExpanded ? "" : "line-clamp-2"}`}
                                 onClick={() => setExpandedAiFoods(prev => {
                                   const next = new Set(prev);
                                   if (isExpanded) next.delete(key); else next.add(key);
@@ -245,7 +245,7 @@ export default function GlucosePatterns() {
                               </p>
                             );
                           })}
-                          {list.length === 0 && <p className="text-xs opacity-30">—</p>}
+                          {list.length === 0 && <p className="text-sm opacity-30">—</p>}
                         </div>
                       </div>
                     ))}
