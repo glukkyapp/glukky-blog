@@ -1,4 +1,4 @@
-import { Camera, Home, Lightbulb, TrendingUp, User, Utensils, type LucideIcon } from "lucide-react";
+import { Lightbulb, type LucideIcon } from "lucide-react";
 
 const COLORS = {
   bg: "#fdfbee",
@@ -6,38 +6,6 @@ const COLORS = {
   muted: "#6E8477",
   primary: "#2F6B43",
 };
-
-function NavBar() {
-  const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
-    { Icon: Home, label: "主頁" },
-    { Icon: Utensils, label: "食物" },
-    { Icon: Camera, label: "快拍" },
-    { Icon: TrendingUp, label: "血糖" },
-    { Icon: Lightbulb, label: "健康", active: true },
-    { Icon: User, label: "我的" },
-  ];
-  return (
-    <nav
-      className="absolute left-1/2 -translate-x-1/2 flex items-center px-2"
-      style={{
-        bottom: 16,
-        width: "calc(100% - 32px)",
-        maxWidth: 360,
-        height: 58,
-        backgroundColor: "rgba(187,222,214,0.85)",
-        borderRadius: 160,
-        boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-      }}
-    >
-      {items.map(({ Icon, label, active }) => (
-        <div key={label} className="flex-1 flex flex-col items-center justify-center" style={{ color: "#0D5E4F" }}>
-          <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-          {active && <span className="text-[10px] font-medium leading-tight mt-0.5">{label}</span>}
-        </div>
-      ))}
-    </nav>
-  );
-}
 
 function Tip({ src, label, selected }: { src: string; label: string; selected?: boolean }) {
   return (
@@ -87,7 +55,6 @@ export default function DietTipDetailZhHant() {
           </div>
         </div>
       </div>
-      <NavBar />
     </div>
   );
 }
