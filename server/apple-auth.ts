@@ -1,4 +1,4 @@
-import { createSign } from "crypto";
+import { sign as cryptoSign } from "crypto";
 
 /**
  * Generates an Apple client_secret JWT (ES256) for server-to-server API calls.
@@ -35,11 +35,15 @@ function generateClientSecret(): string {
   ).toString("base64url");
 
   const signingInput = `${header}.${payload}`;
-  const sign = createSign("SHA256");
-  sign.update(signingInput);
   // Support both literal newlines and \n-escaped keys stored in env vars
   const pem = privateKey.replace(/\\n/g, "\n");
-  const signature = sign.sign(pem, "base64url");
+  // ES256 requires JOSE/P1363 (raw r||s) signature encoding, not DER.
+  // crypto.sign() with dsaEncoding:"ieee-p1363" produces the correct format.
+  const sigBuf = cryptoSign("sha256", Buffer.from(signingInput), {
+    key: pem,
+    dsaEncoding: "ieee-p1363",
+  });
+  const signature = sigBuf.toString("base64url");
 
   return `${signingInput}.${signature}`;
 }
