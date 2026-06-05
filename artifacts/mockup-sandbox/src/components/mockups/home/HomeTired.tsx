@@ -1,4 +1,4 @@
-import { Footprints, UtensilsCrossed, TrendingUp, Battery, Check, X, CheckCircle2, Home, Camera, CalendarDays, Soup, Lightbulb, Droplets, type LucideIcon } from "lucide-react";
+import { Footprints, UtensilsCrossed, Battery, Check, Home, Camera, Lightbulb, TrendingUp, Utensils, User, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 const COLORS = {
@@ -14,9 +14,11 @@ const COLORS = {
 function NavBar() {
   const items: { Icon: LucideIcon; label: string; active?: boolean }[] = [
     { Icon: Home, label: "Home", active: true },
-    { Icon: TrendingUp, label: "Roadmap" },
+    { Icon: Utensils, label: "Food" },
     { Icon: Camera, label: "Snap" },
-    { Icon: CalendarDays, label: "Plan" },
+    { Icon: TrendingUp, label: "Glucose" },
+    { Icon: Lightbulb, label: "Tips" },
+    { Icon: User, label: "Profile" },
   ];
   return (
     <nav
@@ -33,7 +35,7 @@ function NavBar() {
     >
       {items.map(({ Icon, label, active }) => (
         <div key={label} className="flex-1 flex flex-col items-center justify-center" style={{ color: "#0D5E4F" }}>
-          <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+          <Icon size={active ? 22 : 20} strokeWidth={active ? 2.5 : 2} />
           {active && <span className="text-[11px] font-medium leading-tight mt-0.5">{label}</span>}
         </div>
       ))}
@@ -41,80 +43,85 @@ function NavBar() {
   );
 }
 
-function Row({ icon: Icon, label, value, valueColor = COLORS.ink, badge }: { icon: LucideIcon; label: string; value: string; valueColor?: string; badge?: ReactNode }) {
+function DailyTimeline() {
+  const START = 6;
+  const END = 24;
+  const RANGE = END - START;
+  const pct = (h: number) => `${((h - START) / RANGE) * 100}%`;
+
+  const meals = [
+    { hour: 8,    color: "#F97316" }, // breakfast ~8am orange
+    { hour: 13,   color: "#EF4444" }, // lunch ~1pm red
+    { hour: 21.5, color: "#F97316" }, // dinner ~9:30pm orange
+  ];
+
+  const ticks = [6, 9, 12, 15, 18, 21, 24];
+
   return (
-    <div className="flex items-center gap-2 py-1">
-      <Icon className="w-4 h-4" style={{ color: COLORS.green }} />
-      <span className="text-[13px] flex-1" style={{ color: COLORS.ink }}>{label}</span>
-      {badge}
-      <span className="text-[13px] font-semibold" style={{ color: valueColor }}>{value}</span>
+    <div className="space-y-1.5">
+      {/* Bar + dots */}
+      <div className="relative h-6 flex items-center">
+        <div className="absolute inset-x-0 h-1.5 rounded-full" style={{ backgroundColor: "#E6E1D4" }} />
+        {meals.map(({ hour, color }, i) => (
+          <div
+            key={i}
+            className="absolute w-3.5 h-3.5 rounded-full border-2 border-white"
+            style={{ left: pct(hour), transform: "translateX(-50%)", backgroundColor: color, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}
+          />
+        ))}
+      </div>
+      {/* Tick labels */}
+      <div className="relative h-3">
+        {ticks.map(h => (
+          <span
+            key={h}
+            className="absolute text-[9px]"
+            style={{ left: pct(h), transform: "translateX(-50%)", color: COLORS.muted }}
+          >
+            {h}
+          </span>
+        ))}
+      </div>
+      {/* Caption */}
+      <p className="text-[13px] mt-1" style={{ color: COLORS.muted }}>
+        Dinner was late — try eating earlier tomorrow! 😊
+      </p>
     </div>
   );
 }
 
-type CalCellState = "done" | "missed" | "scheduled" | "future" | "inactive";
-
-const MUTED_BG = "hsl(240 4.8% 95.9%)";
-const MUTED_BG_SOFT = "hsla(240,4.8%,95.9%,0.5)";
-
-function WalkCell({ state, dur }: { state: CalCellState; dur?: number }) {
-  if (state === "inactive") return <div className="rounded h-7" style={{ backgroundColor: MUTED_BG_SOFT }} />;
-  const cls =
-    state === "done" ? "bg-green-100 h-10" :
-    state === "missed" ? "bg-red-50 h-10" :
-    state === "scheduled" ? "h-10" : "h-7";
-  const bg = state === "scheduled" || state === "future" ? MUTED_BG : undefined;
-  const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : COLORS.muted;
+function DonutChart({ size = 110 }: { size?: number }) {
+  const cx = size / 2, cy = size / 2, r = size * 0.38, stroke = size * 0.16;
+  const circ = 2 * Math.PI * r;
+  // green 65%, yellow 25%, red 10%
+  const segs = [
+    { pct: 0.65, color: "#5F9D7A", offset: 0 },
+    { pct: 0.25, color: "#EAB308", offset: 0.65 },
+    { pct: 0.10, color: "#EF4444", offset: 0.90 },
+  ];
   return (
-    <div className={`rounded flex flex-col items-center justify-center ${cls}`} style={{ color, backgroundColor: bg }}>
-      {state === "done" ? <Check className="w-3 h-3" /> :
-       state === "missed" ? <X className="w-3 h-3" /> :
-       state === "scheduled" ? <Footprints className="w-3 h-3" /> : null}
-      {dur != null && (state === "done" || state === "missed" || state === "scheduled") && (
-        <span className="text-[10px] leading-none mt-0.5">{dur} min</span>
-      )}
-    </div>
-  );
-}
-
-function DinnerCell({ state }: { state: "done" | "missed" | "scheduled" | "tactic" | "none" }) {
-  const cls =
-    state === "done" ? "bg-green-100" :
-    state === "missed" ? "bg-red-50" :
-    state === "tactic" ? "bg-amber-50" : "";
-  const bg = state === "scheduled" || state === "none" ? MUTED_BG : undefined;
-  const color = state === "done" ? "#16A34A" : state === "missed" ? "#F87171" : state === "tactic" ? "#D97706" : COLORS.muted;
-  return (
-    <div className={`h-7 rounded flex items-center justify-center ${cls}`} style={{ color, backgroundColor: bg }}>
-      {state === "done" ? <Check className="w-3 h-3" /> :
-       state === "missed" ? <X className="w-3 h-3" /> :
-       state === "tactic" ? <Lightbulb className="w-3 h-3" /> :
-       state === "scheduled" ? <Soup className="w-3 h-3" /> : null}
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
+      {segs.map(({ pct, color, offset }, i) => (
+        <circle
+          key={i}
+          cx={cx} cy={cy} r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeDasharray={`${pct * circ} ${circ}`}
+          strokeDashoffset={-offset * circ}
+          strokeLinecap="butt"
+        />
+      ))}
+      {/* Centre text — counter-rotate */}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" style={{ transform: `rotate(90deg)`, transformOrigin: `${cx}px ${cy}px`, fontSize: size * 0.16, fontWeight: 700, fill: COLORS.ink }}>
+        87 pts
+      </text>
+    </svg>
   );
 }
 
 export default function HomeTired() {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const walk: { state: CalCellState; dur?: number }[] = [
-    { state: "done", dur: 10 },
-    { state: "done", dur: 10 },
-    { state: "done", dur: 10 },
-    { state: "scheduled", dur: 5 },
-    { state: "future" },
-    { state: "future" },
-    { state: "future" },
-  ];
-  const dinner: { state: "done" | "missed" | "scheduled" | "tactic" | "none" }[] = [
-    { state: "none" },
-    { state: "tactic" },
-    { state: "done" },
-    { state: "scheduled" },
-    { state: "none" },
-    { state: "none" },
-    { state: "none" },
-  ];
-
   return (
     <div className="app-page-v2 relative w-[390px] h-[844px] overflow-hidden" style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <style>{`
@@ -122,7 +129,7 @@ export default function HomeTired() {
         .goal-bubble::after { content: ""; position: absolute; left: 28px; bottom: -9px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid ${COLORS.bubble}; filter: drop-shadow(0 2px 1px rgba(44,72,56,0.05)); }
         .pf { font-family: 'Playfair Display', serif; }
       `}</style>
-      <div className="px-6 pt-14 pb-20 space-y-4 h-full overflow-hidden">
+      <div className="px-6 pt-14 pb-20 space-y-4 h-full overflow-y-auto">
         {/* Header */}
         <div className="space-y-0.5">
           <h1 className="text-[26px] font-normal leading-tight" style={{ color: COLORS.ink }}>Wednesday</h1>
@@ -147,57 +154,32 @@ export default function HomeTired() {
             <span className="font-semibold text-[21px]" style={{ color: COLORS.ink }}>TODAY</span>
             <span>— Wed, 2 Apr</span>
           </div>
-
-          {/* Hydration callout */}
-          <div className="rounded-lg p-3 flex items-start gap-2 bg-blue-50">
-            <Droplets className="w-5 h-5 mt-0.5 shrink-0" style={{ color: "#3B82F6" }} />
-            <p className="flex-1 text-[17px] font-medium leading-snug" style={{ color: "#1D4ED8" }}>
-              We've reduced tomorrow's walk to 5 min. Stay hydrated and rest well!
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <Row icon={Footprints} label="Walk after dinner" value="Completed" badge={<Check className="w-4 h-4" style={{ color: COLORS.greenDeep }} />} valueColor={COLORS.greenDeep} />
-            <Row icon={Footprints} label="Duration" value="10 min" />
-            <Row icon={Battery} label="Feeling tired" value="Yes" valueColor="#B7791F" />
-            <Row icon={UtensilsCrossed} label="Late dinner tactic (Fiber)" value="Followed" badge={<Check className="w-4 h-4" style={{ color: COLORS.greenDeep }} />} valueColor={COLORS.greenDeep} />
-          </div>
+          <DailyTimeline />
         </div>
 
-        {/* Weekly Calendar */}
+        {/* Weekly Report card */}
         <div className="rounded-[28px] p-[22px] space-y-3" style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" style={{ color: COLORS.green }} />
-            <span className="text-[14px] font-semibold" style={{ color: COLORS.ink }}>Weekly calendar</span>
+          <div className="flex items-start gap-4">
+            {/* Donut */}
+            <div className="shrink-0">
+              <DonutChart size={108} />
+            </div>
+            {/* Right column */}
+            <div className="flex-1 space-y-2 pt-1">
+              <p className="text-[15px] font-semibold" style={{ color: COLORS.ink }}>Weekly score: <span style={{ color: COLORS.greenDeep }}>87 pts</span></p>
+              <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
+                We noticed your lunches this week included more refined noodles, raising your blood sugar.
+              </p>
+              <p className="text-[12px] leading-snug" style={{ color: COLORS.muted }}>
+                Next week, try glass noodles or soba for lunch — less is even better!
+              </p>
+            </div>
           </div>
-
-          {/* Day header row */}
-          <div className="grid gap-1 text-center text-xs" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
-            <div />
-            {days.map((d, i) => (
-              <div key={d} className="font-medium" style={{ color: i === 2 ? COLORS.ink : COLORS.muted, fontWeight: i === 2 ? 700 : 500 }}>{d}</div>
-            ))}
-          </div>
-
-          {/* Walk row */}
-          <div className="grid gap-1 text-center text-xs items-center" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
-            <div className="text-[12px] font-medium text-right pr-1" style={{ color: COLORS.muted }}>Walk</div>
-            {walk.map((d, i) => <WalkCell key={i} state={d.state} dur={d.dur} />)}
-          </div>
-
-          {/* Late Dinner row */}
-          <div className="grid gap-1 text-center text-xs items-center" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
-            <div className="text-[12px] font-medium text-right pr-1 leading-tight" style={{ color: COLORS.muted }}>Late dinner</div>
-            {dinner.map((d, i) => <DinnerCell key={i} state={d.state} />)}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-3 pt-2 text-[12px] flex-wrap" style={{ color: COLORS.muted }}>
-            <div className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: "#16A34A" }} /> Done</div>
-            <div className="flex items-center gap-1"><X className="w-3 h-3" style={{ color: "#F87171" }} /> Missed</div>
-            <div className="flex items-center gap-1"><Footprints className="w-3 h-3" /> Planned walk</div>
-            <div className="flex items-center gap-1"><Soup className="w-3 h-3" /> Late dinner</div>
-            <div className="flex items-center gap-1"><Lightbulb className="w-3 h-3" style={{ color: "#D97706" }} /> Tactic set</div>
+          {/* Donut legend */}
+          <div className="flex items-center gap-3 text-[11px]" style={{ color: COLORS.muted }}>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#5F9D7A" }} />On track</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EAB308" }} />Improving</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />Needs work</span>
           </div>
         </div>
       </div>
