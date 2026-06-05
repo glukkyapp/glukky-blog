@@ -7,6 +7,7 @@ import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { startNotificationScheduler } from "./notifications";
 import { cleanupDuplicatePlayerIds } from "./onesignal";
 import { captureException, shutdownPostHog } from "./posthog";
+import { runStartupMigrations } from "./startup-migrations";
 
 const app = express();
 const httpServer = createServer(app);
@@ -84,6 +85,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await runStartupMigrations();
   await setupAuth(app);
   registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
