@@ -86,7 +86,7 @@ export default function ReviewStateZhHant() {
             </div>
           </div>
 
-          <div className="relative mx-4 my-10" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
+          <div className="relative mx-4 my-5" style={{ overflow: "visible", transform: "scale(1.2)", transformOrigin: "center" }}>
             <Pointer pos="tl" /><Pointer pos="tr" /><Pointer pos="bl" /><Pointer pos="br" />
             <img src={`${import.meta.env.BASE_URL}images/wonton-noodle-soup.png`} alt="" className="w-full rounded-2xl object-cover max-h-48" />
           </div>
@@ -97,11 +97,7 @@ export default function ReviewStateZhHant() {
           </div>
         </div>
 
-        <div className="self-center text-[11px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
-          今天剩餘 2 / 2 次拍照分析
-        </div>
-
-        <div className="flex flex-col gap-2 pt-1">
+        <div className="flex flex-col gap-1">
           <button
             className="w-full h-14 rounded-2xl text-[25px] font-semibold text-white"
             style={{ backgroundColor: COLORS.orange, boxShadow: "0 4px 14px rgba(240,138,62,0.35)" }}
