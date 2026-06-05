@@ -1,0 +1,78 @@
+further UI improvement
+
+血糖規律 Page
+Replace progress counter with: 立刻開始紀錄你的飯後血糖！再紀錄 {15-x} 次即可獲得個人化建議
+你的食物排名 — food name left, glucose value right
+AI foods section: arrange in 3 columns (red / yellow / green), truncate long names at 2 lines with tap-to-expand
+
+[food] [glucose]
+AI 評估，未有個人數值
+red food | yellow food | green food
+red food | yellow food | green food
+
+double all font sizes except page title
+
+Homepage — Daily Summary Card
+Font:
+double daily report font size
+Minimum 18px for all body text
+Line height minimum 1.8 for Chinese text
+Insight lines: semibold (600)
+Suggestion lines: regular weight, minimum 16px
+
+Chart:
+you did not apply Size increase — explicitly increase container height by 40%, not just chart config
+Same applies to weekly report donut chart
+Meal name:
+Format: 昨日午餐（{meal name from yesterday}）血糖影響偏高。
+Suggestion wording:
+Format: 建議今天{meal type}選擇{food}。
+Meal type matches yesterday's high-impact meal
+Fallback: 建議今天午餐選擇低升糖食物
+Positive reinforcement if low impact: 繼續保持昨日晚餐的良好選擇！
+Time format:
+昨日午餐進食時間不規律，上午/下午{HH:MM}才食午餐。 — actual logged time, no "如" prefix
+Font colours:
+Insight: --color-text full opacity
+Suggestion: --color-text-muted only if 4.5:1 contrast passes, otherwise --color-text at 80%
+Never use --color-text-faint for readable content
+Layout — one insight per card:
+text
+┌─────────────────────────────────┐
+│ 昨日午餐（蘭州牛肉拉麵）         │
+│ 血糖影響偏高。                   │
+│                                  │
+│ 建議今天午餐選擇清湯米線配時蔬。  │
+└─────────────────────────────────┘
+
+Generous padding, clear gap between cards
+Content separation:
+Daily card = yesterday only
+Weekly summary = 7-day patterns, no need to quote food name
+example:
+本週已紀錄4日的飲食
+星期四飲食最好，星期一飲食要多加留意（worst = with most 'high' meals, best = with least 'high' meals and most 'low', if no high meals across the week, add a congraulation line: 你這星期的飲食選擇做得極好！ 繼續保持！）
+same layout and chart size as daily report
+
+Disclaimer (All Locations)
+Remove word 免責聲明
+Remove ⓘ button — text always visible
+Keep all other disclaimer text
+Font size: 0.5× current body size
+Colour: --color-text-faint
+Accessibility — Elderly Users
+
+Minimum 18px body text on all health data screens
+Line height 1.8 minimum for Chinese text
+
+Food Suggestions (for advice line)
+午餐/晚餐 — 
+烚蛋蔬菜飯、清湯米線配時蔬、蒸魚配糙米飯、雞胸肉沙律、豆腐配蔬菜粥、清湯河粉配菜心、冬菇蒸雞配少量白飯
+早餐 :
+白煮蛋配全麥多士、無糖燕麥粥、豆漿配無糖麵包、雞蛋配蔬菜
+宵夜:
+少量無糖豆漿、清淡湯水或熱茶、少量堅果（如合桃）, 藍莓配無糖乳酪
+Generic fallback:
+低升糖食物，如蔬菜、豆腐、瘦肉
+
+questions?
