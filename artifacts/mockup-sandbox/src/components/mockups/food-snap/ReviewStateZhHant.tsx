@@ -30,7 +30,7 @@ function Field({ icon: Icon, label, value, alignRight }: { icon: LucideIcon; lab
         {alignRight && <Icon className="w-4 h-4" strokeWidth={2.5} />}
       </div>
       <div
-        className={`rounded-xl border px-3 py-2 text-[23px] leading-snug h-[5.5rem] ${alignRight ? "text-right" : ""}`}
+        className={`rounded-xl border px-3 py-2 text-[23px] leading-snug h-[3.7rem] ${alignRight ? "text-right" : ""}`}
         style={{ backgroundColor: COLORS.card, borderColor: "#e6e1d4", color: COLORS.ink }}
       >
         {value}
@@ -47,10 +47,10 @@ export default function ReviewStateZhHant() {
           <Camera className="w-10 h-10 shrink-0" strokeWidth={1.5} style={{ color: COLORS.primary }} />
           <h1 className="text-[36px] font-bold uppercase tracking-wide" style={{ color: COLORS.ink }}>食物快拍</h1>
         </div>
-        <p className="text-[23px] text-center" style={{ color: COLORS.muted }}>拍下你的餐點，獲得個人化飲食建議！</p>
+        <p className="text-[18px] text-center" style={{ color: COLORS.muted }}>拍下你的餐點，獲得個人化飲食建議！</p>
         <div>
           <p className="text-[25px] font-semibold" style={{ color: COLORS.ink }}>確認你照片中的食物</p>
-          <p className="text-[22px] mt-0.5" style={{ color: COLORS.muted }}>點選任何欄位即可編輯。</p>
+          <p className="text-[17px] mt-0.5" style={{ color: COLORS.muted }}>點選任何欄位即可編輯。</p>
         </div>
 
         <div className="relative px-1">
@@ -61,7 +61,7 @@ export default function ReviewStateZhHant() {
                 <span>份量</span>
                 <Scale className="w-4 h-4" strokeWidth={2.5} />
               </div>
-              <div className="flex flex-wrap gap-1.5 justify-end h-[5.5rem] items-start pt-1">
+              <div className="flex flex-wrap gap-1.5 justify-end h-[3.5rem] items-center">
                 {[
                   { k: "small", l: "細" },
                   { k: "medium", l: "中碗" },
@@ -71,7 +71,7 @@ export default function ReviewStateZhHant() {
                   return (
                     <span
                       key={o.k}
-                      className="px-3 py-1.5 rounded-full text-[21px] font-medium border"
+                      className="px-3 py-1.5 rounded-full text-[18px] font-medium border"
                       style={{
                         backgroundColor: active ? COLORS.primary : "#fff",
                         color: active ? "#fff" : COLORS.muted,
@@ -97,7 +97,7 @@ export default function ReviewStateZhHant() {
           </div>
         </div>
 
-        <div className="self-center text-[21px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
+        <div className="self-center text-[16px] px-3 py-1 rounded-full" style={{ backgroundColor: "#EFEAD8", color: COLORS.muted }}>
           今天剩餘 2 / 2 次拍照分析
         </div>
 
@@ -108,7 +108,7 @@ export default function ReviewStateZhHant() {
           >
             立即獲取飲食建議
           </button>
-          <button className="w-full text-[23px] flex items-center justify-center gap-1 py-2" style={{ color: COLORS.muted }}>
+          <button className="w-full text-[18px] flex items-center justify-center gap-1 py-2" style={{ color: COLORS.muted }}>
             <RotateCw className="w-4 h-4" />
             換一張照片
           </button>
