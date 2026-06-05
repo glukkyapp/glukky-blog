@@ -532,11 +532,19 @@ export default function Snap() {
     if (!form.name.trim()) return;
     setError(null);
 
-    const hasUnresolvedSauces = form.sauces.trim() && (
+    // Strip {{A|B}} tokens from the text passed to disambiguateField so they
+    // never enter sauceResolutions/toppingResolutions as unresolved pseudo-IDs.
+    // Tokens are handled separately below by the name-choice flow.
+    const stripTokensFromText = (s: string) =>
+      s.replace(/\{\{[^|]+\|[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
+    const saucesForDisambig = stripTokensFromText(form.sauces);
+    const extrasForDisambig = stripTokensFromText(form.extras);
+
+    const hasUnresolvedSauces = saucesForDisambig && (
       form.sauceResolutions.length === 0 ||
       form.sauceResolutions.some(r => r.resolvedId === null)
     );
-    const hasUnresolvedToppings = form.extras.trim() && (
+    const hasUnresolvedToppings = extrasForDisambig && (
       form.toppingResolutions.length === 0 ||
       form.toppingResolutions.some(r => r.resolvedId === null)
     );
@@ -546,17 +554,17 @@ export default function Snap() {
     const queue: DisambigItem[] = [];
 
     if (hasUnresolvedSauces) {
-      const result = await disambiguateField(form.sauces, "sauce");
+      const result = await disambiguateField(saucesForDisambig, "sauce");
       finalSauceResolutions = result.resolved;
       queue.push(...result.ambiguous);
     }
     if (hasUnresolvedToppings) {
-      const result = await disambiguateField(form.extras, "topping");
+      const result = await disambiguateField(extrasForDisambig, "topping");
       finalToppingResolutions = result.resolved;
       queue.push(...result.ambiguous);
     }
 
-    // Detect {{A|B}} ambiguity tokens written by the Step 2 vision prompt
+    // Detect {{A|B}} ambiguity tokens in the original form text (not the stripped version)
     const tokenRe = /\{\{([^|]+)\|([^}]+)\}\}/g;
     let tokenMatch: RegExpExecArray | null;
     tokenRe.lastIndex = 0;
