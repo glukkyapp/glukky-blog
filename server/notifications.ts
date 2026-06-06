@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { userProfiles, mealSnaps } from "@shared/schema";
-import { eq, and, isNotNull, sql } from "drizzle-orm";
+import { userProfiles, mealSnaps, scheduledNotifications } from "@shared/schema";
+import { eq, and, isNotNull, sql, desc, gt } from "drizzle-orm";
 import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
 import { storage } from "./storage";
 import { authStorage } from "./replit_integrations/auth/storage";
@@ -8,11 +8,9 @@ import { log } from "./index";
 
 // Forward window: every pre-scheduling pass queues every eligible
 // (user, type) whose next local trigger falls within this many
-// hours. 36h is the smallest window that covers today's 14:00 +
-// 18:00 + 22:00 local triggers AND tomorrow's 14:00 local trigger
-// even when the only wakeup of the UTC day happens at 00:00 UTC
-// (= 8 AM HKT). It keeps late-dinner (today's 2 PM) and
-// daily check-in (today's 10 PM) inside the same pass.
+// hours. 36h is the smallest window that covers today's 18:00 +
+// tomorrow's 19:00 local triggers even when the only wakeup of
+// the UTC day happens at 00:00 UTC (= 8 AM HKT).
 const LOOKAHEAD_HOURS = 36;
 const LOOKAHEAD_MS = LOOKAHEAD_HOURS * 60 * 60 * 1000;
 
@@ -27,17 +25,17 @@ const PASS_INTERVAL_MS = 60 * 60 * 1000;
 type NotificationType =
   | "foodsnap_reminder" // 7 PM local — conditional: no dinner snap today
   | "hstix_reminder"    // event-triggered — 60 min after snap (not pre-scheduled)
-  | "daily_report"      // 8 AM local next morning
-  | "weekly_report"     // 8 AM local on Monday
-  | "monthly_report";   // 8 AM local on the 1st of the month
+  | "daily_report"      // retired — no longer scheduled
+  | "weekly_report"     // retired — no longer scheduled
+  | "monthly_report"    // retired — no longer scheduled
+  | "daily_checkin"     // retired — was manual test only, never pre-scheduled
+  | "reengagement";     // 6 PM local — inactive ≥ 3 days, max once per 14 days
 
-// hstix_reminder is excluded — it is scheduled directly from the snap
-// route, not by the pre-scheduler loop.
+// hstix_reminder is excluded — event-triggered from the snap route.
+// daily_report / weekly_report / monthly_report / daily_checkin are retired.
 const ALL_TYPES: NotificationType[] = [
-  "monthly_report",    // must be first — owns the 1st-of-month 8 AM slot
-  "weekly_report",     // must precede daily_report — owns Monday 8 AM slot
-  "foodsnap_reminder", // independent
-  "daily_report",      // conflict-checks the two above — must be last
+  "foodsnap_reminder",
+  "reengagement",
 ];
 
 interface NotificationLocale {
@@ -78,16 +76,24 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
     zhHant: { title: "Glukky", subtitle: "", message: "你的每月報告已準備好。" },
     deepLink: "/",
   },
+  daily_checkin: {
+    en:     { title: "Glukky", subtitle: "", message: "Your daily check-in is open — tap to log your day!" },
+    zhHant: { title: "Glukky", subtitle: "", message: "每日打卡時間到了！" },
+    deepLink: "/",
+  },
+  reengagement: {
+    en:     { title: "Glukky", subtitle: "", message: "We miss you — your plan is waiting." },
+    zhHant: { title: "Glukky", subtitle: "", message: "我們想念你——你的計劃在等待。" },
+    deepLink: "/",
+  },
 };
 
-// hstix_reminder is intentionally absent — it has no fixed trigger hour.
-// The reconciler's existing `if (triggerHour === undefined)` guard handles
-// any stale rows of that type gracefully without changes to that function.
+// Retired types are intentionally absent — the reconciler's
+// `if (triggerHour === undefined)` guard leaves their stale rows
+// alone; purgeRetiredTypes() cancels and deletes them on boot.
 const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
   foodsnap_reminder: 19, // 7 PM
-  daily_report:      8,  // 8 AM
-  weekly_report:     8,  // 8 AM
-  monthly_report:    8,  // 8 AM
+  reengagement:      18, // 6 PM
 };
 
 interface ScheduledUser {
@@ -336,9 +342,39 @@ async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
       return { eligible: true };
     }
 
+    case "reengagement": {
+      // Only fire if the user hasn't snapped any meal in the last 3 days.
+      const threeDaysAgo = new Date(ctx.now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const [latestSnap] = await db
+        .select({ snapTime: mealSnaps.snapTime })
+        .from(mealSnaps)
+        .where(eq(mealSnaps.userId, ctx.user.userId))
+        .orderBy(desc(mealSnaps.snapTime))
+        .limit(1);
+      if (latestSnap && new Date(latestSnap.snapTime) > threeDaysAgo) {
+        return { eligible: false, reason: "snapped_recently" };
+      }
+      // Only fire if last reengagement was >14 days ago (or never sent).
+      const [profile] = await db
+        .select({ lastReengagement: userProfiles.lastReengagementNotification })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, ctx.user.userId))
+        .limit(1);
+      if (profile?.lastReengagement) {
+        const fourteenDaysAgo = new Date(ctx.now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        if (new Date(profile.lastReengagement) > fourteenDaysAgo) {
+          return { eligible: false, reason: "reengagement_sent_recently" };
+        }
+      }
+      return { eligible: true };
+    }
+
     case "hstix_reminder":
       // Never reaches isEligible — excluded from ALL_TYPES.
       return { eligible: false, reason: "event_triggered_only" };
+
+    default:
+      return { eligible: false, reason: "retired_type" };
   }
 }
 
@@ -562,6 +598,15 @@ async function preScheduleAll(): Promise<void> {
           }
 
           await storage.setScheduledNotificationId(reservedId, r.notificationId);
+          // After queuing a reengagement, stamp the profile so the
+          // 14-day gate works correctly for subsequent passes.
+          if (type === "reengagement") {
+            try {
+              await storage.updateProfile(user.userId, { lastReengagementNotification: new Date() });
+            } catch (e: any) {
+              log(`notif/reengagement-stamp-failed user=${emailForLog} ${e?.message ?? e}`, "notifications");
+            }
+          }
           counters.queued++;
         }
       } catch (e: any) {
@@ -798,6 +843,73 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
   );
 }
 
+// Retired notification types — purged from scheduled_notifications
+// on every boot. Future rows are cancelled in OneSignal first;
+// past rows are deleted directly (already delivered, nothing to cancel).
+
+async function purgeRetiredTypes(): Promise<void> {
+  const start = Date.now();
+  const now = new Date();
+
+  // Fetch all rows whose type is one of the retired types.
+  let rows: Array<{
+    id: number;
+    notificationType: string;
+    sendAtUtc: Date;
+    onesignalNotificationId: string | null;
+  }>;
+  try {
+    rows = await db
+      .select({
+        id: scheduledNotifications.id,
+        notificationType: scheduledNotifications.notificationType,
+        sendAtUtc: scheduledNotifications.sendAtUtc,
+        onesignalNotificationId: scheduledNotifications.onesignalNotificationId,
+      })
+      .from(scheduledNotifications)
+      .where(
+        sql`${scheduledNotifications.notificationType} IN ('daily_report','weekly_report','monthly_report','daily_checkin')`,
+      );
+  } catch (e: any) {
+    log(`notif/purge-retired list-error=${e?.message ?? e}`, "notifications");
+    return;
+  }
+
+  let cancelledFuture = 0;
+  let cancelFailed = 0;
+  let deletedPast = 0;
+  let deletedFuture = 0;
+
+  for (const row of rows) {
+    const isFuture = row.sendAtUtc > now;
+    if (isFuture && row.onesignalNotificationId) {
+      // Cancel in OneSignal before deleting.
+      const result = await cancelOneSignalNotification(row.onesignalNotificationId);
+      if (!result.ok) {
+        cancelFailed++;
+        log(
+          `notif/purge-cancel-failed id=${row.id} type=${row.notificationType} onesignal_id=${row.onesignalNotificationId}`,
+          "notifications",
+        );
+        continue; // Keep DB row to retry next boot.
+      }
+      cancelledFuture++;
+    }
+    try {
+      await storage.deleteScheduledNotificationById(row.id);
+      if (isFuture) deletedFuture++; else deletedPast++;
+    } catch (e: any) {
+      log(`notif/purge-delete-failed id=${row.id} ${e?.message ?? e}`, "notifications");
+    }
+    if (isFuture) await new Promise((r) => setTimeout(r, 100)); // pace OneSignal calls
+  }
+
+  log(
+    `notif/purge-retired-complete rows=${rows.length} cancelled_future=${cancelledFuture} cancel_failed=${cancelFailed} deleted_past=${deletedPast} deleted_future=${deletedFuture} duration_ms=${Date.now() - start}`,
+    "notifications",
+  );
+}
+
 let passInFlight = false;
 
 async function runPassGuarded(): Promise<void> {
@@ -821,13 +933,21 @@ export function startNotificationScheduler() {
     "notifications",
   );
 
-  // Boot sequence: reconcile FIRST, then the immediate boot pass.
-  // Order matters — the reconciler cancels stale rows so the boot
-  // pass can re-reserve them at the correct local time without
-  // tripping the dedup unique index. The reconciler runs once per
-  // process; the hourly setInterval below only triggers
-  // runPassGuarded.
+  // Boot sequence:
+  // 1. purgeRetiredTypes  — cancel + delete daily_report / weekly_report /
+  //                         monthly_report / daily_checkin rows so they
+  //                         never schedule again.
+  // 2. reconcileBadlyScheduledRows — cancel rows whose send_at_utc drifted
+  //                                  after timezone was captured.
+  // 3. runPassGuarded     — immediate first scheduling pass.
+  // Order matters: purge before reconcile so the reconciler doesn't
+  // waste time on rows that are about to be deleted anyway.
   void (async () => {
+    try {
+      await purgeRetiredTypes();
+    } catch (e: any) {
+      log(`notif/purge-failed-uncaught ${e?.message ?? e}`, "notifications");
+    }
     try {
       await reconcileBadlyScheduledRows();
     } catch (e: any) {
