@@ -96,6 +96,15 @@ const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
   reengagement:      18, // 6 PM
 };
 
+// Web/webview redirect URL sent as the OneSignal `url` field for each
+// pre-scheduled type. Overrides deepLink for the tap destination while
+// deepLink continues as the in-app navigator path (data.deepLink).
+// hstix_reminder is absent — its URL is dynamic (includes snapId) and
+// is set at the send site in routes.ts.
+const REDIRECT_URL: Partial<Record<NotificationType, string>> = {
+  foodsnap_reminder: "/snap",
+};
+
 interface ScheduledUser {
   userId: string;
   onesignalPlayerId: string | null;
@@ -387,6 +396,7 @@ async function queueOneNotification(
   type: NotificationType,
   next: NextTrigger,
   emailForLog: string,
+  opts?: { redirectUrl?: string },
 ): Promise<{ ok: boolean; notificationId: string | null; targetMode: "alias" | "player_id" | "none" }> {
   const content = CONTENTS[type];
   const sendAfter = next.sendAtUtc.toISOString();
@@ -412,6 +422,7 @@ async function queueOneNotification(
     subtitle: { en: content.en.subtitle, "zh-Hant": content.zhHant.subtitle },
     message:  { en: content.en.message,  "zh-Hant": content.zhHant.message },
     deepLink: content.deepLink,
+    redirectUrl: opts?.redirectUrl,
     send_after: sendAfter,
     externalIds: useAlias ? [user.onesignalExternalId as string] : undefined,
     playerIds: useAlias ? undefined : [user.onesignalPlayerId as string],
@@ -583,7 +594,7 @@ async function preScheduleAll(): Promise<void> {
             continue;
           }
 
-          const r = await queueOneNotification(user, type, next, emailForLog);
+          const r = await queueOneNotification(user, type, next, emailForLog, { redirectUrl: REDIRECT_URL[type] });
           if (r.targetMode === "none") {
             await storage.deleteScheduledNotificationById(reservedId);
             counters.noTargets++;

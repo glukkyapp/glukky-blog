@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -130,6 +130,19 @@ export default function FoodLog() {
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
   const [glucoseSheetSnapId, setGlucoseSheetSnapId] = useState<number | null>(null);
+
+  // Auto-open the glucose entry sheet when the user arrives via a push
+  // notification that included ?snap=<id> (hstix_reminder redirect URL).
+  const search = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const snapParam = params.get("snap");
+    if (snapParam) {
+      const id = parseInt(snapParam, 10);
+      if (Number.isFinite(id) && id > 0) setGlucoseSheetSnapId(id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: profile } = useQuery<ProfileData>({ queryKey: ["/api/profile"] });
 

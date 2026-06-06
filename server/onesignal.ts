@@ -12,6 +12,10 @@ interface NotificationPayload {
   subtitle: Record<string, string>;
   message: Record<string, string>;
   deepLink: string;
+  // Web/webview URL opened when the user taps the notification.
+  // When present, overrides `deepLink` as the OneSignal `url` field.
+  // `deepLink` is still sent in `data.deepLink` for the in-app navigator.
+  redirectUrl?: string;
   // Targeting: prefer external_ids when present (alias-based);
   // fall back to playerIds (subscription-id based) for users
   // whose wrapper hasn't yet returned an external id.
@@ -216,7 +220,7 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
       headings: payload.title,
       subtitle: payload.subtitle,
       contents: payload.message,
-      url: payload.deepLink,
+      url: payload.redirectUrl ?? payload.deepLink,
       data: { deepLink: payload.deepLink },
     };
 
