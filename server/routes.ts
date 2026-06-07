@@ -118,8 +118,72 @@ function isIrregularSnap(snap: { mealType: string | null; snapTime: Date | strin
   return false;
 }
 
+const HEALTHY_FOOD_LIST: Record<"breakfast" | "lunch" | "dinner" | "snack", string[]> = {
+  breakfast: [
+    "吞拿魚低脂芝士麥包三文治",
+    "番茄肉絲湯通粉",
+    "生菜雞絲湯意粉",
+    "番茄雞蛋麥包三文治",
+    "全麥穀物片（低糖）配脫脂奶",
+    "麥皮脫脂奶配紅莓乾及原味果仁",
+    "全麥饅頭加鈣無糖豆漿",
+  ],
+  lunch: [
+    "雲吞湯米粉焯菜",
+    "白切雞飯焯菜",
+    "番茄牛肉飯焯菜",
+    "冬瓜海鮮湯飯",
+    "野菜豚肉拉麵",
+    "蝦餃燒賣牛肉腸粉雞包點心焯菜",
+  ],
+  dinner: [
+    "番茄香茅鮮蝦", "雜菜雞湯", "雪耳雞湯", "豆腐蔬菜湯",
+    "西蘭花炒帶子", "蘑菇焗雞", "四蔬炆豬肉", "松子馬蹄碎肉",
+    "蘑菇粟米魚柳", "彩蔬拌魚柳", "翡翠蝦餅", "煎釀燈籠椒",
+    "果香肉丁", "菇菌炒雜菜", "肉崧蒜茸茄子", "肉崧香葉炒四季豆",
+  ],
+  snack: [
+    "蘋果", "梨", "橙", "奇異果", "提子", "木瓜", "草莓", "蜜柑",
+    "低脂低糖果味乳酪", "乾焗原味果仁", "原味餅乾",
+  ],
+};
+
+const HEALTHY_FOOD_FLAT = new Set(
+  (Object.values(HEALTHY_FOOD_LIST) as string[][]).flat()
+);
+
+function isHealthyFood(foodName: string | null): boolean {
+  if (!foodName) return false;
+  const name = foodName.trim();
+  for (const h of HEALTHY_FOOD_FLAT) {
+    if (name.includes(h) || h.includes(name)) return true;
+  }
+  return false;
+}
+
+function foodWordMatch(a: string, b: string): number {
+  const setA = new Set([...a]);
+  let score = 0;
+  for (const ch of b) {
+    if (setA.has(ch) && /\p{Script=Han}/u.test(ch)) score++;
+  }
+  return score;
+}
+
+function pickRecommendation(mealType: string, worstFoodName: string | null): string | null {
+  const key = mealType as keyof typeof HEALTHY_FOOD_LIST;
+  const list = HEALTHY_FOOD_LIST[key];
+  if (!list || list.length === 0) return null;
+  if (!worstFoodName) return null;
+  const scored = list.map(f => ({ f, score: foodWordMatch(worstFoodName, f) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].score > 0 ? scored[0].f : null;
+}
+
 function computeMonthlyFromSnaps(snaps: SnapRow[], lastDay: number, tz: string | null) {
-  const signalQuality = snaps.filter(s => s.glucoseImpact === "low" || s.glucoseImpact === "medium").length / snaps.length;
+  const signalQuality = snaps.filter(s =>
+    s.glucoseImpact === "low" || s.glucoseImpact === "medium" || isHealthyFood(s.foodName)
+  ).length / snaps.length;
 
   const dayMealTypes = new Map<string, Set<string>>();
   const dayHasIrregular = new Set<string>();
@@ -138,7 +202,7 @@ function computeMonthlyFromSnaps(snaps: SnapRow[], lastDay: number, tz: string |
   const missedMealDays = [...dayMealTypes.values()].filter(s => s.size < 2).length;
   const irregularMealDays = dayHasIrregular.size;
 
-  const score = Math.round(signalQuality * 40 + timingRegularity * 30 + freqConsistency * 30);
+  const score = Math.round(signalQuality * 50 + timingRegularity * 25 + freqConsistency * 25);
 
   const highFoodCounts = new Map<string, number>();
   const lowFoodCounts = new Map<string, number>();
@@ -3829,6 +3893,31 @@ No explanation, just JSON.`,
         worstFood = worstFoods[0] ?? null;
       }
 
+      // Recommendation: pick worst non-healthy high-impact food + suggest a healthier swap
+      let recFood: string | null = null;
+      let recommendedFood: string | null = null;
+      {
+        const candidates = snaps.filter(s =>
+          s.glucoseImpact === "high" && s.foodName && s.mealType && !isHealthyFood(s.foodName)
+        );
+        if (candidates.length >= 2) {
+          const hasHstix = candidates.some(s => s.postMealGlucoseMmol != null);
+          let pick: typeof candidates[0] | undefined;
+          if (hasHstix) {
+            pick = [...candidates]
+              .filter(s => s.postMealGlucoseMmol != null)
+              .sort((a, b) => (b.postMealGlucoseMmol ?? 0) - (a.postMealGlucoseMmol ?? 0))[0]
+              ?? candidates[Math.floor(Math.random() * candidates.length)];
+          } else {
+            pick = candidates[Math.floor(Math.random() * candidates.length)];
+          }
+          if (pick?.foodName && pick.mealType) {
+            recFood = pick.foodName;
+            recommendedFood = pickRecommendation(pick.mealType, pick.foodName);
+          }
+        }
+      }
+
       // Most common irregular meal type this week (for frontend naming)
       const irregularTypeCounts: Record<string, number> = {};
       for (const snap of snaps) {
@@ -3873,7 +3962,7 @@ No explanation, just JSON.`,
         if (!isFuture) {
           const mainMeals = daySnaps.filter(s => s.mealType !== "snack");
           if (mainMeals.length > 0) {
-            const hasHigh = mainMeals.some(s => s.glucoseImpact === "high");
+            const hasHigh = mainMeals.some(s => s.glucoseImpact === "high" && !isHealthyFood(s.foodName));
             const hasMed  = mainMeals.some(s => s.glucoseImpact === "medium");
             const hasLow  = mainMeals.some(s => s.glucoseImpact === "low");
             if (hasHigh) gridHigh++;
@@ -3888,7 +3977,31 @@ No explanation, just JSON.`,
       const dayBreakdown = { stable: gridStable, medium: gridMedium, high: gridHigh, total: gridStable + gridMedium + gridHigh };
       const hasAiDays = dayBreakdown.total > 0;
 
-      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, worstMeal, worstFood, worstMeals, worstFoods, irregularMealType, dayBreakdown, dailyGrid, hasAiDays });
+      // Weekly score (same 50/25/25 formula as monthly)
+      const daysElapsed = (() => {
+        const todayDateStr = getLocalDate(profile.deviceTimezone);
+        const today = new Date(todayDateStr + "T12:00:00Z");
+        const diffMs = today.getTime() - weekStartDate.getTime();
+        return Math.min(7, Math.max(1, Math.floor(diffMs / 86400000) + 1));
+      })();
+      const wkSnapsWithImpact = snaps.filter(s => s.glucoseImpact);
+      const wkSignalQuality = wkSnapsWithImpact.length > 0
+        ? wkSnapsWithImpact.filter(s =>
+            s.glucoseImpact === "low" || s.glucoseImpact === "medium" || isHealthyFood(s.foodName)
+          ).length / wkSnapsWithImpact.length
+        : 0;
+      const wkTimingRegularity = dayMealTypes.size > 0
+        ? [...dayMealTypes.values()].filter(s => s.size >= 2).length / dayMealTypes.size
+        : 0;
+      const wkFreqConsistency = new Set(snaps.map(s => s.localDate)).size / daysElapsed;
+      const weeklyScore = Math.round(wkSignalQuality * 50 + wkTimingRegularity * 25 + wkFreqConsistency * 25);
+      const weeklyComponents = {
+        signalQuality: Math.round(wkSignalQuality * 100),
+        timingRegularity: Math.round(wkTimingRegularity * 100),
+        freqConsistency: Math.round(wkFreqConsistency * 100),
+      };
+
+      return res.json({ snapCount, insufficient: false, lateMealCount, missedMealDays, irregularMealDays, mealTypeAvgs, worstDay, worstMeal, worstFood, worstMeals, worstFoods, irregularMealType, dayBreakdown, dailyGrid, hasAiDays, score: weeklyScore, components: weeklyComponents, recFood, recommendedFood });
     } catch (error: any) {
       console.error("Snap weekly-summary error:", error);
       res.status(500).json({ message: "Failed to fetch weekly summary." });

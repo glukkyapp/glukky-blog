@@ -226,14 +226,14 @@ export default function GlucosePatterns() {
                     {cols.map(({ list, bg, labelCls, label }, colIdx) => (
                       <div key={colIdx} className={`rounded-lg p-2 ${bg}`}>
                         <p className={`text-sm font-semibold mb-1.5 ${labelCls}`}>{label}</p>
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1.5">
                           {list.map((item, i) => {
                             const key = `col${colIdx}-${i}`;
                             const isExpanded = expandedAiFoods.has(key);
                             return (
-                              <p
+                              <div
                                 key={i}
-                                className={`text-sm leading-snug cursor-pointer ${isExpanded ? "" : "line-clamp-2"}`}
+                                className={`bg-white/70 dark:bg-white/10 rounded-lg px-2 py-1 text-sm leading-snug cursor-pointer ${isExpanded ? "" : "line-clamp-2"}`}
                                 onClick={() => setExpandedAiFoods(prev => {
                                   const next = new Set(prev);
                                   if (isExpanded) next.delete(key); else next.add(key);
@@ -242,7 +242,7 @@ export default function GlucosePatterns() {
                                 data-testid={`ai-food-col${colIdx}-item-${i}`}
                               >
                                 {item.foodName}
-                              </p>
+                              </div>
                             );
                           })}
                           {list.length === 0 && <p className="text-sm opacity-30">—</p>}

@@ -22,6 +22,10 @@ interface WeeklySummary {
   dayBreakdown?: { stable: number; medium: number; high: number; total: number };
   dailyGrid?: DayGrid[];
   hasAiDays?: boolean;
+  score?: number;
+  components?: { signalQuality: number; timingRegularity: number; freqConsistency: number };
+  recFood?: string | null;
+  recommendedFood?: string | null;
 }
 
 interface DayGrid {
@@ -174,8 +178,31 @@ function WeeklyGrid({ grid }: { grid: DayGrid[] }) {
   );
 }
 
+const HIGHLIGHT_KEYWORDS = [
+  "早餐", "午餐", "晚餐", "宵夜",
+  "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日",
+];
+const HIGHLIGHT_RE = new RegExp(
+  `(${HIGHLIGHT_KEYWORDS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}|「[^」]*」)`,
+  "g"
+);
+
+function HighlightedText({ text }: { text: string }) {
+  const segments = text.split(HIGHLIGHT_RE);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        HIGHLIGHT_KEYWORDS.some(k => k === seg) || /^「[^」]*」$/.test(seg)
+          ? <span key={i} className="text-primary font-bold">{seg}</span>
+          : <span key={i}>{seg}</span>
+      )}
+    </>
+  );
+}
+
 export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string; variant?: "home" | "reports" }) {
   const { t } = useTranslation();
+  const [scoreExpanded, setScoreExpanded] = useState(false);
   const { data, isLoading } = useQuery<WeeklySummary>({
     queryKey: ["/api/snap/weekly-summary", weekStart],
     queryFn: async () => {
@@ -264,10 +291,17 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
       });
     } else if (meals.length === 1) {
       const mealLabel = MEAL_TYPE_ZH[meals[0]] ?? meals[0];
-      bullets.push({
-        insight: `${dayLabel}${mealLabel}血糖影響最高`,
-        suggestion: `可在下週${mealLabel}選擇升糖指數較低的食物。`,
-      });
+      if (data.recFood && data.recommendedFood) {
+        bullets.push({
+          insight: `本週${mealLabel}影響最高的是「${data.recFood}」`,
+          suggestion: `下週可嘗試換成「${data.recommendedFood}」。`,
+        });
+      } else {
+        bullets.push({
+          insight: `${dayLabel}${mealLabel}血糖影響最高`,
+          suggestion: `可在下週${mealLabel}選擇升糖指數較低的食物。`,
+        });
+      }
     } else {
       const parts = meals.map(m => MEAL_TYPE_ZH[m] ?? m).join("及");
       bullets.push({
@@ -321,6 +355,43 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
         <CardTitle className="text-base">本週飲食摘要</CardTitle>
       </CardHeader>
       <CardContent className="pb-4 flex flex-col gap-3">
+        {data.score !== undefined && (
+          <div className="flex items-center gap-3">
+            <span className="text-4xl font-bold text-foreground" data-testid="text-weekly-score">{data.score}</span>
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">
+                {data.score >= 80 ? "本週飲食控制良好，繼續保持。"
+                  : data.score >= 60 ? "本週飲食表現尚可，仍有進步空間。"
+                  : "本週飲食有待改善，繼續記錄有助了解規律。"}
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">截至今日</p>
+            </div>
+            <button
+              onClick={() => setScoreExpanded(e => !e)}
+              className="text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              data-testid="button-weekly-score-expand"
+              aria-label="展開分數明細"
+            >
+              {scoreExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        )}
+        {scoreExpanded && data.components && (
+          <div className="bg-muted/40 rounded-lg p-3 flex flex-col gap-1.5 text-xs" data-testid="div-weekly-score-breakdown">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">血糖友善比率</span>
+              <span className="font-medium">{data.components.signalQuality}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">用餐規律性</span>
+              <span className="font-medium">{data.components.timingRegularity}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">記錄頻率</span>
+              <span className="font-medium">{data.components.freqConsistency}%</span>
+            </div>
+          </div>
+        )}
         {variant === "home" && data.hasAiDays && data.dayBreakdown && (
           <WeeklyDonut breakdown={data.dayBreakdown} />
         )}
@@ -335,8 +406,8 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
           <div className="flex flex-col gap-2.5" data-testid="list-weekly-insights">
             {bullets.map((b, i) => (
               <div key={i} className="rounded-lg bg-muted/30 px-3 py-2.5 flex flex-col gap-1" data-testid={`text-weekly-insight-${i}`}>
-                <p className="text-lg font-semibold leading-relaxed text-foreground">{b.insight}</p>
-                {b.suggestion && <p className="text-base text-muted-foreground leading-relaxed">{b.suggestion}</p>}
+                <p className="text-lg font-semibold leading-relaxed text-foreground"><HighlightedText text={b.insight} /></p>
+                {b.suggestion && <p className="text-base text-muted-foreground leading-relaxed"><HighlightedText text={b.suggestion} /></p>}
               </div>
             ))}
           </div>
