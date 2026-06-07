@@ -14,6 +14,7 @@ import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
+import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
 
 const LANGUAGES = [
   { code: "en", label: "English", sub: "English" },
@@ -58,6 +59,7 @@ export default function Landing() {
   const slides = [
     { image: slide1Img, headline: t("slides.s1_headline"), body: t("slides.s1_body"), objectPosition: "center 30%" },
     { image: slide2Img, headline: t("slides.s2_headline"), body: t("slides.s2_body") },
+    { image: slide3Img, headline: t("slides.s3_headline"), body: t("slides.s3_body"), objectPosition: "center 20%" },
   ];
 
   const handleSelectLanguage = useCallback((code: string) => {
