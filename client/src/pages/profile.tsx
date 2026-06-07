@@ -716,14 +716,12 @@ export default function ProfilePage() {
                 </p>
                 <ul className="list-disc pl-5 mt-1 space-y-1">
                   <li>{t("profile.delete_account.wiped_profile")}</li>
-                  <li>{t("profile.delete_account.wiped_plans")}</li>
                   <li>{t("profile.delete_account.wiped_reports")}</li>
-                  <li>{t("profile.delete_account.wiped_piggy")}</li>
                   <li>{t("profile.delete_account.wiped_history")}</li>
+                  <li>{t("profile.delete_account.wiped_glucose")}</li>
                   <li>{t("profile.delete_account.wiped_push")}</li>
                 </ul>
               </div>
-              <p>{t("profile.delete_account.subscription_warning")}</p>
               <p>{t("profile.delete_account.no_restore")}</p>
               <p>{t("profile.delete_account.timing")}</p>
             </div>
