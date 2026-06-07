@@ -447,7 +447,7 @@ export default function ProfilePage() {
 
       {profile && <NameGoalCard profile={profile} />}
 
-      <Card data-testid="card-diabetes-profile">
+      <Card data-testid="card-diabetes-profile" className="hidden">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
           <User className="w-5 h-5 text-muted-foreground" />
           <CardTitle className="text-base">{t("profile.diabetes_profile")}</CardTitle>

@@ -85,7 +85,7 @@ export default function AppIntro() {
 
   return (
     <div className="app-page-v2 max-w-sm mx-auto px-4 pt-8 pb-28 flex flex-col items-center" data-testid="page-app-intro">
-      <div className="w-full min-h-[260px] flex items-start">
+      <div className="w-full min-h-[260px] flex items-center">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
             key={page}
@@ -115,7 +115,7 @@ export default function AppIntro() {
                   <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
                     <Icon className={`w-5 h-5 ${item.color}`} />
                   </div>
-                  <p className="text-sm text-foreground">{t(item.textKey)}</p>
+                  <p className="text-2xl text-foreground">{t(item.textKey)}</p>
                 </div>
               );
             })}
