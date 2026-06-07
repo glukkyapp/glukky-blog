@@ -10,7 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Bed, Moon, Clock, Sunset, Check, Eye, X } from "lucide-react";
+import { Moon, Sunset, Check, Eye, X } from "lucide-react";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
 import { track, trackException, setUserProperties } from "@/lib/posthog";
@@ -18,32 +18,18 @@ import { syncOneSignalLanguage } from "@/lib/onesignal-language";
 import {
   OnboardingCard,
   PillOption,
-  RowOption,
   IconTileOption,
-  DarkInsetTile,
 } from "@/components/onboarding-ui";
 import {
-  HelloIllustration,
   PostMealIllustration,
   DinnerTableIllustration,
-  SleepIllustration,
-  EatingOutIllustration,
   ReferralIllustration,
-  EmailIllustration,
-  GoalIllustration,
-  TransitionIllustration,
-  StruggleImages,
   HealthIcons,
 } from "@/components/onboarding-illustrations";
-import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
-import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
-import bedImg from "@assets/generated-image_(5)_1776592900103.png";
-import sleepBgImg from "@assets/generated-image_(6)_1776594011160.png";
-import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
 import welcomeImg from "@assets/generated-image_(13)_1776599161992.png";
 import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 8;
 const GREEN_DARK = "#214B36";
 
 export default function Onboarding() {
@@ -165,30 +151,14 @@ export default function Onboarding() {
     }
   };
 
-  const toggleStruggle = (value: string) => {
-    setSelectedStruggles((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  };
-
   const isNextDisabled = () => {
     if (step === 1) return !userName.trim();
     if (step === 3) return !userGoal.trim();
     if (step === 5) return !walkOption;
     if (step === 6) return !dinnerTime;
-    if (step === 7) return !sleepPattern;
-    if (step === 8) return !eatingOutFrequency;
-    if (step === 10) return !healthCondition;
+    if (step === 7) return !healthCondition;
     return false;
   };
-
-  const struggles = [
-    { value: "sugary_food_drink", label: t("struggle.sugary_food_drink") },
-    { value: "oily_fried_food", label: t("struggle.oily_fried_food") },
-    { value: "eat_out", label: t("struggle.eat_out") },
-    { value: "portions", label: t("struggle.portions") },
-    { value: "snacks", label: t("struggle.snacks") },
-  ];
 
   const backButton = step > 1 ? (
     <Button
@@ -440,8 +410,8 @@ export default function Onboarding() {
                 {renderDinnerTile(
                   dinnerTime === "before_9pm",
                   <Sunset size={36} style={{ color: "#e0a458" }} />,
-                  "Before",
-                  "9 pm",
+                  t("onboarding.q2_before_line1"),
+                  t("onboarding.q2_before_line2"),
                   () => setDinnerTime("before_9pm"),
                   "option-before-9pm",
                 )}
@@ -449,8 +419,8 @@ export default function Onboarding() {
                 {renderDinnerTile(
                   dinnerTime === "after_9pm",
                   <Moon size={32} style={{ color: "#5b7a8a" }} />,
-                  "After",
-                  "9 pm",
+                  t("onboarding.q2_after_line1"),
+                  t("onboarding.q2_after_line2"),
                   () => setDinnerTime("after_9pm"),
                   "option-after-9pm",
                 )}
@@ -471,160 +441,6 @@ export default function Onboarding() {
         );
       }
       case 7:
-        return (
-          <OnboardingCard
-            testId="card-step-3"
-            variant="dark"
-            footer={cardFooter}
-          >
-            <div
-              style={{
-                position: "relative",
-                marginLeft: -22,
-                marginRight: -22,
-                marginTop: -22,
-                marginBottom: 12,
-                height: 160,
-                overflow: "hidden",
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
-                background: "#0d2418",
-              }}
-            >
-              <img
-                src={sleepBgImg}
-                alt=""
-                aria-hidden
-                style={{
-                  display: "block",
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center center",
-                }}
-              />
-              <h2
-                style={{
-                  position: "absolute",
-                  right: 16,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: "55%",
-                  margin: 0,
-                  paddingTop: 6,
-                  paddingBottom: 6,
-                  paddingLeft: 12,
-                  paddingRight: 12,
-                  background: "#194536",
-                  borderRadius: 10,
-                  fontFamily: "'Playfair Display', serif",
-                  fontWeight: 700,
-                  fontSize: 24,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                  color: "#fff",
-                  textAlign: "center",
-                  textShadow:
-                    "0 2px 6px rgba(0,0,0,0.65), 0 0 12px rgba(0,0,0,0.45)",
-                  pointerEvents: "none",
-                }}
-              >
-                {t("onboarding.q3_title")}
-              </h2>
-            </div>
-            <DarkInsetTile
-              icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
-              image={bedImg}
-              label={t("onboarding.q3_regular_10_6")}
-              selected={sleepPattern === "regular_10_6"}
-              onClick={() => setSleepPattern("regular_10_6")}
-              testId="option-regular-10-6"
-            />
-            <DarkInsetTile
-              icon={<Bed size={20} style={{ color: "#cfe9b3" }} />}
-              image={bedImg}
-              label={t("onboarding.q3_other_regular")}
-              selected={sleepPattern === "other_regular"}
-              onClick={() => setSleepPattern("other_regular")}
-              testId="option-other-regular"
-            />
-            <DarkInsetTile
-              icon={<Clock size={20} style={{ color: "#cfe9b3" }} />}
-              image={nightShiftImg}
-              label={t("onboarding.q3_night_shifts")}
-              selected={sleepPattern === "night_shifts"}
-              onClick={() => setSleepPattern("night_shifts")}
-              testId="option-night-shifts"
-            />
-            <DarkInsetTile
-              icon={<Moon size={20} style={{ color: "#cfe9b3" }} />}
-              image={irregularImg}
-              label={t("onboarding.q3_irregular")}
-              selected={sleepPattern === "irregular"}
-              onClick={() => setSleepPattern("irregular")}
-              testId="option-irregular"
-            />
-          </OnboardingCard>
-        );
-      case 8:
-        return (
-          <OnboardingCard
-            testId="card-step-4"
-            title={t("onboarding.q4_title")}
-            footer={cardFooter}
-            background="#f6f7eb"
-          >
-            <div
-              style={{
-                marginLeft: -22,
-                marginRight: -22,
-                marginTop: 0,
-                marginBottom: 8,
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src={eatingOutImg}
-                alt="Illustration of a small storefront with a green awning and paper takeaway bags"
-                draggable={false}
-                style={{
-                  display: "block",
-                  width: "80%",
-                  height: "auto",
-                  marginLeft: "auto",
-                  marginRight: "auto",
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <PillOption label={t("onboarding.q4_rarely")} selected={eatingOutFrequency === "0"} onClick={() => setEatingOutFrequency("0")} testId="option-rarely" />
-              <PillOption label={t("onboarding.q4_1_2")} selected={eatingOutFrequency === "1-2"} onClick={() => setEatingOutFrequency("1-2")} testId="option-1-2" />
-              <PillOption label={t("onboarding.q4_3_4")} selected={eatingOutFrequency === "3-4"} onClick={() => setEatingOutFrequency("3-4")} testId="option-3-4" />
-              <PillOption label={t("onboarding.q4_5_plus")} selected={eatingOutFrequency === "5+"} onClick={() => setEatingOutFrequency("5+")} testId="option-5-plus" />
-            </div>
-          </OnboardingCard>
-        );
-      case 9:
-        return (
-          <OnboardingCard
-            testId="card-step-5"
-            title={t("onboarding.q5_title")}
-            footer={cardFooter}
-          >
-            {struggles.map((item) => (
-              <RowOption
-                key={item.value}
-                image={StruggleImages[item.value]}
-                imageAlt={String(item.label)}
-                label={item.label}
-                selected={selectedStruggles.includes(item.value)}
-                onClick={() => toggleStruggle(item.value)}
-                testId={`checkbox-${item.value}`}
-              />
-            ))}
-          </OnboardingCard>
-        );
-      case 10:
         return (
           <OnboardingCard
             testId="card-step-health"
@@ -656,7 +472,7 @@ export default function Onboarding() {
             </div>
           </OnboardingCard>
         );
-      case 11:
+      case 8:
         return (
           <OnboardingCard
             testId="card-step-referral"
@@ -681,26 +497,6 @@ export default function Onboarding() {
                 style={{ borderRadius: 999, height: 44, background: "#fff" }}
               />
             )}
-          </OnboardingCard>
-        );
-      case 12:
-        return (
-          <OnboardingCard
-            testId="card-step-email"
-            visual={<EmailIllustration />}
-            title={t("onboarding.q8_title")}
-            footer={cardFooter}
-          >
-            <Label htmlFor="email" className="sr-only">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={notificationEmail}
-              onChange={(e) => setNotificationEmail(e.target.value)}
-              data-testid="input-email"
-              style={{ borderRadius: 999, height: 48, background: "#fff" }}
-            />
           </OnboardingCard>
         );
       default:
