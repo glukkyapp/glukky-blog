@@ -1,0 +1,66 @@
+Bugs Found
+🔴 server/routes.ts
+Bug 1 — recFood shadows worstFood (Item 3 vs Item 6)
+The spec introduces recFood (the worst food name) and recommendedFood (the healthy swap), but the original res.json already has a worstFood field from earlier logic (~line 3793). The new block computes the same thing into recFood. This creates two separate "worst food" variables computed by different logic. The res.json in Item 6 includes both worstFood (old) and recFood (new) — the frontend only uses recFood + recommendedFood, so worstFood becomes stale/unused and will confuse future readers. Fix: either replace the old worstFood computation with the new recFood logic, or rename recFood → worstFood and drop the old block entirely.
+
+Bug 2 — wkSignalQuality denominator is wrong (Item 5)
+
+ts
+const wkSnapsWithImpact = snaps.filter(s => s.glucoseImpact);
+const wkSignalQuality = wkSnapsWithImpact.length > 0
+  ? snaps.filter(s =>
+      s.glucoseImpact === "low" || s.glucoseImpact === "medium" || isHealthyFood(s.foodName)
+    ).length / wkSnapsWithImpact.length   // ← BUG: divides filtered by filtered
+The numerator counts snaps from snaps (full array), but divides by wkSnapsWithImpact.length (already filtered). A healthy food snap with no glucoseImpact would be counted in the numerator but not the denominator, producing a ratio > 1. Fix: denominator should be snaps.length, or the numerator should only count snaps where glucoseImpact is set.
+
+ts
+// Correct version:
+const wkSignalQuality = wkSnapsWithImpact.length > 0
+  ? wkSnapsWithImpact.filter(s =>
+      s.glucoseImpact === "low" || s.glucoseImpact === "medium" || isHealthyFood(s.foodName)
+    ).length / wkSnapsWithImpact.length
+  : 0;
+Bug 3 — weekStartDate used but not guaranteed in scope (Item 5)
+The weekly score block uses weekStartDate directly. If the route handler uses a different variable name (e.g. startDate, weekStart) this will throw a ReferenceError at runtime. Verify the exact variable name in your route before applying.
+
+Bug 4 — pickRecommendation always returns null when no character overlap
+
+ts
+return scored[0].score > 0 ? scored[0].f : null;
+If worstFood is e.g. "蘭州牛肉麵" and no healthy food shares any CJK characters, it returns null instead of a random fallback. The spec in Item 4d says it should fall back to list[Math.floor(Math.random() * list.length)]. The implementation here drops that fallback. Fix:
+
+ts
+return scored[0].score > 0
+  ? scored[0].f
+  : list[Math.floor(Math.random() * list.length)];
+🔴 client/src/pages/food-reports.tsx
+Bug 5 — ChevronUp not added to import (Item 4)
+The score widget uses <ChevronUp> and <ChevronDown>. The spec mentions adding ChevronUp to the lucide-react import, but the change list doesn't show the updated import line. If the existing import only has ChevronDown, this will throw a compile error. Fix: ensure the import reads:
+
+ts
+import { ..., ChevronDown, ChevronUp } from "lucide-react";
+Bug 6 — HIGHLIGHT_RE matches 「...」 including the brackets, but the highlight renders the brackets too
+The regex 「[^」]*」 captures the full 「食物名」 including corner brackets. The highlight renders the whole match including 「」 in text-primary font-bold. This is intentional per spec ("Food names that appear in quotes 「…」 should also be highlighted") — but worth confirming you want the brackets bold too, not just the food name inside.
+
+Bug 7 — scoreExpanded state placement
+The spec says add scoreExpanded state "right after the useQuery". If WeeklyCard calls useQuery internally, this is fine. But if useQuery is called in a parent and data is passed as props, adding useState after a hook call in a child that doesn't call useQuery directly will violate hook ordering rules. Verify useQuery is called inside WeeklyCard itself.
+
+Bug 8 — meals.length === 1 bullet logic (Item 5)
+The existing bullet block structure likely has meals.length === 1 as one of several if/else if branches. The spec replaces only this branch but doesn't show the surrounding context. If worstMeals (not recFood) drives the meals array, the condition data.recFood && data.recommendedFood may never be true when meals.length === 1 because they're computed independently on the server. Double-check that recFood is actually the same food that produced the worstMeal in the meals array.
+
+🟡 client/src/pages/glucose-patterns.tsx
+Bug 9 — line-clamp-2 on a <div> may not work in all Tailwind versions
+line-clamp-2 is applied to a <div> element. In Tailwind v3+, line-clamp is a utility that sets -webkit-line-clamp with display: -webkit-box, which requires overflow: hidden. The original <p> tag worked fine. A <div> works too, but verify your Tailwind version includes the line-clamp plugin or v3.3+ (where it's built-in).
+
+🟡 Locale files
+Bug 10 — {{remaining}} still present in all three locale strings (Item 2)
+The spec for Item 2 says to remove the {{remaining}} interpolation from the locale strings, but all three new locale strings still contain {{remaining}}:
+
+zh-Hant.json: "再紀錄 {{remaining}} 次即可獲得個人化建議"
+
+yue.json: "再記錄 {{remaining}} 次就可以獲得個人化建議"
+
+en.json: "Record {{remaining}} more times to unlock..."
+
+The spec also says to remove the remaining: argument at glucose-patterns.tsx line 263. If the locale strings still contain {{remaining}} but the argument is removed, the rendered text will literally show {{remaining}} to the user. Fix: either keep {{remaining}} in the locale strings AND keep the remaining: argument, or remove {{remaining}} from all three strings AND remove the argument. The original item 2 intent was to remove the count entirely — so the strings should be rewritten without any variable.
+
