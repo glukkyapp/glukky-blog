@@ -375,7 +375,8 @@ export default function RoadmapPage() {
   const masteredPatternFiredRef = useRef(false);
 
   useEffect(() => { if (data) cardRoadmapProgress.trigger(); }, [!!data]);
-  useEffect(() => { if (piggy) cardPiggyBank.trigger(); }, [!!piggy]);
+  const SHOW_PIGGY_INTRO = false;
+  useEffect(() => { if (piggy && SHOW_PIGGY_INTRO) cardPiggyBank.trigger(); }, [!!piggy]);
 
   useEffect(() => {
     if (data && !masteredPatternFiredRef.current) {

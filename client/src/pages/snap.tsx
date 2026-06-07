@@ -1498,13 +1498,6 @@ export default function Snap() {
             <RotateCcw className="w-3.5 h-3.5" />
             {t("snap.try_again")}
           </Button>
-          <button
-            onClick={() => { hapticTap("SOFT"); setLocation("/food-reports"); }}
-            className="w-full text-center text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors py-1"
-            data-testid="link-snap-food-reports"
-          >
-            查看飲食報告
-          </button>
         </div>
       )}
     </div>

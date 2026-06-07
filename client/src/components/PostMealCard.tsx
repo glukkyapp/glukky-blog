@@ -57,7 +57,10 @@ function IntegerWheel({
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchStartY.current === null) return;
     const delta = touchStartY.current - e.changedTouches[0].clientY;
-    if (Math.abs(delta) > 18) go(delta > 0 ? 1 : -1);
+    if (Math.abs(delta) > 12) {
+      const steps = Math.max(1, Math.min(5, Math.round(Math.abs(delta) / 40)));
+      go(delta > 0 ? steps : -steps);
+    }
     touchStartY.current = null;
   };
 
@@ -178,13 +181,13 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       setAlertType("high");
       return;
     }
-    setStep("symptom");
+    void submit(false);
   };
 
   const handleAlertConfirm = () => {
     hapticTap("LIGHT");
     setAlertType(null);
-    setStep("symptom");
+    void submit(false);
   };
 
   const handleAlertCancel = () => {
@@ -195,13 +198,15 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
   const submit = async (skip: boolean) => {
     setSubmitting(true);
     try {
+      const isSymptomOnly = !skip && glucoseValue === null;
       await apiRequest("POST", "/api/snap/post-meal", {
         snapId,
         ...(skip
           ? { skip: true }
+          : isSymptomOnly
+          ? { symptom }
           : {
               glucoseMmol: glucoseValue,
-              symptom,
               ...(!hasFastingBaseline && !fastingUnknown && selectedFasting !== null
                 ? { fastingBaseline: selectedFasting, fastingBaselineEstimated: false }
                 : {}),
@@ -256,7 +261,7 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => { hapticTap("SOFT"); void submit(true); }}
+            onClick={() => { hapticTap("SOFT"); setStep("symptom"); }}
             disabled={submitting}
             data-testid="button-post-meal-no"
           >
