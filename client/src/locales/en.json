@@ -857,10 +857,10 @@
     "meal_select_continue": "Continue"
   },
   "slides": {
-    "s1_headline": "Your blood sugar,\nin your hands",
-    "s1_body": "A 10-minute walk after dinner improves post-meal blood sugar.",
-    "s2_headline": "One small change\na week",
-    "s2_body": "One diet habit at a time. See a real difference in 4 weeks.",
+    "s1_headline": "Your blood sugar,\nyour control",
+    "s1_body": "Log every meal and gradually learn which foods suit you best.",
+    "s2_headline": "Your pace,\nyour plan",
+    "s2_body": "The more you log, the more personalised your weekly insights become.",
     "s3_headline": "The app adapts\nto you",
     "s3_body": "Based on how you're doing each week, Glukky quietly adjusts your plan."
   },
@@ -958,19 +958,19 @@
     "next": "Next"
   },
   "intro": {
-    "section1_title": "Glukky focuses on Your Two Daily Habits:",
-    "walk": "Daily post-meal walks — gentle movement at your pace, no rush",
-    "diet": "Improve one small eating habit each week — no calorie counting needed",
-    "section2_title": "How We Help You Get There:",
-    "plan": "Personal weekly plan — fits your real schedule perfectly",
-    "checkin": "Smart daily check-ins — AI adjusts everything instantly based on your condition and need",
-    "snap": "Photosnap — snap meals for immediate diet tips",
-    "review": "Monthly progress review — see your clear improvement",
-    "master": "Master diet skills step by step",
-    "wellbeing": "Achieve better sugar control, health and wellbeing",
+    "section1_title": "Glukky focuses on two simple daily habits:",
+    "walk": "Log every meal — see how food affects your blood sugar",
+    "diet": "One small food change a week — no calorie counting needed",
+    "section2_title": "Here's how we help:",
+    "plan": "Weekly score — track your glucose-friendly ratio, meal regularity, and logging frequency",
+    "checkin": "Weekly insight — identify your highest-impact food and suggest a healthier swap",
+    "snap": "Snap your meal — get instant food advice",
+    "review": "Weekly review + monthly summary",
+    "master": "Build better food habits, step by step",
+    "wellbeing": "Better glucose control, better quality of life",
     "button": "Let's go",
     "next": "Next",
-    "disclaimer": "Glukky uses AI to provide personalised lifestyle coaching. This is not a substitute for professional medical advice."
+    "disclaimer": "Glukky provides AI-powered lifestyle suggestions and cannot replace professional medical advice."
   },
   "paywall": {
     "title": "Upgrade to Glukky Premium",

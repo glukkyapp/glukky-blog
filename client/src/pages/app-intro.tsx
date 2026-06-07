@@ -8,7 +8,6 @@ import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Footprints,
   UtensilsCrossed,
   CalendarDays,
   MessageSquare,
@@ -50,7 +49,7 @@ export default function AppIntro() {
   const pages: IntroItem[][] = [
     [
       { type: "header", textKey: "intro.section1_title", icon: Sparkles, color: "text-primary", bg: "bg-primary/10" },
-      { type: "item", textKey: "intro.walk", icon: Footprints, color: "text-primary", bg: "bg-primary/10" },
+      { type: "item", textKey: "intro.walk", icon: Camera, color: "text-primary", bg: "bg-primary/10" },
       { type: "item", textKey: "intro.diet", icon: UtensilsCrossed, color: "text-amber-500", bg: "bg-amber-500/10" },
     ],
     [
