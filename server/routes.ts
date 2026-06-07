@@ -4249,8 +4249,8 @@ No explanation, just JSON.`,
     try {
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
-      const glucoseGroup = profile?.glucoseGroup ?? null;
-      const { PHASE1_THRESHOLDS } = await import("./glucose-thresholds");
+      const { PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
+      const glucoseGroup = (profile?.glucoseGroup ?? null) ?? deriveGlucoseGroupFromCondition(profile?.healthCondition ?? null);
       const row = await storage.getUserGlucoseThresholds(userId);
       if (!row && !glucoseGroup) {
         return res.json({ glucoseGroup: null, lowMedBoundary: null, medHighBoundary: null, readingCount: 0, isPersonalised: false, glucosePersonalisedSeen: true });

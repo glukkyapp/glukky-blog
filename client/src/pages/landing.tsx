@@ -153,35 +153,47 @@ export default function Landing() {
     setError("");
     setIsLoading(true);
     try {
-      await new Promise<void>((resolve, reject) => {
-        triggerAppleSignIn(
-          async (resp) => {
-            try {
-              const res = await fetch("/api/auth/apple-signin", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ subject: resp.subject, email: resp.email, authorizationCode: resp.authorizationCode }),
-              });
-              if (!res.ok) {
-                const data = await res.json();
-                reject(new Error(data.message || t("landing.error_generic")));
-                return;
-              }
-              // Invalidate so the full canonical shape is fetched from /api/auth/user
-              await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-              hapticNotify("SUCCESS");
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          },
-          (msg) => reject(new Error(msg)),
-        );
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        timeoutId = setTimeout(() => reject("__apple_timeout__"), 30000);
       });
+      await Promise.race([
+        new Promise<void>((resolve, reject) => {
+          triggerAppleSignIn(
+            async (resp) => {
+              clearTimeout(timeoutId);
+              try {
+                const res = await fetch("/api/auth/apple-signin", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ subject: resp.subject, email: resp.email, authorizationCode: resp.authorizationCode }),
+                });
+                if (!res.ok) {
+                  const data = await res.json();
+                  reject(new Error(data.message || t("landing.error_generic")));
+                  return;
+                }
+                // Invalidate so the full canonical shape is fetched from /api/auth/user
+                await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+                hapticNotify("SUCCESS");
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            },
+            (msg) => { clearTimeout(timeoutId); reject(new Error(msg)); },
+          );
+        }),
+        timeoutPromise,
+      ]);
     } catch (err: unknown) {
-      hapticNotify("ERROR");
-      setError(err instanceof Error ? err.message : t("landing.error_generic"));
+      if (err === "__apple_timeout__") {
+        setError("");
+      } else {
+        hapticNotify("ERROR");
+        setError(err instanceof Error ? err.message : t("landing.error_generic"));
+      }
     } finally {
       setIsLoading(false);
     }
