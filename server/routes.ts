@@ -3490,6 +3490,10 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
         if (cachedAdvice) {
           const snapId = await insertSnapRecord(cachedAdvice);
+          try {
+            const _cnt = await storage.getTotalSnaps(userId);
+            if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+          } catch {}
           return res.json({
             advice: cachedAdvice,
             focusPanelData,
@@ -3507,6 +3511,10 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       if (existingCachedAdvice) {
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId);
         const snapId = await insertSnapRecord(existingCachedAdvice);
+        try {
+          const _cnt = await storage.getTotalSnaps(userId);
+          if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+        } catch {}
         return res.json({
           advice: existingCachedAdvice,
           focusPanelData,
@@ -3705,6 +3713,10 @@ No explanation, just JSON.`,
       });
 
       const snapId = await insertSnapRecord(userAdvice);
+      try {
+        const _cnt = await storage.getTotalSnaps(userId);
+        if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+      } catch {}
       res.json({
         advice: userAdvice,
         focusPanelData,
@@ -4811,6 +4823,7 @@ No explanation, just JSON.`,
           });
           if (!wasPersonalised) {
             await storage.updateProfile(userId, { glucosePersonalisedSeen: false });
+            trackServer(userId, "glucose_pattern_personalized_unlocked", { readingCount });
           }
         } else {
           await storage.upsertUserGlucoseThresholds({
