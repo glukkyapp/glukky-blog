@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronUp, ChevronDown, Delete } from "lucide-react";
 import { hapticTap } from "@/lib/haptics";
+import { track } from "@/lib/posthog";
 
 interface Props {
   snapId: number;
@@ -215,6 +216,12 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
+      if (!skip && !isSymptomOnly && glucoseValue !== null) {
+        track("glucose_completed", { glucoseMmol: glucoseValue });
+      }
+      if (isSymptomOnly && symptom !== null) {
+        track("symptoms_checked", { symptom });
+      }
       setStep("done");
       setTimeout(onDone, 1400);
     } catch (e) {
