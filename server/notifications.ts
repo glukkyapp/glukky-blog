@@ -59,7 +59,7 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
   hstix_reminder: {
     en:     { title: "Glukky", subtitle: "", message: "Ready to log your HStix reading?" },
     zhHant: { title: "Glukky", subtitle: "", message: "準備好量度你的血糖了嗎？" },
-    deepLink: "/",
+    deepLink: "/food-log",
   },
   daily_report: {
     en:     { title: "Glukky", subtitle: "", message: "Your daily summary is ready." },
