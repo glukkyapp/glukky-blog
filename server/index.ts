@@ -8,8 +8,6 @@ import { startNotificationScheduler } from "./notifications";
 import { cleanupDuplicatePlayerIds } from "./onesignal";
 import { captureException, shutdownPostHog } from "./posthog";
 import { runStartupMigrations } from "./startup-migrations";
-import fs from "fs";
-import path from "path";
 
 const app = express();
 const httpServer = createServer(app);
@@ -118,16 +116,17 @@ app.use((req, res, next) => {
 
   // Serve AASA before static/Vite middleware — Express static sends
   // application/octet-stream for extension-less files; Apple requires
-  // application/json.
-  const aasaPath =
-    process.env.NODE_ENV === "production"
-      ? path.resolve(import.meta.dirname, "public", ".well-known", "apple-app-site-association")
-      : path.resolve(import.meta.dirname, "..", "client", "public", ".well-known", "apple-app-site-association");
-  const aasaContent = fs.existsSync(aasaPath) ? fs.readFileSync(aasaPath, "utf-8") : null;
+  // application/json. Content is inlined to avoid path-resolution
+  // differences between tsx (ESM dev) and the CJS production build.
+  const AASA_CONTENT = JSON.stringify({
+    applinks: {
+      apps: [],
+      details: [{ appID: "5K3U2HTQTG.com.lUZKXdJdFjaG.Glukky", paths: ["*"] }],
+    },
+  });
   app.get("/.well-known/apple-app-site-association", (_req, res) => {
-    if (!aasaContent) return res.status(404).end();
     res.setHeader("Content-Type", "application/json");
-    res.send(aasaContent);
+    res.send(AASA_CONTENT);
   });
 
   if (process.env.NODE_ENV === "production") {
