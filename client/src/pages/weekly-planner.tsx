@@ -721,25 +721,20 @@ export default function WeeklyPlanner() {
       return;
     }
     if (hasFirstSnap) {
-      track("first_plan_navigation_skipped", { reason: "already_tried_first_snap" });
       return;
     }
     if (location !== "/plan") {
-      track("first_plan_navigation_skipped", { reason: "not_on_plan" });
       return;
     }
     if (isPaywallInFlight()) {
-      track("first_plan_navigation_skipped", { reason: "paywall_in_flight" });
       return;
     }
 
     const timer = window.setTimeout(() => {
       if (locationRef.current !== "/plan") {
-        track("first_plan_navigation_skipped", { reason: "left_plan_during_wait" });
         return;
       }
       if (isPaywallInFlight()) {
-        track("first_plan_navigation_skipped", { reason: "paywall_opened_during_wait" });
         return;
       }
       setLocation("/snap");

@@ -1764,8 +1764,6 @@ export async function registerRoutes(
       const updated = await storage.updateWeeklyPlanDay(id, { dinnerLabel: label });
       if (!updated) return res.status(404).json({ message: "Plan day not found" });
 
-      trackServer(userId, "dinner_label_set_server", { planDayId: id, label });
-
       res.json(updated);
     } catch (error) {
       console.error("Error setting dinner label:", error);
@@ -1890,15 +1888,6 @@ export async function registerRoutes(
       } catch (achErr) {
         console.error("Daily achievement evaluation error:", achErr);
       }
-
-      trackServer(userId, "daily_log_recorded", {
-        date,
-        isBackfill: logIsBackfill,
-        coinsAwarded,
-        dinnerSuccess: finalLog.dinnerSuccess ?? null,
-        walkCompleted: finalLog.walkCompleted ?? null,
-        dietResponse: finalLog.dietResponse ?? null,
-      });
 
       res.json({ ...result, nextDayAdjustment, isBackfill: logIsBackfill, coinsAwarded });
     } catch (error) {
@@ -4556,14 +4545,8 @@ No explanation, just JSON.`,
         );
         if (updated) profile = updated;
         if (update.isPremium !== undefined) {
-          trackServer(userId, "premium_status_changed_server", {
-            from: existing.isPremium,
-            to: verifiedPremium,
-            source,
-          });
         }
         if (update.hardLockedAfterAdviceDismiss === false) {
-          trackServer(userId, "hard_lock_flag_cleared_on_verify", { source });
         }
       }
 

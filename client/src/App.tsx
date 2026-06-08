@@ -478,16 +478,8 @@ function AuthenticatedApp() {
               track("snap_advice_resumed_via_background_poller", {
                 elapsedMs: Date.now() - startedAt,
               });
-              track("paywall_advice_resume_fired", {
-                source: "background_poller",
-                elapsedMs: Date.now() - startedAt,
-              });
               setTimeout(action, 100);
             } else {
-              track("paywall_advice_resume_skipped", {
-                source: "background_poller",
-                reason: "no_pending_action",
-              });
             }
             return;
           }
@@ -496,11 +488,6 @@ function AuthenticatedApp() {
           console.warn(`[premium] background poller hit ${MAX_DURATION_MS}ms cap without verify`);
           // 60s timeout — no verify, so the resume must not fire.
           if (pendingActionRef.current) {
-            track("paywall_advice_resume_skipped", {
-              source: "background_poller",
-              reason: "timeout",
-              elapsedMs: Date.now() - startedAt,
-            });
           }
           pendingActionRef.current = null;
         }
@@ -553,10 +540,6 @@ function AuthenticatedApp() {
     if (paywallInFlightRef.current) return;
     if (verifyPollerRef.current || pendingActionRef.current) {
       if (pendingActionRef.current) {
-        track("paywall_advice_resume_skipped", {
-          source: "route_change_cancel",
-          reason: "route_changed",
-        });
       }
       cancelBackgroundVerifyPoller({ clearPending: true });
       pendingActionRef.current = null;
@@ -780,26 +763,17 @@ function AuthenticatedApp() {
           result.status === "SUCCESS" &&
           (result.message === "purchased" || result.message === "restored")
         ) {
-          track("paywall_purchase_attempt", { outcome: result.message });
           // Bridge confirmed purchase/restore — keep polling in the
           // background past the fast burst so a slow RC propagation
           // still unlocks the user without a force-quit.
           const verified = await verifyWithOverlay({ backgroundPollOnFail: true });
-          track(verified ? "paywall_purchase_verified" : "paywall_purchase_unverified", {
-            outcome: result.message,
-          });
           if (verified) {
             // Fast-burst happy path — fire resume immediately (single-shot).
             if (pendingActionRef.current) {
               const action = pendingActionRef.current;
               pendingActionRef.current = null;
-              track("paywall_advice_resume_fired", { source: "fast_burst" });
               setTimeout(action, 100);
             } else {
-              track("paywall_advice_resume_skipped", {
-                source: "fast_burst",
-                reason: "no_pending_action",
-              });
             }
           } else if (verifyPollerRef.current) {
             // Fast burst gave up but the background poller has taken
@@ -811,10 +785,6 @@ function AuthenticatedApp() {
             // on this branch since backgroundPollOnFail is true, but
             // keep the safe default so we don't leak a stale resume).
             if (pendingActionRef.current) {
-              track("paywall_advice_resume_skipped", {
-                source: "fast_burst",
-                reason: "verify_failed_no_poller",
-              });
             }
             pendingActionRef.current = null;
           }
@@ -979,14 +949,9 @@ function AuthenticatedApp() {
     // paywall has no pre-paywall stash to return to — the user is
     // already on /profile and stays there after unlock.
     paywallInFlightRef.current = true;
-    track("paywall_lockapp_present");
     presentPaywallIfNeeded("Premium", { showCloseButton: false })
       .then(async (result) => {
         if (result.status !== "SUCCESS") {
-          track("paywall_lockapp_dismissed", {
-            status: result.status,
-            message: result.message,
-          });
           return;
         }
         if (result.message === "purchased" || result.message === "restored") {
