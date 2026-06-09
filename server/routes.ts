@@ -3070,6 +3070,10 @@ Meat
   NOT flat/golden/crispy (炸魚皮), NOT solid (魚蛋).
 • 牛丸 — darker, slightly textured beef ball.
 • 魚蛋 — pale yellow/white, smooth fish ball.
+• 竹笙 vs 豆卜 — 竹笙 is ivory-white, hollow, and cylindrical with a lacy net-like surface;
+  豆卜 is golden-white, cube-shaped, and spongy.
+• 牛展 vs 牛腩 — 牛展 shows thin slices of dark lean meat; 牛腩 has thick layers of fat
+  marbled between softer, paler meat.
 
 DRINK AMBIGUITY RULE (奶茶 vs 阿華田)
 • If you can confidently identify the drink, write its name normally.
