@@ -4254,13 +4254,18 @@ No explanation, just JSON.`,
       if (!skip) {
         await storage.updateProfile(userId, { consecutiveSkippedMeals: 0 });
       }
-      if (glucoseMmol !== undefined && fastingBaseline !== undefined) {
+      if (glucoseMmol !== undefined) {
         const profile = await storage.getProfile(userId);
         if (profile && profile.fastingBaselineMmol === null) {
-          await storage.updateProfile(userId, {
-            fastingBaselineMmol: fastingBaseline,
-            fastingBaselineEstimated: fastingBaselineEstimated === true,
-          });
+          if (fastingBaseline !== undefined) {
+            await storage.updateProfile(userId, {
+              fastingBaselineMmol: fastingBaseline,
+              fastingBaselineEstimated: fastingBaselineEstimated === true,
+              fastingQuestionSeen: true,
+            });
+          } else if (!profile.fastingQuestionSeen) {
+            await storage.updateProfile(userId, { fastingQuestionSeen: true });
+          }
         }
       }
       // Reclassify glucoseImpact using clinical thresholds when real glucose is provided
@@ -4299,15 +4304,16 @@ No explanation, just JSON.`,
       const { PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
       const glucoseGroup = (profile?.glucoseGroup ?? null) ?? deriveGlucoseGroupFromCondition(profile?.healthCondition ?? null);
       const row = await storage.getUserGlucoseThresholds(userId);
+      const liveCount = await storage.getHStixReadingCount(userId);
       if (!row && !glucoseGroup) {
-        return res.json({ glucoseGroup: null, lowMedBoundary: null, medHighBoundary: null, readingCount: 0, isPersonalised: false, glucosePersonalisedSeen: true });
+        return res.json({ glucoseGroup: null, lowMedBoundary: null, medHighBoundary: null, readingCount: liveCount, isPersonalised: false, glucosePersonalisedSeen: true });
       }
       const phase1 = glucoseGroup ? PHASE1_THRESHOLDS[glucoseGroup as "healthy" | "t2dm"] : null;
       return res.json({
         glucoseGroup,
         lowMedBoundary:           row?.lowMedBoundary  ?? phase1?.lowMedBoundary  ?? null,
         medHighBoundary:          row?.medHighBoundary ?? phase1?.medHighBoundary ?? null,
-        readingCount:             row?.readingCount    ?? 0,
+        readingCount:             liveCount,
         isPersonalised:           row?.isPersonalised  ?? false,
         glucosePersonalisedSeen:  profile?.glucosePersonalisedSeen ?? true,
       });

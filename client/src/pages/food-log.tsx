@@ -119,6 +119,7 @@ const SYMPTOM_LABEL_ZH: Record<string, string> = {
 
 interface ProfileData {
   fastingBaselineMmol: number | null;
+  fastingQuestionSeen: boolean;
 }
 
 export default function FoodLog() {
@@ -342,7 +343,7 @@ export default function FoodLog() {
           {glucoseSheetSnapId !== null && (
             <PostMealCard
               snapId={glucoseSheetSnapId}
-              hasFastingBaseline={profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined}
+              hasFastingBaseline={(profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined) || (profile?.fastingQuestionSeen === true)}
               onDone={() => setGlucoseSheetSnapId(null)}
               initialStep="keypad"
             />

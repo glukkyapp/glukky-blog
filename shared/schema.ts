@@ -81,6 +81,7 @@ export const userProfiles = pgTable("user_profiles", {
   rcCustomerId: text("rc_customer_id"),
   fastingBaselineMmol: real("fasting_baseline_mmol"),
   fastingBaselineEstimated: boolean("fasting_baseline_estimated").notNull().default(false),
+  fastingQuestionSeen: boolean("fasting_question_seen").notNull().default(false),
   glucometerNudgeShown: boolean("glucometer_nudge_shown").notNull().default(false),
   consecutiveSkippedMeals: integer("consecutive_skipped_meals").notNull().default(0),
   glucoseGroup: text("glucose_group"),

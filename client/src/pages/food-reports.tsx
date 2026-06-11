@@ -311,7 +311,7 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
     }
   }
 
-  if (noHighMealsThisWeek) {
+  if (data.score !== undefined && data.score > 85) {
     bullets.push({ insight: "你這星期的飲食選擇做得極好！繼續保持！" });
   }
 

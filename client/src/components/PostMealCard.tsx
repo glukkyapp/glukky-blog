@@ -58,8 +58,8 @@ function IntegerWheel({
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchStartY.current === null) return;
     const delta = touchStartY.current - e.changedTouches[0].clientY;
-    if (Math.abs(delta) > 12) {
-      const steps = Math.max(1, Math.min(5, Math.round(Math.abs(delta) / 40)));
+    if (Math.abs(delta) > 8) {
+      const steps = Math.max(1, Math.min(10, Math.round(Math.abs(delta) / 20)));
       go(delta > 0 ? steps : -steps);
     }
     touchStartY.current = null;

@@ -1537,7 +1537,7 @@ export default function Home() {
       {pendingSnapData?.snap && (
         <PostMealCard
           snapId={pendingSnapData.snap.id}
-          hasFastingBaseline={profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined}
+          hasFastingBaseline={(profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined) || (profile?.fastingQuestionSeen === true)}
           onDone={() => queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] })}
         />
       )}
