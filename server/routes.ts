@@ -3557,7 +3557,6 @@ Reply in ${langLabel[locale] ?? "English"}.
 
 Important rules:
 - If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings or unnecessary advice for healthy food.
-- Your advice must not contradict the user's current weekly tip: "${tip}"
 - Never use the word "diabetes" in any form.
 
 Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
@@ -3573,27 +3572,39 @@ Always reply in this format (the optional cultural opener, if any, comes first o
 
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ${locale === "zh-Hant" || locale === "yue" ? "⚠️ 注意：" : "⚠️ Watch out:"} [the single biggest GI or sugar risk — 1 concise sentence]
-${locale === "zh-Hant" ? "⚡ 現在：" : locale === "yue" ? "⚡ 依家：" : "⚡ Right now:"} [one specific thing to do with THIS meal right now — be concrete]
-${locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:"} [one change for the next time this dish is prepared or ordered]
+${locale === "zh-Hant" ? "⚡ 現在：" : locale === "yue" ? "⚡ 依家：" : "⚡ Right now:"} [1–2 specific things to do with THIS meal right now]
+${locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:"} [1–2 changes for the next time this dish is prepared or ordered]
 
 If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (Blood sugar impact, ⚡, 📝).
 If there is a genuine concern, output all 4 lines.
 
-Evidence-based principles you MUST stay within (from Diabetes Care 2019 Consensus & WHO/ADA guidance). Do NOT invent principles outside this list and do NOT contradict them:
-- Emphasize non-starchy vegetables.
-- Minimize added sugars and refined grains.
-- Prefer whole, minimally processed foods over highly processed foods.
-- Reduced overall carbohydrate intake has the strongest evidence for improving glycaemia.
-- Lower-carbohydrate eating patterns may be considered for selected adults with type 2 (not meeting glycaemic targets, or where reducing antiglycaemic medication is a priority) — never frame this as a universal recommendation.
-- Encourage fibre-rich foods.
-- Reduce saturated fat and increase unsaturated fats and omega-3 (Mediterranean-style pattern).
-- Limit added salt and sodium.
+Evidence-based principles from Diabetes Care 2019 Consensus & WHO/ADA guidance.
+Stay strictly within these lists. Do NOT invent principles outside them.
+
+For ⚡ Right now, draw ONLY from these actions (pick 1–2 most relevant to this specific meal):
+1. Eat vegetables/protein first, carbs last.
+2. Drink a glass of water gradually after finishing the meal, not during eating — for high-impact meals.
+3. Eat slowly.
+4. Go for a 10-minute walk after the meal — for high-impact meals.
+5. Reduce the portion of carbs in this meal.
+
+For 📝 Next time, draw ONLY from these changes (pick 1–2 most relevant to this specific meal):
+1. Emphasize non-starchy vegetables.
+2. Minimize added sugars and refined grains.
+3. Prefer whole, minimally processed foods over highly processed foods.
+4. Eat most carbs earlier in the day.
+5. Add protein to the meal (e.g. fish, tofu, egg, lean meat).
+6. Choose high-fibre carbs (e.g. brown rice over white, wholegrain noodles).
+7. Include healthy fats (e.g. nuts, avocado, oily fish).
+8. Don't drink sugary drinks with meals.
+9. Limit added salt and sodium.
 
 Hard constraints on your advice:
 - Advice must be SPECIFIC to the food in the photo and the user's context. No generic, non-specific advice.
 - Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).
 - Use practical "swap X for Y" / "add Z" / "leave half of W" language tied to THIS dish.
-- Never just repeat a principle verbatim — translate it into a concrete action for this meal.${includeTagLine ? tagInstruction : ""}`;
+- Never just repeat a principle verbatim — translate it into a concrete action for this meal.
+- Give 1–2 pieces of advice for ⚡ Right now and 📝 Next time respectively.${includeTagLine ? tagInstruction : ""}`;
 
       // Pre-check cache for all locales BEFORE any Claude call so we
       // know whether this advice request would actually hit Claude.
