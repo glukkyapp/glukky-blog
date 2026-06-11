@@ -142,7 +142,14 @@
     "dinner_no": "No",
     "greeting_with_name": "Hi, {{name}}!",
     "greeting_no_name": "Hi there!",
-    "goal_reminder": "Remember your goal — {{goal}}! Keep it up!"
+    "goal_reminder": "Remember your goal — {{goal}}! Keep it up!",
+    "meal_suggestion_button_breakfast": "What should I eat for breakfast today?",
+    "meal_suggestion_button_lunch": "What should I eat for lunch today?",
+    "meal_suggestion_button_dinner": "What should I eat for dinner today?",
+    "meal_suggestion_your_pick": "You tried this before — your glucose stayed low",
+    "meal_suggestion_list_breakfast": "A gentle start — lower in sugar than typical breakfast choices",
+    "meal_suggestion_list_lunch": "A balanced lunch to keep your afternoon steady",
+    "meal_suggestion_list_dinner": "A lighter evening choice — easier on your blood sugar overnight"
   },
   "mitigation": {
     "fiber_starter_label": "Fiber Starter",

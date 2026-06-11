@@ -4,7 +4,7 @@ import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
 import { db } from "./db";
-import { userProfiles } from "@shared/schema";
+import { userProfiles, mealSnaps } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
@@ -246,6 +246,37 @@ export async function registerRoutes(
   app.get("/api/health", (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ ok: true });
+  });
+
+  app.get("/api/meal-suggestions", isAuthenticated, async (req: any, res) => {
+    const mealType = req.query.mealType as string;
+    if (!["breakfast", "lunch", "dinner"].includes(mealType)) {
+      return res.status(400).json({ error: "Invalid mealType" });
+    }
+    const userId: string = req.user.claims.sub;
+    const userMealsRaw = await db
+      .select({ foodName: mealSnaps.foodName })
+      .from(mealSnaps)
+      .where(
+        and(
+          eq(mealSnaps.userId, userId),
+          eq(mealSnaps.mealType, mealType),
+          eq(mealSnaps.glucoseImpact, "low"),
+          sql`${mealSnaps.postMealGlucoseMmol} IS NOT NULL`,
+          sql`${mealSnaps.foodName} IS NOT NULL`
+        )
+      );
+    const deduped = [...new Set(userMealsRaw.map(m => m.foodName!).filter(Boolean))];
+    if (deduped.length > 0) {
+      const name = deduped[Math.floor(Math.random() * deduped.length)];
+      return res.json({ name, source: "user" });
+    }
+    const list = HEALTHY_FOOD_LIST[mealType as keyof typeof HEALTHY_FOOD_LIST] ?? [];
+    if (list.length === 0) {
+      return res.status(404).json({ error: "No suggestions available" });
+    }
+    const name = list[Math.floor(Math.random() * list.length)];
+    res.json({ name, source: "list" });
   });
 
   // Admin-only wipe endpoint. ALL account-deletion paths (this admin

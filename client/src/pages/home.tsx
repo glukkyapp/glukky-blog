@@ -78,6 +78,7 @@ export default function Home() {
 
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
+  const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
   const [recorded, setRecorded] = useState(false);
   const [showTacticPicker, setShowTacticPicker] = useState(false);
   const [pivotStep, setPivotStep] = useState<"ask" | "ask_move_early" | "show_tactics" | null>(null);
@@ -97,6 +98,8 @@ export default function Home() {
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
   const [coinPopupCoins, setCoinPopupCoins] = useState(0);
   const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
+  const [mealSuggestion, setMealSuggestion] = useState<{ name: string; source: "user" | "list" } | null>(null);
+  const [mealSuggestionLoading, setMealSuggestionLoading] = useState(false);
 
   const cardFirstWalkDay = useInfoCard("first_walk_day");
   const cardStretchSwitch = useInfoCard("stretch_switch");
@@ -111,10 +114,41 @@ export default function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentHour(new Date().getHours());
+      const now = new Date();
+      setCurrentHour(now.getHours());
+      setCurrentMinute(now.getMinutes());
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  const effectiveMinute = devTime?.timeOverride !== null && devTime?.timeOverride !== undefined
+    ? 0
+    : currentMinute;
+
+  const mealWindow = useMemo((): "breakfast" | "lunch" | "dinner" | null => {
+    const h = effectiveHour;
+    const m = effectiveMinute;
+    if (h >= 6 && h <= 10) return "breakfast";
+    if (h >= 11 && (h < 14 || (h === 14 && m < 30))) return "lunch";
+    if ((h === 14 && m >= 30) || (h >= 15 && h <= 20)) return "dinner";
+    return null;
+  }, [effectiveHour, effectiveMinute]);
+
+  useEffect(() => {
+    if (!mealWindow) {
+      setMealSuggestion(null);
+      return;
+    }
+    const d = new Date();
+    const localDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const key = `mealSuggestion_${mealWindow}_${localDateStr}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try { setMealSuggestion(JSON.parse(stored)); } catch { setMealSuggestion(null); }
+    } else {
+      setMealSuggestion(null);
+    }
+  }, [mealWindow]);
 
   const today = new Date();
   const realDayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
@@ -442,6 +476,28 @@ export default function Home() {
     setShowTacticPicker(false);
     if (show10pmWindow) {
       logMutation.mutate({ dinnerSuccess: true });
+    }
+  }
+
+  async function handleMealSuggestionTap() {
+    if (!mealWindow || mealSuggestion || mealSuggestionLoading) return;
+    const d = new Date();
+    const localDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const key = `mealSuggestion_${mealWindow}_${localDateStr}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try { setMealSuggestion(JSON.parse(stored)); return; } catch {}
+    }
+    setMealSuggestionLoading(true);
+    try {
+      const res = await fetch(`/api/meal-suggestions?mealType=${mealWindow}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      localStorage.setItem(key, JSON.stringify(data));
+      setMealSuggestion(data);
+    } catch {
+    } finally {
+      setMealSuggestionLoading(false);
     }
   }
 
@@ -1442,6 +1498,39 @@ export default function Home() {
               })()}
             </p>
           </div>
+        </div>
+      )}
+
+      {mealWindow && (
+        <div data-testid="section-meal-suggestion">
+          <button
+            onClick={handleMealSuggestionTap}
+            disabled={!!mealSuggestion || mealSuggestionLoading}
+            data-testid="button-meal-suggestion"
+            className="w-full text-left font-semibold text-[17px] px-5 py-4 rounded-2xl transition-colors active:opacity-80"
+            style={{ background: "#EEF5EF", color: "#214B36", opacity: mealSuggestion ? 0.7 : 1 }}
+          >
+            {mealSuggestionLoading ? "…" : t(`home.meal_suggestion_button_${mealWindow}`)}
+          </button>
+          {mealSuggestion && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mt-2 rounded-2xl px-5 py-4 space-y-1"
+              style={{ background: "#F5FAF6" }}
+              data-testid="card-meal-suggestion-result"
+            >
+              <p className="text-[18px] font-semibold leading-snug" style={{ color: "#214B36" }} data-testid="text-meal-suggestion-name">
+                {mealSuggestion.name}
+              </p>
+              <p className="text-[14px] leading-snug" style={{ color: "#6E8477" }} data-testid="text-meal-suggestion-reason">
+                {mealSuggestion.source === "user"
+                  ? t("home.meal_suggestion_your_pick")
+                  : t(`home.meal_suggestion_list_${mealWindow}`)}
+              </p>
+            </motion.div>
+          )}
         </div>
       )}
 

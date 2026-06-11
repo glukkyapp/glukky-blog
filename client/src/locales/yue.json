@@ -142,7 +142,14 @@
     "dinner_no": "唔可以",
     "greeting_with_name": "你好，{{name}}！",
     "greeting_no_name": "你好！",
-    "goal_reminder": "記住你嘅目標 — {{goal}}！繼續加油！"
+    "goal_reminder": "記住你嘅目標 — {{goal}}！繼續加油！",
+    "meal_suggestion_button_breakfast": "今日早餐食咩好？",
+    "meal_suggestion_button_lunch": "今日午餐食咩好？",
+    "meal_suggestion_button_dinner": "今日晚餐食咩好？",
+    "meal_suggestion_your_pick": "你之前食過呢個，血糖反應好好",
+    "meal_suggestion_list_breakfast": "低糖早餐之選，幫你穩定朝早血糖",
+    "meal_suggestion_list_lunch": "均衡午餐，有助下晝血糖平穩",
+    "meal_suggestion_list_dinner": "清淡晚餐之選，有助夜間血糖平穩"
   },
   "mitigation": {
     "fiber_starter_label": "纖維行先",
