@@ -3115,7 +3115,7 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
       };
 
       // Step 1: name-only AI call.
-      const nameResponse = await callClaude(activeNameSystem, 700, "Identify this food and return the JSON object.");
+      const nameResponse = await callClaude(activeNameSystem, 1200, "Identify this food and return the JSON object.");
       const nameRaw = readText(nameResponse);
       const nameParsed = extractJsonObject(nameRaw);
 
