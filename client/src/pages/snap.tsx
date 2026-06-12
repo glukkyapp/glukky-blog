@@ -285,6 +285,10 @@ export default function Snap() {
   const [disambigIndex, setDisambigIndex] = useState(0);
   const [sauceManual, setSauceManual] = useState(false);
   const [toppingManual, setToppingManual] = useState(false);
+  const originalLabelRef = useRef<{ name: string; sauces: string; extras: string } | null>(null);
+  const fieldMethodRef = useRef<{ name: "typed" | "voice"; sauces: "typed" | "voice"; extras: "typed" | "voice" }>(
+    { name: "typed", sauces: "typed", extras: "typed" }
+  );
   const [snapTooltipDismissed, setSnapTooltipDismissed] = useState(
     () => localStorage.getItem("glukky_snap_tooltip_dismissed") === "1"
   );
@@ -333,6 +337,8 @@ export default function Snap() {
     setMealType(inferClientMealType());
     pendingLabelRef.current = null;
     pendingLabelDoneRef.current = null;
+    originalLabelRef.current = null;
+    fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
   }
 
   async function fetchLabel(base64: string, mimeType: string, isFirstLabel: boolean): Promise<LabelResult | null> {
@@ -424,6 +430,12 @@ export default function Snap() {
       toppingIds: tIds,
       toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
     });
+    originalLabelRef.current = {
+      name: data.name ?? "",
+      sauces: data.sauces ?? "",
+      extras: data.extras ?? "",
+    };
+    fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -697,6 +709,25 @@ export default function Snap() {
       portionId?: string | null;
     },
   ) {
+    if (originalLabelRef.current) {
+      const orig = originalLabelRef.current;
+      const sauceInChipMode = !!labelResult?.sauceOptions?.length && !sauceManual;
+      const extrasInChipMode = !!labelResult?.toppingOptions?.length && !toppingManual;
+      const changed: Array<{ field: "name" | "sauces" | "extras"; method: "typed" | "voice" }> = [];
+      if (form.name.trim() !== orig.name.trim())
+        changed.push({ field: "name", method: fieldMethodRef.current.name });
+      if (!sauceInChipMode && form.sauces.trim() !== orig.sauces.trim())
+        changed.push({ field: "sauces", method: fieldMethodRef.current.sauces });
+      if (!extrasInChipMode && form.extras.trim() !== orig.extras.trim())
+        changed.push({ field: "extras", method: fieldMethodRef.current.extras });
+      if (changed.length === 0) {
+        track("food_label_accepted");
+      } else {
+        for (const { field, method } of changed) {
+          track("food_label_amended", { field, method });
+        }
+      }
+    }
     setStep("advising");
     setAdvicePanel(0);
     setSourcesExpanded({});
@@ -1093,7 +1124,7 @@ export default function Snap() {
                 <textarea
                   id="snap-name"
                   value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name: e.target.value })); }}
                   placeholder={t("snap.field_placeholder_name")}
                   rows={2}
                   style={{ backgroundColor: "#fbfbf3" }}
@@ -1205,7 +1236,7 @@ export default function Snap() {
                   <textarea
                     id="snap-sauces"
                     value={form.sauces}
-                    onChange={(e) => setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] }))}
+                    onChange={(e) => { fieldMethodRef.current.sauces = "typed"; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_sauces")}
                     rows={2}
                     style={{ backgroundColor: "#fbfbf3" }}
@@ -1263,7 +1294,7 @@ export default function Snap() {
                   <textarea
                     id="snap-extras"
                     value={form.extras}
-                    onChange={(e) => setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] }))}
+                    onChange={(e) => { fieldMethodRef.current.extras = "typed"; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_extras")}
                     rows={2}
                     style={{ backgroundColor: "#fbfbf3" }}
