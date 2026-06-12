@@ -709,16 +709,16 @@ export default function Snap() {
       portionId?: string | null;
     },
   ) {
-    if (originalLabelRef.current) {
+    if (originalLabelRef.current && !isRetryAfterUnlock) {
       const orig = originalLabelRef.current;
       const sauceInChipMode = !!labelResult?.sauceOptions?.length && !sauceManual;
       const extrasInChipMode = !!labelResult?.toppingOptions?.length && !toppingManual;
       const changed: Array<{ field: "name" | "sauces" | "extras"; method: "typed" | "voice" }> = [];
       if (form.name.trim() !== orig.name.trim())
         changed.push({ field: "name", method: fieldMethodRef.current.name });
-      if (!sauceInChipMode && form.sauces.trim() !== orig.sauces.trim())
+      if (!sauceInChipMode && form.sauces.trim() !== "" && form.sauces.trim() !== orig.sauces.trim())
         changed.push({ field: "sauces", method: fieldMethodRef.current.sauces });
-      if (!extrasInChipMode && form.extras.trim() !== orig.extras.trim())
+      if (!extrasInChipMode && form.extras.trim() !== "" && form.extras.trim() !== orig.extras.trim())
         changed.push({ field: "extras", method: fieldMethodRef.current.extras });
       if (changed.length === 0) {
         track("food_label_accepted");
