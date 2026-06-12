@@ -4,7 +4,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useGate } from "@/App";
-import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { EatOutNonFocusPopup, useEatOutNonFocusPopup } from "@/components/eat-out-nonfocus-popup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,8 +152,6 @@ export default function WeeklyPlanner() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [stepDirection, setStepDirection] = useState(1);
-  const [coinPopupCoins, setCoinPopupCoins] = useState(0);
-  const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
   const [negotiationChoice, setNegotiationChoice] = useState<string>("keep_current");
   const [acceptedEscalation, setAcceptedEscalation] = useState<boolean | null>(null);
   const [negotiationStep, setNegotiationStep] = useState<"ask_day" | "ask_minutes" | "glycemic_gap" | "ask_day_again" | "ask_standing_tap" | "pick_standing_tap_day" | "done">("ask_day");
@@ -832,7 +829,7 @@ export default function WeeklyPlanner() {
       const res = await apiRequest("POST", "/api/plan/weekly/report-seen", {});
       const data = await res.json();
       if (data?.coinsAwarded > 0) {
-        setCoinPopupCoins(data.coinsAwarded);
+        // coin popup removed
       }
     } catch {
     }
@@ -2971,7 +2968,6 @@ export default function WeeklyPlanner() {
 
       {renderMonthlyReportMessage()}
     </div>
-    <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
     <InfoCardPopup visible={cardDietFocus.visible} onDismiss={cardDietFocus.dismiss} icon={TrendingUp} titleKey="info_card.diet_focus.title" panelKeys={["info_card.diet_focus.p1","info_card.diet_focus.p2","info_card.diet_focus.p3"]} testId="dialog-card-diet-focus" />
     <InfoCardPopup visible={cardWalkEscalation.visible} onDismiss={cardWalkEscalation.dismiss} icon={Footprints} titleKey="info_card.walk_escalation.title" panelKeys={["info_card.walk_escalation.p1","info_card.walk_escalation.p2","info_card.walk_escalation.p3"]} testId="dialog-card-walk-escalation" />
     <InfoCardPopup visible={cardGlycemicGap.visible} onDismiss={cardGlycemicGap.dismiss} icon={Activity} titleKey="info_card.glycemic_gap.title" panelKeys={["info_card.glycemic_gap.p1","info_card.glycemic_gap.p2"]} testId="dialog-card-glycemic-gap" />

@@ -7,7 +7,6 @@ import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { InfoCardPopup, useInfoCard } from "@/components/info-card-popup";
 import { FoodSwitchPopup, useFoodSwitchPopup } from "@/components/food-switch-popup";
 import { Target, Check, X, Minus, Footprints, UtensilsCrossed, ShoppingBag, Clock, TrendingUp, Droplets, CalendarDays, Battery, CheckCircle2, Soup, Wine, Activity, Lightbulb, Timer, Info, ChevronDown, type LucideIcon } from "lucide-react";
@@ -96,8 +95,6 @@ export default function Home() {
   const [allSetDismissed, setAllSetDismissed] = useState(false);
   const [allSetFading, setAllSetFading] = useState(false);
   const [catchupAdjMsg, setCatchupAdjMsg] = useState<string | null>(null);
-  const [coinPopupCoins, setCoinPopupCoins] = useState(0);
-  const dismissCoinPopup = useCallback(() => setCoinPopupCoins(0), []);
   const [mealSuggestion, setMealSuggestion] = useState<{ name: string; source: "user" | "list" } | null>(null);
   const [mealSuggestionLoading, setMealSuggestionLoading] = useState(false);
 
@@ -365,7 +362,6 @@ export default function Home() {
       }
 
       if (data?.coinsAwarded > 0) {
-        setCoinPopupCoins(data.coinsAwarded);
         queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       }
 
@@ -417,7 +413,6 @@ export default function Home() {
       await queryClient.refetchQueries({ queryKey: ["/api/calendar", weekNumber] });
 
       if (data?.coinsAwarded > 0) {
-        setCoinPopupCoins(data.coinsAwarded);
         queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       }
 
@@ -2003,7 +1998,6 @@ export default function Home() {
         </CardContent>
       </Card>)}
     </motion.div>
-    <CoinSavedPopup coins={coinPopupCoins} visible={coinPopupCoins > 0} onDismiss={dismissCoinPopup} />
     <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />

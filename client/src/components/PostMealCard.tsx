@@ -21,7 +21,7 @@ interface Props {
   initialStep?: "ask" | "keypad";
 }
 
-type Step = "ask" | "keypad" | "symptom" | "done";
+type Step = "ask" | "keypad" | "symptom";
 
 const INTEGER_RANGE = Array.from({ length: 19 }, (_, i) => i + 2);
 const DEFAULT_INT_IDX = 8;
@@ -222,8 +222,7 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       if (isSymptomOnly && symptom !== null) {
         track("symptoms_checked", { symptom });
       }
-      setStep("done");
-      setTimeout(onDone, 1400);
+      onDone();
     } catch (e) {
       console.error("[PostMealCard] submit error:", e);
     } finally {
@@ -235,19 +234,6 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
     background: "#fbfbf3",
     boxShadow: "0 4px 14px rgba(44,72,56,0.06)",
   };
-
-  if (step === "done") {
-    return (
-      <div
-        className="rounded-2xl p-5 flex flex-col items-center gap-2 text-center"
-        style={cardStyle}
-        data-testid="card-post-meal-done"
-      >
-        <p className="text-3xl">✅</p>
-        <p className="text-sm font-semibold text-foreground">{t("glucose.keypad_confirm")}</p>
-      </div>
-    );
-  }
 
   if (step === "ask") {
     return (
