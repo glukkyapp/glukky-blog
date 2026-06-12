@@ -289,6 +289,7 @@ export default function Snap() {
   const fieldMethodRef = useRef<{ name: "typed" | "voice"; sauces: "typed" | "voice"; extras: "typed" | "voice" }>(
     { name: "typed", sauces: "typed", extras: "typed" }
   );
+  const hasTypedRef = useRef({ sauces: false, extras: false });
   const [snapTooltipDismissed, setSnapTooltipDismissed] = useState(
     () => localStorage.getItem("glukky_snap_tooltip_dismissed") === "1"
   );
@@ -339,6 +340,7 @@ export default function Snap() {
     pendingLabelDoneRef.current = null;
     originalLabelRef.current = null;
     fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
+    hasTypedRef.current = { sauces: false, extras: false };
   }
 
   async function fetchLabel(base64: string, mimeType: string, isFirstLabel: boolean): Promise<LabelResult | null> {
@@ -436,6 +438,7 @@ export default function Snap() {
       extras: data.extras ?? "",
     };
     fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
+    hasTypedRef.current = { sauces: false, extras: false };
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -716,9 +719,9 @@ export default function Snap() {
       const changed: Array<{ field: "name" | "sauces" | "extras"; method: "typed" | "voice" }> = [];
       if (form.name.trim() !== orig.name.trim())
         changed.push({ field: "name", method: fieldMethodRef.current.name });
-      if (!sauceInChipMode && form.sauces.trim() !== "" && form.sauces.trim() !== orig.sauces.trim())
+      if (!sauceInChipMode && hasTypedRef.current.sauces && form.sauces.trim() !== orig.sauces.trim())
         changed.push({ field: "sauces", method: fieldMethodRef.current.sauces });
-      if (!extrasInChipMode && form.extras.trim() !== "" && form.extras.trim() !== orig.extras.trim())
+      if (!extrasInChipMode && hasTypedRef.current.extras && form.extras.trim() !== orig.extras.trim())
         changed.push({ field: "extras", method: fieldMethodRef.current.extras });
       if (changed.length === 0) {
         track("food_label_accepted");
@@ -1236,7 +1239,7 @@ export default function Snap() {
                   <textarea
                     id="snap-sauces"
                     value={form.sauces}
-                    onChange={(e) => { fieldMethodRef.current.sauces = "typed"; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
+                    onChange={(e) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_sauces")}
                     rows={2}
                     style={{ backgroundColor: "#fbfbf3" }}
@@ -1294,7 +1297,7 @@ export default function Snap() {
                   <textarea
                     id="snap-extras"
                     value={form.extras}
-                    onChange={(e) => { fieldMethodRef.current.extras = "typed"; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
+                    onChange={(e) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_extras")}
                     rows={2}
                     style={{ backgroundColor: "#fbfbf3" }}
