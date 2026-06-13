@@ -43,7 +43,9 @@ function IntegerWheel({
 }) {
   const [wheelIdx, setWheelIdx] = useState(DEFAULT_INT_IDX);
   const displayIdx = value !== null ? INTEGER_RANGE.indexOf(value) : wheelIdx;
-  const touchStartY = useRef<number | null>(null);
+  const touchLastY = useRef<number | null>(null);
+  const touchAccum = useRef(0);
+  const STEP_PX = 20;
 
   const go = (delta: number) => {
     const newIdx = Math.max(0, Math.min(INTEGER_RANGE.length - 1, displayIdx + delta));
@@ -53,16 +55,24 @@ function IntegerWheel({
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
+    touchLastY.current = e.touches[0].clientY;
+    touchAccum.current = 0;
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY.current === null) return;
-    const delta = touchStartY.current - e.changedTouches[0].clientY;
-    if (Math.abs(delta) > 8) {
-      const steps = Math.max(1, Math.min(10, Math.round(Math.abs(delta) / 20)));
-      go(delta > 0 ? steps : -steps);
+  const onTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (touchLastY.current === null) return;
+    const dy = touchLastY.current - e.touches[0].clientY;
+    touchLastY.current = e.touches[0].clientY;
+    touchAccum.current += dy;
+    const steps = Math.trunc(touchAccum.current / STEP_PX);
+    if (steps !== 0) {
+      go(steps);
+      touchAccum.current -= steps * STEP_PX;
     }
-    touchStartY.current = null;
+  };
+  const onTouchEnd = () => {
+    touchLastY.current = null;
+    touchAccum.current = 0;
   };
 
   const prevVal = displayIdx > 0 ? INTEGER_RANGE[displayIdx - 1] : null;
@@ -87,6 +97,7 @@ function IntegerWheel({
         className="relative flex flex-col items-center overflow-hidden w-24"
         style={{ height: 116 }}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         data-testid="int-wheel-body"
       >

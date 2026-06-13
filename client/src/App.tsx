@@ -93,8 +93,10 @@ function GlobalPiggyBankPopup() {
   const [dialogStep, setDialogStep] = useState<"intro" | "goal">("intro");
   const [dialogMode, setDialogMode] = useState<"first_time" | "edit">("first_time");
 
+  const PIGGY_INTRO_SKIPPED_KEY = "piggy_intro_skipped";
+
   useEffect(() => {
-    if (piggy?.needsRewardSetup) {
+    if (piggy?.needsRewardSetup && !localStorage.getItem(PIGGY_INTRO_SKIPPED_KEY)) {
       setDialogMode("first_time");
       setDialogStep("intro");
       setShowRewardSetup(true);
@@ -129,6 +131,7 @@ function GlobalPiggyBankPopup() {
       apiRequest("POST", "/api/piggybank/reward", { reward }),
     onSuccess: () => {
       hapticNotify("SUCCESS");
+      localStorage.removeItem(PIGGY_INTRO_SKIPPED_KEY);
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       setShowRewardSetup(false);
       setRewardInput("");
@@ -143,6 +146,7 @@ function GlobalPiggyBankPopup() {
     onSuccess: () => {
       hapticNotify("SUCCESS");
       hapticPattern("..oO-Oo..", 80);
+      localStorage.removeItem(PIGGY_INTRO_SKIPPED_KEY);
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       setShowCongrats(false);
       setCongratsShown(false);
@@ -156,7 +160,11 @@ function GlobalPiggyBankPopup() {
   return (
     <>
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
-        <DialogContent data-testid="modal-reward-setup-global">
+        <DialogContent
+          data-testid="modal-reward-setup-global"
+          onInteractOutside={dialogMode === "first_time" ? (e) => e.preventDefault() : undefined}
+          onEscapeKeyDown={dialogMode === "first_time" ? (e) => e.preventDefault() : undefined}
+        >
           {dialogMode === "first_time" && dialogStep === "intro" ? (
             <>
               <DialogHeader>
@@ -206,7 +214,10 @@ function GlobalPiggyBankPopup() {
                 {dialogMode === "first_time" && (
                   <button
                     className="w-full text-sm text-muted-foreground underline underline-offset-2 py-1"
-                    onClick={() => setShowRewardSetup(false)}
+                    onClick={() => {
+                      localStorage.setItem(PIGGY_INTRO_SKIPPED_KEY, "1");
+                      setShowRewardSetup(false);
+                    }}
                     data-testid="button-skip-reward-global"
                   >
                     {t("roadmap.skip_for_now")}

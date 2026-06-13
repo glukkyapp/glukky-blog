@@ -4271,9 +4271,9 @@ No explanation, just JSON.`,
       // Reclassify glucoseImpact using clinical thresholds when real glucose is provided
       if (glucoseMmol !== undefined) {
         try {
-          const { classifyPostMealMmol, PHASE1_THRESHOLDS } = await import("./glucose-thresholds");
+          const { classifyPostMealMmol, PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
           const profile3 = await storage.getProfile(userId);
-          const glucoseGroup = profile3?.glucoseGroup as "healthy" | "t2dm" | undefined;
+          const glucoseGroup = (profile3?.glucoseGroup ?? deriveGlucoseGroupFromCondition(profile3?.healthCondition ?? null)) as "healthy" | "t2dm" | undefined;
           if (glucoseGroup && PHASE1_THRESHOLDS[glucoseGroup]) {
             const thresholdRow = await storage.getUserGlucoseThresholds(userId);
             const impact = classifyPostMealMmol(
@@ -4301,8 +4301,8 @@ No explanation, just JSON.`,
     try {
       const userId = req.user.claims.sub;
       const profile = await storage.getProfile(userId);
-      const { PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
-      const glucoseGroup = (profile?.glucoseGroup ?? null) ?? deriveGlucoseGroupFromCondition(profile?.healthCondition ?? null);
+      const { PHASE1_THRESHOLDS } = await import("./glucose-thresholds");
+      const glucoseGroup = profile?.glucoseGroup ?? null;
       const row = await storage.getUserGlucoseThresholds(userId);
       const liveCount = await storage.getHStixReadingCount(userId);
       if (!row && !glucoseGroup) {
