@@ -32,6 +32,10 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       }
     },
   },
+  {
+    name: "food_advice_cache.clear_stale_v1",
+    sql: "DELETE FROM food_advice_cache",
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

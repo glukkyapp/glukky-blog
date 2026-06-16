@@ -3053,14 +3053,15 @@ If no food visible: {"error":"no_food"}`;
       const labelsOnlySystem = (foodName: string) => `You are a food assistant for Hong Kong cuisine. The dish in the photo has already been identified as: "${foodName}".
 
 Look at the same photo and return ONLY a single JSON object with this exact shape:
-{ "portion": "<小/中/大 or null>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides not already in the dish name, or null>" }
+{ "portion": "<小/中/大>", "sauces": "<visible sauces/condiments or null>", "extras": "<additional toppings/sides not already in the dish name, or null>" }
 
 All field values MUST be in ${responseLang}.
 
 Rules for "extras":
 - Do NOT list any ingredient that is already part of the dish name "${foodName}". If an ingredient is in the name, it does NOT belong in extras.
 - Only list small accompaniments, side toppings, or garnishes that you can actually see in the photo.
-- If there are no additional toppings/sides, return null.
+- If a drink is visible anywhere in the photo and it is NOT already part of the dish name "${foodName}", include it in the extras field.
+- If there are no additional toppings/sides or drinks, return null.
 - When there are 2+ items, separate them with commas ONLY: "," for English, "，" for Chinese. Do NOT use the ideographic comma "、".
   Do NOT use with / 配 / 加 / 和 / and / 及 as separators — those are connector words reserved for the dish name.
   Example (correct): "煎腸仔，奶茶" or "sausage, milk tea"
@@ -3614,10 +3615,12 @@ Stay strictly within these lists. Do NOT invent principles outside them.
 
 For ⚡ Right now, draw ONLY from these actions (pick 1–2 most relevant to this specific meal):
 1. Eat vegetables/protein first, carbs last.
-2. Drink a glass of water gradually after finishing the meal, not during eating — for high-impact meals.
+2. Drink a glass of water gradually after finishing the meal, not during eating.
 3. Eat slowly.
-4. Go for a 10-minute walk after the meal — for high-impact meals.
+4. Go for a 10-minute walk after the meal.
 5. Reduce the portion of carbs in this meal.
+
+You have identified the meal as Blood sugar impact: [High / Medium / Low]. Principle 2 and 4 are only for meals identified as high blood sugar impact. If Blood sugar impact is high, include at least one of them in the ⚡ Right now section. Other principles may be included alongside.
 
 For 📝 Next time, draw ONLY from these changes (pick 1–2 most relevant to this specific meal):
 1. Emphasize non-starchy vegetables.
@@ -3631,11 +3634,8 @@ For 📝 Next time, draw ONLY from these changes (pick 1–2 most relevant to th
 9. Limit added salt and sodium.
 
 Hard constraints on your advice:
-- Advice must be SPECIFIC to the food in the photo and the user's context. No generic, non-specific advice.
-- Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).
-- Use practical "swap X for Y" / "add Z" / "leave half of W" language tied to THIS dish.
-- Never just repeat a principle verbatim — translate it into a concrete action for this meal.
-- Give 1–2 pieces of advice for ⚡ Right now and 📝 Next time respectively.${includeTagLine ? tagInstruction : ""}`;
+- Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.
+- Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).${includeTagLine ? tagInstruction : ""}`;
 
       // Pre-check cache for all locales BEFORE any Claude call so we
       // know whether this advice request would actually hit Claude.
