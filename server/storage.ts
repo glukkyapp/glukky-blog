@@ -595,26 +595,24 @@ export class DatabaseStorage implements IStorage {
 
   async resetUser(userId: string): Promise<void> {
     // Write history for ALL health fields being reset before the update.
-    try {
-      const current = await this.getProfile(userId);
-      if (current) {
-        const entries = DatabaseStorage.PROFILE_HEALTH_FIELDS
-          .filter(f => (current as any)[f] != null)
-          .map(f => ({
-            originalRecordId: current.id,
-            userId,
-            fieldName: f,
-            oldValue: String((current as any)[f]),
-            newValue: null,
-            changedBy: userId,
-            changeReason: "user_reset",
-          }));
-        if (entries.length > 0) {
-          await this.writeHealthHistory("profile", entries);
-        }
+    // Not wrapped in try/catch — history write failures propagate so the caller
+    // knows the audit trail was not written before any data was changed.
+    const current = await this.getProfile(userId);
+    if (current) {
+      const entries = DatabaseStorage.PROFILE_HEALTH_FIELDS
+        .filter(f => (current as any)[f] != null)
+        .map(f => ({
+          originalRecordId: current.id,
+          userId,
+          fieldName: f,
+          oldValue: String((current as any)[f]),
+          newValue: null,
+          changedBy: userId,
+          changeReason: "user_reset",
+        }));
+      if (entries.length > 0) {
+        await this.writeHealthHistory("profile", entries);
       }
-    } catch (e: any) {
-      console.warn("[health-history] resetUser history write failed:", e?.message ?? e);
     }
     const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
     if (plans.length > 0) {
@@ -756,15 +754,17 @@ export class DatabaseStorage implements IStorage {
         `apple={ok=${appleResult.ok},status=${appleResult.status},hadToken=${!!appleRefreshToken}}`,
     );
 
-    // Step 2.5: Write terminal history for health data BEFORE hard-delete.
-    // Failures are best-effort and must never block account deletion.
-    try {
-      const [profileRow] = await db
-        .select()
-        .from(userProfiles)
-        .where(eq(userProfiles.userId, userId));
+    // Step 2.5 / Step 3: Soft-delete + terminal history + hard delete, all in one
+    // atomic transaction. History and data writes are coupled: if history fails,
+    // the deletion rolls back — ensuring the audit trail is never missing entries.
+    return await db.transaction(async (tx) => {
+      const counts: Record<string, number> = {};
+
+      // --- Terminal history writes (before hard delete so rows still exist) ---
+
+      const [profileRow] = await tx.select().from(userProfiles).where(eq(userProfiles.userId, userId));
       if (profileRow) {
-        const profileFields = ["hba1cLevel", "bloodTestDate", "fastingBaselineMmol", "fastingBaselineEstimated", "glucoseGroup"] as const;
+        const profileFields = DatabaseStorage.PROFILE_HEALTH_FIELDS;
         const profileEntries = profileFields
           .filter(f => (profileRow as any)[f] != null)
           .map(f => ({
@@ -776,15 +776,10 @@ export class DatabaseStorage implements IStorage {
             changedBy: userId,
             changeReason: "account_deleted",
           }));
-        if (profileEntries.length > 0) {
-          await this.writeHealthHistory("profile", profileEntries);
-        }
+        await this.writeHealthHistory("profile", profileEntries, tx);
       }
-    } catch (e: any) {
-      console.warn(`[deleteUserCompletely] profile history write failed for ${userId}: ${e?.message ?? e}`);
-    }
-    try {
-      const threshRow = await this.getUserGlucoseThresholds(userId);
+
+      const [threshRow] = await tx.select().from(userGlucoseThresholds).where(eq(userGlucoseThresholds.userId, userId));
       if (threshRow) {
         const threshFields = ["lowMedBoundary", "medHighBoundary", "readingCount", "isPersonalised"] as const;
         const threshEntries = threshFields.map(f => ({
@@ -796,60 +791,53 @@ export class DatabaseStorage implements IStorage {
           changedBy: userId,
           changeReason: "account_deleted",
         }));
-        await this.writeHealthHistory("glucose_thresholds", threshEntries);
+        await this.writeHealthHistory("glucose_thresholds", threshEntries, tx);
       }
-    } catch (e: any) {
-      console.warn(`[deleteUserCompletely] thresholds history write failed for ${userId}: ${e?.message ?? e}`);
-    }
-    try {
+
       // Bulk-insert terminal history for all 5 meal-snap health fields.
-      await db.execute(sql`
+      // Each field uses its own INSERT … SELECT to capture its specific null semantics.
+      // postMealSkipped covers rows with any post-meal interaction (not just TRUE) so
+      // the terminal record reflects the actual value at deletion time.
+      await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
         SELECT id, user_id, 'postMealGlucoseMmol',
           post_meal_glucose_mmol::text, 'DELETED', NOW(), 'account_deleted', user_id
         FROM meal_snaps WHERE user_id = ${userId} AND post_meal_glucose_mmol IS NOT NULL
       `);
-      await db.execute(sql`
+      await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
         SELECT id, user_id, 'postMealSymptom',
           post_meal_symptom, 'DELETED', NOW(), 'account_deleted', user_id
         FROM meal_snaps WHERE user_id = ${userId} AND post_meal_symptom IS NOT NULL
       `);
-      await db.execute(sql`
+      await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
         SELECT id, user_id, 'glucoseImpact',
           glucose_impact, 'DELETED', NOW(), 'account_deleted', user_id
         FROM meal_snaps WHERE user_id = ${userId} AND glucose_impact IS NOT NULL
       `);
-      await db.execute(sql`
+      await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
         SELECT id, user_id, 'postMealSkipped',
           post_meal_skipped::text, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId} AND post_meal_skipped = TRUE
+        FROM meal_snaps WHERE user_id = ${userId}
+          AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_skipped = TRUE OR post_meal_recorded_at IS NOT NULL)
       `);
-      await db.execute(sql`
+      await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
         SELECT id, user_id, 'postMealRecordedAt',
           post_meal_recorded_at::text, 'DELETED', NOW(), 'account_deleted', user_id
         FROM meal_snaps WHERE user_id = ${userId} AND post_meal_recorded_at IS NOT NULL
       `);
-    } catch (e: any) {
-      console.warn(`[deleteUserCompletely] meal_snap history write failed for ${userId}: ${e?.message ?? e}`);
-    }
 
-    // Step 3: atomic local delete. Every user-scoped table is wiped
-    // inside a single transaction so the row in `users` only disappears
-    // once everything tied to it (including the live session row) is
-    // gone. Sessions are deleted INSIDE this transaction so that, the
-    // moment the transaction commits, any cached session cookie on
-    // another browser/device is dead server-side.
-    return await db.transaction(async (tx) => {
-      const counts: Record<string, number> = {};
+      // --- Soft-delete before hard delete ---
+      await tx.execute(sql`UPDATE meal_snaps SET is_deleted = TRUE WHERE user_id = ${userId}`);
+      await tx.execute(sql`UPDATE user_glucose_thresholds SET is_deleted = TRUE WHERE user_id = ${userId}`);
 
       const piggy = await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId)).returning({ id: piggyBankEvents.id });
       counts.piggy_bank_events = piggy.length;
@@ -1356,6 +1344,7 @@ export class DatabaseStorage implements IStorage {
         ["postMealGlucoseMmol", "postMealGlucoseMmol", snapData.glucoseMmol],
         ["postMealSymptom", "postMealSymptom", snapData.symptom],
         ["postMealSkipped", "postMealSkipped", snapData.skipped],
+        ["postMealRecordedAt", "postMealRecordedAt", snapData.recordedAt],
         ["glucoseImpact", "glucoseImpact", glucoseImpact],
       ];
       for (const [fieldName, currentKey, newVal] of SNAP_HEALTH_FIELDS) {
