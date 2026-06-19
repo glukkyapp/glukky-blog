@@ -4894,6 +4894,27 @@ No explanation, just JSON.`,
     console.log(`[glucose/thresholds] Nightly job complete. Processed ${usersWithGroup.length} users.`);
   }
 
+  app.get("/api/health-data/:recordType/:recordId/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { recordType, recordId } = req.params;
+      const id = parseInt(recordId, 10);
+      if (isNaN(id) || id <= 0) return res.status(400).json({ message: "Invalid recordId" });
+      const kindMap: Record<string, "profile" | "meal_snap" | "glucose_thresholds"> = {
+        "profile": "profile",
+        "meal-snap": "meal_snap",
+        "glucose-thresholds": "glucose_thresholds",
+      };
+      const kind = kindMap[recordType];
+      if (!kind) return res.status(400).json({ message: "Invalid recordType. Use: profile, meal-snap, glucose-thresholds" });
+      const history = await storage.getHealthHistory(kind, id, userId);
+      res.json({ history });
+    } catch (e: any) {
+      console.error("[health-data/history] error:", e?.message);
+      res.status(500).json({ message: "Failed to fetch health history" });
+    }
+  });
+
   let _lastMonthlyArchiveRun: string | null = null;
   let _lastDailyDeleteRun: string | null = null;
   let _lastThresholdRun: string | null = null;

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import PostMealCard from "@/components/PostMealCard";
 import { queryClient } from "@/lib/queryClient";
@@ -301,6 +301,15 @@ export default function FoodLog() {
                             >
                               {t("glucose.spike_label", { mmol: item.postMealGlucoseMmol!.toFixed(1) })}
                             </span>
+                            <button
+                              type="button"
+                              data-testid={`button-food-log-edit-glucose-${item.id}`}
+                              onClick={() => setGlucoseSheetSnapId(item.id)}
+                              className="p-2 touch-manipulation text-muted-foreground hover:text-foreground transition-colors active:scale-95 -my-1.5"
+                              aria-label="Edit glucose reading"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
                             {item.postMealSymptom && (
                               <span
                                 data-testid={`food-log-symptom-${item.id}`}

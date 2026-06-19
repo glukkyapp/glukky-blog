@@ -36,6 +36,48 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "food_advice_cache.clear_stale_v1",
     sql: "DELETE FROM food_advice_cache",
   },
+  {
+    name: "health_history.create_user_profile_health_history",
+    sql: `CREATE TABLE IF NOT EXISTS user_profile_health_history (
+      id SERIAL PRIMARY KEY,
+      original_record_id INTEGER NOT NULL,
+      user_id VARCHAR NOT NULL,
+      field_name TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      change_reason TEXT,
+      changed_by VARCHAR NOT NULL
+    )`,
+  },
+  {
+    name: "health_history.create_meal_snap_health_history",
+    sql: `CREATE TABLE IF NOT EXISTS meal_snap_health_history (
+      id SERIAL PRIMARY KEY,
+      original_record_id INTEGER NOT NULL,
+      user_id VARCHAR NOT NULL,
+      field_name TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      change_reason TEXT,
+      changed_by VARCHAR NOT NULL
+    )`,
+  },
+  {
+    name: "health_history.create_user_glucose_thresholds_history",
+    sql: `CREATE TABLE IF NOT EXISTS user_glucose_thresholds_history (
+      id SERIAL PRIMARY KEY,
+      original_record_id INTEGER NOT NULL,
+      user_id VARCHAR NOT NULL,
+      field_name TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      change_reason TEXT,
+      changed_by VARCHAR NOT NULL
+    )`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

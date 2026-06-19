@@ -397,3 +397,23 @@ export const userGlucoseThresholds = pgTable("user_glucose_thresholds", {
 export const insertUserGlucoseThresholdsSchema = createInsertSchema(userGlucoseThresholds).omit({ id: true, updatedAt: true });
 export type InsertUserGlucoseThresholds = z.infer<typeof insertUserGlucoseThresholdsSchema>;
 export type UserGlucoseThresholds = typeof userGlucoseThresholds.$inferSelect;
+
+const healthHistoryColumns = {
+  id: serial("id").primaryKey(),
+  originalRecordId: integer("original_record_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  fieldName: text("field_name").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  changeReason: text("change_reason"),
+  changedBy: varchar("changed_by").notNull(),
+};
+
+export const userProfileHealthHistory = pgTable("user_profile_health_history", healthHistoryColumns);
+export const mealSnapHealthHistory = pgTable("meal_snap_health_history", healthHistoryColumns);
+export const userGlucoseThresholdsHistory = pgTable("user_glucose_thresholds_history", healthHistoryColumns);
+
+export type UserProfileHealthHistory = typeof userProfileHealthHistory.$inferSelect;
+export type MealSnapHealthHistory = typeof mealSnapHealthHistory.$inferSelect;
+export type UserGlucoseThresholdsHistory = typeof userGlucoseThresholdsHistory.$inferSelect;

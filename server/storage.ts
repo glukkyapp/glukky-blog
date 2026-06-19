@@ -19,6 +19,7 @@ import {
   mealSnaps,
   snapDailyGlucose, snapMonthlyArchive,
   userGlucoseThresholds,
+  userProfileHealthHistory, mealSnapHealthHistory, userGlucoseThresholdsHistory,
   type SnapMonthlyArchive, type InsertSnapMonthlyArchive,
   users, sessions,
 } from "@shared/schema";
@@ -160,6 +161,21 @@ export interface IStorage {
   reclassifySnapGlucoseImpact(snapId: number, glucoseImpact: string): Promise<string | null>;
   getUsersWithGlucoseGroup(): Promise<Array<{ userId: string; glucoseGroup: string }>>;
   reaggregateDailyGlucoseForDate(userId: string, localDate: string): Promise<void>;
+  getHealthHistory(
+    kind: "profile" | "meal_snap" | "glucose_thresholds",
+    recordId: number,
+    userId: string,
+  ): Promise<HealthHistoryEntry[]>;
+}
+
+export interface HealthHistoryEntry {
+  id: number;
+  fieldName: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedAt: Date;
+  changeReason: string | null;
+  changedBy: string;
 }
 
 export interface AiFoodEntry {
@@ -195,7 +211,68 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  private static readonly PROFILE_HEALTH_FIELDS = [
+    "hba1cLevel", "bloodTestDate", "fastingBaselineMmol", "fastingBaselineEstimated", "glucoseGroup",
+  ] as const;
+
+  private async writeHealthHistory(
+    kind: "profile" | "meal_snap" | "glucose_thresholds",
+    entries: Array<{
+      originalRecordId: number;
+      userId: string;
+      fieldName: string;
+      oldValue: string | null;
+      newValue: string | null;
+      changedBy: string;
+      changeReason?: string | null;
+    }>,
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    const tableName = kind === "profile"
+      ? "user_profile_health_history"
+      : kind === "meal_snap"
+      ? "meal_snap_health_history"
+      : "user_glucose_thresholds_history";
+    for (const e of entries) {
+      await db.execute(sql`
+        INSERT INTO ${sql.raw(tableName)}
+          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
+        VALUES
+          (${e.originalRecordId}, ${e.userId}, ${e.fieldName},
+           ${e.oldValue ?? null}, ${e.newValue ?? null},
+           NOW(), ${e.changeReason ?? null}, ${e.changedBy})
+      `);
+    }
+  }
+
   async updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
+    const touchedHealth = DatabaseStorage.PROFILE_HEALTH_FIELDS.filter(f => f in data);
+    if (touchedHealth.length > 0) {
+      try {
+        const current = await this.getProfile(userId);
+        if (current) {
+          const entries = touchedHealth
+            .filter(f => {
+              const oldV = (current as any)[f];
+              const newV = (data as any)[f];
+              return String(oldV ?? "") !== String(newV ?? "");
+            })
+            .map(f => ({
+              originalRecordId: current.id,
+              userId,
+              fieldName: f,
+              oldValue: (current as any)[f] != null ? String((current as any)[f]) : null,
+              newValue: (data as any)[f] != null ? String((data as any)[f]) : null,
+              changedBy: userId,
+            }));
+          if (entries.length > 0) {
+            await this.writeHealthHistory("profile", entries);
+          }
+        }
+      } catch (e: any) {
+        console.warn("[health-history] updateProfile write failed:", e?.message ?? e);
+      }
+    }
     const [updated] = await db.update(userProfiles).set(data).where(eq(userProfiles.userId, userId)).returning();
     return updated;
   }
@@ -498,6 +575,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async resetUser(userId: string): Promise<void> {
+    // Write history for health fields being reset before the update.
+    try {
+      const current = await this.getProfile(userId);
+      if (current) {
+        const resetHealthFields = ["hba1cLevel", "bloodTestDate"] as const;
+        const entries = resetHealthFields
+          .filter(f => (current as any)[f] != null)
+          .map(f => ({
+            originalRecordId: current.id,
+            userId,
+            fieldName: f,
+            oldValue: String((current as any)[f]),
+            newValue: null,
+            changedBy: userId,
+            changeReason: "user_reset",
+          }));
+        if (entries.length > 0) {
+          await this.writeHealthHistory("profile", entries);
+        }
+      }
+    } catch (e: any) {
+      console.warn("[health-history] resetUser history write failed:", e?.message ?? e);
+    }
     const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
     if (plans.length > 0) {
       const planIds = plans.map(p => p.id);
@@ -638,6 +738,66 @@ export class DatabaseStorage implements IStorage {
         `apple={ok=${appleResult.ok},status=${appleResult.status},hadToken=${!!appleRefreshToken}}`,
     );
 
+    // Step 2.5: Write terminal history for health data BEFORE hard-delete.
+    // Failures are best-effort and must never block account deletion.
+    try {
+      const [profileRow] = await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId));
+      if (profileRow) {
+        const profileFields = ["hba1cLevel", "bloodTestDate", "fastingBaselineMmol", "fastingBaselineEstimated", "glucoseGroup"] as const;
+        const profileEntries = profileFields
+          .filter(f => (profileRow as any)[f] != null)
+          .map(f => ({
+            originalRecordId: profileRow.id,
+            userId,
+            fieldName: f,
+            oldValue: String((profileRow as any)[f]),
+            newValue: "DELETED",
+            changedBy: userId,
+            changeReason: "account_deleted",
+          }));
+        if (profileEntries.length > 0) {
+          await this.writeHealthHistory("profile", profileEntries);
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] profile history write failed for ${userId}: ${e?.message ?? e}`);
+    }
+    try {
+      const threshRow = await this.getUserGlucoseThresholds(userId);
+      if (threshRow) {
+        const threshFields = ["lowMedBoundary", "medHighBoundary", "readingCount", "isPersonalised"] as const;
+        const threshEntries = threshFields.map(f => ({
+          originalRecordId: threshRow.id,
+          userId,
+          fieldName: f,
+          oldValue: (threshRow as any)[f] != null ? String((threshRow as any)[f]) : null,
+          newValue: "DELETED",
+          changedBy: userId,
+          changeReason: "account_deleted",
+        }));
+        await this.writeHealthHistory("glucose_thresholds", threshEntries);
+      }
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] thresholds history write failed for ${userId}: ${e?.message ?? e}`);
+    }
+    try {
+      // Bulk-insert terminal history for meal snaps with glucose readings.
+      await db.execute(sql`
+        INSERT INTO meal_snap_health_history
+          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
+        SELECT
+          id, user_id, 'postMealGlucoseMmol',
+          post_meal_glucose_mmol::text, 'DELETED', NOW(), 'account_deleted', user_id
+        FROM meal_snaps
+        WHERE user_id = ${userId} AND post_meal_glucose_mmol IS NOT NULL
+      `);
+    } catch (e: any) {
+      console.warn(`[deleteUserCompletely] meal_snap history write failed for ${userId}: ${e?.message ?? e}`);
+    }
+
     // Step 3: atomic local delete. Every user-scoped table is wiped
     // inside a single transaction so the row in `users` only disappears
     // once everything tied to it (including the live session row) is
@@ -681,6 +841,15 @@ export class DatabaseStorage implements IStorage {
 
       const plans = await tx.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId)).returning({ id: weeklyPlans.id });
       counts.weekly_plans = plans.length;
+
+      const snaps = await tx.delete(mealSnaps).where(eq(mealSnaps.userId, userId)).returning({ id: mealSnaps.id });
+      counts.meal_snaps = snaps.length;
+
+      const dailyGlucose = await tx.delete(snapDailyGlucose).where(eq(snapDailyGlucose.userId, userId)).returning({ id: snapDailyGlucose.id });
+      counts.snap_daily_glucose = dailyGlucose.length;
+
+      const thresholds = await tx.delete(userGlucoseThresholds).where(eq(userGlucoseThresholds.userId, userId)).returning({ id: userGlucoseThresholds.id });
+      counts.user_glucose_thresholds = thresholds.length;
 
       const profiles = await tx.delete(userProfiles).where(eq(userProfiles.userId, userId)).returning({ id: userProfiles.id });
       counts.user_profiles = profiles.length;
@@ -1060,10 +1229,54 @@ export class DatabaseStorage implements IStorage {
     if (data.skipped !== undefined) updateData.postMealSkipped = data.skipped;
     if (data.recordedAt !== undefined) updateData.postMealRecordedAt = data.recordedAt;
     if (Object.keys(updateData).length === 0) return false;
+
+    // Read current snap for history before writing.
+    let current: MealSnap | undefined;
+    try {
+      const [row] = await db.select().from(mealSnaps)
+        .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
+      current = row;
+    } catch (_) { /* history pre-read failure is non-fatal */ }
+
     const result = await db.update(mealSnaps)
       .set(updateData as any)
       .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
       .returning({ id: mealSnaps.id });
+
+    if (result.length > 0 && current) {
+      try {
+        const histEntries: Array<Parameters<typeof this.writeHealthHistory>[1][number]> = [];
+        if (data.glucoseMmol !== undefined && current.postMealGlucoseMmol !== data.glucoseMmol) {
+          histEntries.push({
+            originalRecordId: snapId, userId, fieldName: "postMealGlucoseMmol",
+            oldValue: current.postMealGlucoseMmol != null ? String(current.postMealGlucoseMmol) : null,
+            newValue: data.glucoseMmol != null ? String(data.glucoseMmol) : null,
+            changedBy: userId,
+          });
+        }
+        if (data.symptom !== undefined && current.postMealSymptom !== data.symptom) {
+          histEntries.push({
+            originalRecordId: snapId, userId, fieldName: "postMealSymptom",
+            oldValue: current.postMealSymptom ?? null,
+            newValue: data.symptom ?? null,
+            changedBy: userId,
+          });
+        }
+        if (data.skipped !== undefined && current.postMealSkipped !== data.skipped) {
+          histEntries.push({
+            originalRecordId: snapId, userId, fieldName: "postMealSkipped",
+            oldValue: String(current.postMealSkipped),
+            newValue: String(data.skipped),
+            changedBy: userId,
+          });
+        }
+        if (histEntries.length > 0) {
+          await this.writeHealthHistory("meal_snap", histEntries);
+        }
+      } catch (e: any) {
+        console.warn("[health-history] updateMealSnapPostMeal write failed:", e?.message ?? e);
+      }
+    }
     return result.length > 0;
   }
 
@@ -1294,6 +1507,28 @@ export class DatabaseStorage implements IStorage {
     isPersonalised: boolean;
     firstActivatedAt?: Date | null;
   }): Promise<void> {
+    // Write history for threshold changes.
+    try {
+      const current = await this.getUserGlucoseThresholds(data.userId);
+      if (current) {
+        const threshFields = ["lowMedBoundary", "medHighBoundary", "readingCount", "isPersonalised"] as const;
+        const entries = threshFields
+          .filter(f => String((current as any)[f] ?? "") !== String((data as any)[f] ?? ""))
+          .map(f => ({
+            originalRecordId: current.id,
+            userId: data.userId,
+            fieldName: f,
+            oldValue: (current as any)[f] != null ? String((current as any)[f]) : null,
+            newValue: (data as any)[f] != null ? String((data as any)[f]) : null,
+            changedBy: data.userId,
+          }));
+        if (entries.length > 0) {
+          await this.writeHealthHistory("glucose_thresholds", entries);
+        }
+      }
+    } catch (e: any) {
+      console.warn("[health-history] upsertUserGlucoseThresholds write failed:", e?.message ?? e);
+    }
     await db.execute(sql`
       INSERT INTO user_glucose_thresholds
         (user_id, low_med_boundary, med_high_boundary, reading_count, is_personalised, first_activated_at, updated_at)
@@ -1333,11 +1568,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async reclassifySnapGlucoseImpact(snapId: number, glucoseImpact: string): Promise<string | null> {
+    // Read current for history before updating.
+    let currentSnap: { userId: string; glucoseImpact: string | null } | undefined;
+    try {
+      const [row] = await db.select({
+        userId: mealSnaps.userId,
+        glucoseImpact: mealSnaps.glucoseImpact,
+      }).from(mealSnaps).where(eq(mealSnaps.id, snapId));
+      currentSnap = row;
+    } catch (_) { /* non-fatal */ }
+
     const rows = await db.update(mealSnaps)
       .set({ glucoseImpact })
       .where(eq(mealSnaps.id, snapId))
       .returning({ localDate: mealSnaps.localDate });
+
+    if (rows[0] && currentSnap && currentSnap.glucoseImpact !== glucoseImpact) {
+      this.writeHealthHistory("meal_snap", [{
+        originalRecordId: snapId,
+        userId: currentSnap.userId,
+        fieldName: "glucoseImpact",
+        oldValue: currentSnap.glucoseImpact ?? null,
+        newValue: glucoseImpact,
+        changedBy: currentSnap.userId,
+      }]).catch(e => console.warn("[health-history] reclassify write failed:", e?.message ?? e));
+    }
     return rows[0]?.localDate ?? null;
+  }
+
+  async getHealthHistory(
+    kind: "profile" | "meal_snap" | "glucose_thresholds",
+    recordId: number,
+    userId: string,
+  ): Promise<HealthHistoryEntry[]> {
+    const tableName = kind === "profile"
+      ? "user_profile_health_history"
+      : kind === "meal_snap"
+      ? "meal_snap_health_history"
+      : "user_glucose_thresholds_history";
+    const result = await db.execute(sql`
+      SELECT id, field_name, old_value, new_value, changed_at, change_reason, changed_by
+      FROM ${sql.raw(tableName)}
+      WHERE original_record_id = ${recordId}
+        AND user_id = ${userId}
+      ORDER BY changed_at DESC
+    `);
+    return (result.rows as any[]).map(r => ({
+      id: r.id,
+      fieldName: r.field_name,
+      oldValue: r.old_value ?? null,
+      newValue: r.new_value ?? null,
+      changedAt: new Date(r.changed_at),
+      changeReason: r.change_reason ?? null,
+      changedBy: r.changed_by,
+    }));
   }
 
   async getUsersWithGlucoseGroup(): Promise<Array<{ userId: string; glucoseGroup: string }>> {
