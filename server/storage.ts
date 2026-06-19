@@ -166,7 +166,7 @@ export interface IStorage {
     kind: "profile" | "meal_snap" | "glucose_thresholds",
     recordId: number,
     userId: string,
-  ): Promise<HealthHistoryEntry[]>;
+  ): Promise<HealthHistoryEntry[] | null>;
 }
 
 export interface HealthHistoryEntry {
@@ -794,45 +794,21 @@ export class DatabaseStorage implements IStorage {
         await this.writeHealthHistory("glucose_thresholds", threshEntries, tx);
       }
 
-      // Bulk-insert terminal history for all 5 meal-snap health fields.
-      // Each field uses its own INSERT … SELECT to capture its specific null semantics.
-      // postMealSkipped covers rows with any post-meal interaction (not just TRUE) so
-      // the terminal record reflects the actual value at deletion time.
+      // Bulk-insert terminal history for ALL meal_snaps rows × all 5 health fields.
+      // Uses UNION ALL so every row gets a terminal entry for every field, including
+      // null/false values — exhaustive coverage required for medico-legal defensibility.
       await tx.execute(sql`
         INSERT INTO meal_snap_health_history
           (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
-        SELECT id, user_id, 'postMealGlucoseMmol',
-          post_meal_glucose_mmol::text, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId} AND post_meal_glucose_mmol IS NOT NULL
-      `);
-      await tx.execute(sql`
-        INSERT INTO meal_snap_health_history
-          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
-        SELECT id, user_id, 'postMealSymptom',
-          post_meal_symptom, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId} AND post_meal_symptom IS NOT NULL
-      `);
-      await tx.execute(sql`
-        INSERT INTO meal_snap_health_history
-          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
-        SELECT id, user_id, 'glucoseImpact',
-          glucose_impact, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId} AND glucose_impact IS NOT NULL
-      `);
-      await tx.execute(sql`
-        INSERT INTO meal_snap_health_history
-          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
-        SELECT id, user_id, 'postMealSkipped',
-          post_meal_skipped::text, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId}
-          AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_skipped = TRUE OR post_meal_recorded_at IS NOT NULL)
-      `);
-      await tx.execute(sql`
-        INSERT INTO meal_snap_health_history
-          (original_record_id, user_id, field_name, old_value, new_value, changed_at, change_reason, changed_by)
-        SELECT id, user_id, 'postMealRecordedAt',
-          post_meal_recorded_at::text, 'DELETED', NOW(), 'account_deleted', user_id
-        FROM meal_snaps WHERE user_id = ${userId} AND post_meal_recorded_at IS NOT NULL
+        SELECT id, user_id, 'postMealGlucoseMmol', post_meal_glucose_mmol::text, 'DELETED', NOW(), 'account_deleted', user_id FROM meal_snaps WHERE user_id = ${userId}
+        UNION ALL
+        SELECT id, user_id, 'postMealSymptom', post_meal_symptom, 'DELETED', NOW(), 'account_deleted', user_id FROM meal_snaps WHERE user_id = ${userId}
+        UNION ALL
+        SELECT id, user_id, 'glucoseImpact', glucose_impact, 'DELETED', NOW(), 'account_deleted', user_id FROM meal_snaps WHERE user_id = ${userId}
+        UNION ALL
+        SELECT id, user_id, 'postMealSkipped', post_meal_skipped::text, 'DELETED', NOW(), 'account_deleted', user_id FROM meal_snaps WHERE user_id = ${userId}
+        UNION ALL
+        SELECT id, user_id, 'postMealRecordedAt', post_meal_recorded_at::text, 'DELETED', NOW(), 'account_deleted', user_id FROM meal_snaps WHERE user_id = ${userId}
       `);
 
       // --- Soft-delete before hard delete ---
@@ -1700,12 +1676,18 @@ export class DatabaseStorage implements IStorage {
     kind: "profile" | "meal_snap" | "glucose_thresholds",
     recordId: number,
     userId: string,
-  ): Promise<HealthHistoryEntry[]> {
-    const tableName = kind === "profile"
-      ? "user_profile_health_history"
+  ): Promise<HealthHistoryEntry[] | null> {
+    // Verify base-record ownership before returning any history.
+    // Returns null when the record does not exist or belongs to a different user
+    // (indistinguishable by design for privacy — caller should return 404 for both).
+    const ownerCheck = kind === "profile"
+      ? await db.execute(sql`SELECT id FROM user_profiles WHERE id = ${recordId} AND user_id = ${userId} LIMIT 1`)
       : kind === "meal_snap"
-      ? "meal_snap_health_history"
-      : "user_glucose_thresholds_history";
+      ? await db.execute(sql`SELECT id FROM meal_snaps WHERE id = ${recordId} AND user_id = ${userId} LIMIT 1`)
+      : await db.execute(sql`SELECT id FROM user_glucose_thresholds WHERE id = ${recordId} AND user_id = ${userId} LIMIT 1`);
+    if ((ownerCheck.rows as any[]).length === 0) return null;
+
+    const tableName = DatabaseStorage.HISTORY_TABLE[kind];
     const result = await db.execute(sql`
       SELECT id, field_name, old_value, new_value, changed_at, change_reason, changed_by
       FROM ${sql.raw(tableName)}
