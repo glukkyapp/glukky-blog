@@ -4914,11 +4914,12 @@ No explanation, just JSON.`,
       };
       const kind = kindMap[recordType];
       if (!kind) return res.status(400).json({ message: "Invalid recordType. Use: profile, meal_snap, glucose_thresholds" });
-      // null → base record not found or owned by a different user (404 for both,
-      // indistinguishable by design so callers cannot enumerate other users' records).
-      // [] → record owned by this user but no history rows yet (also 404).
+      // null → base record not found or owned by a different user.
+      // Both cases return 404 (indistinguishable by design for privacy).
+      // [] → owned record with no history rows yet — valid for legacy data with no
+      // retroactive backfill; return 200 with an empty array, not 404.
       const history = await storage.getHealthHistory(kind, id, userId);
-      if (!history || history.length === 0) return res.status(404).json({ message: "No history found for this record" });
+      if (history === null) return res.status(404).json({ message: "Record not found" });
       res.json({ history });
     } catch (e: any) {
       console.error("[health-data/history] error:", e?.message);

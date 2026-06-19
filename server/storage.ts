@@ -599,20 +599,18 @@ export class DatabaseStorage implements IStorage {
     // knows the audit trail was not written before any data was changed.
     const current = await this.getProfile(userId);
     if (current) {
-      const entries = DatabaseStorage.PROFILE_HEALTH_FIELDS
-        .filter(f => (current as any)[f] != null)
-        .map(f => ({
-          originalRecordId: current.id,
-          userId,
-          fieldName: f,
-          oldValue: String((current as any)[f]),
-          newValue: null,
-          changedBy: userId,
-          changeReason: "user_reset",
-        }));
-      if (entries.length > 0) {
-        await this.writeHealthHistory("profile", entries);
-      }
+      // All five fields always get a history row (old may be null) so reset
+      // history is exhaustive — one entry per scoped field regardless of value.
+      const entries = DatabaseStorage.PROFILE_HEALTH_FIELDS.map(f => ({
+        originalRecordId: current.id,
+        userId,
+        fieldName: f,
+        oldValue: (current as any)[f] != null ? String((current as any)[f]) : null,
+        newValue: null,
+        changedBy: userId,
+        changeReason: "user_reset",
+      }));
+      await this.writeHealthHistory("profile", entries);
     }
     const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
     if (plans.length > 0) {
@@ -764,18 +762,17 @@ export class DatabaseStorage implements IStorage {
 
       const [profileRow] = await tx.select().from(userProfiles).where(eq(userProfiles.userId, userId));
       if (profileRow) {
-        const profileFields = DatabaseStorage.PROFILE_HEALTH_FIELDS;
-        const profileEntries = profileFields
-          .filter(f => (profileRow as any)[f] != null)
-          .map(f => ({
-            originalRecordId: profileRow.id,
-            userId,
-            fieldName: f,
-            oldValue: String((profileRow as any)[f]),
-            newValue: "DELETED",
-            changedBy: userId,
-            changeReason: "account_deleted",
-          }));
+        // All five fields always get a terminal row regardless of null old values
+        // so the deletion trail is exhaustive for medico-legal purposes.
+        const profileEntries = DatabaseStorage.PROFILE_HEALTH_FIELDS.map(f => ({
+          originalRecordId: profileRow.id,
+          userId,
+          fieldName: f,
+          oldValue: (profileRow as any)[f] != null ? String((profileRow as any)[f]) : null,
+          newValue: "DELETED",
+          changedBy: userId,
+          changeReason: "account_deleted",
+        }));
         await this.writeHealthHistory("profile", profileEntries, tx);
       }
 
