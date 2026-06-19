@@ -1,0 +1,61 @@
+2. Strip Health Values & Identifiers from PostHog
+text
+Project context:
+- PostHog packages: posthog-js (frontend), posthog-node (backend)
+- Client wrapper: client/src/lib/posthog.ts
+  Exports: initPostHog, identifyUser, setUserProperties, resetUser, track, 
+  trackException; includes a pre-init event queue
+- Server wrapper: server/posthog.ts
+  Exports: trackServer, captureException, shutdownPostHog
+- Blog inline snippet: blog-site/src/templates/layout.mjs line 75
+
+Known PostHog calls with problematic properties (must be fixed):
+- client/src/App.tsx:899 — identifyUser with { email, is_premium }
+  → email is PII and must never be sent to PostHog
+- client/src/pages/snap.tsx:402 — track("snap_label_succeeded") 
+  with { foodName, glucoseImpact, … }
+  → glucoseImpact is a health value; foodName may be sensitive; 
+    audit what "…" contains before deciding
+- client/src/pages/onboarding.tsx:138 — setUserProperties with 
+  "full onboarding profile object"
+  → must audit exactly what fields this object contains before deciding
+- server/index.ts:101 — captureException with userId + request context
+  → userId is an internal DB identifier; must not be sent as-is
+
+Before writing any code:
+1. Read client/src/lib/posthog.ts in full.
+2. Read server/posthog.ts in full.
+3. Read the full properties objects being passed in these specific calls:
+   - client/src/App.tsx line 899
+   - client/src/pages/snap.tsx line 402
+   - client/src/pages/onboarding.tsx line 138
+   - server/index.ts line 101
+4. Search the entire codebase for any other calls to posthog, identifyUser, 
+   setUserProperties, track, trackServer, captureException that are not 
+   listed above.
+5. Report back every call found with full properties before making any changes.
+
+Once confirmed, implement the following:
+- Add a sanitise() function inside the existing client/src/lib/posthog.ts 
+  that strips any property whose key or value relates to: glucose, hba1c, 
+  meal, food, reading, value, level, mmol, mg_dl, diagnosis, condition, 
+  disease, medication, real name, email, phone, date of birth, or any 
+  internal database user ID
+- Apply sanitise() inside every export in client/src/lib/posthog.ts and 
+  server/posthog.ts before data is sent to PostHog — not at the call sites
+- For identifyUser: replace email with a hashed or PostHog-native 
+  anonymous ID only — never the raw email or internal DB user ID
+- For setUserProperties on onboarding profile: strip all health fields 
+  (hba1c, glucose group, fasting baseline, etc.) — only retain 
+  non-health behavioural properties (language preference, onboarding 
+  step completed, etc.)
+- For snap_label_succeeded: remove glucoseImpact from the event properties; 
+  retain only non-health behavioural properties
+- For captureException in server/index.ts: replace userId with a 
+  non-reversible hash or remove it entirely
+- Add TypeScript types (if not already present) to the track/setUserProperties 
+  functions that reject health-value field names at compile time
+- Do not change the function signatures visible to callers — 
+  the sanitisation must be internal to the wrapper
+- Add a comment in both wrapper files: 
+  "Health values and PII stripped before sending — MCHK Code §1.4.1"

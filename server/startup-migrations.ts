@@ -78,6 +78,14 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       changed_by VARCHAR NOT NULL
     )`,
   },
+  {
+    name: "soft_delete.meal_snaps_is_deleted",
+    sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE",
+  },
+  {
+    name: "soft_delete.user_glucose_thresholds_is_deleted",
+    sql: "ALTER TABLE user_glucose_thresholds ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE",
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

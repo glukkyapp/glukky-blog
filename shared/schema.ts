@@ -334,6 +334,7 @@ export const mealSnaps = pgTable("meal_snaps", {
   postMealSymptom: text("post_meal_symptom"),
   postMealRecordedAt: timestamp("post_meal_recorded_at", { withTimezone: true }),
   postMealSkipped: boolean("post_meal_skipped").notNull().default(false),
+  isDeleted: boolean("is_deleted").notNull().default(false),
 }, (table) => ({
   userDateIdx: index("meal_snaps_user_date_idx").on(table.userId, table.localDate),
 }));
@@ -392,6 +393,7 @@ export const userGlucoseThresholds = pgTable("user_glucose_thresholds", {
   isPersonalised: boolean("is_personalised").notNull().default(false),
   firstActivatedAt: timestamp("first_activated_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isDeleted: boolean("is_deleted").notNull().default(false),
 });
 
 export const insertUserGlucoseThresholdsSchema = createInsertSchema(userGlucoseThresholds).omit({ id: true, updatedAt: true });
@@ -414,6 +416,14 @@ export const userProfileHealthHistory = pgTable("user_profile_health_history", h
 export const mealSnapHealthHistory = pgTable("meal_snap_health_history", healthHistoryColumns);
 export const userGlucoseThresholdsHistory = pgTable("user_glucose_thresholds_history", healthHistoryColumns);
 
+export const insertUserProfileHealthHistorySchema = createInsertSchema(userProfileHealthHistory).omit({ id: true, changedAt: true });
+export type InsertUserProfileHealthHistory = z.infer<typeof insertUserProfileHealthHistorySchema>;
 export type UserProfileHealthHistory = typeof userProfileHealthHistory.$inferSelect;
+
+export const insertMealSnapHealthHistorySchema = createInsertSchema(mealSnapHealthHistory).omit({ id: true, changedAt: true });
+export type InsertMealSnapHealthHistory = z.infer<typeof insertMealSnapHealthHistorySchema>;
 export type MealSnapHealthHistory = typeof mealSnapHealthHistory.$inferSelect;
+
+export const insertUserGlucoseThresholdsHistorySchema = createInsertSchema(userGlucoseThresholdsHistory).omit({ id: true, changedAt: true });
+export type InsertUserGlucoseThresholdsHistory = z.infer<typeof insertUserGlucoseThresholdsHistorySchema>;
 export type UserGlucoseThresholdsHistory = typeof userGlucoseThresholdsHistory.$inferSelect;

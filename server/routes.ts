@@ -4244,13 +4244,39 @@ No explanation, just JSON.`,
       if (symptom !== undefined && !VALID_SYMPTOMS.includes(symptom)) {
         return res.status(400).json({ message: "invalid symptom value" });
       }
-      const updated = await storage.updateMealSnapPostMeal(snapId, userId, {
+      // Resolve glucoseImpact before the atomic write so both the snap update
+      // and the impact reclassification land in the same transaction.
+      let glucoseImpact: string | undefined;
+      if (glucoseMmol !== undefined) {
+        try {
+          const { classifyPostMealMmol, PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
+          const profile2 = await storage.getProfile(userId);
+          const glucoseGroup = (profile2?.glucoseGroup ?? deriveGlucoseGroupFromCondition(profile2?.healthCondition ?? null)) as "healthy" | "t2dm" | undefined;
+          if (glucoseGroup && PHASE1_THRESHOLDS[glucoseGroup]) {
+            const thresholdRow = await storage.getUserGlucoseThresholds(userId);
+            glucoseImpact = classifyPostMealMmol(
+              glucoseMmol,
+              glucoseGroup,
+              thresholdRow?.isPersonalised ? { lowMedBoundary: thresholdRow.lowMedBoundary, medHighBoundary: thresholdRow.medHighBoundary } : undefined,
+            );
+          }
+        } catch (reclassErr: any) {
+          console.error("[post-meal/reclassify] Error resolving impact:", reclassErr?.message);
+        }
+      }
+
+      const { updated, localDate } = await storage.updateMealSnapPostMealWithHistory(snapId, userId, {
         glucoseMmol,
         symptom,
         skipped: skip === true,
         recordedAt: new Date(),
+        glucoseImpact,
       });
       if (!updated) return res.status(404).json({ message: "Snap not found" });
+
+      if (localDate) {
+        await storage.reaggregateDailyGlucoseForDate(userId, localDate);
+      }
       if (!skip) {
         await storage.updateProfile(userId, { consecutiveSkippedMeals: 0 });
       }
@@ -4266,28 +4292,6 @@ No explanation, just JSON.`,
           } else if (!profile.fastingQuestionSeen) {
             await storage.updateProfile(userId, { fastingQuestionSeen: true });
           }
-        }
-      }
-      // Reclassify glucoseImpact using clinical thresholds when real glucose is provided
-      if (glucoseMmol !== undefined) {
-        try {
-          const { classifyPostMealMmol, PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
-          const profile3 = await storage.getProfile(userId);
-          const glucoseGroup = (profile3?.glucoseGroup ?? deriveGlucoseGroupFromCondition(profile3?.healthCondition ?? null)) as "healthy" | "t2dm" | undefined;
-          if (glucoseGroup && PHASE1_THRESHOLDS[glucoseGroup]) {
-            const thresholdRow = await storage.getUserGlucoseThresholds(userId);
-            const impact = classifyPostMealMmol(
-              glucoseMmol,
-              glucoseGroup,
-              thresholdRow?.isPersonalised ? { lowMedBoundary: thresholdRow.lowMedBoundary, medHighBoundary: thresholdRow.medHighBoundary } : undefined,
-            );
-            const localDate = await storage.reclassifySnapGlucoseImpact(snapId, impact);
-            if (localDate) {
-              await storage.reaggregateDailyGlucoseForDate(userId, localDate);
-            }
-          }
-        } catch (reclassErr: any) {
-          console.error("[post-meal/reclassify] Error:", reclassErr?.message);
         }
       }
       res.json({ ok: true });
@@ -4900,14 +4904,20 @@ No explanation, just JSON.`,
       const { recordType, recordId } = req.params;
       const id = parseInt(recordId, 10);
       if (isNaN(id) || id <= 0) return res.status(400).json({ message: "Invalid recordId" });
+      // Accept both underscore and hyphen separators for convenience.
       const kindMap: Record<string, "profile" | "meal_snap" | "glucose_thresholds"> = {
         "profile": "profile",
+        "meal_snap": "meal_snap",
         "meal-snap": "meal_snap",
+        "glucose_thresholds": "glucose_thresholds",
         "glucose-thresholds": "glucose_thresholds",
       };
       const kind = kindMap[recordType];
-      if (!kind) return res.status(400).json({ message: "Invalid recordType. Use: profile, meal-snap, glucose-thresholds" });
+      if (!kind) return res.status(400).json({ message: "Invalid recordType. Use: profile, meal_snap, glucose_thresholds" });
       const history = await storage.getHealthHistory(kind, id, userId);
+      // Return 404 when no rows found — either the record doesn't exist or it
+      // belongs to a different user (indistinguishable by design for privacy).
+      if (history.length === 0) return res.status(404).json({ message: "No history found for this record" });
       res.json({ history });
     } catch (e: any) {
       console.error("[health-data/history] error:", e?.message);
