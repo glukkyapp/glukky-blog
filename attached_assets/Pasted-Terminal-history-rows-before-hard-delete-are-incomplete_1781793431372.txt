@@ -1,0 +1,13 @@
+Terminal history rows before hard-delete are incomplete
+The spec says to write terminal history rows for  meal_snaps  and  user_glucose_thresholds , but  user_profiles  health fields (HbA1c, fasting baseline, glucose group, thresholds) are not mentioned. Account deletion should also write terminal rows for the profile record, otherwise the audit trail has a gap at the most sensitive moment.
+ resetUser  history scope is unclear
+The spec says “write history rows for each field being nullified” but doesn’t specify which fields. If  resetUser  touches different fields than  updateProfile , the helper needs to know the exact field list. Worth enumerating them explicitly in the spec to avoid the agent guessing.
+History endpoint ownership check uses 404 for both “not found” and “not owner”
+This is correct security practice (don’t reveal existence), but the spec should confirm this is intentional — some teams prefer 403 for unauthorised access to a known resource. Confirm which behaviour you want.
+ updateMealSnapPostMealWithHistory  return type
+The spec says it returns  { updated: boolean, localDate: string | null }  but the existing route likely expects more fields from the current two-step call. The agent needs to verify the existing route’s response consumption before narrowing the return type, otherwise the route silently drops data.
+Minor Issues
+ writeHealthHistory  as private — if it’s only used inside  storage.ts  that’s fine, but  deleteUserCompletely  and  resetUser  also need it. Make sure “private” here means module-private, not class-private, or it won’t be accessible from those functions.
+Idempotent migrations — the spec correctly flags  CREATE TABLE IF NOT EXISTS  and  ADD COLUMN IF NOT EXISTS , but also needs  DO  BEGIN ... EXCEPTION WHEN duplicate_column THEN NULL; END   pattern for older Postgres versions that don’t support  ADD COLUMN IF NOT EXISTS . Worth confirming your Postgres version supports it natively (14+ does).
+Edit button placement on mobile
+The pencil icon added inline after the mmol badge on food-log may be too small a tap target on mobile. Worth noting  data-testid  is added but no minimum touch target size is specified — the agent may render it too sm

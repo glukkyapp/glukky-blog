@@ -1,0 +1,49 @@
+1. Versioned History Tables — HbA1c & Glucose
+text
+Project context:
+- Database: PostgreSQL
+- ORM: Drizzle ORM with node-postgres driver
+- Schema file: shared/schema.ts
+- Backend framework: Express (server/routes.ts, server/index.ts)
+
+Known tables storing health values that need versioning:
+- user_profiles: columns hba1c_level (real), blood_test_date (date), 
+  fasting_baseline_mmol (real), glucose_group (text)
+- meal_snaps: columns post_meal_glucose_mmol (real), glucose_impact (text), 
+  post_meal_recorded_at (timestamp)
+- user_glucose_thresholds: columns low_med_boundary (real), med_high_boundary (real)
+- snap_daily_glucose: columns low_count, medium_count, high_count (int)
+
+Known write operations on these tables:
+- PATCH /api/profile/health-markers (routes.ts:564) → storage.updateProfile()
+- POST /api/snap/post-meal (routes.ts:4235) → storage.updateMealSnapPostMeal() 
+  + storage.reclassifySnapGlucoseImpact()
+- Internal upsert via server/glucose-thresholds.ts → storage.upsertUserGlucoseThresholds()
+- Full delete: POST /api/auth/delete-account and POST /api/admin/wipe-user 
+  → storage.deleteUserCompletely()
+- Admin reset: storage.resetUser() (nullifies health markers, no delete)
+
+Before writing any code:
+1. Read shared/schema.ts in full and identify the complete column list for each 
+   of the above tables.
+2. Read the storage functions listed above and identify exactly which columns 
+   are modified in each operation.
+3. Read server/glucose-thresholds.ts in full.
+4. Report back what you found before making any changes.
+
+Once confirmed, implement the following:
+- Add a _history table for each health-value-bearing table (user_profiles, 
+  meal_snaps, user_glucose_thresholds). Each history table must record:
+  original_record_id, user_id, field_name, old_value, new_value, 
+  changed_at (default now()), change_reason (nullable), changed_by (user_id)
+- Wrap each history write + main table update in a single Drizzle transaction
+- On first INSERT of a record, also write a history row with old_value = null
+- Replace any hard DELETE of health data with a soft delete: 
+  add is_deleted (boolean, default false) to affected tables, write a 
+  history row with new_value = 'DELETED' before soft-deleting
+- Add a GET /api/health-data/:recordType/:recordId/history endpoint 
+  returning full version history ordered by changed_at DESC, 
+  accessible only by the record's own user
+- Add the new tables to shared/schema.ts using Drizzle table definitions 
+  consistent with the existing schema style
+- Do not change any existing API response shapes
