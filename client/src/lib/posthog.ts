@@ -1,3 +1,4 @@
+// Health values and PII stripped before sending — MCHK Code §1.4.1
 import posthog from "posthog-js";
 
 let initialized = false;
@@ -9,34 +10,61 @@ type Pending =
   | { kind: "exception"; error: unknown; context?: Record<string, unknown> };
 const pending: Pending[] = [];
 
+function normalise(key: string): string {
+  return key.toLowerCase().replace(/[_\-\s]/g, "");
+}
+
+const BLOCKED_KEYS = new Set([
+  "glucose", "glucosemmol", "glucosemgdl", "mmol", "mgdl",
+  "hba1c", "hba1clevel", "fastingbaseline", "fastingbaselinemmol",
+  "meal", "foodname", "food", "reading", "readingvalue", "level",
+  "diagnosis", "condition", "healthcondition", "glucosegroup",
+  "disease", "medication", "symptom", "postmealsymptom",
+  "struggle", "struggles", "sleeppattern",
+  "email", "phone", "dob", "dateofbirth", "userid",
+]);
+
+function sanitise(properties?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!properties) return properties;
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(properties)) {
+    if (!BLOCKED_KEYS.has(normalise(k))) {
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
 function flushPending(): void {
   while (pending.length) {
     const p = pending.shift()!;
     try {
       if (p.kind === "identify") {
-        posthog.identify(p.id, p.properties);
-        if (p.properties && Object.keys(p.properties).length > 0) {
-          posthog.setPersonProperties(p.properties);
+        const clean = sanitise(p.properties);
+        posthog.identify(p.id, clean);
+        if (clean && Object.keys(clean).length > 0) {
+          posthog.setPersonProperties(clean);
         }
       } else if (p.kind === "reset") {
         posthog.reset();
       } else if (p.kind === "track") {
-        posthog.capture(p.eventName, p.properties);
+        posthog.capture(p.eventName, sanitise(p.properties));
       } else if (p.kind === "setProps") {
-        posthog.setPersonProperties(p.properties);
+        posthog.setPersonProperties(sanitise(p.properties) ?? {});
       } else if (p.kind === "exception") {
         const err =
           p.error instanceof Error
             ? p.error
             : new Error(typeof p.error === "string" ? p.error : JSON.stringify(p.error));
+        const cleanCtx = sanitise(p.context);
         if (typeof (posthog as any).captureException === "function") {
-          (posthog as any).captureException(err, p.context);
+          (posthog as any).captureException(err, cleanCtx);
         } else {
           posthog.capture("$exception", {
             $exception_message: err.message,
             $exception_type: err.name,
             $exception_stack_trace_raw: err.stack,
-            ...p.context,
+            ...cleanCtx,
           });
         }
       }
@@ -56,7 +84,7 @@ export function initPostHog(): void {
     api_host: "https://us.i.posthog.com",
     capture_pageview: "history_change",
     capture_pageleave: true,
-    autocapture: true,
+    autocapture: false,
     session_recording: { maskAllInputs: true },
     persistence: "localStorage+cookie",
     loaded: () => {
@@ -73,14 +101,15 @@ export function identifyUser(
   id: string,
   properties?: Record<string, unknown>,
 ): void {
+  const clean = sanitise(properties);
   if (!initialized) {
-    pending.push({ kind: "identify", id, properties });
+    pending.push({ kind: "identify", id, properties: clean });
     return;
   }
   try {
-    posthog.identify(id, properties);
-    if (properties && Object.keys(properties).length > 0) {
-      posthog.setPersonProperties(properties);
+    posthog.identify(id, clean);
+    if (clean && Object.keys(clean).length > 0) {
+      posthog.setPersonProperties(clean);
     }
   } catch (err) {
     if (import.meta.env.DEV) console.warn("[posthog] identify failed:", err);
@@ -89,12 +118,14 @@ export function identifyUser(
 
 export function setUserProperties(properties: Record<string, unknown>): void {
   if (!properties || Object.keys(properties).length === 0) return;
+  const clean = sanitise(properties) ?? {};
+  if (Object.keys(clean).length === 0) return;
   if (!initialized) {
-    pending.push({ kind: "setProps", properties });
+    pending.push({ kind: "setProps", properties: clean });
     return;
   }
   try {
-    posthog.setPersonProperties(properties);
+    posthog.setPersonProperties(clean);
   } catch (err) {
     if (import.meta.env.DEV) console.warn("[posthog] setPersonProperties failed:", err);
   }
@@ -116,12 +147,13 @@ export function track(
   eventName: string,
   properties?: Record<string, unknown>,
 ): void {
+  const clean = sanitise(properties);
   if (!initialized) {
-    pending.push({ kind: "track", eventName, properties });
+    pending.push({ kind: "track", eventName, properties: clean });
     return;
   }
   try {
-    posthog.capture(eventName, properties);
+    posthog.capture(eventName, clean);
   } catch (err) {
     if (import.meta.env.DEV) console.warn("[posthog] capture failed:", err);
   }
@@ -131,8 +163,9 @@ export function trackException(
   error: unknown,
   context?: Record<string, unknown>,
 ): void {
+  const clean = sanitise(context);
   if (!initialized) {
-    pending.push({ kind: "exception", error, context });
+    pending.push({ kind: "exception", error, context: clean });
     return;
   }
   try {
@@ -141,13 +174,13 @@ export function trackException(
         ? error
         : new Error(typeof error === "string" ? error : JSON.stringify(error));
     if (typeof (posthog as any).captureException === "function") {
-      (posthog as any).captureException(err, context);
+      (posthog as any).captureException(err, clean);
     } else {
       posthog.capture("$exception", {
         $exception_message: err.message,
         $exception_type: err.name,
         $exception_stack_trace_raw: err.stack,
-        ...context,
+        ...clean,
       });
     }
   } catch (e) {

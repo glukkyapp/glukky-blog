@@ -3193,7 +3193,7 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
         const sauceOptions = sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
         const toppingOptions = toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
 
-        trackServer(userId, "snap_label_succeeded_server", { source: "food_label", foodName, isFirstSnap });
+        trackServer(userId, "snap_label_succeeded_server", { source: "food_label", isFirstSnap });
 
         return res.json({
           name: foodName,
@@ -3247,7 +3247,7 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
         const first = resolvedCombos[0];
 
-        trackServer(userId, "snap_label_succeeded_server", { source: "combos", foodName, isFirstSnap });
+        trackServer(userId, "snap_label_succeeded_server", { source: "combos", isFirstSnap });
 
         return res.json({
           name: foodName,
@@ -3299,7 +3299,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const rawExtras = typeof labelsParsed.extras === "string" ? labelsParsed.extras.trim() || null : null;
       const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
-      trackServer(userId, "snap_label_succeeded_server", { source: "claude", foodName, isFirstSnap });
+      trackServer(userId, "snap_label_succeeded_server", { source: "claude", isFirstSnap });
 
       res.json({
         name: foodName,
@@ -3753,7 +3753,6 @@ No explanation, just JSON.`,
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
       trackServer(userId, "snap_advice_succeeded_server", {
-        struggle,
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
       });

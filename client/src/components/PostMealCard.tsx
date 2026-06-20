@@ -228,10 +228,10 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
       if (!skip && !isSymptomOnly && glucoseValue !== null) {
-        track("glucose_completed", { glucoseMmol: glucoseValue });
+        track("glucose_completed", { recorded: true });
       }
       if (isSymptomOnly && symptom !== null) {
-        track("symptoms_checked", { symptom });
+        track("symptoms_checked", { recorded: true });
       }
       onDone();
     } catch (e) {

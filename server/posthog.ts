@@ -1,4 +1,6 @@
+// Health values and PII stripped before sending — MCHK Code §1.4.1
 import { PostHog } from "posthog-node";
+import { createHash } from "crypto";
 
 let client: PostHog | null = null;
 
@@ -14,8 +16,37 @@ function getClient(): PostHog | null {
   return client;
 }
 
+function hashId(id: string | number): string {
+  return createHash("sha256").update(String(id)).digest("hex");
+}
+
+function normalise(key: string): string {
+  return key.toLowerCase().replace(/[_\-\s]/g, "");
+}
+
+const BLOCKED_KEYS = new Set([
+  "glucose", "glucosemmol", "glucosemgdl", "mmol", "mgdl",
+  "hba1c", "hba1clevel", "fastingbaseline", "fastingbaselinemmol",
+  "meal", "foodname", "food", "reading", "readingvalue", "level",
+  "diagnosis", "condition", "healthcondition", "glucosegroup",
+  "disease", "medication", "symptom", "postmealsymptom",
+  "struggle", "struggles", "sleeppattern",
+  "email", "phone", "dob", "dateofbirth", "userid",
+]);
+
+function sanitise(properties?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!properties) return properties;
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(properties)) {
+    if (!BLOCKED_KEYS.has(normalise(k))) {
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
 export function trackServer(
-  distinctId: string,
+  distinctId: string | null,
   event: string,
   properties?: Record<string, unknown>,
 ): void {
@@ -23,9 +54,9 @@ export function trackServer(
   if (!c) return;
   try {
     c.capture({
-      distinctId,
+      distinctId: distinctId ? hashId(distinctId) : "server",
       event,
-      properties,
+      properties: sanitise(properties),
     });
   } catch (err) {
     console.warn("[posthog/server] capture failed:", err);
@@ -34,7 +65,7 @@ export function trackServer(
 
 export function captureException(
   error: unknown,
-  distinctId?: string,
+  distinctId?: string | null,
   context?: Record<string, unknown>,
 ): void {
   const c = getClient();
@@ -44,17 +75,19 @@ export function captureException(
       error instanceof Error
         ? error
         : new Error(typeof error === "string" ? error : JSON.stringify(error));
+    const hashedId = distinctId ? hashId(distinctId) : "server";
+    const cleanCtx = sanitise(context);
     if (typeof (c as any).captureException === "function") {
-      (c as any).captureException(err, distinctId, context);
+      (c as any).captureException(err, hashedId, cleanCtx);
     } else {
       c.capture({
-        distinctId: distinctId || "server",
+        distinctId: hashedId,
         event: "$exception",
         properties: {
           $exception_message: err.message,
           $exception_type: err.name,
           $exception_stack_trace_raw: err.stack,
-          ...context,
+          ...cleanCtx,
         },
       });
     }

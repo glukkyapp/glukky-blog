@@ -897,7 +897,6 @@ function AuthenticatedApp() {
 
     if (currentId) {
       identifyUser(currentId, {
-        email: user?.email ?? undefined,
         is_premium: gateStatus?.isPremium ?? undefined,
       });
       loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
