@@ -166,6 +166,7 @@ export interface SendPushResult {
   notificationId: string | null;
 }
 
+// No health values or PII in notification content — MCHK Code §1.4.1
 export async function sendPushNotification(payload: NotificationPayload): Promise<SendPushResult> {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
     log("OneSignal credentials not configured, skipping notification", "onesignal");

@@ -9,7 +9,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
-import { CONTENTS } from "./notifications";
+import { CONTENTS, DEV_TEST_TEMPLATES } from "./notifications";
 import {
   sortStruggles, getFirstWeekPlan, createWeeklyPlan, getWeeklyReflection,
   generateWeeklyReportData, generateMonthlyReportData,
@@ -2327,34 +2327,14 @@ export async function registerRoutes(
       if (!profile?.onesignalPlayerId) {
         return res.status(400).json({ message: "No OneSignal player ID registered. Open the app in the mobile wrapper first." });
       }
-      const payloads: Record<string, { title: string; subtitle: string; message: string; deepLink: string }> = {
-        late_dinner: {
-          title: "Glukky",
-          subtitle: "Dinner reminder",
-          message: "Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️",
-          deepLink: "/",
-        },
-        sunday_planning: {
-          title: "Glukky",
-          subtitle: "Weekly review",
-          message: "Your weekly review is ready! Check your progress and plan next week.",
-          deepLink: "/plan",
-        },
-        reengagement: {
-          title: "Glukky",
-          subtitle: "We miss you!",
-          message: "Your plan is waiting — even a small step counts.",
-          deepLink: "/",
-        },
-        daily_checkin: {
-          title: "Glukky",
-          subtitle: "Daily check-in",
-          message: "Your daily check-in is open — tap to log your day!",
-          deepLink: "/",
-        },
-      };
-      const payload = payloads[type];
-      const result = await sendPushNotification({ ...payload, playerIds: [profile.onesignalPlayerId] });
+      const tmpl = DEV_TEST_TEMPLATES[type];
+      const result = await sendPushNotification({
+        title:    { en: tmpl.en.title,    "zh-Hant": tmpl.zhHant.title },
+        subtitle: { en: tmpl.en.subtitle, "zh-Hant": tmpl.zhHant.subtitle },
+        message:  { en: tmpl.en.message,  "zh-Hant": tmpl.zhHant.message },
+        deepLink: tmpl.deepLink,
+        playerIds: [profile.onesignalPlayerId],
+      });
       res.json({ success: result.success, type, notificationId: result.notificationId });
     } catch (error: any) {
       console.error("Error sending test notification:", error);
@@ -3498,7 +3478,6 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
                 subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
                 message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
                 deepLink: hstixContent.deepLink,
-                redirectUrl: `/food-log?snap=${snap.id}`,
                 send_after: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
                 externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
                 playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],

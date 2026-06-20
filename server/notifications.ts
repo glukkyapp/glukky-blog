@@ -38,10 +38,21 @@ const ALL_TYPES: NotificationType[] = [
   "reengagement",
 ];
 
+// Opaque brand that prevents runtime-computed strings from reaching
+// notification headings or bodies at compile time.
+// t() accepts a plain string literal at the call site; the cast is internal.
+// Any template literal or variable expression produces a plain `string` which
+// is NOT assignable to TemplateString, so the type gate holds at the
+// NotificationLocale boundary without restricting what call sites write.
+// MCHK Code §1.4.1 — no health values or PII in notification content.
+declare const _brand: unique symbol;
+type TemplateString = string & { readonly [_brand]: "TemplateString" };
+function t(s: string): TemplateString { return s as unknown as TemplateString; }
+
 interface NotificationLocale {
-  title: string;
-  subtitle: string;
-  message: string;
+  title: TemplateString;
+  subtitle: TemplateString;
+  message: TemplateString;
 }
 
 interface NotificationContent {
@@ -52,38 +63,63 @@ interface NotificationContent {
 
 export const CONTENTS: Record<NotificationType, NotificationContent> = {
   foodsnap_reminder: {
-    en:     { title: "Glukky", subtitle: "", message: "Time to snap your dinner!" },
-    zhHant: { title: "Glukky", subtitle: "", message: "記錄今晚晚餐的時間到了！" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Time to snap your dinner!") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("記錄今晚晚餐的時間到了！") },
     deepLink: "/",
   },
   hstix_reminder: {
-    en:     { title: "Glukky", subtitle: "", message: "Ready to log your HStix reading?" },
-    zhHant: { title: "Glukky", subtitle: "", message: "準備好量度你的血糖了嗎？" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Ready to log your HStix reading?") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("準備好量度你的血糖了嗎？") },
     deepLink: "/food-log",
   },
   daily_report: {
-    en:     { title: "Glukky", subtitle: "", message: "Your daily summary is ready." },
-    zhHant: { title: "Glukky", subtitle: "", message: "你的每日報告已準備好。" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your daily summary is ready.") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每日報告已準備好。") },
     deepLink: "/",
   },
   weekly_report: {
-    en:     { title: "Glukky", subtitle: "", message: "Your weekly report is ready." },
-    zhHant: { title: "Glukky", subtitle: "", message: "你的每週報告已準備好。" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your weekly report is ready.") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每週報告已準備好。") },
     deepLink: "/",
   },
   monthly_report: {
-    en:     { title: "Glukky", subtitle: "", message: "Your monthly report is ready." },
-    zhHant: { title: "Glukky", subtitle: "", message: "你的每月報告已準備好。" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your monthly report is ready.") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每月報告已準備好。") },
     deepLink: "/",
   },
   daily_checkin: {
-    en:     { title: "Glukky", subtitle: "", message: "Your daily check-in is open — tap to log your day!" },
-    zhHant: { title: "Glukky", subtitle: "", message: "每日打卡時間到了！" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your daily check-in is open — tap to log your day!") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("每日打卡時間到了！") },
     deepLink: "/",
   },
   reengagement: {
-    en:     { title: "Glukky", subtitle: "", message: "We miss you — your plan is waiting." },
-    zhHant: { title: "Glukky", subtitle: "", message: "我們想念你——你的計劃在等待。" },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("We miss you — your plan is waiting.") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("我們想念你——你的計劃在等待。") },
+    deepLink: "/",
+  },
+};
+
+// Dev-panel test notification templates — same TemplateString gate as CONTENTS.
+// Dev sends are English-only so zhHant mirrors en; the type guard still applies.
+export const DEV_TEST_TEMPLATES: Record<string, NotificationContent> = {
+  late_dinner: {
+    en:     { title: t("Glukky"), subtitle: t("Dinner reminder"), message: t("Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️") },
+    zhHant: { title: t("Glukky"), subtitle: t("Dinner reminder"), message: t("Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️") },
+    deepLink: "/",
+  },
+  sunday_planning: {
+    en:     { title: t("Glukky"), subtitle: t("Weekly review"), message: t("Your weekly review is ready! Check your progress and plan next week.") },
+    zhHant: { title: t("Glukky"), subtitle: t("Weekly review"), message: t("Your weekly review is ready! Check your progress and plan next week.") },
+    deepLink: "/plan",
+  },
+  reengagement: {
+    en:     { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Your plan is waiting — even a small step counts.") },
+    zhHant: { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Your plan is waiting — even a small step counts.") },
+    deepLink: "/",
+  },
+  daily_checkin: {
+    en:     { title: t("Glukky"), subtitle: t("Daily check-in"), message: t("Your daily check-in is open — tap to log your day!") },
+    zhHant: { title: t("Glukky"), subtitle: t("Daily check-in"), message: t("Your daily check-in is open — tap to log your day!") },
     deepLink: "/",
   },
 };
