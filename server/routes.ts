@@ -326,19 +326,94 @@ export async function registerRoutes(
   app.post("/api/auth/delete-account", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const deleted = await storage.deleteUserCompletely(userId);
-      console.log(`[auth/delete-account] User ${userId} deleted self`, deleted);
-      req.session.destroy((err: any) => {
-        if (err) {
-          console.error("Session destroy error after account deletion:", err);
-          return res.status(500).json({ message: "Account deleted but session cleanup failed" });
-        }
-        res.clearCookie("connect.sid");
-        return res.json({ success: true, deleted });
-      });
+      const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
+      const request = await storage.createDeletionRequest(userId);
+      await storage.logUserDataAction(userId, "deletion_requested", String(ip ?? ""));
+      console.log(`[auth/delete-account] User ${userId} scheduled deletion for ${request.scheduledDeletionAt}`);
+      // TODO: a scheduled job must call storage.deleteUserCompletely(userId) after scheduledDeletionAt
+      return res.json({ scheduled: true, scheduledDeletionAt: request.scheduledDeletionAt });
     } catch (error: any) {
-      console.error("Error deleting account:", error);
-      res.status(500).json({ message: error?.message || "Failed to delete account" });
+      console.error("Error scheduling account deletion:", error);
+      res.status(500).json({ message: error?.message || "Failed to schedule account deletion" });
+    }
+  });
+
+  app.get("/api/user/data-export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
+      const data = await storage.exportUserData(userId);
+      await storage.logUserDataAction(userId, "data_export", String(ip ?? ""));
+      const today = new Date().toISOString().split("T")[0];
+      const filename = `glukky-data-export-${today}.json`;
+      res.set("Content-Disposition", `attachment; filename="${filename}"`);
+      res.set("Content-Type", "application/json");
+      res.set("Cache-Control", "no-store");
+      return res.json(data);
+    } catch (error: any) {
+      console.error("Error exporting user data:", error);
+      res.status(500).json({ message: error?.message || "Failed to export data" });
+    }
+  });
+
+  app.post("/api/user/correction-request", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
+      const schema = z.object({
+        recordType: z.enum(["meal", "walk", "report", "profile", "other"]),
+        approximateDate: z.string().optional().nullable(),
+        incorrectValue: z.string().min(1),
+        correctValue: z.string().min(1),
+        reason: z.string().optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+      const created = await storage.createCorrectionRequest(userId, parsed.data);
+      await storage.logUserDataAction(userId, "correction_requested", String(ip ?? ""));
+      // TODO: send email when SMTP is configured
+      console.log(`[correction-request] User ${userId} submitted correction for ${parsed.data.recordType}`, created.id);
+      return res.json(created);
+    } catch (error: any) {
+      console.error("Error creating correction request:", error);
+      res.status(500).json({ message: error?.message || "Failed to submit correction request" });
+    }
+  });
+
+  app.get("/api/user/correction-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getUserCorrectionRequests(userId);
+      return res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching correction requests:", error);
+      res.status(500).json({ message: error?.message || "Failed to fetch correction requests" });
+    }
+  });
+
+  app.get("/api/user/deletion-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const request = await storage.getDeletionRequest(userId);
+      return res.json(request ?? null);
+    } catch (error: any) {
+      console.error("Error fetching deletion status:", error);
+      res.status(500).json({ message: error?.message || "Failed to fetch deletion status" });
+    }
+  });
+
+  app.delete("/api/user/account/cancel", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
+      await storage.cancelDeletionRequest(userId);
+      await storage.logUserDataAction(userId, "deletion_cancelled", String(ip ?? ""));
+      return res.json({ cancelled: true });
+    } catch (error: any) {
+      console.error("Error cancelling deletion request:", error);
+      res.status(500).json({ message: error?.message || "Failed to cancel deletion" });
     }
   });
 

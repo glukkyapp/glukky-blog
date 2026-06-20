@@ -2,7 +2,7 @@ import { useState } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield } from "lucide-react";
+import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -525,6 +527,207 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
   );
 }
 
+interface CorrectionRequest {
+  id: number;
+  recordType: string;
+  approximateDate: string | null;
+  incorrectValue: string | null;
+  correctValue: string | null;
+  reason: string | null;
+  status: string;
+  createdAt: string;
+}
+
+interface DeletionStatus {
+  userId: string;
+  requestedAt: string;
+  scheduledDeletionAt: string;
+  cancelledAt: string | null;
+}
+
+function MyDataCard() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [recordType, setRecordType] = useState("");
+  const [approxDate, setApproxDate] = useState("");
+  const [incorrectValue, setIncorrectValue] = useState("");
+  const [correctValue, setCorrectValue] = useState("");
+  const [reason, setReason] = useState("");
+
+  const { data: corrections, refetch: refetchCorrections } = useQuery<CorrectionRequest[]>({
+    queryKey: ["/api/user/correction-requests"],
+  });
+
+  const correctionMutation = useMutation({
+    mutationFn: async (payload: object) => {
+      const res = await apiRequest("POST", "/api/user/correction-request", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      hapticNotify("SUCCESS");
+      toast({ title: t("profile.my_data.report_error_toast") });
+      setRecordType("");
+      setApproxDate("");
+      setIncorrectValue("");
+      setCorrectValue("");
+      setReason("");
+      setCorrectionOpen(false);
+      refetchCorrections();
+    },
+    onError: () => {
+      hapticNotify("ERROR");
+      toast({ title: t("common.error"), variant: "destructive" });
+    },
+  });
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/user/data-export", { credentials: "include" });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const today = new Date().toISOString().split("T")[0];
+      a.href = url;
+      a.download = `glukky-data-export-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: t("profile.my_data.download_toast") });
+    } catch {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleCorrectionSubmit = () => {
+    if (!recordType || !incorrectValue || !correctValue) return;
+    correctionMutation.mutate({
+      recordType,
+      approximateDate: approxDate || null,
+      incorrectValue,
+      correctValue,
+      reason: reason || null,
+    });
+  };
+
+  return (
+    <Card data-testid="card-my-data">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <Download className="w-5 h-5 text-muted-foreground" />
+        <CardTitle className="text-base">{t("profile.my_data.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button
+          variant="outline"
+          className="w-full"
+          data-testid="button-download-my-data"
+          onClick={handleDownload}
+          disabled={downloading}
+        >
+          <Download className="w-4 h-4" />
+          {downloading ? t("profile.my_data.downloading") : t("profile.my_data.download_button")}
+        </Button>
+
+        <div className="border rounded-md">
+          <button
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium"
+            data-testid="button-toggle-correction-form"
+            onClick={() => setCorrectionOpen(prev => !prev)}
+          >
+            <span>{t("profile.my_data.report_error_title")}</span>
+            {correctionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {correctionOpen && (
+            <div className="px-3 pb-3 space-y-2 border-t pt-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t("profile.my_data.report_error_label")}</label>
+                <Select value={recordType} onValueChange={setRecordType}>
+                  <SelectTrigger data-testid="select-record-type" className="text-sm">
+                    <SelectValue placeholder={t("profile.my_data.report_error_label")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meal">{t("profile.my_data.record_meal")}</SelectItem>
+                    <SelectItem value="walk">{t("profile.my_data.record_walk")}</SelectItem>
+                    <SelectItem value="report">{t("profile.my_data.record_report")}</SelectItem>
+                    <SelectItem value="profile">{t("profile.my_data.record_profile")}</SelectItem>
+                    <SelectItem value="other">{t("profile.my_data.record_other")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t("profile.my_data.approx_date_label")}</label>
+                <Input
+                  type="date"
+                  value={approxDate}
+                  onChange={e => setApproxDate(e.target.value)}
+                  className="text-sm"
+                  data-testid="input-correction-date"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t("profile.my_data.incorrect_label")}</label>
+                <Textarea
+                  value={incorrectValue}
+                  onChange={e => setIncorrectValue(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                  data-testid="input-correction-incorrect"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t("profile.my_data.correct_label")}</label>
+                <Textarea
+                  value={correctValue}
+                  onChange={e => setCorrectValue(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                  data-testid="input-correction-correct"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t("profile.my_data.reason_label")}</label>
+                <Textarea
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  className="text-sm min-h-[50px]"
+                  data-testid="input-correction-reason"
+                />
+              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                data-testid="button-submit-correction"
+                onClick={handleCorrectionSubmit}
+                disabled={correctionMutation.isPending || !recordType || !incorrectValue || !correctValue}
+              >
+                {correctionMutation.isPending ? t("profile.my_data.report_error_submitting") : t("profile.my_data.report_error_submit")}
+              </Button>
+
+              {corrections && corrections.length > 0 && (
+                <div className="pt-2 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">{t("profile.my_data.past_submissions")}</p>
+                  {corrections.map(c => (
+                    <div key={c.id} className="flex items-center justify-between text-xs border rounded px-2 py-1" data-testid={`correction-item-${c.id}`}>
+                      <span className="text-muted-foreground">{c.recordType} · {new Date(c.createdAt).toLocaleDateString()}</span>
+                      <Badge variant={c.status === "resolved" ? "default" : "secondary"} className="text-[10px]">
+                        {c.status === "resolved" ? t("profile.my_data.status_resolved") : t("profile.my_data.status_pending")}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -542,6 +745,26 @@ export default function ProfilePage() {
 
   const { data: devCheck } = useQuery<{ isDev: boolean }>({
     queryKey: ["/api/dev/check"],
+  });
+
+  const { data: deletionStatus } = useQuery<DeletionStatus | null>({
+    queryKey: ["/api/user/deletion-status"],
+  });
+
+  const cancelDeletionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/user/account/cancel");
+      return res.json();
+    },
+    onSuccess: () => {
+      hapticNotify("SUCCESS");
+      queryClient.invalidateQueries({ queryKey: ["/api/user/deletion-status"] });
+      toast({ title: t("profile.delete_account.cancel_toast_success") });
+    },
+    onError: () => {
+      hapticNotify("ERROR");
+      toast({ title: t("profile.delete_account.cancel_toast_error"), variant: "destructive" });
+    },
   });
 
   const isLoading = profileLoading || roadmapLoading;
@@ -567,6 +790,30 @@ export default function ProfilePage() {
   return (
     <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-2" data-testid="profile-page">
       <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-profile-heading">{t("profile.title")}</h1>
+
+      {deletionStatus && (
+        <div
+          className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 mt-2 mb-4"
+          data-testid="banner-deletion-pending"
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">
+            {t("profile.delete_account.pending_banner", {
+              date: new Date(deletionStatus.scheduledDeletionAt).toLocaleDateString(),
+            })}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-red-300 text-red-700 hover:bg-red-100 h-7 text-xs"
+            data-testid="button-cancel-deletion"
+            disabled={cancelDeletionMutation.isPending}
+            onClick={() => cancelDeletionMutation.mutate()}
+          >
+            {t("profile.delete_account.cancel_deletion")}
+          </Button>
+        </div>
+      )}
 
       {profile && <NameGoalCard profile={profile} />}
 
@@ -645,6 +892,8 @@ export default function ProfilePage() {
       )}
 
 
+      <MyDataCard />
+
       <div className="pt-4">
         <Button
           variant="outline"
@@ -661,15 +910,17 @@ export default function ProfilePage() {
       </div>
 
       <div className="pt-2 pb-6">
-        <Button
-          variant="outline"
-          className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-          data-testid="button-delete-account"
-          onClick={() => setDeleteDialogOpen(true)}
-        >
-          <Trash2 className="w-4 h-4" />
-          {t("profile.delete_account.button")}
-        </Button>
+        {!deletionStatus && (
+          <Button
+            variant="outline"
+            className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+            data-testid="button-delete-account"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            {t("profile.delete_account.button")}
+          </Button>
+        )}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent data-testid="dialog-delete-account" className="max-h-[85vh] overflow-y-auto">
             <AlertDialogHeader>
@@ -710,31 +961,8 @@ export default function ProfilePage() {
                       credentials: "include",
                     });
                     if (!res.ok) throw new Error("Failed");
-                    // Atomic client-side cleanup: drop every cached query
-                    // result, then wipe every glukky_* key from local and
-                    // session storage, BEFORE the redirect. This stops a
-                    // briefly-rendered authenticated UI on the new page
-                    // and prevents stale flags (session hint, OneSignal
-                    // player id, language pref, info-card-seen markers)
-                    // from leaking across to the next account that signs
-                    // in on this same browser/device.
-                    try { queryClient.clear(); } catch {}
-                    const wipeStorage = (store: Storage) => {
-                      try {
-                        const keys: string[] = [];
-                        for (let i = 0; i < store.length; i++) {
-                          const k = store.key(i);
-                          if (k && k.startsWith("glukky_")) keys.push(k);
-                        }
-                        for (const k of keys) store.removeItem(k);
-                      } catch {}
-                    };
-                    wipeStorage(localStorage);
-                    wipeStorage(sessionStorage);
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/deletion-status"] });
                     toast({ title: t("profile.delete_account.toast_success") });
-                    setTimeout(() => {
-                      window.location.assign("/");
-                    }, 150);
                   } catch {
                     toast({
                       title: t("profile.delete_account.toast_error"),

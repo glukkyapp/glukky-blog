@@ -440,3 +440,39 @@ export const userConsents = pgTable("user_consents", {
   appVersion: text("app_version"),
 });
 export type UserConsent = typeof userConsents.$inferSelect;
+
+export const userDataActions = pgTable("user_data_actions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  action: text("action").notNull(),
+  performedAt: timestamp("performed_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+});
+
+export type UserDataAction = typeof userDataActions.$inferSelect;
+
+export const correctionRequests = pgTable("correction_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  recordType: text("record_type").notNull(),
+  approximateDate: date("approximate_date"),
+  incorrectValue: text("incorrect_value"),
+  correctValue: text("correct_value"),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const insertCorrectionRequestSchema = createInsertSchema(correctionRequests).omit({ id: true, createdAt: true, resolvedAt: true, status: true });
+export type InsertCorrectionRequest = z.infer<typeof insertCorrectionRequestSchema>;
+export type CorrectionRequest = typeof correctionRequests.$inferSelect;
+
+export const deletionRequests = pgTable("deletion_requests", {
+  userId: varchar("user_id").primaryKey(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  scheduledDeletionAt: timestamp("scheduled_deletion_at").notNull(),
+  cancelledAt: timestamp("cancelled_at"),
+});
+
+export type DeletionRequest = typeof deletionRequests.$inferSelect;

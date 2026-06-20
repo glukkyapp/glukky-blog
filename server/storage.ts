@@ -13,6 +13,8 @@ import {
   type ScheduledNotification,
   type MealSnap, type InsertMealSnap,
   type UserGlucoseThresholds,
+  type CorrectionRequest, type InsertCorrectionRequest,
+  type DeletionRequest,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
@@ -20,6 +22,7 @@ import {
   snapDailyGlucose, snapMonthlyArchive,
   userGlucoseThresholds,
   userProfileHealthHistory, mealSnapHealthHistory, userGlucoseThresholdsHistory,
+  userDataActions, correctionRequests, deletionRequests,
   type SnapMonthlyArchive, type InsertSnapMonthlyArchive,
   users, sessions,
 } from "@shared/schema";
@@ -167,6 +170,14 @@ export interface IStorage {
     recordId: number,
     userId: string,
   ): Promise<HealthHistoryEntry[] | null>;
+
+  logUserDataAction(userId: string, action: string, ip?: string | null): Promise<void>;
+  exportUserData(userId: string): Promise<Record<string, unknown[]>>;
+  createCorrectionRequest(userId: string, payload: Omit<InsertCorrectionRequest, "userId">): Promise<CorrectionRequest>;
+  getUserCorrectionRequests(userId: string): Promise<CorrectionRequest[]>;
+  createDeletionRequest(userId: string): Promise<DeletionRequest>;
+  cancelDeletionRequest(userId: string): Promise<void>;
+  getDeletionRequest(userId: string): Promise<DeletionRequest | null>;
 }
 
 export interface HealthHistoryEntry {
@@ -1796,6 +1807,90 @@ export class DatabaseStorage implements IStorage {
     }
     const snackCount = parseInt((snackResult.rows[0] as any)?.cnt ?? "0", 10);
     return { symptoms, totalWithSymptom, snackCount };
+  }
+
+  async logUserDataAction(userId: string, action: string, ip?: string | null): Promise<void> {
+    await db.insert(userDataActions).values({ userId, action, ipAddress: ip ?? null });
+  }
+
+  async exportUserData(userId: string): Promise<Record<string, unknown[]>> {
+    const [
+      userRows, profileRows, mealSnapRows, glucoseThreshRows, dailyGlucoseRows,
+      dailyLogRows, weeklyPlanRows, weeklyReportRows, monthlyReportRows, cycleHistoryRows,
+    ] = await Promise.all([
+      db.select().from(users).where(eq(users.id, userId)),
+      db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
+      db.select().from(mealSnaps).where(eq(mealSnaps.userId, userId)),
+      db.select().from(userGlucoseThresholds).where(eq(userGlucoseThresholds.userId, userId)),
+      db.select().from(snapDailyGlucose).where(eq(snapDailyGlucose.userId, userId)),
+      db.select().from(dailyLogs).where(eq(dailyLogs.userId, userId)),
+      db.select().from(weeklyPlans).where(eq(weeklyPlans.userId, userId)),
+      db.select().from(weeklyReports).where(eq(weeklyReports.userId, userId)),
+      db.select().from(monthlyReports).where(eq(monthlyReports.userId, userId)),
+      db.select().from(cycleHistory).where(eq(cycleHistory.userId, userId)),
+    ]);
+    const planIds = weeklyPlanRows.map(p => p.id);
+    const [weeklyPlanDayRows, sessionRows] = await Promise.all([
+      planIds.length > 0
+        ? db.select().from(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds))
+        : Promise.resolve([]),
+      db.execute(sql`SELECT sid, expire FROM sessions WHERE sess::text LIKE ${'%' + userId + '%'}`).then(r => r.rows),
+    ]);
+    return {
+      users: userRows,
+      user_profiles: profileRows,
+      meal_snaps: mealSnapRows,
+      user_glucose_thresholds: glucoseThreshRows,
+      snap_daily_glucose: dailyGlucoseRows,
+      daily_logs: dailyLogRows,
+      weekly_plans: weeklyPlanRows,
+      weekly_plan_days: weeklyPlanDayRows,
+      weekly_reports: weeklyReportRows,
+      monthly_reports: monthlyReportRows,
+      cycle_history: cycleHistoryRows,
+      sessions: sessionRows,
+    };
+  }
+
+  async createCorrectionRequest(userId: string, payload: Omit<InsertCorrectionRequest, "userId">): Promise<CorrectionRequest> {
+    const [created] = await db.insert(correctionRequests).values({ userId, ...payload }).returning();
+    return created;
+  }
+
+  async getUserCorrectionRequests(userId: string): Promise<CorrectionRequest[]> {
+    return db.select().from(correctionRequests)
+      .where(eq(correctionRequests.userId, userId))
+      .orderBy(desc(correctionRequests.createdAt));
+  }
+
+  async createDeletionRequest(userId: string): Promise<DeletionRequest> {
+    const scheduledDeletionAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await db.transaction(async (tx) => {
+      await tx.insert(deletionRequests)
+        .values({ userId, scheduledDeletionAt })
+        .onConflictDoUpdate({
+          target: deletionRequests.userId,
+          set: { requestedAt: new Date(), scheduledDeletionAt, cancelledAt: null },
+        });
+      await tx.execute(sql`UPDATE users SET deletion_pending = TRUE WHERE id = ${userId}`);
+    });
+    const [row] = await db.select().from(deletionRequests).where(eq(deletionRequests.userId, userId));
+    return row;
+  }
+
+  async cancelDeletionRequest(userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.update(deletionRequests)
+        .set({ cancelledAt: new Date() })
+        .where(and(eq(deletionRequests.userId, userId), isNull(deletionRequests.cancelledAt)));
+      await tx.execute(sql`UPDATE users SET deletion_pending = FALSE WHERE id = ${userId}`);
+    });
+  }
+
+  async getDeletionRequest(userId: string): Promise<DeletionRequest | null> {
+    const [row] = await db.select().from(deletionRequests)
+      .where(and(eq(deletionRequests.userId, userId), isNull(deletionRequests.cancelledAt)));
+    return row ?? null;
   }
 }
 

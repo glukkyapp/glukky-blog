@@ -102,6 +102,44 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "consent.create_user_consents_idx",
     sql: `CREATE INDEX IF NOT EXISTS user_consents_user_service_idx ON user_consents (user_id, service_name, consented_at DESC)`,
   },
+  {
+    name: "user_data.create_user_data_actions",
+    sql: `CREATE TABLE IF NOT EXISTS user_data_actions (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      action TEXT NOT NULL,
+      performed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      ip_address TEXT
+    )`,
+  },
+  {
+    name: "user_data.create_correction_requests",
+    sql: `CREATE TABLE IF NOT EXISTS correction_requests (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      record_type TEXT NOT NULL,
+      approximate_date DATE,
+      incorrect_value TEXT,
+      correct_value TEXT,
+      reason TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMP
+    )`,
+  },
+  {
+    name: "user_data.create_deletion_requests",
+    sql: `CREATE TABLE IF NOT EXISTS deletion_requests (
+      user_id VARCHAR PRIMARY KEY,
+      requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      scheduled_deletion_at TIMESTAMP NOT NULL,
+      cancelled_at TIMESTAMP
+    )`,
+  },
+  {
+    name: "users.deletion_pending",
+    sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_pending BOOLEAN NOT NULL DEFAULT FALSE",
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {
