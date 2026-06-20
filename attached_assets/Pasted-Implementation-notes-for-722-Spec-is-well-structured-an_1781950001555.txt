@@ -1,0 +1,26 @@
+Implementation notes for #722
+
+Spec is well-structured and the pre-confirmed research findings are accurate. Several implementation gotchas worth flagging before starting:
+
+ConsentContext timing — PostHog race condition is the highest-risk item
+
+The gotchas section correctly identifies this, but it deserves more specificity. The PostHog deferred effect in App.tsx uses requestIdleCallback/setTimeout — it can fire before the GET /api/user/consent fetch resolves if the network is slow. The effect must check isConsentLoaded === true first and bail out if not yet loaded. Do not rely on consentState.posthog === false as the guard — that is also the default state before the fetch completes, which is correct for privacy, but the effect must not re-run and initialise PostHog in a later render after consent loads as true without an explicit re-trigger. The useEffect dependency array must include both isConsentLoaded and consentState.posthog so it re-evaluates once consent is confirmed.
+
+RevenueCat anonymous ID assignment
+
+If loginToRevenueCat(userId, email) is never called (consent OFF), the Natively bridge will assign RevenueCat its own anonymous ID to the device on first purchase API contact. This means if the user later grants consent and loginToRevenueCat is called, RevenueCat will alias the anonymous ID to the real user ID — this is expected and harmless, but worth knowing. Do not call logoutFromRevenueCat() on consent revocation — that would create a new anonymous ID and break purchase history linkage. Just stop calling loginToRevenueCat and stop presenting the paywall.
+
+OneSignal server-side gate — resolve user from externalId, not playerId
+
+The spec says to resolve the target user from playerIds/externalIds. Per existing notification code, targeting is by external_id (preferred). The consent query in sendPushNotification should use the externalId value (which maps to your DB user ID) to look up user_consents. If only playerId is available and no externalId, the consent check cannot be performed — log a warning and skip the send rather than proceeding without a consent check.
+
+Step 0 and "Save & Continue" — cannot be skipped
+
+The spec says the button cannot be skipped without making a choice, but all toggles default OFF. Clarify: "cannot be skipped" means the user must tap the button once (actively acknowledging the screen) — not that at least one toggle must be ON. An all-OFF submission is a valid consent decision. The button should always be enabled; the requirement is just that the screen cannot be bypassed entirely.
+
+Existing users — Claude snap blocked on first load
+
+The spec correctly notes this is the intended privacy-first default. Worth adding a one-time prompt or badge on the snap screen (not just an inline message) so existing users who upgrade are not confused why food recognition stopped working. A toast on first snap attempt saying "AI food recognition requires consent — tap to enable in Privacy settings" would reduce support friction. This is a UX suggestion, not a blocker.
+
+No blockers. Safe to proceed with the above in mind.
+

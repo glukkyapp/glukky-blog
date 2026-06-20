@@ -427,3 +427,16 @@ export type MealSnapHealthHistory = typeof mealSnapHealthHistory.$inferSelect;
 export const insertUserGlucoseThresholdsHistorySchema = createInsertSchema(userGlucoseThresholdsHistory).omit({ id: true, changedAt: true });
 export type InsertUserGlucoseThresholdsHistory = z.infer<typeof insertUserGlucoseThresholdsHistorySchema>;
 export type UserGlucoseThresholdsHistory = typeof userGlucoseThresholdsHistory.$inferSelect;
+
+// Insert-only audit log for MCHK §5 granular consent.
+// Never UPDATE rows — each consent change is a new row.
+export const userConsents = pgTable("user_consents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  serviceName: text("service_name").notNull(),
+  consented: boolean("consented").notNull(),
+  consentedAt: timestamp("consented_at").defaultNow().notNull(),
+  ipAddress: text("ip_address"),
+  appVersion: text("app_version"),
+});
+export type UserConsent = typeof userConsents.$inferSelect;

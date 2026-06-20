@@ -15,6 +15,7 @@ import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
 import { track, trackException, setUserProperties } from "@/lib/posthog";
 import { syncOneSignalLanguage } from "@/lib/onesignal-language";
+import { useConsent, type ConsentService } from "@/contexts/consent-context";
 import {
   OnboardingCard,
   PillOption,
@@ -31,6 +32,29 @@ import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 
 const TOTAL_STEPS = 8;
 const GREEN_DARK = "#214B36";
+
+const CONSENT_SERVICES: { key: ConsentService; label: string; description: string }[] = [
+  {
+    key: "posthog",
+    label: "Analytics (PostHog)",
+    description: "Session recording and usage analytics. Helps us improve the app. No health values are sent.",
+  },
+  {
+    key: "onesignal",
+    label: "Push notifications (OneSignal)",
+    description: "Walk reminders and re-engagement nudges sent via OneSignal. Uses your device ID.",
+  },
+  {
+    key: "revenuecat",
+    label: "Subscription payments (RevenueCat)",
+    description: "Links your App Store subscription to your Glukky account. Required for premium access.",
+  },
+  {
+    key: "claude",
+    label: "AI food recognition (Anthropic Claude)",
+    description: "Analyses photos you take in FoodSnap. Meal photos are sent to Anthropic. Required to use FoodSnap.",
+  },
+];
 
 export default function Onboarding() {
   useEffect(() => {
@@ -51,10 +75,19 @@ export default function Onboarding() {
     setLocation("/dev");
   };
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   useGlobalLoading(submitting);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
+
+  const [consentChoices, setConsentChoices] = useState<Record<ConsentService, boolean>>({
+    posthog: false,
+    onesignal: false,
+    revenuecat: false,
+    claude: false,
+  });
+  const [submittingConsent, setSubmittingConsent] = useState(false);
+  const { bulkUpdateConsent } = useConsent();
 
   useEffect(() => {
     track("onboarding_step_viewed", { step });
@@ -77,6 +110,26 @@ export default function Onboarding() {
     if (walkOption === "walk_10") return { walksPerWeek: 3, walkDuration: 10 };
     if (walkOption === "walk_longer") return { walksPerWeek: 3, walkDuration: 15 };
     return { walksPerWeek: 0, walkDuration: 0 };
+  };
+
+  const handleConsentSubmit = async () => {
+    hapticTap("MEDIUM");
+    if (isPreview) {
+      setDirection("forward");
+      setStep(1);
+      return;
+    }
+    setSubmittingConsent(true);
+    try {
+      await bulkUpdateConsent(consentChoices);
+      setDirection("forward");
+      setStep(1);
+    } catch {
+      hapticNotify("ERROR");
+      toast({ title: t("common.error"), description: "Failed to save privacy settings", variant: "destructive" });
+    } finally {
+      setSubmittingConsent(false);
+    }
   };
 
   const handleNext = () => {
@@ -172,7 +225,17 @@ export default function Onboarding() {
     </Button>
   ) : null;
 
-  const ctaButton = step < TOTAL_STEPS ? (
+  const ctaButton = step === 0 ? (
+    <Button
+      onClick={handleConsentSubmit}
+      disabled={submittingConsent}
+      className="btn-pop w-full"
+      style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
+      data-testid="button-consent-save"
+    >
+      {submittingConsent ? t("onboarding.saving") : "Save & Continue"}
+    </Button>
+  ) : step < TOTAL_STEPS ? (
     <Button
       onClick={handleNext}
       disabled={isNextDisabled()}
@@ -203,6 +266,47 @@ export default function Onboarding() {
 
   const renderStep = () => {
     switch (step) {
+      case 0:
+        return (
+          <OnboardingCard
+            testId="card-step-consent"
+            title="Your Privacy Settings"
+            footer={cardFooter}
+          >
+            <p className="text-sm text-muted-foreground mb-4">
+              We use a small set of third-party services to deliver Glukky. You choose what each one can see — all are off by default.
+            </p>
+            <div className="space-y-4">
+              {CONSENT_SERVICES.map(({ key, label, description }) => (
+                <div key={key} className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-tight">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={consentChoices[key]}
+                    onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    data-testid={`toggle-consent-${key}`}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                      consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        consentChoices[key] ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center mt-4">
+              You can update these settings anytime in your Profile.
+            </p>
+          </OnboardingCard>
+        );
       case 1:
         return (
           <OnboardingCard
@@ -533,16 +637,18 @@ export default function Onboarding() {
           </button>
         </div>
       )}
-      <div className="mx-auto" style={{ maxWidth: 380 }}>
-        <Progress
-          value={(step / TOTAL_STEPS) * 100}
-          className="mb-3 h-2"
-          data-testid="progress-bar"
-        />
-        <p className="text-xs mb-4 text-center" style={{ color: GREEN_DARK, opacity: 0.7 }} data-testid="text-step-indicator">
-          {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
-        </p>
-      </div>
+      {step > 0 && (
+        <div className="mx-auto" style={{ maxWidth: 380 }}>
+          <Progress
+            value={(step / TOTAL_STEPS) * 100}
+            className="mb-3 h-2"
+            data-testid="progress-bar"
+          />
+          <p className="text-xs mb-4 text-center" style={{ color: GREEN_DARK, opacity: 0.7 }} data-testid="text-step-indicator">
+            {t("onboarding.step_of", { step, total: TOTAL_STEPS })}
+          </p>
+        </div>
+      )}
 
       <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
         {renderStep()}

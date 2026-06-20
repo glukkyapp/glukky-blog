@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { userProfiles, mealSnaps } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
@@ -25,6 +25,7 @@ import {
   awardStruggleGraduationCoin,
 } from "./achievements";
 import { canUseFeature, getGateStatus, computePremiumRefreshUpdate } from "./gate";
+import { BUILD_INFO } from "./build-info";
 import { ensureCompPremium, isCompUserId } from "./comp-emails";
 import {
   verifyEntitlement,
@@ -37,7 +38,6 @@ import {
   type RevenueCatWebhookBody,
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
-import { BUILD_INFO } from "./build-info";
 import { trackServer, captureException } from "./posthog";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
@@ -2840,9 +2840,64 @@ export async function registerRoutes(
     return ids;
   }
 
+  // MCHK §5 — Granular named consent management
+  app.get("/api/user/consent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { rows } = await pool.query<{ service_name: string; consented: boolean; consented_at: string }>(
+        `SELECT DISTINCT ON (service_name) service_name, consented, consented_at
+         FROM user_consents
+         WHERE user_id = $1
+         ORDER BY service_name, consented_at DESC`,
+        [userId]
+      );
+      const consents: Record<string, boolean> = {};
+      const consentDetails: Record<string, { consented: boolean; consentedAt: string }> = {};
+      for (const row of rows) {
+        consents[row.service_name] = row.consented;
+        consentDetails[row.service_name] = { consented: row.consented, consentedAt: row.consented_at };
+      }
+      res.json({ consents, consentDetails, hasSubmitted: rows.length > 0 });
+    } catch (error: any) {
+      console.error("Error fetching consent:", error);
+      res.status(500).json({ message: "Failed to fetch consent" });
+    }
+  });
+
+  app.post("/api/user/consent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const decisions = z.array(z.object({ service: z.string().min(1), consented: z.boolean() })).parse(req.body);
+      const appVersion = BUILD_INFO.sha ?? null;
+      const ipAddress = (req.ip ?? null) as string | null;
+      await Promise.all(
+        decisions.map(({ service, consented }) =>
+          pool.query(
+            `INSERT INTO user_consents (user_id, service_name, consented, consented_at, ip_address, app_version)
+             VALUES ($1, $2, $3, NOW(), $4, $5)`,
+            [userId, service, consented, ipAddress, appVersion]
+          )
+        )
+      );
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("Error saving consent:", error);
+      res.status(500).json({ message: "Failed to save consent" });
+    }
+  });
+
   app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+
+      // MCHK §5 — Claude consent gate
+      const { rows: _labelConsent } = await pool.query<{ consented: boolean }>(
+        `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'claude' ORDER BY consented_at DESC LIMIT 1`,
+        [userId]
+      );
+      if (_labelConsent.length === 0 || !_labelConsent[0].consented) {
+        return res.status(403).json({ success: false, message: "AI processing consent not given", consentRequired: "claude" });
+      }
 
       const snapProfile = await storage.getProfile(userId);
       if (snapProfile) {
@@ -3377,6 +3432,15 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
   app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+
+      // MCHK §5 — Claude consent gate
+      const { rows: _adviceConsent } = await pool.query<{ consented: boolean }>(
+        `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'claude' ORDER BY consented_at DESC LIMIT 1`,
+        [userId]
+      );
+      if (_adviceConsent.length === 0 || !_adviceConsent[0].consented) {
+        return res.status(403).json({ success: false, message: "AI processing consent not given", consentRequired: "claude" });
+      }
 
       const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });

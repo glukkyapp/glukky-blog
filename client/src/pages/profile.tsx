@@ -2,7 +2,7 @@ import { useState } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2 } from "lucide-react";
+import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ import { hapticNotify } from "@/lib/haptics";
 import { syncOneSignalLanguage } from "@/lib/onesignal-language";
 import { isNativelyAvailable } from "@/lib/natively-purchases";
 import { useAuth } from "@/hooks/use-auth";
+import { useConsent, type ConsentService } from "@/contexts/consent-context";
 
 interface ProfileData {
   name: string | null;
@@ -314,6 +315,123 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
   );
 }
 
+const CONSENT_SERVICES_PROFILE: { key: ConsentService; label: string; description: string }[] = [
+  {
+    key: "posthog",
+    label: "Analytics (PostHog)",
+    description: "Session recording and usage analytics. No health values sent.",
+  },
+  {
+    key: "onesignal",
+    label: "Push notifications (OneSignal)",
+    description: "Walk reminders and re-engagement nudges via OneSignal.",
+  },
+  {
+    key: "revenuecat",
+    label: "Subscription (RevenueCat)",
+    description: "Links your App Store subscription to your account. Required for premium.",
+  },
+  {
+    key: "claude",
+    label: "AI food recognition (Anthropic Claude)",
+    description: "Sends meal photos to Anthropic for analysis. Required to use FoodSnap.",
+  },
+];
+
+function PrivacyCard() {
+  const { consentState, updateConsent, isConsentLoaded } = useConsent();
+  const { toast } = useToast();
+
+  const { data: consentData } = useQuery<{
+    consents: Record<string, boolean>;
+    consentDetails: Record<string, { consented: boolean; consentedAt: string }>;
+    hasSubmitted: boolean;
+  }>({ queryKey: ["/api/user/consent"] });
+
+  const handleToggle = async (service: ConsentService, currentValue: boolean) => {
+    try {
+      await updateConsent(service, !currentValue);
+      queryClient.invalidateQueries({ queryKey: ["/api/user/consent"] });
+      hapticNotify("SUCCESS");
+    } catch {
+      hapticNotify("ERROR");
+      toast({ title: "Failed to update", variant: "destructive" });
+    }
+  };
+
+  const formatDate = (iso?: string) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    } catch {
+      return null;
+    }
+  };
+
+  if (!isConsentLoaded) {
+    return (
+      <Card data-testid="card-privacy">
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+          <Shield className="w-5 h-5 text-muted-foreground" />
+          <CardTitle className="text-base">Privacy & Consent</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-privacy">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <Shield className="w-5 h-5 text-muted-foreground" />
+        <CardTitle className="text-base">Privacy & Consent</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <p className="text-xs text-muted-foreground -mt-1">
+          Choose which third-party services Glukky may share data with.
+        </p>
+        {CONSENT_SERVICES_PROFILE.map(({ key, label, description }) => {
+          const value = consentState[key] ?? false;
+          const detail = consentData?.consentDetails?.[key];
+          const dateStr = value ? formatDate(detail?.consentedAt) : null;
+          return (
+            <div key={key} className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium leading-tight">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                {dateStr && (
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">On since {dateStr}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={value}
+                onClick={() => handleToggle(key, value)}
+                data-testid={`toggle-consent-${key}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                  value ? "bg-[#214B36]" : "bg-gray-200"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    value ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 function NameGoalCard({ profile }: { profile: ProfileData }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -488,6 +606,8 @@ export default function ProfilePage() {
       <LanguageCard currentLang={currentLang} />
 
       <FontSizeCard currentSize={(profile as any)?.fontSizePreference || "large"} />
+
+      <PrivacyCard />
 
       <Card data-testid="card-current-focus">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">

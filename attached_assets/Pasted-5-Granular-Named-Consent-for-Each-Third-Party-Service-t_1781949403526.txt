@@ -1,0 +1,141 @@
+5. Granular Named Consent for Each Third-Party Service
+text
+Project context:
+- Frontend routing: wouter (client/src/App.tsx)
+- State management: 
+  TanStack Query for server state,
+  React Context for feature flags / paywall (GateContext in client/src/App.tsx),
+  React Context for offline state (OfflineContext in 
+    client/src/contexts/offline-context.tsx),
+  useState/useRef for local state,
+  wouter for routing,
+  localStorage for persistence hints
+- Settings hub: client/src/pages/profile.tsx (no standalone Settings.tsx)
+- Auth: session-based (express-session)
+
+Third-party services currently initialised unconditionally on app load:
+1. PostHog (analytics + session recording)
+   - Client: client/src/lib/posthog.ts — initPostHog called in 
+     client/src/App.tsx lines 1767-1788 via requestIdleCallback/setTimeout
+   - Server: lazy singleton in server/posthog.ts
+   - Blog: inline snippet in blog-site/src/templates/layout.mjs:75 
+     (out of scope for this task — blog only)
+2. OneSignal (push notifications)
+   - Client: Natively bridge in client/index.html:47
+   - Server: server/onesignal.ts
+3. RevenueCat (subscriptions/paywall)
+   - Client: client/src/lib/natively-purchases.ts (Natively bridge)
+   - Server: server/revenuecat.ts
+4. Anthropic/Claude (food snap AI)
+   - Server only: server/routes.ts:2220 via @anthropic-ai/sdk
+   - No client-side initialisation
+5. OpenAI — in package.json but not primary AI logic; 
+   assess actual usage before including in consent UI
+
+Current consent state: None. No consent gate exists before any 
+of the above services are initialised.
+
+Onboarding: client/src/pages/onboarding.tsx (8 steps collecting name, 
+health goal, meal timings, dietary struggles). Consent must be added 
+here or as a pre-onboarding gate.
+
+Before writing any code:
+1. Read client/src/App.tsx lines 1767-1788 to understand exactly how 
+   and when initPostHog is currently called.
+2. Read client/src/lib/natively-purchases.ts to understand how RevenueCat 
+   is initialised and whether it processes any health data.
+3. Search the codebase for any OpenAI API calls to determine whether 
+   OpenAI is actually used in production (not just installed).
+4. Read client/src/pages/onboarding.tsx to understand the existing flow 
+   and where a consent step can be inserted without breaking the 
+   8-step structure.
+5. Report back findings — especially: (a) does RevenueCat receive any 
+   health data, (b) is OpenAI actively used, (c) can a consent step 
+   be prepended to onboarding cleanly.
+
+Once confirmed, implement the following:
+
+CONSENT DATA MODEL (Backend):
+- New table user_consents:
+  id, user_id, service_name (text), consented (boolean), 
+  consented_at (timestamp), ip_address, app_version, 
+  revoked_at (nullable)
+  — never UPDATE; INSERT a new row on every consent change
+- POST /api/user/consent — accepts array of { service, consented } 
+  decisions, inserts rows, returns confirmation
+- GET /api/user/consent — returns latest consent status per service 
+  for the authenticated user
+
+CONSENT STATE (Frontend):
+- Create a ConsentContext (similar pattern to existing GateContext 
+  and OfflineContext) in client/src/contexts/consent-context.tsx
+- Context provides: consentState (per-service boolean map), 
+  updateConsent(service, value), isConsentLoaded (boolean)
+- On app load: fetch GET /api/user/consent and populate context 
+  (if user is authenticated) or default all to false (if not yet 
+  authenticated/onboarded)
+
+CONSENT GATE (Frontend):
+- Add a consent step to the onboarding flow (prepend before step 1, 
+  or insert as step 0) showing one toggle per service:
+  
+  PostHog Analytics
+  "We use PostHog to collect anonymous usage data (which screens you 
+  visit, which features you use). No health values or personal 
+  identifiers are sent. Data may be stored outside Hong Kong."
+  [Toggle — default OFF]
+
+  Push Notifications (OneSignal)
+  "We use OneSignal to send you reminders (e.g. meal logging reminders). 
+  OneSignal does not receive your health data. Notification content 
+  is generic and does not include your health values."
+  [Toggle — default OFF]
+
+  RevenueCat (Subscriptions)
+  "We use RevenueCat to process subscription payments. RevenueCat 
+  receives your purchase history but not your health data."
+  [Toggle — default OFF] 
+  [Note: if RevenueCat is required for the paywall to function, 
+  this toggle should default ON with a note that it is required 
+  for premium features]
+
+  AI Food Recognition (Anthropic/Claude)
+  "When you photograph a meal, the image is sent to Anthropic's Claude 
+  AI to identify food items. Anthropic may process this image on 
+  servers outside Hong Kong. Images are not linked to your identity."
+  [Toggle — default OFF]
+
+  [Include OpenAI only if step 3 above confirms it is actively used]
+
+- "Save & Continue" button (cannot skip without making a choice)
+- The app must be fully functional with all toggles OFF:
+  core features (glucose logging, HbA1c tracking, meal logging) 
+  must work without any consent given
+
+CONSENT ENFORCEMENT (Frontend):
+- PostHog: only call initPostHog() in App.tsx if 
+  consentState.posthog === true. 
+  If false, posthog must never be initialised.
+- OneSignal: the Natively bridge in index.html loads unconditionally 
+  as a script — that cannot be changed. Instead, gate all server-side 
+  notification sending: add a consent check in server/onesignal.ts 
+  before any push is sent (check user_consents table for onesignal).
+- RevenueCat: gate the paywall UI — if consentState.revenuecat === false, 
+  show an explanation that consent is needed for premium features.
+- Claude: the POST endpoint at server/routes.ts:2220 must check the 
+  user_consents table for claude consent before processing. 
+  Return 403 with message "AI processing consent not given" if not 
+  consented. On the frontend, if consentState.claude === false, 
+  show inline message on the snap screen: 
+  "Enable AI food recognition in Settings > Privacy to use this feature."
+
+CONSENT MANAGEMENT (in profile.tsx):
+- Add a "Privacy" section to the existing profile.tsx
+- Show current consent status per service (on/off, date consented)
+- Toggle to revoke or re-grant each service at any time
+- On change: POST to /api/user/consent, update ConsentContext immediately
+- Show confirmation: "[Service] will [start/stop] receiving data immediately."
+
+Do not create a standalone Settings.tsx — add to profile.tsx 
+consistent with existing structure.
+Do not modify the blog-site PostHog snippet — that is out of scope.

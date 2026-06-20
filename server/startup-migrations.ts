@@ -86,6 +86,22 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "soft_delete.user_glucose_thresholds_is_deleted",
     sql: "ALTER TABLE user_glucose_thresholds ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE",
   },
+  {
+    name: "consent.create_user_consents",
+    sql: `CREATE TABLE IF NOT EXISTS user_consents (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      service_name TEXT NOT NULL,
+      consented BOOLEAN NOT NULL,
+      consented_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ip_address TEXT,
+      app_version TEXT
+    )`,
+  },
+  {
+    name: "consent.create_user_consents_idx",
+    sql: `CREATE INDEX IF NOT EXISTS user_consents_user_service_idx ON user_consents (user_id, service_name, consented_at DESC)`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

@@ -1,5 +1,5 @@
 import { log } from "./index";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { userProfiles } from "@shared/schema";
 import { isNotNull, inArray, sql } from "drizzle-orm";
 
@@ -189,11 +189,38 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     }
   }
 
-  const externalIds = Array.from(new Set(payload.externalIds ?? []));
+  let externalIds = Array.from(new Set(payload.externalIds ?? []));
   const playerIds = Array.from(new Set(payload.playerIds ?? []));
 
   if (externalIds.length === 0 && playerIds.length === 0) {
     log("No external_ids or player_ids to send to, skipping", "onesignal");
+    return { success: false, notificationId: null };
+  }
+
+  // MCHK §5 — OneSignal consent gate.
+  // Sends targeting externalIds (user DB IDs) can be verified; player_id
+  // targeting cannot resolve to a user_id, so those are skipped entirely.
+  if (externalIds.length > 0) {
+    const consented = await Promise.all(
+      externalIds.map(async (uid) => {
+        try {
+          const { rows } = await pool.query<{ consented: boolean }>(
+            `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'onesignal' ORDER BY consented_at DESC LIMIT 1`,
+            [uid]
+          );
+          return rows.length > 0 && rows[0].consented;
+        } catch {
+          return false;
+        }
+      })
+    );
+    externalIds = externalIds.filter((_, i) => consented[i]);
+    if (externalIds.length === 0) {
+      log("OneSignal send SKIPPED: no recipients have consented to push notifications. MCHK §5.", "onesignal");
+      return { success: false, notificationId: null };
+    }
+  } else if (playerIds.length > 0) {
+    log("OneSignal send SKIPPED: player_id targeting cannot be consent-checked (no user_id available). MCHK §5.", "onesignal");
     return { success: false, notificationId: null };
   }
 

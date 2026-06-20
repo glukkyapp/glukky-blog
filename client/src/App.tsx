@@ -26,6 +26,7 @@ import {
 } from "@/lib/natively-purchases";
 import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { OfflineProvider } from "@/contexts/offline-context";
+import { ConsentProvider, useConsent } from "@/contexts/consent-context";
 import { getStage1Promise } from "@/lib/preload-assets";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
@@ -306,6 +307,7 @@ export function useGate() {
 function AuthenticatedApp() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { consentState, isConsentLoaded } = useConsent();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
@@ -899,39 +901,45 @@ function AuthenticatedApp() {
       identifyUser(currentId, {
         is_premium: gateStatus?.isPremium ?? undefined,
       });
-      loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
-        // Capture the bridge-reported customerId so every subsequent
-        // refreshPremiumThenRefetch attaches it. Stable across the
-        // session — RC re-aliases anon → userId after login but the
-        // customerId returned here is already the post-login one.
-        if (result.customerId) {
-          bridgeCustomerIdRef.current = result.customerId;
-          // Force a refresh now to push the customerId to the server in
-          // this session. Without this, the boot-time refresh that
-          // fires on onboardingComplete can race ahead of bridge login
-          // and the first session's snaps would be keyed by userId
-          // until the next foreground refresh. force=true bypasses
-          // the 30s entitlement cache server-side so the verify
-          // actually re-fetches RC and surfaces the authoritative
-          // originalAppUserId for persistence — without it, an earlier
-          // cached `not_found` would short-circuit the persist.
-          // Fire-and-forget; treated as best-effort by the handler.
-          void refreshPremiumThenRefetch(true, { customerId: result.customerId });
-        }
-        if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
-          console.warn(
-            `[rc] login result: status=${result.status}` +
-              (result.error ? ` error=${result.error}` : ""),
-          );
-        }
-      });
+      // MCHK §5 — only alias userId to RevenueCat when user has consented.
+      // Do NOT call logoutFromRevenueCat() on consent revocation — only on
+      // auth-user switch (handled above). Waiting for isConsentLoaded avoids
+      // a false-negative race on first boot before the consent fetch resolves.
+      if (isConsentLoaded && consentState.revenuecat) {
+        loginToRevenueCat(currentId, user?.email ?? "").then((result) => {
+          // Capture the bridge-reported customerId so every subsequent
+          // refreshPremiumThenRefetch attaches it. Stable across the
+          // session — RC re-aliases anon → userId after login but the
+          // customerId returned here is already the post-login one.
+          if (result.customerId) {
+            bridgeCustomerIdRef.current = result.customerId;
+            // Force a refresh now to push the customerId to the server in
+            // this session. Without this, the boot-time refresh that
+            // fires on onboardingComplete can race ahead of bridge login
+            // and the first session's snaps would be keyed by userId
+            // until the next foreground refresh. force=true bypasses
+            // the 30s entitlement cache server-side so the verify
+            // actually re-fetches RC and surfaces the authoritative
+            // originalAppUserId for persistence — without it, an earlier
+            // cached `not_found` would short-circuit the persist.
+            // Fire-and-forget; treated as best-effort by the handler.
+            void refreshPremiumThenRefetch(true, { customerId: result.customerId });
+          }
+          if (result.status !== "SUCCESS" && result.status !== "BRIDGE_MISSING") {
+            console.warn(
+              `[rc] login result: status=${result.status}` +
+                (result.error ? ` error=${result.error}` : ""),
+            );
+          }
+        });
+      }
     } else {
       // Full logout — clear the ref so the next user starts fresh.
       bridgeCustomerIdRef.current = null;
     }
 
     lastRcUserIdRef.current = currentId;
-  }, [user?.id, user?.email]);
+  }, [user?.id, user?.email, consentState.revenuecat, isConsentLoaded]);
 
   // Lock-app gate: present the hosted paywall (no close button) and anchor /profile as a fallback when presentation fails.
   // The ref is a one-shot guard so route changes don't re-present; reset on isLocked=false.
@@ -1741,6 +1749,7 @@ function App() {
   const [cubeDismissed, setCubeDismissed] = useState(false);
   const [stage1Ready, setStage1Ready] = useState(false);
   const { isLoading: authLoading } = useAuth();
+  const { consentState, isConsentLoaded } = useConsent();
 
   useEffect(() => {
     if (!showCube) return;
@@ -1763,7 +1772,14 @@ function App() {
   // stay off the BN-splash critical path on first install. Nothing is
   // tracked or identified before the cube screen dismisses, so this loses
   // no events.
+  // MCHK §5 — Only init after consent is loaded AND posthog consent is true.
+  // posthogInitRef prevents double-init if consentState.posthog toggles.
+  const posthogInitRef = useRef(false);
   useEffect(() => {
+    if (!isConsentLoaded) return;
+    if (!consentState.posthog) return;
+    if (posthogInitRef.current) return;
+    posthogInitRef.current = true;
     let cancelled = false;
     const start = () => { if (!cancelled) initPostHog(); };
     const w = window as Window & {
@@ -1784,7 +1800,7 @@ function App() {
       }
       if (timeoutHandle != null) window.clearTimeout(timeoutHandle);
     };
-  }, []);
+  }, [isConsentLoaded, consentState.posthog]);
 
   useEffect(() => {
     const updateFontClass = (lang: string) => {
@@ -1820,11 +1836,13 @@ function App() {
 function AppWithProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <OfflineProvider>
-        <LoadingOverlayProvider>
-          <App />
-        </LoadingOverlayProvider>
-      </OfflineProvider>
+      <ConsentProvider>
+        <OfflineProvider>
+          <LoadingOverlayProvider>
+            <App />
+          </LoadingOverlayProvider>
+        </OfflineProvider>
+      </ConsentProvider>
     </QueryClientProvider>
   );
 }

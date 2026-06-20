@@ -1,0 +1,16 @@
+Step 1 — use executeSql, not drizzle-kit push
+As noted in the spec, drizzle-kit push is blocked in this environment due to the interactive prompt. Use executeSql for all new tables and the deletionPending column addition. Confirm the existing pattern for executeSql in the codebase before writing migrations.
+
+Step 3 — session behaviour after delete-account
+The spec says do not destroy the session after scheduling deletion — the user stays logged in. Confirm the current POST /api/auth/delete-account route destroys the session or redirects after calling deleteUserCompletely() today, and make sure that behaviour is removed when switching to createDeletionRequest(). If the route currently calls req.session.destroy(), that line must be removed.
+
+Step 4 — exportUserData table list
+The spec lists: users, user_profiles, sessions, meal_snaps, user_glucose_thresholds, snap_daily_glucose, daily_logs, weekly_plans, weekly_plan_days, weekly_reports, monthly_reports, cycle_history. Cross-check against storage.deleteUserCompletely() — that function was found in earlier work to be missing meal_snaps, user_glucose_thresholds, and snap_daily_glucose from its cascade. Those three tables are included in the export list here, which is correct. Just note that the export will include data that the current delete does not clean up — a pre-existing bug, not caused by this task.
+
+Step 6 — download trigger
+The GET /api/user/data-export response uses Content-Disposition: attachment. In the frontend, do not use window.location.href to trigger the download — the endpoint requires an authenticated session cookie, and a plain navigation will work in browser but may not in the Natively mobile wrapper. Use fetch() → blob() → URL.createObjectURL() → programmatic anchor click to ensure the session cookie is sent with the request.
+
+Locale strings (Step 7)
+Three locale files need updating: en.json, zh-Hant.json, yue.json. Confirm the key naming convention used in those files before adding new keys for the deletion warning copy.
+
+No blockers. Safe to proceed.
