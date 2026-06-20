@@ -1,0 +1,88 @@
+4. Data Export, Correction Request & Account Deletion
+text
+Project context:
+- Auth: session-based via express-session + connect-pg-simple. 
+  isAuthenticated middleware in server/replit_integrations/auth/replitAuth.ts
+- Backend: Express (server/routes.ts, server/index.ts)
+- Frontend routing: wouter (client/src/App.tsx)
+- Settings hub: client/src/pages/profile.tsx 
+  (covers name, goal, HbA1c markers, language, font size, logout, 
+  account deletion link, dev panel link)
+- Email: nodemailer in package.json (not yet used for user-facing comms — 
+  primary channel is OneSignal push)
+- Existing account deletion: POST /api/auth/delete-account 
+  and POST /api/admin/wipe-user → storage.deleteUserCompletely() 
+  (behaviour unknown — read before touching)
+- All tables storing user/health data:
+  users, user_profiles, sessions, meal_snaps, user_glucose_thresholds, 
+  snap_daily_glucose, daily_logs, weekly_plans, weekly_plan_days, 
+  weekly_reports, monthly_reports, cycle_history
+
+Before writing any code:
+1. Read client/src/pages/profile.tsx in full to understand the existing UI 
+   structure and where new features should be added.
+2. Read storage.deleteUserCompletely() to understand what it currently does 
+   — specifically whether it is an immediate hard delete or already deferred.
+3. Read the schema definitions for all tables listed above in shared/schema.ts 
+   to confirm columns available for export.
+4. Check whether nodemailer is already configured anywhere in the codebase 
+   (search for createTransport or SMTP config).
+5. Report back findings before making any changes.
+
+Once confirmed, add a "My Data" section to the existing profile.tsx 
+and implement three backend features:
+
+FEATURE 1 — Data Export:
+Backend:
+- Add GET /api/user/data-export (requires isAuthenticated)
+- Queries ALL rows belonging to req.user.id across every table listed above
+- Returns as JSON file download (Content-Disposition: attachment, 
+  filename: glukky-data-export-[date].json)
+- Logs the export in a new user_data_actions table: 
+  user_id, action ('export'), performed_at, ip_address
+Frontend (in profile.tsx "My Data" section):
+- "Download My Data" button → calls endpoint → triggers file download
+- Show brief confirmation message after download starts
+
+FEATURE 2 — Correction Request:
+Backend:
+- Add POST /api/user/correction-request (requires isAuthenticated)
+- Body: { record_type, record_id, field_name, incorrect_value, 
+  correct_value, reason (optional) }
+- Saves to new correction_requests table: 
+  id, user_id, record_type, record_id, field_name, incorrect_value, 
+  correct_value, reason, status ('pending'/'resolved'), 
+  created_at, resolved_at (nullable)
+- Sends email via nodemailer to developer/admin email on new submission 
+  (only if nodemailer is already configured — if not, log to console 
+  and note that email config is needed)
+- Add GET /api/user/correction-request to return user's submitted requests
+Frontend (in profile.tsx "My Data" section):
+- Form: record type (dropdown), approximate date (date picker), 
+  what is wrong (text), what it should be (text), reason (optional)
+- List of submitted requests showing status (pending/resolved)
+
+FEATURE 3 — Account Deletion (modify existing, do not replace):
+- Read the existing POST /api/auth/delete-account behaviour first
+- If it is already a hard immediate delete: modify it to instead:
+  - Create a deletion_requests table: 
+    user_id, requested_at, scheduled_deletion_at (now + 30 days), 
+    cancelled_at (nullable)
+  - Set a deletion_pending flag on the user record
+  - Schedule or note that a cron job / scheduled task is needed to 
+    execute storage.deleteUserCompletely() after 30 days
+  - Send confirmation via OneSignal push (not email, consistent with 
+    existing comms pattern) or log if push not feasible
+- If it is already deferred: document what it does and only add 
+  the cancellation endpoint and frontend UI
+- Add DELETE /api/user/account/cancel to reverse within 30 days
+- Log all deletion events in user_data_actions table
+Frontend (in profile.tsx — account deletion already has a UI element):
+- Augment existing deletion UI to show a 30-day warning and confirmation step
+- If deletion_pending: show banner "Account scheduled for deletion on [date]" 
+  with "Cancel" button
+- On cancellation: remove banner and confirm
+
+All endpoints must use isAuthenticated middleware.
+All actions must be logged in user_data_actions table.
+Do not alter the dev panel or admin wipe behaviour.
