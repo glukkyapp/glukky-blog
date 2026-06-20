@@ -1,0 +1,219 @@
+Step 2 — Disable Autocapture in client/src/lib/posthog.ts
+Find the posthog.init call and change the single option:
+
+ts
+// BEFORE
+posthog.init(key, {
+  api_host: '...',
+  autocapture: true,         // ← change this
+  session_recording: { maskAllInputs: true },
+  // ... other options
+})
+
+// AFTER
+posthog.init(key, {
+  api_host: '...',
+  autocapture: false,        // ← MCHK §1.4.1 — prevents DOM health values being autocaptured
+  session_recording: { maskAllInputs: true },
+  // ... other options
+})
+Note: Setting autocapture: false still fires $pageview and $pageleave — those are separate options (capture_pageview: false) and are out of scope here.
+
+Step 3 — Add sanitise() to client/src/lib/posthog.ts
+Add this block before the existing exports, then apply it inside each function:
+
+ts
+// Health values and PII stripped before sending — MCHK Code §1.4.1
+const BLOCKED_KEYS = new Set([
+  'glucose', 'glucosemmol', 'glucosemgdl', 'mmol', 'mgdl',
+  'hba1c', 'hba1clevel', 'fastingbaseline', 'fastingbaselinemmol',
+  'meal', 'foodname', 'food', 'reading', 'readingvalue', 'level',
+  'diagnosis', 'condition', 'healthcondition', 'glucosegroup',
+  'disease', 'medication', 'symptom', 'postmealsymptom',
+  'struggle', 'struggles', 'sleeppattern',
+  'email', 'phone', 'dob', 'dateofbirth',
+  'userid', 'user_id',
+])
+
+function sanitise(properties?: Record<string, unknown>): Record<string, unknown> {
+  if (!properties) return {}
+  return Object.fromEntries(
+    Object.entries(properties).filter(
+      ([key]) => !BLOCKED_KEYS.has(key.toLowerCase().replace(/[_\-\s]/g, ''))
+    )
+  )
+}
+Then wrap every outbound call:
+
+ts
+// Inside identifyUser:
+export function identifyUser(userId: string, properties?: Record<string, unknown>) {
+  // Note: email removed at call site (App.tsx) — do not re-add here
+  posthogClient?.identify(userId, sanitise(properties))
+}
+
+// Inside setUserProperties:
+export function setUserProperties(properties: Record<string, unknown>) {
+  posthogClient?.people.set(sanitise(properties))
+}
+
+// Inside track:
+export function track(event: string, properties?: Record<string, unknown>) {
+  flushPendingIfNeeded()
+  posthogClient?.capture(event, sanitise(properties))
+}
+
+// Inside trackException:
+export function trackException(error: unknown, properties?: Record<string, unknown>) {
+  posthogClient?.capture('$exception', sanitise({ ...propertiesFromError(error), ...properties }))
+}
+
+// Inside flushPending — wrap each queued event before flushing:
+pendingEvents.forEach(({ event, properties }) => {
+  posthogClient?.capture(event, sanitise(properties))
+})
+Step 4 — Fix identifyUser in client/src/App.tsx line 899
+ts
+// BEFORE (App.tsx:899)
+identifyUser(userId, { email, is_premium })
+
+// AFTER — remove email at call site
+identifyUser(userId, { is_premium })
+// email is PII — must not be sent to PostHog — MCHK §1.4.1
+Step 5 — Add sanitise() to server/posthog.ts
+ts
+import { createHash } from 'crypto'
+
+// Health values and PII stripped before sending — MCHK Code §1.4.1
+const BLOCKED_KEYS = new Set([
+  'glucose', 'glucosemmol', 'glucosemgdl', 'mmol', 'mgdl',
+  'hba1c', 'hba1clevel', 'fastingbaseline', 'fastingbaselinemmol',
+  'meal', 'foodname', 'food', 'reading', 'readingvalue', 'level',
+  'diagnosis', 'condition', 'healthcondition', 'glucosegroup',
+  'disease', 'medication', 'symptom', 'postmealsymptom',
+  'struggle', 'struggles', 'sleeppattern',
+  'email', 'phone', 'dob', 'dateofbirth',
+  'userid', 'user_id',
+])
+
+function sanitise(properties?: Record<string, unknown>): Record<string, unknown> {
+  if (!properties) return {}
+  return Object.fromEntries(
+    Object.entries(properties).filter(
+      ([key]) => !BLOCKED_KEYS.has(key.toLowerCase().replace(/[_\-\s]/g, ''))
+    )
+  )
+}
+Apply inside trackServer and captureException:
+
+ts
+export function trackServer(
+  distinctId: string,
+  event: string,
+  properties?: Record<string, unknown>
+) {
+  getClient()?.capture({
+    distinctId: hashId(distinctId),   // ← step 6
+    event,
+    properties: sanitise(properties),
+  })
+}
+
+export function captureException(
+  error: unknown,
+  distinctId?: string,
+  properties?: Record<string, unknown>
+) {
+  getClient()?.capture({
+    distinctId: distinctId ? hashId(distinctId) : 'server',
+    event: '$exception',
+    properties: sanitise({ ...propertiesFromError(error), ...properties }),
+  })
+}
+Step 6 — Hash Server-Side distinctId in server/posthog.ts
+Uses Node's built-in crypto — no extra package needed:
+
+ts
+import { createHash } from 'crypto'
+
+// Non-reversible hash of internal DB ID — prevents PostHog receiving raw integer user IDs
+// SHA-256 hex, no salt — goal is non-reversibility for a recipient, not password security
+function hashId(id: string | number): string {
+  return createHash('sha256')
+    .update(String(id))
+    .digest('hex')
+}
+This means PostHog receives e.g. "a3f2c1..." instead of "4821". PostHog can still track sessions consistently (same user always hashes to the same value) but cannot reverse the hash to find the DB user ID.
+
+Step 7 — Fix PostMealCard.tsx
+Locate the two events and replace their properties:
+
+ts
+// BEFORE — glucose_completed
+track('glucose_completed', { glucoseMmol: glucoseValue })
+
+// AFTER — removes health value, retains completion signal
+track('glucose_completed', { recorded: true })
+
+
+// BEFORE — symptoms_checked
+track('symptoms_checked', { symptom })
+
+// AFTER — removes symptom string, retains completion signal
+track('symptoms_checked', { recorded: true })
+Step 8 — Verify onboarding_completed & setUserProperties in client/src/pages/onboarding.tsx:138
+The full onboarding profile object likely contains blocked fields (health condition, struggles, sleep pattern, HbA1c). After sanitise() is applied inside the wrapper, only these keys will pass through automatically — but confirm the call site explicitly passes only these:
+
+ts
+// Safe properties — retain these only:
+setUserProperties({
+  walkOption,           // behavioural
+  dinnerTime,           // behavioural  
+  eatingOutFrequency,   // behavioural
+  preferredLanguage,    // non-health
+  hasName: !!name,      // boolean only — not the name string itself
+  hasGoal: !!goal,      // boolean only — not the goal string
+  hasNotificationEmail: !!notificationEmail, // boolean only — not the email
+  referralSource,       // non-health
+  // DO NOT include: healthCondition, struggles, sleepPattern,
+  // hba1cLevel, fastingBaseline, glucoseGroup, or any health value
+})
+Discrepancy to check: If onboarding.tsx:138 currently passes healthCondition, glucoseGroup, struggles, or sleepPattern anywhere in the object — sanitise() will strip them silently. Confirm by reading the actual object at that line before the wrapper fix lands, so you can document what was stripped.
+
+Step 8 — Verify server/routes.ts — Three snap_label_succeeded_server calls
+All three must omit foodName:
+
+ts
+// BEFORE
+trackServer(userId, 'snap_label_succeeded_server', { source, foodName, isFirstSnap })
+
+// AFTER — foodName removed (health-adjacent — food identity tied to a patient meal event)
+trackServer(userId, 'snap_label_succeeded_server', { source, isFirstSnap })
+And snap_advice_succeeded_server must omit struggle:
+
+ts
+// BEFORE
+trackServer(userId, 'snap_advice_succeeded_server', { struggle, ... })
+
+// AFTER
+trackServer(userId, 'snap_advice_succeeded_server', { /* struggle removed */ ... })
+Verification Grep (Step 8)
+Run this after all changes to confirm nothing leaks through:
+
+bash
+grep -rn \
+  "posthog\|identifyUser\|setUserProperties\|track(\|trackServer\|captureException\|trackException" \
+  client/src server \
+  --include="*.ts" --include="*.tsx" \
+  | grep -v "node_modules" \
+  | grep -v "lib/posthog.ts" \
+  | grep -v "server/posthog.ts"
+This lists every call site outside the two wrapper files. For each result, confirm the properties object contains no blocked keys. Any that do should be fixed at the call site (not in the wrapper) so the intent is explicit.
+
+One Known Edge Case to Watch
+sanitise() uses lowercase + strip separators matching (glucosemmol matches glucoseMmol, glucose_mmol, GlucoseMmol). This is intentional — it catches camelCase, snake_case, and mixed variants. The one risk is false positives: a legitimate key like mealCount contains meal as a substring.
+
+The current implementation strips exact matches after normalisation, not substring matches — so mealCount → mealcount after normalisation, which does not match the blocked key meal. Safe.
+
+If you ever add a property key that happens to normalise to an exact blocked string, it will be silently dropped. The MCHK comment in both files should make this visible during code review.
+

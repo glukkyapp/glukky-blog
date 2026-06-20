@@ -1,0 +1,56 @@
+3. Generic Triggers Only in OneSignal
+text
+Project context:
+- Client: Natively bridge (natively-frontend.min.js loaded in client/index.html:47)
+- Language sync: client/src/lib/onesignal-language.ts
+- Server: server/onesignal.ts using REST API via ONESIGNAL_APP_ID + 
+  ONESIGNAL_REST_API_KEY
+- Notification definitions: server/notifications.ts
+- Targeting: by external_id (preferred) or player_id
+
+Known notifications — already compliant (generic content, no health values):
+- foodsnap_reminder (server/notifications.ts:420): 
+  "Time to snap your dinner!" → /snap ✓
+- reengagement (server/notifications.ts:420): 
+  "We miss you — your plan is waiting." → / ✓
+- Dev-panel test notifications (server/routes.ts:2330-2357):
+  late_dinner, sunday_planning, reengagement, daily_checkin — 
+  hardcoded strings, no health values ✓
+- Retired: daily_report, weekly_report, monthly_report, daily_checkin 
+  (defined in CONTENTS but removed from scheduler) — no action needed
+
+Known notification requiring review:
+- HStix reminder (server/routes.ts:3496-3505): 
+  "Ready to log your HStix reading?" deep link: /food-log?snap=${snap.id}
+  → snap.id in the deep link URL: assess whether this exposes 
+    a patient-identifiable record ID in the notification payload
+
+Before writing any code:
+1. Read server/notifications.ts in full.
+2. Read server/onesignal.ts in full.
+3. Read server/routes.ts lines 3496-3505 in full and identify exactly 
+   what is included in the notification payload for the HStix reminder —
+   specifically whether snap.id, any glucose values, or any other health 
+   data appear in the heading, body, subtitle, or data payload.
+4. Read client/src/lib/onesignal-language.ts in full.
+5. Search the entire codebase for any other OneSignal send calls not 
+   listed above.
+6. Report back findings before making any changes.
+
+Once confirmed, implement the following:
+- If snap.id in the HStix deep link URL constitutes patient-identifiable 
+  health data exposure in the notification payload: replace the deep link 
+  with a generic /food-log route and have the app determine which snap to 
+  load via its own authenticated session on open
+- Create a typed notification templates object in server/notifications.ts 
+  (or a new server/notification-templates.ts if it doesn't exist) where:
+  - Each template has only a pre-approved generic heading and body 
+    (in both en and zh-Hant) with no health values interpolated
+  - TypeScript types make it a compile error to pass health values 
+    into heading or body strings
+  - The actual health data is fetched by the client from the app's 
+    own authenticated API after the notification is opened
+- All existing production notifications must be migrated to use 
+  the templates object
+- Add a comment in server/onesignal.ts: 
+  "No health values or PII in notification content — MCHK Code §1.4.1"
