@@ -342,14 +342,148 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
-      const data = await storage.exportUserData(userId);
+      const raw = await storage.exportUserData(userId);
       await storage.logUserDataAction(userId, "data_export", String(ip ?? ""));
       const today = new Date().toISOString().split("T")[0];
       const filename = `glukky-data-export-${today}.json`;
+
+      const fmtDate = (v: unknown): string | null => {
+        if (!v) return null;
+        try { return new Date(v as string).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+        catch { return String(v); }
+      };
+      const fmtDateTime = (v: unknown): string | null => {
+        if (!v) return null;
+        try { return new Date(v as string).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
+        catch { return String(v); }
+      };
+      const pct = (v: unknown) => v != null ? `${Math.round((v as number) * 100)}%` : null;
+
+      const profileRow = (raw.user_profiles as any[])[0] ?? {};
+      const threshRow = (raw.user_glucose_thresholds as any[])[0] ?? {};
+
+      const planDaysByPlanId: Record<number, any[]> = {};
+      for (const d of raw.weekly_plan_days as any[]) {
+        (planDaysByPlanId[d.weeklyPlanId] ??= []).push(d);
+      }
+      const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+      const readable = {
+        _export_info: {
+          exported_at: fmtDateTime(new Date()),
+          note: "This file contains all personal data Glukky holds for your account. Internal system fields have been removed for readability.",
+        },
+
+        profile: {
+          name: profileRow.name ?? null,
+          goal: profileRow.goal ?? null,
+          health_condition: profileRow.healthCondition ?? null,
+          hba1c_level: profileRow.hba1cLevel ?? null,
+          blood_test_date: fmtDate(profileRow.bloodTestDate) ?? null,
+          walks_per_week: profileRow.walksPerWeek ?? null,
+          walk_duration_minutes: profileRow.walkDuration ?? null,
+          dinner_time: profileRow.dinnerTime ?? null,
+          sleep_pattern: profileRow.sleepPattern ?? null,
+          eating_out_frequency: profileRow.eatingOutFrequency ?? null,
+          current_week: profileRow.currentWeek ?? null,
+          is_premium: profileRow.isPremium ?? false,
+          preferred_language: profileRow.preferredLanguage ?? null,
+          font_size: profileRow.fontSizePreference ?? null,
+          piggy_bank_coins: profileRow.piggyBankCoins ?? 0,
+          piggy_bank_reward: profileRow.piggyBankReward ?? null,
+          struggles_active: profileRow.struggles ?? [],
+          struggles_mastered: profileRow.masteredStruggles ?? [],
+          referral_source: profileRow.referralSource ?? null,
+        },
+
+        glucose_thresholds: threshRow.lowMedBoundary ? {
+          low_medium_boundary_mmol: threshRow.lowMedBoundary,
+          medium_high_boundary_mmol: threshRow.medHighBoundary,
+          is_personalised: threshRow.isPersonalised ?? false,
+          reading_count: threshRow.readingCount ?? 0,
+          first_activated: fmtDateTime(threshRow.firstActivatedAt),
+        } : null,
+
+        food_log: (raw.meal_snaps as any[])
+          .filter((s: any) => !s.isDeleted)
+          .map((s: any) => ({
+            date: fmtDate(s.localDate),
+            time: fmtDateTime(s.snapTime),
+            meal_type: s.mealType ?? null,
+            food_name: s.foodName ?? null,
+            portion: s.portion ?? null,
+            sauces: s.sauces ?? null,
+            extras: s.extras ?? null,
+            glucose_impact: s.glucoseImpact ?? null,
+            post_meal_glucose_mmol: s.postMealGlucoseMmol ?? null,
+            post_meal_symptom: s.postMealSymptom ?? null,
+            post_meal_recorded_at: fmtDateTime(s.postMealRecordedAt),
+          })),
+
+        daily_glucose_summary: (raw.snap_daily_glucose as any[]).map((g: any) => ({
+          date: fmtDate(g.localDate),
+          meals_logged: g.mealCount,
+          low_impact_meals: g.lowCount,
+          medium_impact_meals: g.mediumCount,
+          high_impact_meals: g.highCount,
+          had_late_meal: g.hasLateMeal,
+        })),
+
+        daily_checkins: (raw.daily_logs as any[]).map((l: any) => ({
+          date: fmtDate(l.date),
+          walk_completed: l.walkCompleted ?? null,
+          felt_tired_after_walk: l.walkTired ?? null,
+          diet_response: l.dietResponse ?? null,
+          dinner_on_time: l.dinnerSuccess ?? null,
+        })),
+
+        weekly_plans: (raw.weekly_plans as any[]).map((p: any) => ({
+          week_number: p.weekNumber,
+          start_date: fmtDate(p.startDate),
+          walk_goal_days_per_week: p.walkFrequencyGoal,
+          walk_goal_minutes: p.walkDurationGoal,
+          diet_focus: p.dietStruggle ?? null,
+          diet_tip: p.dietTip ?? null,
+          dinner_focus_week: p.isDinnerFocus,
+          scheduled_days: (planDaysByPlanId[p.id] ?? []).map((d: any) => ({
+            day: DAY_NAMES[d.dayOfWeek] ?? d.dayOfWeek,
+            walk_scheduled: d.walkScheduled,
+            eat_out_scheduled: d.eatOutScheduled,
+            late_dinner_scheduled: d.lateDinnerScheduled,
+            walk_duration_minutes: d.walkDuration,
+          })),
+        })),
+
+        weekly_reports: (raw.weekly_reports as any[]).map((r: any) => ({
+          week_number: r.weekNumber,
+          generated_at: fmtDateTime(r.generatedAt),
+          walk_success: pct(r.walkSuccessPct),
+          diet_success: pct(r.dietSuccessPct),
+          dinner_success: pct(r.dinnerSuccessPct),
+          overall_score: pct(r.weightedAvg),
+        })),
+
+        monthly_reports: (raw.monthly_reports as any[]).map((r: any) => ({
+          month: r.month,
+          total_walk_minutes: r.totalMinutes ?? null,
+          generated_at: fmtDateTime(r.generatedAt),
+        })),
+
+        diet_cycle_history: (raw.cycle_history as any[]).map((c: any) => ({
+          cycle_number: c.cycleNumber,
+          start_week: c.startWeek ?? null,
+          end_week: c.endWeek ?? null,
+          struggles_picked: c.strugglesPicked ?? [],
+          struggles_mastered: c.mastered ?? [],
+          struggles_moved_on: c.movedOn ?? [],
+          recorded_at: fmtDateTime(c.createdAt),
+        })),
+      };
+
       res.set("Content-Disposition", `attachment; filename="${filename}"`);
       res.set("Content-Type", "application/json");
       res.set("Cache-Control", "no-store");
-      return res.json(data);
+      return res.json(readable);
     } catch (error: any) {
       console.error("Error exporting user data:", error);
       res.status(500).json({ message: error?.message || "Failed to export data" });
