@@ -882,6 +882,7 @@
     "error_limit_label": "今日已用盡 {{limit}} 次照片分析，明天再見！",
     "error_limit_advice": "今日已用盡 {{limit}} 次飲食建議，明天再來吧。",
     "error_generic": "發生錯誤，請再試一次。",
+    "error_consent_disabled": "AI 食物識別已停用。請到「個人資料 → 私隱與同意」中啟用。",
     "focus_heading": "咦！— 這屬於「{{struggle}}」，是我們這星期的目標 🙋",
     "focus_immediate_prefix": "我們的建議是 ",
     "focus_immediate_suffix": "，記得哦～",
@@ -1113,5 +1114,23 @@
     "alert_confirm": "我明白，繼續記錄",
     "alert_cancel_record": "取消記錄",
     "alert_cancel": "取消"
+  },
+  "consent": {
+    "onboarding_title": "你的私隱設定",
+    "onboarding_intro": "我們使用少量第三方服務來提供 Glukky 的功能。你可以選擇每項服務可取用哪些資料，所有項目預設為關閉。",
+    "onboarding_save": "儲存並繼續",
+    "onboarding_footer": "你可隨時在「個人資料」中更新這些設定。",
+    "profile_title": "私隱與同意",
+    "profile_intro": "選擇 Glukky 可與哪些第三方服務共享資料。",
+    "on_since": "自 {{date}} 起啟用",
+    "failed_update": "更新失敗",
+    "posthog_label": "分析（PostHog）",
+    "posthog_desc": "使用情況分析及工作階段記錄，有助改善應用程式。不會傳送任何健康數值。",
+    "onesignal_label": "推播通知（OneSignal）",
+    "onesignal_desc": "散步提醒及重新參與提示，透過 OneSignal 傳送。使用你的裝置識別碼。",
+    "revenuecat_label": "訂閱付款（RevenueCat）",
+    "revenuecat_desc": "將你的 App Store 訂閱與 Glukky 帳戶連結。進階版功能須啟用此項。",
+    "claude_label": "AI 食物識別（Anthropic Claude）",
+    "claude_desc": "分析你在食物快拍中拍攝的照片，餐點照片會傳送至 Anthropic。使用食物快拍功能須啟用此項。"
   }
 }

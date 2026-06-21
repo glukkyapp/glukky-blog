@@ -379,6 +379,19 @@ export default function Snap() {
         return null;
       }
 
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        hapticNotify("ERROR");
+        if ((data as { consentRequired?: string }).consentRequired === "claude") {
+          setError(t("snap.error_consent_disabled"));
+        } else {
+          setError(t("snap.error_generic"));
+        }
+        setStep("upload");
+        track("snap_label_failed", { reason: "consent_blocked" });
+        return null;
+      }
+
       if (!res.ok) {
         hapticNotify("ERROR");
         setError(t("snap.error_generic"));

@@ -33,28 +33,7 @@ import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 const TOTAL_STEPS = 8;
 const GREEN_DARK = "#214B36";
 
-const CONSENT_SERVICES: { key: ConsentService; label: string; description: string }[] = [
-  {
-    key: "posthog",
-    label: "Analytics (PostHog)",
-    description: "Session recording and usage analytics. Helps us improve the app. No health values are sent.",
-  },
-  {
-    key: "onesignal",
-    label: "Push notifications (OneSignal)",
-    description: "Walk reminders and re-engagement nudges sent via OneSignal. Uses your device ID.",
-  },
-  {
-    key: "revenuecat",
-    label: "Subscription payments (RevenueCat)",
-    description: "Links your App Store subscription to your Glukky account. Required for premium access.",
-  },
-  {
-    key: "claude",
-    label: "AI food recognition (Anthropic Claude)",
-    description: "Analyses photos you take in FoodSnap. Meal photos are sent to Anthropic. Required to use FoodSnap.",
-  },
-];
+const CONSENT_SERVICE_KEYS: ConsentService[] = ["posthog", "onesignal", "claude"];
 
 export default function Onboarding() {
   useEffect(() => {
@@ -233,7 +212,7 @@ export default function Onboarding() {
       style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
       data-testid="button-consent-save"
     >
-      {submittingConsent ? t("onboarding.saving") : "Save & Continue"}
+      {submittingConsent ? t("onboarding.saving") : t("consent.onboarding_save")}
     </Button>
   ) : step < TOTAL_STEPS ? (
     <Button
@@ -270,18 +249,18 @@ export default function Onboarding() {
         return (
           <OnboardingCard
             testId="card-step-consent"
-            title="Your Privacy Settings"
+            title={t("consent.onboarding_title")}
             footer={cardFooter}
           >
             <p className="text-sm text-muted-foreground mb-4">
-              We use a small set of third-party services to deliver Glukky. You choose what each one can see — all are off by default.
+              {t("consent.onboarding_intro")}
             </p>
             <div className="space-y-4">
-              {CONSENT_SERVICES.map(({ key, label, description }) => (
+              {CONSENT_SERVICE_KEYS.map((key) => (
                 <div key={key} className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-tight">{label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                    <p className="text-sm font-medium leading-tight">{t(`consent.${key}_label`)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
                   </div>
                   <button
                     type="button"
@@ -303,7 +282,7 @@ export default function Onboarding() {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground text-center mt-4">
-              You can update these settings anytime in your Profile.
+              {t("consent.onboarding_footer")}
             </p>
           </OnboardingCard>
         );

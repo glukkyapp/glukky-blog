@@ -878,6 +878,7 @@
     "error_limit_label": "You've used all {{limit}} photo analyses for today. Come back tomorrow.",
     "error_limit_advice": "You've used all {{limit}} advice requests for today. Come back tomorrow.",
     "error_generic": "Something went wrong. Please try again.",
+    "error_consent_disabled": "AI food recognition is turned off. You can enable it in Profile → Privacy & Consent.",
     "focus_heading": "Heads up — this falls under your {{struggle}} goal 🙋",
     "focus_immediate_prefix": "Remember our advice? ",
     "focus_immediate_suffix": " — you can do it right now!",
@@ -1109,5 +1110,23 @@
     "alert_confirm": "I understand, continue recording",
     "alert_cancel_record": "Cancel recording",
     "alert_cancel": "Cancel"
+  },
+  "consent": {
+    "onboarding_title": "Your Privacy Settings",
+    "onboarding_intro": "We use a small set of third-party services to deliver Glukky. You choose what each one can see — all are off by default.",
+    "onboarding_save": "Save & Continue",
+    "onboarding_footer": "You can update these settings anytime in your Profile.",
+    "profile_title": "Privacy & Consent",
+    "profile_intro": "Choose which third-party services Glukky may share data with.",
+    "on_since": "On since {{date}}",
+    "failed_update": "Failed to update",
+    "posthog_label": "Analytics (PostHog)",
+    "posthog_desc": "Session recording and usage analytics. Helps us improve the app. No health values are sent.",
+    "onesignal_label": "Push notifications (OneSignal)",
+    "onesignal_desc": "Walk reminders and re-engagement nudges sent via OneSignal. Uses your device ID.",
+    "revenuecat_label": "Subscription payments (RevenueCat)",
+    "revenuecat_desc": "Links your App Store subscription to your Glukky account. Required for premium access.",
+    "claude_label": "AI food recognition (Anthropic Claude)",
+    "claude_desc": "Analyses photos you take in FoodSnap. Meal photos are sent to Anthropic. Required to use FoodSnap."
   }
 }

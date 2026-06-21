@@ -317,32 +317,12 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
   );
 }
 
-const CONSENT_SERVICES_PROFILE: { key: ConsentService; label: string; description: string }[] = [
-  {
-    key: "posthog",
-    label: "Analytics (PostHog)",
-    description: "Session recording and usage analytics. No health values sent.",
-  },
-  {
-    key: "onesignal",
-    label: "Push notifications (OneSignal)",
-    description: "Walk reminders and re-engagement nudges via OneSignal.",
-  },
-  {
-    key: "revenuecat",
-    label: "Subscription (RevenueCat)",
-    description: "Links your App Store subscription to your account. Required for premium.",
-  },
-  {
-    key: "claude",
-    label: "AI food recognition (Anthropic Claude)",
-    description: "Sends meal photos to Anthropic for analysis. Required to use FoodSnap.",
-  },
-];
+const CONSENT_SERVICE_KEYS_PROFILE: ConsentService[] = ["posthog", "onesignal", "claude"];
 
 function PrivacyCard() {
   const { consentState, updateConsent, isConsentLoaded } = useConsent();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { data: consentData } = useQuery<{
     consents: Record<string, boolean>;
@@ -357,7 +337,7 @@ function PrivacyCard() {
       hapticNotify("SUCCESS");
     } catch {
       hapticNotify("ERROR");
-      toast({ title: "Failed to update", variant: "destructive" });
+      toast({ title: t("consent.failed_update"), variant: "destructive" });
     }
   };
 
@@ -375,10 +355,9 @@ function PrivacyCard() {
       <Card data-testid="card-privacy">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
           <Shield className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">Privacy & Consent</CardTitle>
+          <CardTitle className="text-base">{t("consent.profile_title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
@@ -391,23 +370,23 @@ function PrivacyCard() {
     <Card data-testid="card-privacy">
       <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
         <Shield className="w-5 h-5 text-muted-foreground" />
-        <CardTitle className="text-base">Privacy & Consent</CardTitle>
+        <CardTitle className="text-base">{t("consent.profile_title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <p className="text-xs text-muted-foreground -mt-1">
-          Choose which third-party services Glukky may share data with.
+          {t("consent.profile_intro")}
         </p>
-        {CONSENT_SERVICES_PROFILE.map(({ key, label, description }) => {
+        {CONSENT_SERVICE_KEYS_PROFILE.map((key) => {
           const value = consentState[key] ?? false;
           const detail = consentData?.consentDetails?.[key];
           const dateStr = value ? formatDate(detail?.consentedAt) : null;
           return (
             <div key={key} className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="font-medium leading-tight">{label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                <p className="font-medium leading-tight">{t(`consent.${key}_label`)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
                 {dateStr && (
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">On since {dateStr}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">{t("consent.on_since", { date: dateStr })}</p>
                 )}
               </div>
               <button
