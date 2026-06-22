@@ -54,7 +54,7 @@ export default function Onboarding() {
     setLocation("/dev");
   };
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   useGlobalLoading(submitting);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
@@ -65,7 +65,6 @@ export default function Onboarding() {
     revenuecat: false,
     claude: false,
   });
-  const [submittingConsent, setSubmittingConsent] = useState(false);
   const { bulkUpdateConsent } = useConsent();
 
   useEffect(() => {
@@ -91,30 +90,10 @@ export default function Onboarding() {
     return { walksPerWeek: 0, walkDuration: 0 };
   };
 
-  const handleConsentSubmit = async () => {
-    hapticTap("MEDIUM");
-    if (isPreview) {
-      setDirection("forward");
-      setStep(1);
-      return;
-    }
-    setSubmittingConsent(true);
-    try {
-      await bulkUpdateConsent(consentChoices);
-      setDirection("forward");
-      setStep(1);
-    } catch {
-      hapticNotify("ERROR");
-      toast({ title: t("common.error"), description: "Failed to save privacy settings", variant: "destructive" });
-    } finally {
-      setSubmittingConsent(false);
-    }
-  };
-
   const handleNext = () => {
     hapticTap("SOFT");
     setDirection("forward");
-    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
   };
   const handleBack = () => {
     hapticTap("SOFT");
@@ -136,6 +115,7 @@ export default function Onboarding() {
     setSubmitting(true);
     const { walksPerWeek, walkDuration } = getWalkData();
     try {
+      await bulkUpdateConsent(consentChoices);
       await apiRequest("POST", "/api/profile", {
         walksPerWeek,
         walkDuration,
@@ -204,17 +184,7 @@ export default function Onboarding() {
     </Button>
   ) : null;
 
-  const ctaButton = step === 0 ? (
-    <Button
-      onClick={handleConsentSubmit}
-      disabled={submittingConsent}
-      className="btn-pop w-full"
-      style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
-      data-testid="button-consent-save"
-    >
-      {submittingConsent ? t("onboarding.saving") : t("consent.onboarding_save")}
-    </Button>
-  ) : step < TOTAL_STEPS ? (
+  const ctaButton = step <= TOTAL_STEPS ? (
     <Button
       onClick={handleNext}
       disabled={isNextDisabled()}
@@ -245,47 +215,6 @@ export default function Onboarding() {
 
   const renderStep = () => {
     switch (step) {
-      case 0:
-        return (
-          <OnboardingCard
-            testId="card-step-consent"
-            title={t("consent.onboarding_title")}
-            footer={cardFooter}
-          >
-            <p className="text-sm text-muted-foreground mb-4">
-              {t("consent.onboarding_intro")}
-            </p>
-            <div className="space-y-4">
-              {CONSENT_SERVICE_KEYS.map((key) => (
-                <div key={key} className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-tight">{t(`consent.${key}_label`)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={consentChoices[key]}
-                    onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    data-testid={`toggle-consent-${key}`}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
-                      consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                        consentChoices[key] ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground text-center mt-4">
-              {t("consent.onboarding_footer")}
-            </p>
-          </OnboardingCard>
-        );
       case 1:
         return (
           <OnboardingCard
@@ -582,6 +511,50 @@ export default function Onboarding() {
             )}
           </OnboardingCard>
         );
+      case TOTAL_STEPS + 1:
+        return (
+          <OnboardingCard
+            testId="card-step-consent"
+            title={t("consent.onboarding_title")}
+            footer={cardFooter}
+          >
+            <p className="text-sm text-muted-foreground mb-2">
+              {t("consent.onboarding_intro")}
+            </p>
+            <p className="text-sm font-medium mb-4" style={{ color: GREEN_DARK }}>
+              {t("consent.recommend_all")}
+            </p>
+            <div className="space-y-4">
+              {CONSENT_SERVICE_KEYS.map((key) => (
+                <div key={key} className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-tight">{t(`consent.${key}_label`)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={consentChoices[key]}
+                    onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    data-testid={`toggle-consent-${key}`}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                      consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        consentChoices[key] ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center mt-4">
+              {t("consent.onboarding_footer")}
+            </p>
+          </OnboardingCard>
+        );
       default:
         return null;
     }
@@ -616,7 +589,7 @@ export default function Onboarding() {
           </button>
         </div>
       )}
-      {step > 0 && (
+      {step > 0 && step <= TOTAL_STEPS && (
         <div className="mx-auto" style={{ maxWidth: 380 }}>
           <Progress
             value={(step / TOTAL_STEPS) * 100}

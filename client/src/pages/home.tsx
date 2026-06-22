@@ -1503,7 +1503,7 @@ export default function Home() {
             disabled={!!mealSuggestion || mealSuggestionLoading}
             data-testid="button-meal-suggestion"
             className="w-full text-left font-semibold text-[17px] px-5 py-4 rounded-2xl transition-colors active:opacity-80"
-            style={{ background: "#EEF5EF", color: "#214B36", opacity: mealSuggestion ? 0.7 : 1 }}
+            style={{ background: "#EEF5EF", color: "#214B36", opacity: mealSuggestion ? 0.7 : 1, boxShadow: "0 2px 8px rgba(44, 72, 56, 0.13)" }}
           >
             {mealSuggestionLoading ? "…" : t(`home.meal_suggestion_button_${mealWindow}`)}
           </button>

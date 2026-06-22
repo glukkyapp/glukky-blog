@@ -1116,6 +1116,7 @@
     "onboarding_intro": "We use a small set of third-party services to deliver Glukky. You choose what each one can see — all are off by default.",
     "onboarding_save": "Save & Continue",
     "onboarding_footer": "You can update these settings anytime in your Profile.",
+    "recommend_all": "We recommend turning all options on for the best experience.",
     "profile_title": "Privacy & Consent",
     "profile_intro": "Choose which third-party services Glukky may share data with.",
     "on_since": "On since {{date}}",
