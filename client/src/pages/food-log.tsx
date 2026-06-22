@@ -120,6 +120,19 @@ const SYMPTOM_LABEL_ZH: Record<string, string> = {
 interface ProfileData {
   fastingBaselineMmol: number | null;
   fastingQuestionSeen: boolean;
+  glucoseGroup?: string | null;
+}
+
+function classifyMmol(mmol: number, glucoseGroup?: string | null): "low" | "medium" | "high" {
+  const isT2dm = glucoseGroup === "t2dm";
+  if (isT2dm) {
+    if (mmol >= 10.0) return "high";
+    if (mmol >= 7.5) return "medium";
+    return "low";
+  }
+  if (mmol >= 7.8) return "high";
+  if (mmol >= 5.9) return "medium";
+  return "low";
 }
 
 export default function FoodLog() {
@@ -249,7 +262,11 @@ export default function FoodLog() {
                 </p>
                 <div className="space-y-2">
                   {items.map(item => {
-                    const badge = item.glucoseImpact ? GLUCOSE_BADGE[item.glucoseImpact] : null;
+                    const effectiveImpact: "low" | "medium" | "high" | null =
+                      item.postMealGlucoseMmol != null
+                        ? classifyMmol(item.postMealGlucoseMmol, profile?.glucoseGroup)
+                        : (item.glucoseImpact as "low" | "medium" | "high" | null);
+                    const badge = effectiveImpact ? GLUCOSE_BADGE[effectiveImpact] : null;
                     const pillColor = item.mealType
                       ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600")
                       : null;
@@ -282,12 +299,12 @@ export default function FoodLog() {
                                 {mealLabel(item.mealType)}
                               </span>
                             )}
-                            {item.glucoseImpact && GLUCOSE_PILL_SOLID[item.glucoseImpact] && (
+                            {effectiveImpact && GLUCOSE_PILL_SOLID[effectiveImpact] && (
                               <span
                                 data-testid={`food-log-glucose-${item.id}`}
                                 className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: GLUCOSE_PILL_SOLID[item.glucoseImpact] }}
-                                aria-label={glucoseLabel(item.glucoseImpact)}
+                                style={{ backgroundColor: GLUCOSE_PILL_SOLID[effectiveImpact] }}
+                                aria-label={glucoseLabel(effectiveImpact)}
                               />
                             )}
                           </div>
@@ -298,8 +315,8 @@ export default function FoodLog() {
                             <span
                               data-testid={`food-log-post-meal-glucose-${item.id}`}
                               className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                item.glucoseImpact && GLUCOSE_BADGE[item.glucoseImpact]
-                                  ? `${GLUCOSE_BADGE[item.glucoseImpact].bg} ${GLUCOSE_BADGE[item.glucoseImpact].text}`
+                                badge
+                                  ? `${badge.bg} ${badge.text}`
                                   : "bg-rose-50 text-rose-700"
                               }`}
                             >
