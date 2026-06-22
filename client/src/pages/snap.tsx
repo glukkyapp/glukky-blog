@@ -559,7 +559,23 @@ export default function Snap() {
       }
     }
     if (tokenQueue.length > 0) {
-      pendingResolutionsRef.current = { sauceResolutions, toppingResolutions };
+      // Strip tokens from form display so the textarea never shows raw {{…}} syntax.
+      // Store the original tokenized strings in pendingResolutionsRef so that
+      // handleDisambigSelect can still replace each token with the chosen name.
+      const stripTokensFromDisplay = (text: string) =>
+        text.replace(/\{\{[^}]+\}\}/gu, "")
+          .replace(/，\s*，/gu, "，").replace(/^，|，$/g, "").trim();
+      pendingResolutionsRef.current = {
+        sauceResolutions,
+        toppingResolutions,
+        resolvedSaucesText: data.sauces ?? undefined,
+        resolvedExtrasText: data.extras ?? undefined,
+      };
+      setForm(f => ({
+        ...f,
+        sauces: data.sauces ? stripTokensFromDisplay(data.sauces) : f.sauces,
+        extras: data.extras ? stripTokensFromDisplay(data.extras) : f.extras,
+      }));
       disambigOriginRef.current = "review";
       setDisambigQueue(tokenQueue);
       setDisambigIndex(0);
@@ -776,13 +792,25 @@ export default function Snap() {
           // Remove any stale resolution entry whose text is the {{A|B}} token
           pendingResolutionsRef.current.sauceResolutions =
             pendingResolutionsRef.current.sauceResolutions.filter(r => r.text !== token);
-          pendingResolutionsRef.current.resolvedSaucesText = resolveInText(form.sauces);
+          // For review-origin the token was already stripped from the form; resolve
+          // from the stored tokenized text so the chosen name gets inserted correctly.
+          const srcSauce = disambigOriginRef.current === "review"
+            ? (pendingResolutionsRef.current.resolvedSaucesText ?? form.sauces)
+            : form.sauces;
+          const resolvedSauceText = resolveInText(srcSauce);
+          pendingResolutionsRef.current.resolvedSaucesText = resolvedSauceText;
+          setForm(f => ({ ...f, sauces: resolvedSauceText }));
         } else {
           pendingResolutionsRef.current.toppingResolutions =
             pendingResolutionsRef.current.toppingResolutions.filter(r => r.text !== token);
-          pendingResolutionsRef.current.resolvedExtrasText = resolveInText(form.extras);
+          // Same review-origin fallback for extras
+          const srcExtras = disambigOriginRef.current === "review"
+            ? (pendingResolutionsRef.current.resolvedExtrasText ?? form.extras)
+            : form.extras;
+          const resolvedExtrasText = resolveInText(srcExtras);
+          pendingResolutionsRef.current.resolvedExtrasText = resolvedExtrasText;
+          setForm(f => ({ ...f, extras: resolvedExtrasText }));
         }
-        setForm(f => ({ ...f, [targetField]: resolveInText(f[targetField] as string) }));
       } else {
         const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
         if (current.field === "sauce") {
