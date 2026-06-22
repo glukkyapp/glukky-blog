@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Camera, Images, Loader2, RotateCcw, ChevronRight, ChevronDown, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
+import { Camera, Images, Loader2, RotateCcw, ChevronRight, ChevronDown, UtensilsCrossed, Scale, Droplets, Cherry, Volume2, StopCircle } from "lucide-react";
 import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -104,6 +104,40 @@ function parseAdvicePanels(advice: string): string[] {
   if (panels.length >= 2) return panels;
 
   return lines.slice(0, 3);
+}
+
+function getPanelNarrationText(panel: string): string {
+  return panel
+    .split("\n")
+    .map(line => {
+      const colonIdx = line.indexOf(": ");
+      return colonIdx !== -1 ? line.slice(colonIdx + 2) : line;
+    })
+    .join(" ")
+    .trim();
+}
+
+function splitForTTS(text: string): string[] {
+  if (text.length <= 200) return [text];
+  const parts = text.split(/(?<=[。.！？!?])\s*/u);
+  const chunks: string[] = [];
+  let current = "";
+  for (const part of parts) {
+    if ((current + part).length > 200 && current) {
+      chunks.push(current.trim());
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length > 0 ? chunks : [text];
+}
+
+function getTTSLang(): string {
+  const voices = speechSynthesis.getVoices();
+  if (voices.length === 0) return "zh-HK";
+  return voices.some(v => v.lang.startsWith("zh")) ? "zh-HK" : "en-US";
 }
 
 function detectGlucoseImpact(body: string): "low" | "medium" | "high" | null {
@@ -281,6 +315,8 @@ export default function Snap() {
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePanel, setAdvicePanel] = useState(0);
   const [sourcesExpanded, setSourcesExpanded] = useState<Record<number, boolean>>({});
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const ttsPlayingRef = useRef(false);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
   const [disambigIndex, setDisambigIndex] = useState(0);
   const [sauceManual, setSauceManual] = useState(false);
@@ -321,6 +357,47 @@ export default function Snap() {
     };
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (ttsPlayingRef.current) {
+      speechSynthesis.cancel();
+      ttsPlayingRef.current = false;
+      setTtsPlaying(false);
+    }
+  }, [advicePanel]);
+
+  function handleTtsToggle() {
+    if (ttsPlayingRef.current) {
+      speechSynthesis.cancel();
+      ttsPlayingRef.current = false;
+      setTtsPlaying(false);
+      return;
+    }
+    const text = getPanelNarrationText(panels[advicePanel] ?? "");
+    if (!text) return;
+    speechSynthesis.cancel();
+    const lang = getTTSLang();
+    const chunks = splitForTTS(text);
+    let idx = 0;
+    const speakNext = () => {
+      if (!ttsPlayingRef.current || idx >= chunks.length) {
+        ttsPlayingRef.current = false;
+        setTtsPlaying(false);
+        return;
+      }
+      const utt = new SpeechSynthesisUtterance(chunks[idx++]);
+      utt.lang = lang;
+      utt.onend = speakNext;
+      utt.onerror = () => {
+        ttsPlayingRef.current = false;
+        setTtsPlaying(false);
+      };
+      speechSynthesis.speak(utt);
+    };
+    ttsPlayingRef.current = true;
+    setTtsPlaying(true);
+    speakNext();
+  }
+
   function reset() {
     setStep("upload");
     setError(null);
@@ -330,6 +407,9 @@ export default function Snap() {
     setAdviceResult(null);
     setAdvicePanel(0);
     setSourcesExpanded({});
+    speechSynthesis.cancel();
+    ttsPlayingRef.current = false;
+    setTtsPlaying(false);
     setDisambigQueue([]);
     setDisambigIndex(0);
     setSauceManual(false);
@@ -1440,7 +1520,21 @@ export default function Snap() {
               )}
             </div>
 
-            {advicePanel === 0 && !isFocusPanel && adviceResult.glucosePrediction !== undefined && (
+            {!isFocusPanel && (
+              <div className="flex justify-end -mt-2">
+                <button
+                  type="button"
+                  onClick={handleTtsToggle}
+                  data-testid="button-tts-toggle"
+                  aria-label={ttsPlaying ? "Stop narration" : "Play narration"}
+                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground transition-colors active:scale-95 touch-manipulation"
+                >
+                  {ttsPlaying ? <StopCircle className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+              </div>
+            )}
+
+          {advicePanel === 0 && !isFocusPanel && adviceResult.glucosePrediction !== undefined && (
               <PredictionLayer prediction={adviceResult.glucosePrediction ?? null} />
             )}
 
