@@ -566,16 +566,112 @@ function MyDataCard() {
     try {
       const res = await fetch("/api/user/data-export", { credentials: "include" });
       if (!res.ok) throw new Error("Export failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const data = await res.json() as Record<string, any[]>;
       const today = new Date().toISOString().split("T")[0];
-      a.href = url;
-      a.download = `glukky-data-export-${today}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      const fmt = (val: unknown): string => {
+        if (val === null || val === undefined) return "—";
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
+          try { return new Date(val).toLocaleString(); } catch { return val; }
+        }
+        return String(val);
+      };
+
+      const section = (title: string, rows: any[], fields: { key: string; label: string }[]) => {
+        if (!rows || rows.length === 0) return `<div class="section"><h2>${title}</h2><p class="empty">No records.</p></div>`;
+        const rowsHtml = rows.map(row => {
+          const cells = fields.map(f => `<tr><td class="lbl">${f.label}</td><td>${fmt(row[f.key])}</td></tr>`).join("");
+          return `<table class="record">${cells}</table>`;
+        }).join("<hr class='rec-sep'/>");
+        return `<div class="section"><h2>${title}</h2>${rowsHtml}</div>`;
+      };
+
+      const profile = data.user_profiles?.[0] ?? {};
+      const user = data.users?.[0] ?? {};
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Glukky Data Export – ${today}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 32px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #555; font-size: 12px; margin-bottom: 24px; }
+  h2 { font-size: 15px; border-bottom: 2px solid #1a5c38; padding-bottom: 4px; margin-top: 0; color: #1a5c38; }
+  .section { margin-bottom: 28px; page-break-inside: avoid; }
+  table.record { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
+  td { padding: 3px 6px; vertical-align: top; }
+  td.lbl { width: 40%; font-weight: bold; color: #333; }
+  hr.rec-sep { border: none; border-top: 1px solid #e0e0e0; margin: 8px 0; }
+  .empty { color: #888; font-style: italic; }
+  @media print { body { margin: 16px; } .section { page-break-inside: avoid; } }
+</style></head><body>
+<h1>Glukky Health Data Export</h1>
+<p class="sub">Exported on ${today} &nbsp;·&nbsp; ${fmt(user.username) !== "—" ? fmt(user.username) : fmt(user.email)}</p>
+
+${section("Profile", [profile], [
+  { key: "displayName", label: "Name" },
+  { key: "dinnerTime", label: "Dinner Time" },
+  { key: "sleepPattern", label: "Sleep Pattern" },
+  { key: "walkOption", label: "Walk Preference" },
+  { key: "fastingBaselineMmol", label: "Fasting Baseline (mmol/L)" },
+  { key: "glucoseGroup", label: "Health Condition" },
+  { key: "locale", label: "Language" },
+  { key: "createdAt", label: "Member Since" },
+])}
+
+${section("Food Log", (data.meal_snaps ?? []).slice().sort((a: any, b: any) => b.snapTime > a.snapTime ? 1 : -1), [
+  { key: "snapTime", label: "Date & Time" },
+  { key: "foodName", label: "Food" },
+  { key: "mealType", label: "Meal Type" },
+  { key: "postMealGlucoseMmol", label: "Post-Meal Glucose (mmol/L)" },
+  { key: "glucoseImpact", label: "Glucose Impact" },
+  { key: "postMealSymptom", label: "Symptom" },
+  { key: "postMealSkipped", label: "Glucose Log Skipped" },
+])}
+
+${section("Walk History", (data.daily_logs ?? []).slice().sort((a: any, b: any) => b.localDate > a.localDate ? 1 : -1), [
+  { key: "localDate", label: "Date" },
+  { key: "walkMinutes", label: "Walk Minutes" },
+  { key: "targetWalkMinutes", label: "Target Minutes" },
+  { key: "skipped", label: "Skipped" },
+  { key: "fatigue", label: "Fatigue Level" },
+  { key: "notes", label: "Notes" },
+])}
+
+${section("Weekly Plans", (data.weekly_plans ?? []).slice().sort((a: any, b: any) => b.weekStart > a.weekStart ? 1 : -1), [
+  { key: "weekStart", label: "Week Starting" },
+  { key: "walksPerWeek", label: "Walks Per Week" },
+  { key: "walkDuration", label: "Walk Duration (min)" },
+  { key: "status", label: "Status" },
+  { key: "completedWalks", label: "Completed Walks" },
+])}
+
+${section("Weekly Reports", (data.weekly_reports ?? []).slice().sort((a: any, b: any) => b.weekStart > a.weekStart ? 1 : -1), [
+  { key: "weekStart", label: "Week Starting" },
+  { key: "walksCompleted", label: "Walks Completed" },
+  { key: "walksGoal", label: "Walks Goal" },
+  { key: "coinsEarned", label: "Coins Earned" },
+  { key: "streakDays", label: "Streak Days" },
+])}
+
+${section("Monthly Summaries", (data.monthly_reports ?? []).slice().sort((a: any, b: any) => b.month > a.month ? 1 : -1), [
+  { key: "month", label: "Month" },
+  { key: "totalWalks", label: "Total Walks" },
+  { key: "totalWalkMinutes", label: "Total Walk Minutes" },
+  { key: "avgPostMealGlucose", label: "Avg Post-Meal Glucose (mmol/L)" },
+  { key: "coinsEarned", label: "Coins Earned" },
+  { key: "achievementsUnlocked", label: "Achievements Unlocked" },
+])}
+
+</body></html>`;
+
+      const win = window.open("", "_blank");
+      if (!win) throw new Error("Popup blocked");
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); }, 600);
+
       toast({ title: t("profile.my_data.download_toast") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
