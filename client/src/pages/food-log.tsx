@@ -297,7 +297,11 @@ export default function FoodLog() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
                               data-testid={`food-log-post-meal-glucose-${item.id}`}
-                              className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700"
+                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                item.glucoseImpact && GLUCOSE_BADGE[item.glucoseImpact]
+                                  ? `${GLUCOSE_BADGE[item.glucoseImpact].bg} ${GLUCOSE_BADGE[item.glucoseImpact].text}`
+                                  : "bg-rose-50 text-rose-700"
+                              }`}
                             >
                               {t("glucose.spike_label", { mmol: item.postMealGlucoseMmol!.toFixed(1) })}
                             </span>
