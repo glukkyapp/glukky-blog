@@ -173,6 +173,7 @@
     "step_of": "Step {{step}} of {{total}}",
     "name_title": "Hello! What's your name?",
     "name_placeholder": "Enter your name",
+    "apple_greeting_title": "Hello, {{name}}!",
     "social_proof_title": "Welcome",
     "social_proof_message": "Join all the others who are using Glukky to improve their blood sugar",
     "questions_intro_title": "A few questions about you",

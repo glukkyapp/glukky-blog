@@ -4,6 +4,7 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import { authStorage } from "./storage";
 import { exchangeAuthCodeForRefreshToken } from "../../apple-auth";
+import { storage } from "../../storage";
 
 declare module "express-session" {
   interface SessionData {
@@ -100,7 +101,7 @@ export async function setupAuth(app: Express) {
   // Apple Sign In — unified login + silent register
   app.post("/api/auth/apple-signin", async (req, res) => {
     try {
-      const { subject, email, authorizationCode } = req.body;
+      const { subject, email, authorizationCode, givenname, familyname } = req.body;
       if (!subject) {
         return res.status(400).json({ message: "Apple subject is required" });
       }
@@ -110,6 +111,23 @@ export async function setupAuth(app: Express) {
       if (!user) {
         // First-time Apple user — create account silently, no error shown to UI
         user = await authStorage.createAppleUser(subject, email || undefined);
+
+        // If Apple provided a name on first sign-in, write it to the profile now
+        // so it is captured even if the user abandons onboarding.
+        const displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
+        if (displayName) {
+          try {
+            const existing = await storage.getProfile(user.id);
+            if (existing) {
+              await storage.updateProfile(user.id, { name: displayName });
+            } else {
+              await storage.createProfile({ userId: user.id, name: displayName });
+            }
+          } catch (e: any) {
+            // Best-effort: never block sign-in due to profile name write failure
+            console.warn(`[apple-signin] Profile name write failed for user=${user.id}: ${e?.message ?? e}`);
+          }
+        }
       }
 
       // Exchange the one-time authorizationCode for a refresh token so we can

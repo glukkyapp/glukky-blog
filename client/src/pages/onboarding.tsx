@@ -72,7 +72,17 @@ export default function Onboarding() {
   }, [step]);
 
   const [userName, setUserName] = useState("");
+  const [hasAppleName, setHasAppleName] = useState(false);
   const [userGoal, setUserGoal] = useState("");
+
+  useEffect(() => {
+    const appleName = sessionStorage.getItem("apple_onboarding_name");
+    if (appleName) {
+      sessionStorage.removeItem("apple_onboarding_name");
+      setUserName(appleName);
+      setHasAppleName(true);
+    }
+  }, []);
   const [walkOption, setWalkOption] = useState<string>("");
   const [dinnerTime, setDinnerTime] = useState<string>("");
   const [sleepPattern, setSleepPattern] = useState<string>("");
@@ -216,6 +226,16 @@ export default function Onboarding() {
   const renderStep = () => {
     switch (step) {
       case 1:
+        if (hasAppleName) {
+          return (
+            <OnboardingCard
+              testId="card-step-apple-greeting"
+              title={t("onboarding.apple_greeting_title", { name: userName })}
+              footer={cardFooter}
+              minHeight="auto"
+            />
+          );
+        }
         return (
           <OnboardingCard
             testId="card-step-name"

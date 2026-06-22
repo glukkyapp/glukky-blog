@@ -168,12 +168,19 @@ export default function Landing() {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   credentials: "include",
-                  body: JSON.stringify({ subject: resp.subject, email: resp.email, authorizationCode: resp.authorizationCode }),
+                  body: JSON.stringify({ subject: resp.subject, email: resp.email, authorizationCode: resp.authorizationCode, givenname: resp.givenname, familyname: resp.familyname }),
                 });
                 if (!res.ok) {
                   const data = await res.json();
                   reject(new Error(data.message || t("landing.error_generic")));
                   return;
+                }
+                // Carry Apple-provided name to onboarding so step 1 can show a greeting
+                const displayName = (resp.givenname || resp.familyname)
+                  ? [resp.givenname, resp.familyname].filter(Boolean).join(" ").trim()
+                  : null;
+                if (displayName) {
+                  sessionStorage.setItem("apple_onboarding_name", displayName);
                 }
                 // Invalidate so the full canonical shape is fetched from /api/auth/user
                 await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

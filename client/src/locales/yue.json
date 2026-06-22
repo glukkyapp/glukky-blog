@@ -173,6 +173,7 @@
     "step_of": "第{{step}}步，共{{total}}步",
     "name_title": "你好！你叫咩名？",
     "name_placeholder": "輸入你的名字",
+    "apple_greeting_title": "你好，{{name}}！",
     "social_proof_title": "歡迎",
     "social_proof_message": "加入其他用緊Glukky改善血糖嘅朋友",
     "questions_intro_title": "幾條關於你嘅問題",
