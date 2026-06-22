@@ -1073,7 +1073,7 @@
     "symptom_blurred": "👁 Blurred or hazy vision",
     "symptom_thirsty": "😟 Thirsty or dry mouth",
     "log_button": "Record glucose +",
-    "spike_label": "🔴 {{mmol}} mmol/L",
+    "spike_label": "{{mmol}} mmol/L",
     "symptom_line_normal": "😊 Post-meal feeling: Normal",
     "symptom_line_tired": "😴 Post-meal feeling: A bit tired",
     "symptom_line_blurred": "👁 Post-meal feeling: Blurred vision",

@@ -1077,7 +1077,7 @@
     "symptom_blurred": "👁 眼矇或視力模糊",
     "symptom_thirsty": "😟 口渴或口乾",
     "log_button": "記錄血糖 +",
-    "spike_label": "🔴 {{mmol}} mmol/L",
+    "spike_label": "{{mmol}} mmol/L",
     "symptom_line_normal": "😊 飯後感覺：正常",
     "symptom_line_tired": "😴 飯後感覺：有點攰",
     "symptom_line_blurred": "👁 飯後感覺：眼矇",

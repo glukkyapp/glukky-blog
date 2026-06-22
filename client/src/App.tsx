@@ -521,6 +521,32 @@ function AuthenticatedApp() {
     })();
   }, [cancelBackgroundVerifyPoller, refreshPremiumThenRefetch]);
 
+  // Notification deep-link handler: listens for Natively/OneSignal
+  // postMessage events that carry a deepLink path and navigates the
+  // in-app router to that path. Handles multiple payload shapes that
+  // different Natively SDK versions and OneSignal wrappers may use.
+  useEffect(() => {
+    const onNotifMessage = (event: MessageEvent) => {
+      try {
+        const raw = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (!raw || typeof raw !== "object") return;
+        // Skip player-ID registration messages (handled by the OneSignal registration effect).
+        if (raw.oneSignalId || raw.playerId || raw.onesignal_player_id) return;
+        // Extract deepLink from the various shapes Natively and OneSignal use.
+        const link: unknown =
+          raw.deepLink ??
+          (raw.data as any)?.deepLink ??
+          (raw.notification as any)?.additionalData?.deepLink ??
+          (raw.additionalData as any)?.deepLink;
+        if (typeof link === "string" && link.startsWith("/")) {
+          setLocation(link);
+        }
+      } catch {}
+    };
+    window.addEventListener("message", onNotifMessage);
+    return () => window.removeEventListener("message", onNotifMessage);
+  }, [setLocation]);
+
   // Cancel the background poller on logout/page-hide/route-change so
   // we don't poll indefinitely against a backgrounded app, a signed-out
   // session, or a page the user has moved on from. Each of these also

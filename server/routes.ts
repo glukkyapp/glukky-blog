@@ -3787,7 +3787,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
                 title:    { en: hstixContent.en.title,    "zh-Hant": hstixContent.zhHant.title },
                 subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
                 message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
-                deepLink: hstixContent.deepLink,
+                deepLink: `/food-log?snap=${snap.id}`,
                 send_after: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
                 externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
                 playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],
