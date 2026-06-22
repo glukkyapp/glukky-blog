@@ -319,6 +319,9 @@ export default function Snap() {
   const ttsPlayingRef = useRef(false);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
   const [disambigIndex, setDisambigIndex] = useState(0);
+  // "review"  → queue was seeded at label-result time; on exhaust just clean up
+  // "advice"  → queue was seeded by handleGetAdvice; on exhaust proceed to callAdviceApi
+  const disambigOriginRef = useRef<"review" | "advice">("review");
   const [sauceManual, setSauceManual] = useState(false);
   const [toppingManual, setToppingManual] = useState(false);
   const originalLabelRef = useRef<{ name: string; sauces: string; extras: string } | null>(null);
@@ -557,6 +560,7 @@ export default function Snap() {
     }
     if (tokenQueue.length > 0) {
       pendingResolutionsRef.current = { sauceResolutions, toppingResolutions };
+      disambigOriginRef.current = "review";
       setDisambigQueue(tokenQueue);
       setDisambigIndex(0);
     }
@@ -749,6 +753,7 @@ export default function Snap() {
         sauceResolutions: finalSauceResolutions,
         toppingResolutions: finalToppingResolutions,
       };
+      disambigOriginRef.current = "advice";
       setDisambigQueue(queue);
       setDisambigIndex(0);
       return;
@@ -810,10 +815,14 @@ export default function Snap() {
       }));
       setDisambigQueue([]);
       setDisambigIndex(0);
-      callAdviceApi(finalSauce, finalTopping, false, {
-        ...(resolvedSaucesText !== undefined ? { sauces: resolvedSaucesText || null } : {}),
-        ...(resolvedExtrasText !== undefined ? { extras: resolvedExtrasText || null } : {}),
-      });
+      // Only proceed to advice when the queue was started from handleGetAdvice.
+      // Review-time token queues just resolve the display text and leave the user on the review screen.
+      if (disambigOriginRef.current === "advice") {
+        callAdviceApi(finalSauce, finalTopping, false, {
+          ...(resolvedSaucesText !== undefined ? { sauces: resolvedSaucesText || null } : {}),
+          ...(resolvedExtrasText !== undefined ? { extras: resolvedExtrasText || null } : {}),
+        });
+      }
     }
   }
 
