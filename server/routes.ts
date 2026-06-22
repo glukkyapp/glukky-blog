@@ -490,6 +490,43 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/user/pdf-export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [raw, totalPaired, patterns] = await Promise.all([
+        storage.exportUserData(userId),
+        storage.getTotalPairedEntries(userId),
+        storage.getGlucosePatterns(userId),
+      ]);
+      const profileRow = (raw.user_profiles as any[])[0] ?? {};
+      const userRow = (raw.users as any[])[0] ?? {};
+      const LOCKED_THRESHOLD = 10;
+      const patternUnlocked = totalPaired >= LOCKED_THRESHOLD;
+      const topList = patterns.topList ?? [];
+      const foodLog = (raw.meal_snaps as any[])
+        .filter((s: any) => s.foodName)
+        .sort((a: any, b: any) => new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime())
+        .map((s: any) => ({ foodName: s.foodName, glucoseImpact: s.glucoseImpact ?? null }));
+      res.set("Cache-Control", "no-store");
+      res.json({
+        name: profileRow.displayName ?? null,
+        registrationDate: userRow.createdAt ?? null,
+        diabetesStatus: profileRow.glucoseGroup ?? null,
+        hba1cLevel: profileRow.hba1cLevel ?? null,
+        bloodTestDate: profileRow.bloodTestDate ?? null,
+        foodLog,
+        foodPattern: {
+          unlocked: patternUnlocked,
+          highestImpactFood: patternUnlocked && topList.length > 0 ? topList[0].foodName : null,
+          lowestImpactFood: patternUnlocked && topList.length > 1 ? topList[topList.length - 1].foodName : null,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error generating PDF export:", error);
+      res.status(500).json({ message: error?.message || "Failed to generate PDF export" });
+    }
+  });
+
   app.post("/api/user/correction-request", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

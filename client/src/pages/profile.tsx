@@ -564,105 +564,74 @@ function MyDataCard() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const res = await fetch("/api/user/data-export", { credentials: "include" });
+      const res = await fetch("/api/user/pdf-export", { credentials: "include" });
       if (!res.ok) throw new Error("Export failed");
-      const data = await res.json() as Record<string, any[]>;
+      const data = await res.json() as any;
       const today = new Date().toISOString().split("T")[0];
 
-      const fmt = (val: unknown): string => {
-        if (val === null || val === undefined) return "—";
-        if (typeof val === "boolean") return val ? "Yes" : "No";
-        if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
-          try { return new Date(val).toLocaleString(); } catch { return val; }
-        }
-        return String(val);
+      const fmt = (v: unknown) => (v == null ? "—" : String(v));
+      const fmtDate = (v: unknown) => {
+        if (!v) return "—";
+        try { return new Date(v as string).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); }
+        catch { return String(v); }
+      };
+      const diabetesLabel = (g: string | null) => {
+        if (!g) return "—";
+        if (g === "t2dm") return "Type 2 Diabetes";
+        if (g === "prediabetes") return "Pre-diabetes";
+        if (g === "healthy") return "Healthy";
+        return g;
+      };
+      const impactLabel = (v: string | null) => {
+        if (!v) return "—";
+        return v.charAt(0).toUpperCase() + v.slice(1);
       };
 
-      const section = (title: string, rows: any[], fields: { key: string; label: string }[]) => {
-        if (!rows || rows.length === 0) return `<div class="section"><h2>${title}</h2><p class="empty">No records.</p></div>`;
-        const rowsHtml = rows.map(row => {
-          const cells = fields.map(f => `<tr><td class="lbl">${f.label}</td><td>${fmt(row[f.key])}</td></tr>`).join("");
-          return `<table class="record">${cells}</table>`;
-        }).join("<hr class='rec-sep'/>");
-        return `<div class="section"><h2>${title}</h2>${rowsHtml}</div>`;
-      };
+      const foodRows = (data.foodLog ?? [])
+        .map((item: any) => `<tr><td>${fmt(item.foodName)}</td><td>${impactLabel(item.glucoseImpact)}</td></tr>`)
+        .join("");
 
-      const profile = data.user_profiles?.[0] ?? {};
-      const user = data.users?.[0] ?? {};
+      const patternSection = data.foodPattern?.unlocked
+        ? `<div class="section"><h2>Food Pattern</h2><table class="info">
+            <tr><td class="lbl">Highest Impact Food</td><td>${fmt(data.foodPattern.highestImpactFood)}</td></tr>
+            <tr><td class="lbl">Lowest Impact Food</td><td>${fmt(data.foodPattern.lowestImpactFood)}</td></tr>
+          </table></div>`
+        : "";
 
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>Glukky Data Export – ${today}</title>
+<title>Glukky Health Report – ${today}</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 32px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .sub { color: #555; font-size: 12px; margin-bottom: 24px; }
-  h2 { font-size: 15px; border-bottom: 2px solid #1a5c38; padding-bottom: 4px; margin-top: 0; color: #1a5c38; }
-  .section { margin-bottom: 28px; page-break-inside: avoid; }
-  table.record { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
-  td { padding: 3px 6px; vertical-align: top; }
-  td.lbl { width: 40%; font-weight: bold; color: #333; }
-  hr.rec-sep { border: none; border-top: 1px solid #e0e0e0; margin: 8px 0; }
-  .empty { color: #888; font-style: italic; }
-  @media print { body { margin: 16px; } .section { page-break-inside: avoid; } }
+  body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:40px}
+  h1{font-size:22px;color:#1a5c38;margin-bottom:4px}
+  .sub{color:#888;font-size:12px;margin-bottom:28px}
+  h2{font-size:14px;font-weight:bold;color:#1a5c38;border-bottom:1.5px solid #1a5c38;padding-bottom:3px;margin:20px 0 10px}
+  .section{margin-bottom:24px}
+  table.info{width:100%;border-collapse:collapse}
+  table.info td{padding:4px 6px;font-size:13px;vertical-align:top}
+  table.info td.lbl{width:45%;font-weight:bold;color:#444}
+  table.food{width:100%;border-collapse:collapse;font-size:12px}
+  table.food th{text-align:left;padding:5px 6px;background:#f0f7f4;color:#1a5c38;font-size:12px}
+  table.food td{padding:4px 6px;border-bottom:1px solid #f0f0f0}
+  @media print{body{margin:20px}}
 </style></head><body>
-<h1>Glukky Health Data Export</h1>
-<p class="sub">Exported on ${today} &nbsp;·&nbsp; ${fmt(user.username) !== "—" ? fmt(user.username) : fmt(user.email)}</p>
+<h1>Glukky Health Report</h1>
+<p class="sub">Generated ${today}</p>
 
-${section("Profile", [profile], [
-  { key: "displayName", label: "Name" },
-  { key: "dinnerTime", label: "Dinner Time" },
-  { key: "sleepPattern", label: "Sleep Pattern" },
-  { key: "walkOption", label: "Walk Preference" },
-  { key: "fastingBaselineMmol", label: "Fasting Baseline (mmol/L)" },
-  { key: "glucoseGroup", label: "Health Condition" },
-  { key: "locale", label: "Language" },
-  { key: "createdAt", label: "Member Since" },
-])}
+<div class="section"><h2>Personal Information</h2>
+<table class="info">
+  <tr><td class="lbl">Name</td><td>${fmt(data.name)}</td></tr>
+  <tr><td class="lbl">Date of Registration</td><td>${fmtDate(data.registrationDate)}</td></tr>
+  <tr><td class="lbl">Diabetes Status</td><td>${diabetesLabel(data.diabetesStatus)}</td></tr>
+  <tr><td class="lbl">Latest HbA1c</td><td>${data.hba1cLevel != null ? `${data.hba1cLevel}% (tested ${fmtDate(data.bloodTestDate)})` : "—"}</td></tr>
+</table></div>
 
-${section("Food Log", (data.meal_snaps ?? []).slice().sort((a: any, b: any) => b.snapTime > a.snapTime ? 1 : -1), [
-  { key: "snapTime", label: "Date & Time" },
-  { key: "foodName", label: "Food" },
-  { key: "mealType", label: "Meal Type" },
-  { key: "postMealGlucoseMmol", label: "Post-Meal Glucose (mmol/L)" },
-  { key: "glucoseImpact", label: "Glucose Impact" },
-  { key: "postMealSymptom", label: "Symptom" },
-  { key: "postMealSkipped", label: "Glucose Log Skipped" },
-])}
+<div class="section"><h2>Food Log</h2>
+<table class="food">
+  <thead><tr><th>Food</th><th>Glucose Impact</th></tr></thead>
+  <tbody>${foodRows || '<tr><td colspan="2" style="color:#888;font-style:italic">No entries yet.</td></tr>'}</tbody>
+</table></div>
 
-${section("Walk History", (data.daily_logs ?? []).slice().sort((a: any, b: any) => b.localDate > a.localDate ? 1 : -1), [
-  { key: "localDate", label: "Date" },
-  { key: "walkMinutes", label: "Walk Minutes" },
-  { key: "targetWalkMinutes", label: "Target Minutes" },
-  { key: "skipped", label: "Skipped" },
-  { key: "fatigue", label: "Fatigue Level" },
-  { key: "notes", label: "Notes" },
-])}
-
-${section("Weekly Plans", (data.weekly_plans ?? []).slice().sort((a: any, b: any) => b.weekStart > a.weekStart ? 1 : -1), [
-  { key: "weekStart", label: "Week Starting" },
-  { key: "walksPerWeek", label: "Walks Per Week" },
-  { key: "walkDuration", label: "Walk Duration (min)" },
-  { key: "status", label: "Status" },
-  { key: "completedWalks", label: "Completed Walks" },
-])}
-
-${section("Weekly Reports", (data.weekly_reports ?? []).slice().sort((a: any, b: any) => b.weekStart > a.weekStart ? 1 : -1), [
-  { key: "weekStart", label: "Week Starting" },
-  { key: "walksCompleted", label: "Walks Completed" },
-  { key: "walksGoal", label: "Walks Goal" },
-  { key: "coinsEarned", label: "Coins Earned" },
-  { key: "streakDays", label: "Streak Days" },
-])}
-
-${section("Monthly Summaries", (data.monthly_reports ?? []).slice().sort((a: any, b: any) => b.month > a.month ? 1 : -1), [
-  { key: "month", label: "Month" },
-  { key: "totalWalks", label: "Total Walks" },
-  { key: "totalWalkMinutes", label: "Total Walk Minutes" },
-  { key: "avgPostMealGlucose", label: "Avg Post-Meal Glucose (mmol/L)" },
-  { key: "coinsEarned", label: "Coins Earned" },
-  { key: "achievementsUnlocked", label: "Achievements Unlocked" },
-])}
-
+${patternSection}
 </body></html>`;
 
       const win = window.open("", "_blank");
@@ -671,7 +640,6 @@ ${section("Monthly Summaries", (data.monthly_reports ?? []).slice().sort((a: any
       win.document.close();
       win.focus();
       setTimeout(() => { win.print(); }, 600);
-
       toast({ title: t("profile.my_data.download_toast") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
