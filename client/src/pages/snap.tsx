@@ -107,12 +107,12 @@ function parseAdvicePanels(advice: string): string[] {
 }
 
 function getPanelNarrationText(panel: string): string {
+  const stripEmoji = (s: string) =>
+    s.replace(/\p{Extended_Pictographic}\uFE0F?\u20E3?\s*/gu, "").trim();
   return panel
     .split("\n")
-    .map(line => {
-      const colonIdx = line.indexOf(": ");
-      return colonIdx !== -1 ? line.slice(colonIdx + 2) : line;
-    })
+    .map(line => stripEmoji(line))
+    .filter(Boolean)
     .join(" ")
     .trim();
 }
@@ -514,16 +514,18 @@ export default function Snap() {
     const tIds = data.toppingIds ?? [];
     const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
     const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const sauceResolutions = sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null }));
+    const toppingResolutions = extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null }));
     setForm({
       name: data.name ?? "",
       portion: data.portion ?? "",
       portionId: data.portionId ?? null,
       sauces: data.sauces ?? "",
       sauceIds: sIds,
-      sauceResolutions: sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null })),
+      sauceResolutions,
       extras: data.extras ?? "",
       toppingIds: tIds,
-      toppingResolutions: extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null })),
+      toppingResolutions,
     });
     originalLabelRef.current = {
       name: data.name ?? "",
@@ -532,6 +534,32 @@ export default function Snap() {
     };
     fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
     hasTypedRef.current = { sauces: false, extras: false };
+
+    // Detect {{A|B}} / {{A/B}} ambiguity tokens immediately so the choice
+    // popup fires on the review screen rather than waiting for "Get Advice".
+    const earlyTokenRe = /\{\{([^|/]+)[|/]([^}]+)\}\}/gu;
+    const tokenQueue: DisambigItem[] = [];
+    for (const [fieldTarget, src] of [["sauces", data.sauces ?? ""], ["extras", data.extras ?? ""]] as const) {
+      earlyTokenRe.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = earlyTokenRe.exec(src)) !== null) {
+        tokenQueue.push({
+          field: "name-choice",
+          text: m[0],
+          matches: [
+            { internalId: m[1], label: m[1] },
+            { internalId: m[2], label: m[2] },
+            { internalId: null, label: t("snap.name_choice_none") },
+          ],
+          fieldTarget: fieldTarget as "sauces" | "extras",
+        });
+      }
+    }
+    if (tokenQueue.length > 0) {
+      pendingResolutionsRef.current = { sauceResolutions, toppingResolutions };
+      setDisambigQueue(tokenQueue);
+      setDisambigIndex(0);
+    }
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -644,7 +672,7 @@ export default function Snap() {
     // never enter sauceResolutions/toppingResolutions as unresolved pseudo-IDs.
     // Tokens are handled separately below by the name-choice flow.
     const stripTokensFromText = (s: string) =>
-      s.replace(/\{\{[^|]+\|[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
+      s.replace(/\{\{[^|/]+[|/][^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
     const saucesForDisambig = stripTokensFromText(form.sauces);
     const extrasForDisambig = stripTokensFromText(form.extras);
     const saucesHaveTokens = saucesForDisambig !== form.sauces.trim();
@@ -678,8 +706,8 @@ export default function Snap() {
       queue.push(...result.ambiguous);
     }
 
-    // Detect {{A|B}} ambiguity tokens in the original form text (not the stripped version)
-    const tokenRe = /\{\{([^|]+)\|([^}]+)\}\}/g;
+    // Detect {{A|B}} / {{A/B}} ambiguity tokens in the original form text (not the stripped version)
+    const tokenRe = /\{\{([^|/]+)[|/]([^}]+)\}\}/g;
     let tokenMatch: RegExpExecArray | null;
     tokenRe.lastIndex = 0;
     while ((tokenMatch = tokenRe.exec(form.sauces)) !== null) {
