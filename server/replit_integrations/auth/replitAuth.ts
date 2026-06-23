@@ -111,7 +111,7 @@ export async function setupAuth(app: Express) {
       if (!user && email) {
         // Not found by Apple ID — check if an email-registered account already exists.
         // If so, link the Apple ID to it rather than creating a duplicate.
-        const existingByEmail = await authStorage.getUserByEmail(email);
+        const existingByEmail = await authStorage.getUserByEmail(email.toLowerCase());
         if (existingByEmail) {
           await authStorage.linkAppleIdToUser(existingByEmail.id, subject);
           user = existingByEmail;

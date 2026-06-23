@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { preloadStage3RestOfApp, getStage2Promise } from "@/lib/preload-assets";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
