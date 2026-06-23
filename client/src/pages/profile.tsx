@@ -810,6 +810,28 @@ export default function ProfilePage() {
     },
   });
 
+  const [showImmediateDeleteDialog, setShowImmediateDeleteDialog] = useState(false);
+
+  const immediateDeleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/user/account/delete-immediately");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || "Failed to delete account");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      hapticNotify("SUCCESS");
+      queryClient.clear();
+      setLocation("/");
+    },
+    onError: () => {
+      hapticNotify("ERROR");
+      toast({ title: t("profile.delete_account.immediate_toast_error"), variant: "destructive" });
+    },
+  });
+
   const isLoading = profileLoading || roadmapLoading;
 
   if (isLoading) {
@@ -855,8 +877,46 @@ export default function ProfilePage() {
           >
             {t("profile.delete_account.cancel_deletion")}
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-700 hover:bg-red-100 hover:text-red-800 h-7 text-xs px-2"
+            data-testid="button-delete-immediately"
+            disabled={immediateDeleteMutation.isPending}
+            onClick={() => setShowImmediateDeleteDialog(true)}
+          >
+            {t("profile.delete_account.immediate_button")}
+          </Button>
         </div>
       )}
+
+      <AlertDialog open={showImmediateDeleteDialog} onOpenChange={setShowImmediateDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle data-testid="text-immediate-delete-title">
+              {t("profile.delete_account.immediate_title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription data-testid="text-immediate-delete-description">
+              {t("profile.delete_account.immediate_description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-immediate-delete-cancel">
+              {t("profile.delete_account.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-immediate-delete-confirm"
+              disabled={immediateDeleteMutation.isPending}
+              onClick={() => immediateDeleteMutation.mutate()}
+            >
+              {immediateDeleteMutation.isPending
+                ? "…"
+                : t("profile.delete_account.immediate_confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {profile && <NameGoalCard profile={profile} />}
 

@@ -140,6 +140,10 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "users.deletion_pending",
     sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_pending BOOLEAN NOT NULL DEFAULT FALSE",
   },
+  {
+    name: "deletion_requests.immediate_delete",
+    sql: "ALTER TABLE deletion_requests ADD COLUMN IF NOT EXISTS immediate_delete BOOLEAN NOT NULL DEFAULT FALSE",
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

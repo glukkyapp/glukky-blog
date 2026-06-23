@@ -627,7 +627,12 @@
       "pending_banner": "帳戶預計於{{date}}刪除",
       "cancel_deletion": "取消刪除",
       "cancel_toast_success": "帳戶刪除已取消",
-      "cancel_toast_error": "取消刪除失敗"
+      "cancel_toast_error": "取消刪除失敗",
+      "immediate_button": "立即刪除",
+      "immediate_title": "立即刪除帳戶？",
+      "immediate_description": "此操作無法撤銷。你的帳戶及所有健康資料將立即永久刪除。",
+      "immediate_confirm": "確認，立即刪除所有資料",
+      "immediate_toast_error": "刪除帳戶失敗"
     },
     "my_data": {
       "title": "我的資料",

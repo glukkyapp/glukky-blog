@@ -473,6 +473,7 @@ export const deletionRequests = pgTable("deletion_requests", {
   requestedAt: timestamp("requested_at").notNull().defaultNow(),
   scheduledDeletionAt: timestamp("scheduled_deletion_at").notNull(),
   cancelledAt: timestamp("cancelled_at"),
+  immediateDelete: boolean("immediate_delete").notNull().default(false),
 });
 
 export type DeletionRequest = typeof deletionRequests.$inferSelect;

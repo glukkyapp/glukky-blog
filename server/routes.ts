@@ -588,6 +588,43 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/user/account/delete-immediately", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ip = req.ip ?? req.headers["x-forwarded-for"] ?? null;
+      // Upsert deletion_requests with immediate_delete=true as an audit marker while
+      // the session is still valid and attributable to this user.
+      await db.execute(sql`
+        INSERT INTO deletion_requests (user_id, requested_at, scheduled_deletion_at, immediate_delete)
+        VALUES (${userId}, NOW(), NOW(), TRUE)
+        ON CONFLICT (user_id) DO UPDATE SET immediate_delete = TRUE, requested_at = NOW()
+      `);
+      await storage.logUserDataAction(userId, "immediate_deletion_requested", String(ip ?? ""));
+      // Capture userId before destroy — req.session is unreliable inside the callback.
+      const capturedUserId = userId;
+      // Destroy the session first while its row still exists in the sessions table.
+      // deleteUserCompletely will then find no session row to delete, which is harmless.
+      req.session.destroy(async (err: any) => {
+        if (err) {
+          console.error(`[delete-immediately] session.destroy error for ${capturedUserId}:`, err);
+          // Log but never block the wipe — the audit row is already written.
+        }
+        try {
+          const deleted = await storage.deleteUserCompletely(capturedUserId);
+          console.log(`[delete-immediately] wiped user=${capturedUserId}`, deleted);
+          // Send response inside the callback so it only fires after both steps complete.
+          res.status(200).json({ success: true });
+        } catch (wipeError: any) {
+          console.error(`[delete-immediately] deleteUserCompletely failed for ${capturedUserId}:`, wipeError);
+          res.status(500).json({ message: wipeError?.message || "Failed to delete account" });
+        }
+      });
+    } catch (error: any) {
+      console.error("Error in delete-immediately:", error);
+      res.status(500).json({ message: error?.message || "Failed to delete account" });
+    }
+  });
+
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

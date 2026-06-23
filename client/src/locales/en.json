@@ -623,7 +623,12 @@
       "pending_banner": "Account scheduled for deletion on {{date}}",
       "cancel_deletion": "Cancel deletion",
       "cancel_toast_success": "Account deletion cancelled",
-      "cancel_toast_error": "Failed to cancel deletion"
+      "cancel_toast_error": "Failed to cancel deletion",
+      "immediate_button": "Delete now",
+      "immediate_title": "Delete account immediately?",
+      "immediate_description": "This cannot be undone. Your account and all health data will be permanently deleted right now.",
+      "immediate_confirm": "Yes, delete everything now",
+      "immediate_toast_error": "Failed to delete account"
     },
     "my_data": {
       "title": "My Data",
