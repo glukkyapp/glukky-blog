@@ -72,17 +72,21 @@ export default function Onboarding() {
   }, [step]);
 
   const [userName, setUserName] = useState("");
-  const [hasAppleName, setHasAppleName] = useState(false);
   const [userGoal, setUserGoal] = useState("");
 
+  // Fetch the profile to detect whether Apple already wrote a name during sign-in.
+  // This replaces the old sessionStorage bridge, which only worked on Apple's very
+  // first auth ever. Reading from the DB works on every subsequent sign-in too.
+  const { data: existingProfile } = useQuery<{ name: string | null } | null>({
+    queryKey: ["/api/profile"],
+  });
+  const hasAppleName = !!(existingProfile?.name?.trim());
+
   useEffect(() => {
-    const appleName = sessionStorage.getItem("apple_onboarding_name");
-    if (appleName) {
-      sessionStorage.removeItem("apple_onboarding_name");
-      setUserName(appleName);
-      setHasAppleName(true);
+    if (existingProfile?.name?.trim()) {
+      setUserName(existingProfile.name.trim());
     }
-  }, []);
+  }, [existingProfile?.name]);
   const [walkOption, setWalkOption] = useState<string>("");
   const [dinnerTime, setDinnerTime] = useState<string>("");
   const [sleepPattern, setSleepPattern] = useState<string>("");

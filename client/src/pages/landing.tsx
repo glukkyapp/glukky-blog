@@ -175,13 +175,6 @@ export default function Landing() {
                   reject(new Error(data.message || t("landing.error_generic")));
                   return;
                 }
-                // Carry Apple-provided name to onboarding so step 1 can show a greeting
-                const displayName = (resp.givenname || resp.familyname)
-                  ? [resp.givenname, resp.familyname].filter(Boolean).join(" ").trim()
-                  : null;
-                if (displayName) {
-                  sessionStorage.setItem("apple_onboarding_name", displayName);
-                }
                 // Invalidate so the full canonical shape is fetched from /api/auth/user
                 await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
                 hapticNotify("SUCCESS");

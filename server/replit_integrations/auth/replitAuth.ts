@@ -108,25 +108,39 @@ export async function setupAuth(app: Express) {
 
       let user = await authStorage.getUserByAppleId(subject);
 
-      if (!user) {
-        // First-time Apple user — create account silently, no error shown to UI
-        user = await authStorage.createAppleUser(subject, email || undefined);
+      if (!user && email) {
+        // Not found by Apple ID — check if an email-registered account already exists.
+        // If so, link the Apple ID to it rather than creating a duplicate.
+        const existingByEmail = await authStorage.getUserByEmail(email);
+        if (existingByEmail) {
+          await authStorage.linkAppleIdToUser(existingByEmail.id, subject);
+          user = existingByEmail;
+          console.log(`[apple-signin] Linked apple_id to existing email account user=${existingByEmail.id}`);
+        }
+      }
 
-        // If Apple provided a name on first sign-in, write it to the profile now
-        // so it is captured even if the user abandons onboarding.
-        const displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
-        if (displayName) {
-          try {
-            const existing = await storage.getProfile(user.id);
-            if (existing) {
+      if (!user) {
+        // Genuinely new Apple user — create account silently, no error shown to UI
+        user = await authStorage.createAppleUser(subject, email || undefined);
+      }
+
+      // Write Apple name to the profile for all resolution paths (found by apple_id,
+      // linked to email account, or newly created), but only if the profile has no
+      // name yet — never overwrite a name the user already set.
+      const displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
+      if (displayName) {
+        try {
+          const existing = await storage.getProfile(user.id);
+          if (existing) {
+            if (!existing.name?.trim()) {
               await storage.updateProfile(user.id, { name: displayName });
-            } else {
-              await storage.createProfile({ userId: user.id, name: displayName });
             }
-          } catch (e: any) {
-            // Best-effort: never block sign-in due to profile name write failure
-            console.warn(`[apple-signin] Profile name write failed for user=${user.id}: ${e?.message ?? e}`);
+          } else {
+            await storage.createProfile({ userId: user.id, name: displayName });
           }
+        } catch (e: any) {
+          // Best-effort: never block sign-in due to profile name write failure
+          console.warn(`[apple-signin] Profile name write failed for user=${user.id}: ${e?.message ?? e}`);
         }
       }
 
