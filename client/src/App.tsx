@@ -1036,10 +1036,10 @@ function AuthenticatedApp() {
   useBounceScroll();
 
   useEffect(() => {
-    if ((profile as any)?.preferredLanguage) {
+    if ((profile as any)?.preferredLanguage && (profile as any)?.onboardingComplete) {
       i18n.changeLanguage((profile as any).preferredLanguage);
     }
-  }, [(profile as any)?.preferredLanguage]);
+  }, [(profile as any)?.preferredLanguage, (profile as any)?.onboardingComplete]);
 
   useEffect(() => {
     const pref = (profile as any)?.fontSizePreference;

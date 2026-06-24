@@ -78,7 +78,7 @@ export default function Onboarding() {
   // Fetch the profile to detect whether Apple already wrote a name during sign-in.
   // This replaces the old sessionStorage bridge, which only worked on Apple's very
   // first auth ever. Reading from the DB works on every subsequent sign-in too.
-  const { data: existingProfile } = useQuery<{ name: string | null } | null>({
+  const { data: existingProfile, isLoading: profileLoading } = useQuery<{ name: string | null } | null>({
     queryKey: ["/api/profile"],
   });
   const hasAppleName = !!(existingProfile?.name?.trim());
@@ -231,6 +231,9 @@ export default function Onboarding() {
   const renderStep = () => {
     switch (step) {
       case 1:
+        if (profileLoading) {
+          return null;
+        }
         if (hasAppleName) {
           return (
             <OnboardingCard
