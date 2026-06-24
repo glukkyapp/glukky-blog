@@ -42,7 +42,10 @@ export default function Landing() {
   const { t } = useTranslation();
   const [step, setStep] = useState<LandingStep>(getInitialStep);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [tab, setTab] = useState<"login" | "register">("login");
+  const [tab, setTab] = useState<"login" | "register">(() => {
+    const p = new URLSearchParams(window.location.search).get("tab");
+    return p === "register" ? "register" : "login";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

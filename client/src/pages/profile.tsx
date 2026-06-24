@@ -823,8 +823,7 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       hapticNotify("SUCCESS");
-      queryClient.clear();
-      setLocation("/");
+      window.location.href = "/?tab=register";
     },
     onError: () => {
       hapticNotify("ERROR");

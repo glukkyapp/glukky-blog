@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import { authStorage } from "./storage";
 import { exchangeAuthCodeForRefreshToken } from "../../apple-auth";
 import { storage } from "../../storage";
+import { pool } from "../../db";
 
 declare module "express-session" {
   interface SessionData {
@@ -127,7 +128,35 @@ export async function setupAuth(app: Express) {
       // Write Apple name to the profile for all resolution paths (found by apple_id,
       // linked to email account, or newly created), but only if the profile has no
       // name yet — never overwrite a name the user already set.
-      const displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
+      //
+      // Apple only sends givenname/familyname on the VERY FIRST authorization.
+      // After account deletion + re-registration, Apple sends no name.
+      // We persist the name in apple_name_cache (keyed by subject, never deleted)
+      // so re-registered users still get the greeting.
+      let displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
+      try {
+        if (displayName) {
+          // Upsert into cache whenever Apple does provide the name
+          await pool.query(
+            `INSERT INTO apple_name_cache (subject, display_name, cached_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (subject) DO UPDATE SET display_name = EXCLUDED.display_name, cached_at = NOW()`,
+            [subject, displayName]
+          );
+        } else {
+          // Apple didn't send a name (re-registration path) — try the cache
+          const cacheRow = await pool.query<{ display_name: string }>(
+            `SELECT display_name FROM apple_name_cache WHERE subject = $1`,
+            [subject]
+          );
+          if (cacheRow.rows.length > 0) {
+            displayName = cacheRow.rows[0].display_name;
+            console.log(`[apple-signin] Restored name from cache for subject=${subject}: "${displayName}"`);
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[apple-signin] apple_name_cache operation failed: ${e?.message ?? e}`);
+      }
       if (displayName) {
         try {
           const existing = await storage.getProfile(user.id);

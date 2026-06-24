@@ -97,14 +97,6 @@ function GlobalPiggyBankPopup() {
   const PIGGY_INTRO_SKIPPED_KEY = "piggy_intro_skipped";
 
   useEffect(() => {
-    if (piggy?.needsRewardSetup && !localStorage.getItem(PIGGY_INTRO_SKIPPED_KEY)) {
-      setDialogMode("first_time");
-      setDialogStep("intro");
-      setShowRewardSetup(true);
-    }
-  }, [piggy?.needsRewardSetup]);
-
-  useEffect(() => {
     if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
       setCongratsShown(true);
       setShowCongrats(true);

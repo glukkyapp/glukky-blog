@@ -144,6 +144,14 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "deletion_requests.immediate_delete",
     sql: "ALTER TABLE deletion_requests ADD COLUMN IF NOT EXISTS immediate_delete BOOLEAN NOT NULL DEFAULT FALSE",
   },
+  {
+    name: "apple_name_cache.create",
+    sql: `CREATE TABLE IF NOT EXISTS apple_name_cache (
+      subject TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      cached_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {
