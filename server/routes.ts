@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import path from "path";
+import { existsSync } from "fs";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
@@ -593,16 +594,22 @@ export async function registerRoutes(
       const PDFDocument = (await import("pdfkit")).default;
       const doc = new PDFDocument({ margin: 50, size: "A4" });
 
+      let cjkFontRegistered = false;
       if (isCjk) {
-        try {
-          const fontPath = path.join(__dirname, "assets/fonts/NotoSansCJK-Regular.ttf");
-          doc.registerFont("NotoSans", fontPath);
-        } catch (e: any) {
-          console.warn(`[pdf] CJK font register failed: ${e?.message ?? e}`);
+        const fontPath = path.join(process.cwd(), "server/assets/fonts/NotoSansCJK-Regular.ttf");
+        if (existsSync(fontPath)) {
+          try {
+            doc.registerFont("NotoSans", fontPath);
+            cjkFontRegistered = true;
+          } catch (e: any) {
+            console.warn(`[pdf] CJK font register failed: ${e?.message ?? e}`);
+          }
+        } else {
+          console.warn(`[pdf] CJK font file not found at ${fontPath}; falling back to Helvetica`);
         }
       }
-      const F = isCjk ? "NotoSans" : "Helvetica";
-      const FB = isCjk ? "NotoSans" : "Helvetica-Bold";
+      const F = isCjk && cjkFontRegistered ? "NotoSans" : "Helvetica";
+      const FB = isCjk && cjkFontRegistered ? "NotoSans" : "Helvetica-Bold";
 
       const chunks: Buffer[] = [];
       doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -640,9 +647,10 @@ export async function registerRoutes(
       } else {
         const colFood = 50;
         const colImpact = 350;
+        const headerY = doc.y;
         doc.font(FB).fontSize(11).fillColor(GREEN)
-          .text(L.colFood, colFood, doc.y, { continued: true, width: 280 })
-          .text(L.colImpact, colImpact, doc.y - doc.currentLineHeight(), { width: 195 });
+          .text(L.colFood, colFood, headerY, { continued: true, width: 280 })
+          .text(L.colImpact, colImpact, headerY, { width: 195 });
         doc.moveDown(0.3);
         doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(0.5).stroke("#cccccc");
         doc.moveDown(0.3);
@@ -678,8 +686,10 @@ export async function registerRoutes(
         }
       }
 
-      doc.end();
-      await new Promise<void>((resolve) => doc.on("end", resolve));
+      await new Promise<void>((resolve) => {
+        doc.on("end", resolve);
+        doc.end();
+      });
       const pdfBuffer = Buffer.concat(chunks);
 
       const todayStr = today.toISOString().split("T")[0];
