@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.noto-fonts-cjk-sans
     pkgs.at-spi2-core
     pkgs.xorg.libxshmfence
     pkgs.xorg.libXrandr
