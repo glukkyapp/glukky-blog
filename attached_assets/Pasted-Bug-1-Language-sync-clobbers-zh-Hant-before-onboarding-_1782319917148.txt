@@ -1,0 +1,79 @@
+Bug 1 — Language sync clobbers zh-Hant before onboarding runs (the annotated bug in App.tsx)
+This is not directly about the name display, but it's a real bug that affects Apple users who select zh-Hant on the language screen.
+
+What happens:
+
+User picks zh-Hant on landing → localStorage.setItem("glukky_preferred_lang", "zh-Hant") + i18n.changeLanguage("zh-Hant")
+
+Apple sign-in completes → profile is created with preferredLanguage = "en" (DB default, because createProfile in replitAuth.ts passes no preferredLanguage)
+
+App.tsx mounts, useEffect fires on profile.preferredLanguage → i18n.changeLanguage("en") → zh-Hant is overridden back to English before onboarding even opens
+
+The greeting card renders in English even though the user picked Traditional Chinese
+
+Fix:
+
+Only apply the profile.preferredLanguage sync after onboarding is complete. Before that point, the profile's preferredLanguage is the DB default "en", not the user's real choice. The real choice only gets written when onboarding's handleSubmit posts to /api/profile with i18n.language.
+
+ts
+// App.tsx — add onboardingComplete guard
+useEffect(() => {
+  if ((profile as any)?.preferredLanguage && (profile as any)?.onboardingComplete) {
+    i18n.changeLanguage((profile as any).preferredLanguage);
+  }
+}, [(profile as any)?.preferredLanguage, (profile as any)?.onboardingComplete]);
+Bug 2 — hasAppleName is false even when profile.name exists (the actual name display bug)
+This is why the greeting card never shows. Follow the data flow:
+
+Step 1: Apple sign-in → replitAuth.ts → createProfile({ userId: user.id, name: displayName || undefined })
+
+Profile row is created with name = "Cynthia" (or whatever Apple sent). ✅
+
+Step 2: App.tsx mounts → sees onboardingComplete = false → renders <Onboarding />
+
+Step 3: onboarding.tsx does:
+
+ts
+const { data: existingProfile } = useQuery<{ name: string | null } | null>({
+  queryKey: ["/api/profile"],
+});
+const hasAppleName = !!(existingProfile?.name?.trim());
+This looks correct. But here's the timing problem:
+
+Step 4: At the exact moment <Onboarding /> first renders, existingProfile is undefined (the query hasn't resolved yet). So hasAppleName = false, and the component renders step 1 as the "What's your name?" input.
+
+Step 5: The query resolves, existingProfile.name = "Cynthia", hasAppleName becomes true. But by now, renderStep(1) has already rendered the input field, and depending on whether React re-renders the card correctly, the user either briefly sees the input then switches (jarring) or — if step 1 is already past — never sees the greeting at all.
+
+The real issue: there is no loading state guard. onboarding.tsx renders step 1 immediately before /api/profile has returned, so hasAppleName is always false on first render.
+
+Fix:
+
+Wait for the profile query to resolve before rendering step 1:
+
+ts
+const { data: existingProfile, isLoading: profileLoading } = useQuery<...>({
+  queryKey: ["/api/profile"],
+});
+
+// In renderStep case 1:
+case 1:
+  if (profileLoading) {
+    return <LoadingSpinner />; // or null, or a skeleton
+  }
+  if (hasAppleName) {
+    return (
+      <OnboardingCard
+        title={t("onboarding.apple_greeting_title", { name: userName })}
+        footer={cardFooter}
+        minHeight="auto"
+      />
+    );
+  }
+  return ( /* existing name input */ );
+This ensures the component never renders the fallback input while the profile is still loading.
+
+Summary of both fixes
+Bug	Location	Fix
+Language reverts to English for zh-Hant Apple users	App.tsx language sync useEffect	Add && onboardingComplete guard so DB default "en" doesn't override user's selection before onboarding finishes
+Greeting card never shows — "What's your name?" appears even when name exists	onboarding.tsx step 1 render	Add isLoading guard from the profile query before rendering step 1, so hasAppleName is only evaluated after /api/profile has actually returned
+Bug 2 is the direct cause of the name display failing. Bug 1 is a language regression that will hit any Apple user who picks zh-Hant, and it's already in the code now. Both should be fixed in the same task.
