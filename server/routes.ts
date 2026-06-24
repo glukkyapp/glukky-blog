@@ -503,24 +503,126 @@ export async function registerRoutes(
       const LOCKED_THRESHOLD = 10;
       const patternUnlocked = totalPaired >= LOCKED_THRESHOLD;
       const topList = patterns.topList ?? [];
-      const foodLog = (raw.meal_snaps as any[])
-        .filter((s: any) => s.foodName)
-        .sort((a: any, b: any) => new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime())
-        .map((s: any) => ({ foodName: s.foodName, glucoseImpact: s.glucoseImpact ?? null }));
+
+      const allSnaps = (raw.meal_snaps as any[]).filter((s: any) => s.foodName);
+      const realEntries = allSnaps
+        .filter((s: any) => s.glucoseImpact && s.glucoseImpact !== "ai_estimated")
+        .sort((a: any, b: any) => new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime());
+      const aiEntries = allSnaps
+        .filter((s: any) => !s.glucoseImpact || s.glucoseImpact === "ai_estimated")
+        .sort((a: any, b: any) => new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime());
+      const foodLog = [...realEntries, ...aiEntries].map((s: any) => ({
+        foodName: s.foodName,
+        glucoseImpact: s.glucoseImpact ?? null,
+      }));
+
+      const fmt = (v: unknown) => (v == null ? "Not provided" : String(v));
+      const fmtDate = (v: unknown) => {
+        if (!v) return "N/A";
+        try { return new Date(v as string).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); }
+        catch { return String(v); }
+      };
+      const diabetesLabel = (g: string | null) => {
+        if (!g) return "Not provided";
+        if (g === "t2dm") return "Type 2 Diabetes";
+        if (g === "prediabetes") return "Pre-diabetes";
+        if (g === "healthy") return "Healthy";
+        return g;
+      };
+      const impactLabel = (v: string | null) => {
+        if (!v) return "—";
+        if (v === "ai_estimated") return "AI estimated";
+        return v.charAt(0).toUpperCase() + v.slice(1);
+      };
+
+      const PDFDocument = (await import("pdfkit")).default;
+      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      const chunks: Buffer[] = [];
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+      const today = new Date().toISOString().split("T")[0];
+      const GREEN = "#1a5c38";
+
+      doc.fontSize(22).fillColor(GREEN).text("Glukky Health Report", { align: "left" });
+      doc.fontSize(11).fillColor("#888888").text(`Generated ${today}`);
+      doc.moveDown(1.5);
+
+      doc.fontSize(14).fillColor(GREEN).text("Personal Information");
+      doc.moveTo(50, doc.y + 3).lineTo(545, doc.y + 3).stroke(GREEN);
+      doc.moveDown(0.5);
+
+      const infoRows = [
+        ["Name", fmt(profileRow.displayName)],
+        ["Date of Registration", fmtDate(userRow.createdAt)],
+        ["Diabetes Status", diabetesLabel(profileRow.glucoseGroup ?? null)],
+        ["Latest HbA1c", profileRow.hba1cLevel != null
+          ? `${profileRow.hba1cLevel}% (tested ${fmtDate(profileRow.bloodTestDate)})`
+          : "N/A"],
+      ];
+      for (const [label, value] of infoRows) {
+        doc.fontSize(11).fillColor("#444444").text(label, 50, doc.y, { continued: true, width: 200 });
+        doc.fillColor("#111111").text(value, { align: "left" });
+      }
+      doc.moveDown(1.5);
+
+      doc.fontSize(14).fillColor(GREEN).text("Food Log");
+      doc.moveTo(50, doc.y + 3).lineTo(545, doc.y + 3).stroke(GREEN);
+      doc.moveDown(0.5);
+
+      if (foodLog.length === 0) {
+        doc.fontSize(11).fillColor("#888888").text("No meals with glucose readings have been logged yet.", { oblique: true });
+      } else {
+        const colFood = 50;
+        const colImpact = 350;
+        doc.fontSize(11).fillColor(GREEN)
+          .text("Food", colFood, doc.y, { continued: true, width: 280 })
+          .text("Glucose Impact", colImpact, doc.y - doc.currentLineHeight(), { width: 195 });
+        doc.moveDown(0.3);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(0.5).stroke("#cccccc");
+        doc.moveDown(0.3);
+
+        for (const item of foodLog) {
+          const y = doc.y;
+          doc.fontSize(10).fillColor("#111111")
+            .text(String(item.foodName), colFood, y, { continued: true, width: 280 })
+            .text(impactLabel(item.glucoseImpact), colImpact, y, { width: 195 });
+          doc.moveDown(0.1);
+          doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(0.5).stroke("#f0f0f0");
+          doc.moveDown(0.1);
+        }
+      }
+      doc.moveDown(1.5);
+
+      doc.fontSize(14).fillColor(GREEN).text("Food Pattern");
+      doc.moveTo(50, doc.y + 3).lineTo(545, doc.y + 3).stroke(GREEN);
+      doc.moveDown(0.5);
+
+      if (!patternUnlocked) {
+        doc.fontSize(11).fillColor("#888888").text(
+          "Food pattern insights become available after 10 meals with paired glucose readings.",
+          { oblique: true }
+        );
+      } else {
+        const highestFood = topList.length > 0 ? topList[0].foodName : "N/A";
+        const lowestFood = topList.length > 1 ? topList[topList.length - 1].foodName : "N/A";
+        const patternRows = [
+          ["Highest Impact Food", highestFood],
+          ["Lowest Impact Food", lowestFood],
+        ];
+        for (const [label, value] of patternRows) {
+          doc.fontSize(11).fillColor("#444444").text(label, 50, doc.y, { continued: true, width: 200 });
+          doc.fillColor("#111111").text(String(value), { align: "left" });
+        }
+      }
+
+      doc.end();
+      await new Promise<void>((resolve) => doc.on("end", resolve));
+      const pdfBuffer = Buffer.concat(chunks);
+
       res.set("Cache-Control", "no-store");
-      res.json({
-        name: profileRow.displayName ?? null,
-        registrationDate: userRow.createdAt ?? null,
-        diabetesStatus: profileRow.glucoseGroup ?? null,
-        hba1cLevel: profileRow.hba1cLevel ?? null,
-        bloodTestDate: profileRow.bloodTestDate ?? null,
-        foodLog,
-        foodPattern: {
-          unlocked: patternUnlocked,
-          highestImpactFood: patternUnlocked && topList.length > 0 ? topList[0].foodName : null,
-          lowestImpactFood: patternUnlocked && topList.length > 1 ? topList[topList.length - 1].foodName : null,
-        },
-      });
+      res.set("Content-Type", "application/pdf");
+      res.set("Content-Disposition", `attachment; filename="glukky-health-report-${today}.pdf"`);
+      res.send(pdfBuffer);
     } catch (error: any) {
       console.error("Error generating PDF export:", error);
       res.status(500).json({ message: error?.message || "Failed to generate PDF export" });

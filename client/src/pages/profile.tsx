@@ -566,80 +566,15 @@ function MyDataCard() {
     try {
       const res = await fetch("/api/user/pdf-export", { credentials: "include" });
       if (!res.ok) throw new Error("Export failed");
-      const data = await res.json() as any;
-      const today = new Date().toISOString().split("T")[0];
-
-      const fmt = (v: unknown) => (v == null ? "—" : String(v));
-      const fmtDate = (v: unknown) => {
-        if (!v) return "—";
-        try { return new Date(v as string).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); }
-        catch { return String(v); }
-      };
-      const diabetesLabel = (g: string | null) => {
-        if (!g) return "—";
-        if (g === "t2dm") return "Type 2 Diabetes";
-        if (g === "prediabetes") return "Pre-diabetes";
-        if (g === "healthy") return "Healthy";
-        return g;
-      };
-      const impactLabel = (v: string | null) => {
-        if (!v) return "—";
-        return v.charAt(0).toUpperCase() + v.slice(1);
-      };
-
-      const foodRows = (data.foodLog ?? [])
-        .map((item: any) => `<tr><td>${fmt(item.foodName)}</td><td>${impactLabel(item.glucoseImpact)}</td></tr>`)
-        .join("");
-
-      const patternSection = data.foodPattern?.unlocked
-        ? `<div class="section"><h2>Food Pattern</h2><table class="info">
-            <tr><td class="lbl">Highest Impact Food</td><td>${fmt(data.foodPattern.highestImpactFood)}</td></tr>
-            <tr><td class="lbl">Lowest Impact Food</td><td>${fmt(data.foodPattern.lowestImpactFood)}</td></tr>
-          </table></div>`
-        : "";
-
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>Glukky Health Report – ${today}</title>
-<style>
-  body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:40px}
-  h1{font-size:22px;color:#1a5c38;margin-bottom:4px}
-  .sub{color:#888;font-size:12px;margin-bottom:28px}
-  h2{font-size:14px;font-weight:bold;color:#1a5c38;border-bottom:1.5px solid #1a5c38;padding-bottom:3px;margin:20px 0 10px}
-  .section{margin-bottom:24px}
-  table.info{width:100%;border-collapse:collapse}
-  table.info td{padding:4px 6px;font-size:13px;vertical-align:top}
-  table.info td.lbl{width:45%;font-weight:bold;color:#444}
-  table.food{width:100%;border-collapse:collapse;font-size:12px}
-  table.food th{text-align:left;padding:5px 6px;background:#f0f7f4;color:#1a5c38;font-size:12px}
-  table.food td{padding:4px 6px;border-bottom:1px solid #f0f0f0}
-  @media print{body{margin:20px}}
-</style></head><body>
-<h1>Glukky Health Report</h1>
-<p class="sub">Generated ${today}</p>
-
-<div class="section"><h2>Personal Information</h2>
-<table class="info">
-  <tr><td class="lbl">Name</td><td>${fmt(data.name)}</td></tr>
-  <tr><td class="lbl">Date of Registration</td><td>${fmtDate(data.registrationDate)}</td></tr>
-  <tr><td class="lbl">Diabetes Status</td><td>${diabetesLabel(data.diabetesStatus)}</td></tr>
-  <tr><td class="lbl">Latest HbA1c</td><td>${data.hba1cLevel != null ? `${data.hba1cLevel}% (tested ${fmtDate(data.bloodTestDate)})` : "—"}</td></tr>
-</table></div>
-
-<div class="section"><h2>Food Log</h2>
-<table class="food">
-  <thead><tr><th>Food</th><th>Glucose Impact</th></tr></thead>
-  <tbody>${foodRows || '<tr><td colspan="2" style="color:#888;font-style:italic">No entries yet.</td></tr>'}</tbody>
-</table></div>
-
-${patternSection}
-</body></html>`;
-
-      const win = window.open("", "_blank");
-      if (!win) throw new Error("Popup blocked");
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); }, 600);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "glukky-health-report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast({ title: t("profile.my_data.download_toast") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
