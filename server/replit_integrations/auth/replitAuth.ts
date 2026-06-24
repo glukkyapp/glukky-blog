@@ -157,20 +157,18 @@ export async function setupAuth(app: Express) {
       } catch (e: any) {
         console.warn(`[apple-signin] apple_name_cache operation failed: ${e?.message ?? e}`);
       }
-      if (displayName) {
-        try {
-          const existing = await storage.getProfile(user.id);
-          if (existing) {
-            if (!existing.name?.trim()) {
-              await storage.updateProfile(user.id, { name: displayName });
-            }
-          } else {
-            await storage.createProfile({ userId: user.id, name: displayName });
+      try {
+        const existing = await storage.getProfile(user.id);
+        if (existing) {
+          if (displayName && !existing.name?.trim()) {
+            await storage.updateProfile(user.id, { name: displayName });
           }
-        } catch (e: any) {
-          // Best-effort: never block sign-in due to profile name write failure
-          console.warn(`[apple-signin] Profile name write failed for user=${user.id}: ${e?.message ?? e}`);
+        } else {
+          await storage.createProfile({ userId: user.id, name: displayName || undefined });
         }
+      } catch (e: any) {
+        // Best-effort: never block sign-in due to profile ensure failure
+        console.warn(`[apple-signin] Profile ensure failed for user=${user.id}: ${e?.message ?? e}`);
       }
 
       // Exchange the one-time authorizationCode for a refresh token so we can
