@@ -134,6 +134,7 @@ export async function setupAuth(app: Express) {
       // We persist the name in apple_name_cache (keyed by subject, never deleted)
       // so re-registered users still get the greeting.
       let displayName = [givenname, familyname].filter(Boolean).join(" ").trim();
+      console.log(`[apple-signin] name fields from bridge: givenname=${JSON.stringify(givenname)} familyname=${JSON.stringify(familyname)} → displayName=${JSON.stringify(displayName)} subject=${subject}`);
       try {
         if (displayName) {
           // Upsert into cache whenever Apple does provide the name
@@ -143,6 +144,7 @@ export async function setupAuth(app: Express) {
              ON CONFLICT (subject) DO UPDATE SET display_name = EXCLUDED.display_name, cached_at = NOW()`,
             [subject, displayName]
           );
+          console.log(`[apple-signin] cached name="${displayName}" for subject=${subject}`);
         } else {
           // Apple didn't send a name (re-registration path) — try the cache
           const cacheRow = await pool.query<{ display_name: string }>(
@@ -152,6 +154,8 @@ export async function setupAuth(app: Express) {
           if (cacheRow.rows.length > 0) {
             displayName = cacheRow.rows[0].display_name;
             console.log(`[apple-signin] Restored name from cache for subject=${subject}: "${displayName}"`);
+          } else {
+            console.log(`[apple-signin] cache miss — no name for subject=${subject}`);
           }
         }
       } catch (e: any) {
@@ -160,10 +164,15 @@ export async function setupAuth(app: Express) {
       try {
         const existing = await storage.getProfile(user.id);
         if (existing) {
+          console.log(`[apple-signin] profile exists for user=${user.id} existing.name=${JSON.stringify(existing.name)}`);
           if (displayName && !existing.name?.trim()) {
             await storage.updateProfile(user.id, { name: displayName });
+            console.log(`[apple-signin] wrote name="${displayName}" to existing profile user=${user.id}`);
+          } else {
+            console.log(`[apple-signin] skipped name write: displayName=${JSON.stringify(displayName)} existing.name=${JSON.stringify(existing.name)}`);
           }
         } else {
+          console.log(`[apple-signin] no profile yet for user=${user.id} — creating with name=${JSON.stringify(displayName || undefined)}`);
           await storage.createProfile({ userId: user.id, name: displayName || undefined });
         }
       } catch (e: any) {
