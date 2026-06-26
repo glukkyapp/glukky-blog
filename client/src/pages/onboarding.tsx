@@ -232,7 +232,12 @@ export default function Onboarding() {
     switch (step) {
       case 1:
         if (profileLoading) {
-          return null;
+          return (
+            <div className="animate-pulse space-y-3 px-1 pt-2">
+              <div className="h-6 bg-muted rounded w-3/4 mx-auto" />
+              <div className="h-12 bg-muted rounded-full" />
+            </div>
+          );
         }
         if (hasAppleName) {
           return (

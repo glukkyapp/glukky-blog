@@ -54,7 +54,7 @@ export function useAuth() {
     },
     onSuccess: () => {
       localStorage.removeItem(SESSION_HINT_KEY);
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear();
     },
   });
 

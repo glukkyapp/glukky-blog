@@ -302,7 +302,7 @@ function AuthenticatedApp() {
   const { consentState, isConsentLoaded } = useConsent();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"] });
+  const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"], refetchOnMount: false });
   const { data: currentPlan, isLoading: planLoading } = useQuery({
     queryKey: ["/api/plan/current"],
     enabled: !!profile,
@@ -344,6 +344,17 @@ function AuthenticatedApp() {
   // cancel effect would then nuke the callback (the ggg regression
   // we are fixing). A ref bypasses the dep array entirely.
   const paywallInFlightRef = useRef(false);
+
+  // Safety-net: if loading takes more than 5s (stuck profile fetch,
+  // slow plan fetch, etc.), bypass the skeleton so the app never stays
+  // frozen. The natural `!profile || !onboardingComplete` check below
+  // will route the user to Onboarding if the profile isn't ready.
+  const [loadingStuck, setLoadingStuck] = useState(false);
+  useEffect(() => {
+    if (!profileLoading && !(profile && planLoading)) return;
+    const t = setTimeout(() => setLoadingStuck(true), 5000);
+    return () => clearTimeout(t);
+  }, [profileLoading, profile, planLoading]);
 
   // Exit-warning popup state — shown after the snap-advice paywall is
   // dismissed by a user with both activation milestones already done.
@@ -1576,7 +1587,7 @@ function AuthenticatedApp() {
     return () => { cancelled = true; window.removeEventListener("message", onMessage); };
   }, [profile && (profile as any).onboardingComplete, (profile as any)?.userId]);
 
-  if (profileLoading || (profile && planLoading)) {
+  if ((profileLoading || (profile && planLoading)) && !loadingStuck) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
         <div className="animate-pulse space-y-4 w-full">
