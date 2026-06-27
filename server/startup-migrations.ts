@@ -155,13 +155,18 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
   {
     name: "apple_name_cache.seed_test_account",
     sql: `INSERT INTO apple_name_cache (subject, display_name, cached_at)
-          VALUES ('001357.5cf21b20e64c4a2bb3791e0f7e7b5fdc.1556', 'test', NOW())
-          ON CONFLICT (subject) DO UPDATE SET display_name = 'test', cached_at = NOW()`,
+          VALUES ('001357.5cf21b20e64c4a2bb3791e0f7e7b5fdc.1556', 'cynthia', NOW())
+          ON CONFLICT (subject) DO UPDATE SET display_name = 'cynthia', cached_at = NOW()`,
   },
   {
     name: "user_profiles.seed_test_account_name",
     sql: `UPDATE user_profiles SET name = 'test'
           WHERE user_id = 'eac37b12-0545-4a27-ad8e-0d81aa3e5224' AND (name IS NULL OR name = '')`,
+  },
+  {
+    name: "user_profiles.fix_cynthia_account_name",
+    sql: `UPDATE user_profiles SET name = 'cynthia'
+          WHERE user_id = 'eac37b12-0545-4a27-ad8e-0d81aa3e5224'`,
   },
 ];
 
