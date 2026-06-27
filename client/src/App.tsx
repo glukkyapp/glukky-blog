@@ -352,8 +352,11 @@ function AuthenticatedApp() {
   const [loadingStuck, setLoadingStuck] = useState(false);
   useEffect(() => {
     if (!profileLoading && !(profile && planLoading)) return;
-    const t = setTimeout(() => setLoadingStuck(true), 5000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => {
+      setLoadingStuck(true);
+      setLocation("/onboarding");
+    }, 5000);
+    return () => clearTimeout(timer);
   }, [profileLoading, profile, planLoading]);
 
   // Exit-warning popup state — shown after the snap-advice paywall is

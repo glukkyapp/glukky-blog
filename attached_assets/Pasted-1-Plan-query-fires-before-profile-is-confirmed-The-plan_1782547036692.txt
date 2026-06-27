@@ -1,0 +1,20 @@
+1. Plan query fires before profile is confirmed
+The plan query (/api/plan or similar) likely depends on profile existing. If it fires before the profile pre-fetch resolves, you get a waterfall: wait for profile → then wait for plan → double loading delay on every login.
+
+2. prefetchUserData still runs on every login, not just new registration
+Returning users hit prefetchUserData too. If it prefetches /api/profile but the pre-fetch in landing.tsx already populated the cache, you're firing two simultaneous fetches to the same endpoint right after login. One of them is always wasted.
+
+3. Apple sign-in callback timing vs. React re-render
+Apple sign-in goes through a redirect/callback, not a direct async call like email. The invalidateQueries on /api/auth/user triggers a refetch, but the profile pre-fetch in the agent's fix runs before that invalidation completes. If the auth session cookie isn't set yet when the profile fetch fires, the server returns 401 instead of 404 — and the app might misread that as "no profile" rather than "not authenticated yet."
+
+4. Onboarding step transitions during in-flight saves
+If the user taps "Next" during onboarding and the createProfile / updateProfile call is still in flight, the profile cache is stale but the step advances. If anything re-reads the cache mid-save, it sees outdated data. Worth checking whether step transitions wait for the mutation to settle or fire optimistically.
+
+5. staleTime: Infinity on profile after onboarding completes
+Once onboarding writes the profile and the user lands in the main app, the cache holds the freshly written profile with staleTime: Infinity. If the user backgrounds the app for a long time and comes back, they'll never get a fresh profile fetch — any server-side changes (e.g. name corrected via the Cynthia migration fix) won't surface until the next logout/login.
+
+6. Token expiry during a long onboarding session
+If a user sits on the onboarding screen for a long time (slow typer, interrupted), the auth session could expire mid-flow. When they tap "Next" the createProfile call returns 401, but nothing in onboarding currently handles that — it likely silently fails or throws an unhandled error.
+
+7. Double-mount of AuthenticatedApp on strict mode / fast refresh
+In development, React Strict Mode double-invokes effects. Combined with prefetchUserData, this can fire two /api/profile fetches on every hot reload. Not a production bug, but it can mask real timing issues during development by making everything appear slower than it actually is.

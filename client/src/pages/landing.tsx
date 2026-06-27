@@ -138,6 +138,20 @@ export default function Landing() {
       }
 
       const user = await res.json();
+      // Pre-populate the profile cache before AuthenticatedApp mounts.
+      // This avoids any skeleton flash: the app knows immediately whether
+      // a profile exists (null for new users, real data for returning users).
+      // We do this BEFORE setting the auth user so AuthenticatedApp always
+      // mounts with profile already resolved.
+      try {
+        const profileRes = await fetch("/api/profile", { credentials: "include" });
+        queryClient.setQueryData(
+          ["/api/profile"],
+          profileRes.ok ? await profileRes.json() : null
+        );
+      } catch {
+        // Network error — proceed without pre-seed; app will fetch normally
+      }
       queryClient.setQueryData(["/api/auth/user"], user);
       hapticNotify("SUCCESS");
       toast({
@@ -177,6 +191,16 @@ export default function Landing() {
                   const data = await res.json();
                   reject(new Error(data.message || t("landing.error_generic")));
                   return;
+                }
+                // Pre-populate the profile cache before AuthenticatedApp mounts.
+                try {
+                  const profileRes = await fetch("/api/profile", { credentials: "include" });
+                  queryClient.setQueryData(
+                    ["/api/profile"],
+                    profileRes.ok ? await profileRes.json() : null
+                  );
+                } catch {
+                  // proceed without pre-seed
                 }
                 // Invalidate so the full canonical shape is fetched from /api/auth/user
                 await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
