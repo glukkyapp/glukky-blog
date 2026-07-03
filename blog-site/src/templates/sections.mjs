@@ -20,7 +20,7 @@ export function ctaBanner(locale) {
 // compliant per Apple badge guidelines. PostHog tracks clicks under the same
 // event name as the former waitlist button for PostHog dashboard continuity.
 export function appStoreCta(locale) {
-  const badgeLang = locale === "zh-Hant" ? "zh-hant-hk" : "en-us";
+  const badgeLang = locale === "zh-Hant" ? "zh-tw" : "en-us";
   const badgeUrl = `https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/${badgeLang}?size=250x83`;
   const altText = locale === "zh-Hant" ? "從 App Store 下載" : "Download on the App Store";
   return `<a class="app-store-badge-link" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="if(window.posthog)posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'apple_badge'})"><img class="app-store-badge" src="${escapeAttr(badgeUrl)}" alt="${altText}" width="250" height="83" /></a>`;
