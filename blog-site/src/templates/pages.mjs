@@ -20,11 +20,12 @@ const SCREEN_SLUGS = [
 function screensStrip(locale, { autoScroll = false } = {}) {
   const t = ui[locale];
   const scenes = t.app.scenes || [];
-  const imgs = SCREEN_SLUGS.map((slug, i) => {
+  const slugs = t.app.screenslugs || SCREEN_SLUGS;
+  const imgs = slugs.map((slug, i) => {
     const label = scenes[i] ? scenes[i].label : "";
     return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
   });
-  const dupeImgs = SCREEN_SLUGS.map(slug =>
+  const dupeImgs = slugs.map(slug =>
     `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="" aria-hidden="true" loading="lazy" width="280" height="600" />`
   );
   const allImgs = autoScroll ? [...imgs, ...dupeImgs] : imgs;
@@ -303,6 +304,13 @@ export function privacyPage(locale) {
 
 export function appPage(locale) {
   const t = ui[locale];
+  const heroCta = t.app.joinLabel
+    ? `<div class="app-hero-join-wrap">
+      <button class="btn-waitlist-join" onclick="document.getElementById('wl-hint').style.display='block';if(window.posthog)posthog.capture('waitlist_button_clicked',{locale:'${locale}'})">${escapeHtml(t.app.joinLabel)}</button>
+      <p id="wl-hint" class="wl-hint" style="display:none">${escapeHtml(t.app.joinHint)}</p>
+    </div>
+    <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>`
+    : appStoreCta(locale, t.app.ctaButton);
   return `
 <section class="app-hero">
   <div class="container-narrow">
@@ -311,12 +319,8 @@ export function appPage(locale) {
       <span class="app-hero-h2">${escapeHtml(t.app.heroH2)}</span>
     </h1>
     <p class="app-hero-lead muted">${escapeHtml(t.app.lead)}</p>
-    <p class="app-hero-spots">${escapeHtml(t.app.spotsNote)}</p>
-    <div class="app-hero-join-wrap">
-      <button class="btn-waitlist-join" onclick="document.getElementById('wl-hint').style.display='block';if(window.posthog)posthog.capture('waitlist_button_clicked',{locale:'${locale}'})">${escapeHtml(t.app.joinLabel)}</button>
-      <p id="wl-hint" class="wl-hint" style="display:none">${escapeHtml(t.app.joinHint)}</p>
-    </div>
-    <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>
+    ${t.app.spotsNote ? `<p class="app-hero-spots">${escapeHtml(t.app.spotsNote)}</p>` : ""}
+    ${heroCta}
   </div>
 </section>
 
@@ -336,5 +340,12 @@ export function appPage(locale) {
     </div>
   </div>
 </section>
+${t.app.footnote ? `
+<section class="app-footnote">
+  <div class="container-narrow">
+    <p>${escapeHtml(t.app.footnote.main)}</p>
+    ${t.app.footnote.legal.map(l => `<p class="muted small">${escapeHtml(l)}</p>`).join("\n    ")}
+  </div>
+</section>` : ""}
 `;
 }

@@ -5,7 +5,7 @@
 export const SITE_URL = "https://glukky.com";
 // PLACEHOLDER — replace with the real App Store URL + waitlist URL before launch.
 // Wired into every "Get the app" CTA so swapping it once updates the whole site.
-export const APP_STORE_URL = "https://apps.apple.com/app/idPLACEHOLDER";
+export const APP_STORE_URL = "https://apps.apple.com/hk/app/glukky-diabetes-habit-coach/id6761914533";
 export const WAITLIST_URL = "https://glukky.com/app#waitlist";
 
 export const LOCALES = ["en", "zh-Hant"];
@@ -267,38 +267,52 @@ export const ui = {
       heroH1: "不再盯著數字，",
       heroH2: "控糖變得簡單。",
       lead:
-        "每週一個輕鬆的習慣循環：拍下餐點、飯後散步、飲食改善。Glukky 助你持之以恆。",
+        "每餐一張照片，找出什麼食物適合你，讓血糖變得穩定。所有功能免費使用。",
       pillars: [
         {
-          h: "AI 食物拍照",
-          p: "拍下你的餐點，Glukky 幫你解讀 —— 內容有什麼、會如何影響血糖、可以如何吃得更穩當。",
+          h: "食物快拍",
+          p: "拍攝或上傳餐點照片，立刻取得個人化的飲食建議。",
         },
         {
-          h: "飯後散步",
-          p: "在重要的一餐之後，溫和地提醒你散步。短、做得到，效果出乎意料地好。",
+          h: "個人化食物血糖圖表",
+          p: "每週顯示「本週最佳食物」與「本週最不利食物」，讓你知道吃什麼適合自己。",
         },
         {
-          h: "晚餐時間",
-          p: "建立簡單的晚間節奏，避免常常拖到晚上十點才吃晚飯再加宵夜。將來的自己會感謝你。",
+          h: "每週飲食報告與分數",
+          p: "依照你的飲食模式產生每週分數，建議下一週怎樣調整。",
+        },
+        {
+          h: "健康資訊庫",
+          p: "瀏覽搭配照片的飲食小提示與說明，文字淺白易懂，隨時打開即可查看，不需要再花時間上網搜尋。",
         },
       ],
       screenshotsAlt:
-        "Glukky 應用程式介面截圖：食物快拍、即時建議、飲食貼士、每月報告、個人化計劃。",
+        "Glukky 應用程式介面截圖：食物快拍、飲食建議、每日進度、血糖規律、健康資訊。",
       screenshotsCaption:
-        "Glukky 介面：食物快拍、即時建議、飲食貼士、每月報告、個人化計劃。",
+        "Glukky 介面：食物快拍、飲食建議、每日進度、血糖規律、健康資訊。",
+      screenslugs: ["01", "02", "03", "04", "05", "06", "07"],
       scenes: [
         { label: "食物快拍" },
-        { label: "即時建議" },
-        { label: "飲食貼士" },
-        { label: "每月報告" },
-        { label: "個人化計劃" },
+        { label: "個人化控糖輕鬆管理" },
+        { label: "拍下食物，即時獲得飲食建議" },
+        { label: "個人化控糖建議，毋須煩惱計算卡路里" },
+        { label: "每日進度一覽，掌握自己的控糖節奏" },
+        { label: "一眼看清，哪些食物最升你的糖" },
+        { label: "隨時重溫，簡單易明的控糖飲食貼士" },
       ],
-      ctaTitle: "即將上架 App Store",
-      ctaBody: "Glukky 即將推出，按以下按鈕了解更多。",
+      ctaTitle: "立即免費下載",
+      ctaBody: "所有功能免費使用，無需訂閱。",
       ctaButton: "下載 Glukky",
-      spotsNote: "不需付費，名額20個",
-      joinLabel: "我想了解更多",
-      joinHint: "請在下方輸入你的電郵。如畫面沒有出現，請向下拉重新載入",
+      spotsNote: "",
+      joinLabel: null,
+      joinHint: "",
+      footnote: {
+        main: "Glukky 可免費下載，也可完全免費使用。本版本中的所有功能均無需訂閱或 App 內購買即可使用。",
+        legal: [
+          "Glukky 是一款生活型態與習慣養成工具，並非醫療器材，不提供任何醫療診斷或治療。請務必遵從你的醫護人員之專業建議。",
+          "Glukky 使用 AI 提供個人化的生活與飲食建議，但這些內容並不能取代專業的醫療意見。",
+        ],
+      },
     },
     privacy: {
       title: "私隱政策",
