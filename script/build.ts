@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, cp } from "fs/promises";
+import { execFileSync } from "child_process";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -37,6 +38,10 @@ async function buildAll() {
 
   console.log("building client...");
   await viteBuild();
+
+  console.log("building blog site...");
+  execFileSync("node", ["blog-site/build.mjs"], { stdio: "inherit" });
+  await cp("blog-site/dist", "dist/public", { recursive: true });
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));

@@ -1,2 +1,3 @@
 - [FoodSnap identification prompt](foodsnap-id-prompt.md) — library reference removed from vision prompt; single 400-token call, no retry.
 - [drizzle-kit-push-blocked](drizzle-kit-push-blocked.md) — drizzle-kit push blocks on interactive prompt for pre-existing apple_id unique constraint; apply new columns via executeSql instead.
+- [Blog deployment pipeline](blog-deployment-pipeline.md) — blog-site/dist/ must be built + copied into dist/public/ during npm run build or it never reaches production.

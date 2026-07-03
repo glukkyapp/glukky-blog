@@ -43,10 +43,12 @@ export function serveStatic(app: Express) {
     express.static(distPath, {
       etag: true,
       lastModified: true,
-      // Disable the built-in directory index so that "/" always falls through
-      // to our sendIndex handler above (which injects the build SHA + sets
-      // no-store on the shell).
-      index: false,
+      // index: false only for "/" is handled by the explicit route above.
+      // Leaving index as the default ("index.html") lets blog pages like
+      // /zh/app/ be served correctly from their index.html files.
+      // The explicit app.get("/") and app.get("/index.html") handlers above
+      // take priority and inject the build SHA for the React shell.
+      index: "index.html",
       setHeaders: (res: Response, filePath: string) => {
         const rel = path.relative(distPath, filePath).split(path.sep).join("/");
         if (rel === "index.html") {
