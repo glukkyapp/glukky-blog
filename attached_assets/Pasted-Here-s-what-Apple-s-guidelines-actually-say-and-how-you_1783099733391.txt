@@ -1,0 +1,21 @@
+Here's what Apple's guidelines actually say, and how your agent's changes hold up.
+
+The rules that matter for your case
+Correct badge variant: For a website (electronic communication), you should use the "Download on the App Store" badge — not the "Available on the App Store" one. The download variant is specifically meant to be a clickable call-to-action linked to your App Store listing, which matches what you're doing.
+
+Minimum size: The badge must be at least 30–35 pixels tall on screen (measuring the Apple logo/wordmark height), or roughly 8mm in print. Doubling the width, as the agent did, is fine as long as it's scaled proportionally — the concern would only be if you stretched it disproportionately or shrank it below the minimum.
+
+Clear space: Apple requires a minimum clear space around the badge equal to one-quarter of the badge's height — no text, other graphics, or elements should sit inside that margin. Your margin-top: 2.5rem addition is a reasonable way to create separation from the subtitle above it, but you should verify it also has adequate space on the sides and below, not just above.
+
+No visual alterations: You can resize the badge proportionally via CSS (this is common and accepted — see the Stack Overflow examples using width/height styles directly on the badge image), but you cannot recolor it, add effects, crop it, or place other elements overlapping it.
+
+Placement relative to other badges: If you have any other store badges (Google Play, etc.) on the same page, the Apple badge must appear first in the lineup. Not relevant if this is Apple-only, but worth checking.
+
+Must link out: The guidelines explicitly require that wherever the badge appears, it links directly to your App Store page — which your <a> tag wrapping already satisfies.
+
+Verdict on what the agent did
+Change	Compliant?
+Using official black badge (zh-Hant-HK / en-US locale)	Yes — correct approach, using localized official assets is exactly what Apple wants
+Doubling width (proportional resize via CSS)	Yes, as long as height scales with it and it's not stretched
+margin-top: 2.5rem for spacing	Likely fine, but confirm left/right/bottom clear space also meets the quarter-height minimum
+PostHog onclick handler on the <a> tag	Not an Apple guideline issue — this is your own analytics, doesn't alter the badge visually or functionally

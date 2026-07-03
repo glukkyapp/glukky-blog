@@ -1,19 +1,21 @@
 ---
 name: Blog deployment pipeline
-description: How the blog site (blog-site/) gets included in the production deployment and served by Express
+description: How blog-site/ changes reach production at glukky.com
 ---
 
 ## Rule
-Every time blog-site/ content is changed, the production deployment build must also run `node blog-site/build.mjs` and copy `blog-site/dist/` into `dist/public/` so the Express server can serve it.
+Blog changes go live via **Cloudflare Pages**, not the Replit Express server. The blog is a completely separate deployment connected to the `glukkyapp/glukky-blog` GitHub repo (which mirrors the Replit repo).
 
-**Why:** The Express production server only serves from `dist/public/` (the Vite React build output). `blog-site/dist/` is a completely separate directory. The deployment build command is `npm run build` → `script/build.ts`, which wipes `dist/` and rebuilds. Without explicitly building and copying the blog, all blog HTML is absent from the deployed server and requests to /zh/app/, /blog/*, etc. hit the React SPA catch-all instead.
+**Why:** glukky.com is fronted by Cloudflare. Blog paths (/zh/app/, /blog/*, etc.) are served by Cloudflare Pages — the Express server at Replit never receives those requests. Confirmed via `curl -sI https://glukky.com/zh/app/` returning `server: cloudflare` with zero hits in Express logs.
 
 **How to apply:**
-- `script/build.ts` already has the blog build + copy step (added after viteBuild):
-  ```ts
-  execFileSync("node", ["blog-site/build.mjs"], { stdio: "inherit" });
-  await cp("blog-site/dist", "dist/public", { recursive: true });
-  ```
-- `server/static.ts` uses `index: "index.html"` (not `index: false`) so `express.static` serves `dist/public/zh/app/index.html` for a request to `/zh/app/`. The explicit `app.get("/")` handler still fires first for the root, so the React SPA build-SHA injection is unaffected.
-- After any blog source change, a new deployment ("Publish") must be triggered so the build runs and the new blog HTML lands in production.
-- Local dev blog preview runs separately on port 8080 via `blog-site/serve.mjs` — this is dev-only and has no effect on production.
+- Editing `blog-site/src/**` and committing triggers a Cloudflare Pages build automatically.
+- Cloudflare Pages settings: Build command = `cd blog-site && node build.mjs`, Output = `blog-site/dist`.
+- `blog-site/dist/` is gitignored — Cloudflare builds it from source on each deploy.
+- If the Cloudflare build fails, check the build log in the Cloudflare dashboard. The known failure mode is `npm clean-install` at the repo root crashing due to a Node/npm engine mismatch with `posthog-node`. Fix: set `NODE_VERSION = 20.20.0` as a Cloudflare Pages environment variable.
+- The Express server changes (`script/build.ts`, `server/static.ts`) made during this investigation are harmless but not required for the blog to work — they only affect the Replit deployment, not glukky.com blog paths.
+
+## Blog CTA tracking
+- PostHog event for the app page hero CTA: `waitlist_button_clicked` with `{locale, button_variant}`.
+- `button_variant: 'apple_badge'` is the current value (Apple App Store badge replaced the old green button).
+- Event name kept the same for dashboard continuity.
