@@ -17,13 +17,22 @@ export function ctaBanner(locale) {
 
 // External "Get the app" CTA — official Apple App Store badge (black variant).
 // Localized via Apple's badge CDN. Proportional CSS resize (height: auto) is
-// compliant per Apple badge guidelines. PostHog tracks clicks under the same
-// event name as the former waitlist button for PostHog dashboard continuity.
+// compliant per Apple badge guidelines. sessionStorage dedup ensures PostHog
+// fires at most once per browser session (survives reloads, clears on tab close).
 export function appStoreCta(locale) {
   const badgeLang = locale === "zh-Hant" ? "zh-tw" : "en-us";
   const badgeUrl = `https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/${badgeLang}?size=250x83`;
   const altText = locale === "zh-Hant" ? "從 App Store 下載" : "Download on the App Store";
-  return `<a class="app-store-badge-link" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="if(window.posthog)posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'apple_badge'})"><img class="app-store-badge" src="${escapeAttr(badgeUrl)}" alt="${altText}" width="250" height="83" /></a>`;
+  const track = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'apple_badge'})}`;
+  return `<a class="app-store-badge-link" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${track}"><img class="app-store-badge" src="${escapeAttr(badgeUrl)}" alt="${altText}" width="250" height="83" /></a>`;
+}
+
+// Full CTA block: label + SVG arrow + badge. Used on the /app page (hero and
+// above footnote). appStoreCta() alone is kept for simpler contexts (about page).
+export function appStoreCtaBlock(locale) {
+  const label = locale === "zh-Hant" ? "按此取得" : "Get it now";
+  const arrow = `<svg class="cta-arrow" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
+  return `<div class="app-store-cta-block"><p class="app-store-cta-label">${escapeHtml(label)}</p>${arrow}${appStoreCta(locale)}</div>`;
 }
 
 export function waitlistCta(locale, label) {

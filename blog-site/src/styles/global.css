@@ -265,12 +265,16 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
 .prose { padding: 1rem 0 2rem; }
 .cta-inline { margin-top: 2em; }
 
-/* === App Store badge === */
-/* margin-top: 2.75rem ≈ 44px — satisfies Apple's quarter-height clear-space  */
-/* rule for the badge at 500px wide / ~166px tall (min clear space ≈ 41px).   */
-.app-store-badge-link { display: inline-block; margin-top: 2.75rem; }
-.app-store-badge { width: 500px; height: auto; display: block; }
-@media (max-width: 560px) { .app-store-badge { width: 100%; max-width: 300px; } }
+/* === App Store badge + CTA block === */
+/* margin-top: 2.75rem on the block ≈ 44px satisfies Apple's quarter-height   */
+/* clear-space rule for the badge at 500px wide / ~166px tall (min ~41px).    */
+/* width: min(500px,100%) scales to full-width on narrow viewports (mobile /  */
+/* in-app browsers) without a max-width cap that would keep it small.         */
+.app-store-cta-block { text-align: center; margin-top: 2.75rem; }
+.app-store-cta-label { font-size: clamp(2rem, 4vw + 1rem, 3.2rem); font-family: var(--font-heading); font-weight: 800; margin: 0 0 0.25rem; color: var(--color-fg); }
+.cta-arrow { display: block; margin: 0.25rem auto 0.75rem; }
+.app-store-badge-link { display: inline-block; }
+.app-store-badge { width: min(500px, 100%); height: auto; display: block; }
 
 /* === Screens === */
 .screens-bg {

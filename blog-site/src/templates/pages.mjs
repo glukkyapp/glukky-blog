@@ -6,6 +6,7 @@ import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
   breadcrumbs, articleSwitchLink, articleJsonLd, faqJsonLd, organizationJsonLd,
   appStoreCta,
+  appStoreCtaBlock,
 } from "./sections.mjs";
 import { escapeHtml, escapeAttr } from "./layout.mjs";
 
@@ -310,7 +311,7 @@ export function appPage(locale) {
       <p id="wl-hint" class="wl-hint" style="display:none">${escapeHtml(t.app.joinHint)}</p>
     </div>
     <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>`
-    : appStoreCta(locale, t.app.ctaButton);
+    : appStoreCtaBlock(locale);
   return `
 <section class="app-hero">
   <div class="container-narrow">
@@ -340,6 +341,7 @@ export function appPage(locale) {
     </div>
   </div>
 </section>
+${appStoreCtaBlock(locale)}
 ${t.app.footnote ? `
 <section class="app-footnote">
   <div class="container-narrow">
