@@ -18,7 +18,7 @@ const SCREEN_SLUGS = [
   "5-schedule",
 ];
 
-function screensStrip(locale, { autoScroll = false } = {}) {
+function screensStrip(locale) {
   const t = ui[locale];
   const scenes = t.app.scenes || [];
   const slugs = t.app.screenslugs || SCREEN_SLUGS;
@@ -26,15 +26,14 @@ function screensStrip(locale, { autoScroll = false } = {}) {
     const label = scenes[i] ? scenes[i].label : "";
     return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
   });
-  const dupeImgs = slugs.map(slug =>
-    `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="" aria-hidden="true" loading="lazy" width="280" height="600" />`
-  );
-  const allImgs = autoScroll ? [...imgs, ...dupeImgs] : imgs;
-  const bgClass = autoScroll ? "screens-bg screens-auto" : "screens-bg";
-  return `<div class="${bgClass}">
-      <div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
-        ${allImgs.join("\n        ")}
-      </div>
+  const pair = `<div class="screens-pair">
+        ${imgs[0] || ""}
+        ${imgs[1] || ""}
+      </div>`;
+  const rest = imgs.slice(2).join("\n        ");
+  return `<div class="screens-strip" role="img" aria-label="${escapeAttr(t.app.screenshotsAlt)}">
+      ${pair}
+      ${rest}
     </div>
     <p class="muted small screens-caption">${escapeHtml(t.app.screenshotsCaption)}</p>`;
 }

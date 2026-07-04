@@ -277,12 +277,6 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
 .app-store-badge { width: min(750px, 100%); height: auto; display: block; margin: 0 auto; }
 
 /* === Screens === */
-.screens-bg {
-  background: #d6ecf7;
-  border-radius: var(--radius-lg);
-  padding: 1.5rem 1.5rem 0.75rem;
-  margin: 0.5rem 0;
-}
 .screens-strip {
   display: flex;
   flex-direction: column;
@@ -290,13 +284,26 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
   gap: 8px;
   padding-inline: 16px;
 }
-
-.screens-strip img {
+.screens-pair {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+.screens-pair img {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  border-radius: 22px;
+  box-shadow: 0 6px 24px rgba(30,60,90,0.13);
+  background: #fff;
+}
+.screens-strip > img {
   width: 100%;
   max-width: 360px;
   height: auto;
   border-radius: 22px;
-  box-shadow: 0 6px 24px rgba(30, 60, 90, 0.13);
+  box-shadow: 0 6px 24px rgba(30,60,90,0.13);
   background: #fff;
 }
 .screens-caption { text-align: center; margin-top: 0.5rem; }
