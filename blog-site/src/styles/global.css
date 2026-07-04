@@ -273,8 +273,8 @@ body.lang-zh .article-head h1 { font-family: var(--font-heading); font-weight: 8
 .app-store-cta-block { text-align: center; margin-top: 2.75rem; }
 .app-store-cta-label { font-size: clamp(2rem, 4vw + 1rem, 3.2rem); font-family: var(--font-heading); font-weight: 800; margin: 0 0 0.25rem; color: var(--color-fg); }
 .cta-arrow { display: block; margin: 0.25rem auto 0.75rem; }
-.app-store-badge-link { display: inline-block; }
-.app-store-badge { width: min(500px, 100%); height: auto; display: block; }
+.app-store-badge-link { display: block; }
+.app-store-badge { width: min(750px, 100%); height: auto; display: block; margin: 0 auto; }
 
 /* === Screens === */
 .screens-bg {
