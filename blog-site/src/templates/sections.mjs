@@ -20,7 +20,7 @@ export function ctaBanner(locale) {
 // compliant per Apple badge guidelines. sessionStorage dedup ensures PostHog
 // fires at most once per browser session (survives reloads, clears on tab close).
 export function appStoreCta(locale) {
-  const badgeUrl = locale === "zh-Hant" ? "/images/badge-app-store-zh-tw.png" : "/images/badge-app-store-en-us.png";
+  const badgeUrl = locale === "zh-Hant" ? "/images/badge-app-store-zh-tw.svg" : "/images/badge-app-store-en-us.svg";
   const altText = locale === "zh-Hant" ? "從 App Store 下載" : "Download on the App Store";
   const track = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'apple_badge'})}`;
   return `<a class="app-store-badge-link" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${track}"><img class="app-store-badge" src="${escapeAttr(badgeUrl)}" alt="${altText}" width="250" height="83" /></a>`;
