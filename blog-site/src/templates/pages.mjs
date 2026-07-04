@@ -24,7 +24,8 @@ function screensStrip(locale) {
   const slugs = t.app.screenslugs || SCREEN_SLUGS;
   const imgs = slugs.map((slug, i) => {
     const label = scenes[i] ? scenes[i].label : "";
-    return `<img src="/images/screens/app-screen-${slug}.${locale}.png" alt="${escapeAttr(label)}" loading="lazy" width="280" height="600" />`;
+    const loadAttr = i < 2 ? 'fetchpriority="high"' : 'loading="lazy"';
+    return `<img src="/images/screens/app-screen-${slug}.${locale}.webp" alt="${escapeAttr(label)}" ${loadAttr} width="280" height="600" />`;
   });
   const pair = `<div class="screens-pair">
         ${imgs[0] || ""}
