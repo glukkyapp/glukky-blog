@@ -327,7 +327,7 @@ export function appPage(locale) {
 
 <section class="screens">
   <div class="container">
-    ${screensStrip(locale, { autoScroll: true })}
+    ${screensStrip(locale)}
   </div>
 </section>
 
