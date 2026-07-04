@@ -83,7 +83,6 @@ When adding new diet tips to DIET_TIP_LADDERS in shared/schema.ts, also add an i
 
 - **Paywall Price Hardcoding:** The paywall headline price is hardcoded in locale files (`en.json`, `zh-Hant.json`, `yue.json`). Changing the price requires editing these strings directly.
 - **WebView Staleness:** After deployment, if changes aren't visible on iOS, force-quit and relaunch the app. The WebView relies on `Cache-Control: no-store` for `index.html` to fetch the latest version.
-- **Self-hosted Apple Badge:** The App Store badge images (`blog-site/public/images/badge-app-store-*.png`) are downloaded once from Apple's badge CDN and self-hosted. Apple's guidelines require the badge to be used unmodified and kept current. Periodically check [Apple's badge page](https://developer.apple.com/app-store/marketing/guidelines/) for artwork updates and re-download if revised.
 - **RevenueCat Restore Behavior:** The RevenueCat project setting "Restore behavior" *must* be set to "Transfer to new App User ID" for restores to work correctly after reinstallation or signing in with a different account.
 - **OneSignal Timezone Handling:** DST is handled by re-resolving `Intl.DateTimeFormat` UTC offset at the candidate trigger instant for notifications.
 - **Blog Site Build:** The blog site uses a custom Node build script (`blog-site/build.mjs`) with zero npm dependencies due to Replit sandbox limitations.

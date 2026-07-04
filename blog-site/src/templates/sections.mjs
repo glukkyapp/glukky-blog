@@ -16,11 +16,11 @@ export function ctaBanner(locale) {
 }
 
 // External "Get the app" CTA — official Apple App Store badge (black variant).
-// Localized via Apple's badge CDN. Proportional CSS resize (height: auto) is
-// compliant per Apple badge guidelines. sessionStorage dedup ensures PostHog
-// fires at most once per browser session (survives reloads, clears on tab close).
+// Loaded directly from Apple's badge CDN so MIME type and artwork are always correct.
+// sessionStorage dedup ensures PostHog fires at most once per browser session.
 export function appStoreCta(locale) {
-  const badgeUrl = locale === "zh-Hant" ? "/images/badge-app-store-zh-tw.svg" : "/images/badge-app-store-en-us.svg";
+  const badgeLang = locale === "zh-Hant" ? "zh-tw" : "en-us";
+  const badgeUrl = `https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/${badgeLang}?size=250x83&releaseDate=2024-11-14`;
   const altText = locale === "zh-Hant" ? "從 App Store 下載" : "Download on the App Store";
   const track = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'apple_badge'})}`;
   return `<a class="app-store-badge-link" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${track}"><img class="app-store-badge" src="${escapeAttr(badgeUrl)}" alt="${altText}" width="250" height="83" /></a>`;
