@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, cp } from "fs/promises";
+import { rm, readFile, writeFile, cp } from "fs/promises";
 import { execFileSync } from "child_process";
 
 // server deps to bundle to reduce openat(2) syscalls
@@ -39,9 +39,16 @@ async function buildAll() {
   console.log("building client...");
   await viteBuild();
 
+  // Save the React app's index.html before copying blog files — the blog also
+  // generates a root index.html and cp would overwrite it otherwise.
+  const appIndexHtml = await readFile("dist/public/index.html", "utf-8");
+
   console.log("building blog site...");
   execFileSync("node", ["blog-site/build.mjs"], { stdio: "inherit" });
   await cp("blog-site/dist", "dist/public", { recursive: true });
+
+  // Restore the React app's index.html so the root URL serves the SPA.
+  await writeFile("dist/public/index.html", appIndexHtml, "utf-8");
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
