@@ -368,6 +368,12 @@ export default function Snap() {
     }
   }, [advicePanel]);
 
+  useEffect(() => {
+    if (adviceResult) {
+      handleTtsToggle();
+    }
+  }, [adviceResult]);
+
   function handleTtsToggle() {
     if (ttsPlayingRef.current) {
       speechSynthesis.cancel();
