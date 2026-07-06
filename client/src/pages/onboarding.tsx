@@ -233,7 +233,55 @@ export default function Onboarding() {
   );
 
   const renderStep = () => {
-    const actualStep = step <= TOTAL_STEPS ? VISIBLE_STEPS[step - 1] : step;
+    // Consent is always the last step — handle it before the switch so its
+    // position never collides with a hidden step's case number.
+    if (step > TOTAL_STEPS) {
+      return (
+        <OnboardingCard
+          testId="card-step-consent"
+          title={t("consent.onboarding_title")}
+          footer={cardFooter}
+        >
+          <p className="text-sm text-muted-foreground mb-2">
+            {t("consent.onboarding_intro")}
+          </p>
+          <p className="text-sm font-medium mb-4" style={{ color: GREEN_DARK }}>
+            {t("consent.recommend_all")}
+          </p>
+          <div className="space-y-4">
+            {CONSENT_SERVICE_KEYS.map((key) => (
+              <div key={key} className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-tight">{t(`consent.${key}_label`)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={consentChoices[key]}
+                  onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  data-testid={`toggle-consent-${key}`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                    consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      consentChoices[key] ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground text-center mt-4">
+            {t("consent.onboarding_footer")}
+          </p>
+        </OnboardingCard>
+      );
+    }
+
+    const actualStep = VISIBLE_STEPS[step - 1];
     switch (actualStep) {
       case 1:
         if (profileLoading) {
@@ -547,50 +595,6 @@ export default function Onboarding() {
                 style={{ borderRadius: 999, height: 44, background: "#fff" }}
               />
             )}
-          </OnboardingCard>
-        );
-      case TOTAL_STEPS + 1:
-        return (
-          <OnboardingCard
-            testId="card-step-consent"
-            title={t("consent.onboarding_title")}
-            footer={cardFooter}
-          >
-            <p className="text-sm text-muted-foreground mb-2">
-              {t("consent.onboarding_intro")}
-            </p>
-            <p className="text-sm font-medium mb-4" style={{ color: GREEN_DARK }}>
-              {t("consent.recommend_all")}
-            </p>
-            <div className="space-y-4">
-              {CONSENT_SERVICE_KEYS.map((key) => (
-                <div key={key} className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-tight">{t(`consent.${key}_label`)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(`consent.${key}_desc`)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={consentChoices[key]}
-                    onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    data-testid={`toggle-consent-${key}`}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
-                      consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                        consentChoices[key] ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground text-center mt-4">
-              {t("consent.onboarding_footer")}
-            </p>
           </OnboardingCard>
         );
       default:
