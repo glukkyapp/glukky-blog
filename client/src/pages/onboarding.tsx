@@ -31,7 +31,10 @@ import {
 import welcomeImg from "@assets/generated-image_(13)_1776599161992.png";
 import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 
-const TOTAL_STEPS = 8;
+// To re-enable a hidden step, add its number back to VISIBLE_STEPS.
+// Hidden: 3 (goal/why), 4 (questions intro), 5 (after-dinner walk), 6 (dinner time), 8 (referral)
+const VISIBLE_STEPS = [1, 2, 7] as const;
+const TOTAL_STEPS = VISIBLE_STEPS.length; // 3
 const GREEN_DARK = "#214B36";
 
 const CONSENT_SERVICE_KEYS: ConsentService[] = ["posthog", "onesignal", "claude"];
@@ -179,11 +182,12 @@ export default function Onboarding() {
   };
 
   const isNextDisabled = () => {
-    if (step === 1) return !userName.trim();
-    if (step === 3) return !userGoal.trim();
-    if (step === 5) return !walkOption;
-    if (step === 6) return !dinnerTime;
-    if (step === 7) return !healthCondition;
+    const actualStep = step <= TOTAL_STEPS ? VISIBLE_STEPS[step - 1] : step;
+    if (actualStep === 1) return !userName.trim();
+    if (actualStep === 3) return !userGoal.trim();
+    if (actualStep === 5) return !walkOption;
+    if (actualStep === 6) return !dinnerTime;
+    if (actualStep === 7) return !healthCondition;
     return false;
   };
 
@@ -229,7 +233,8 @@ export default function Onboarding() {
   );
 
   const renderStep = () => {
-    switch (step) {
+    const actualStep = step <= TOTAL_STEPS ? VISIBLE_STEPS[step - 1] : step;
+    switch (actualStep) {
       case 1:
         if (profileLoading) {
           return (

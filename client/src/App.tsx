@@ -1622,13 +1622,14 @@ function AuthenticatedApp() {
     );
   }
 
-  if (!(profile as any).introSeen && (profile as any).currentWeek <= 1) {
-    return (
-      <Suspense fallback={<RouteFallback />}>
-        <AppIntro />
-      </Suspense>
-    );
-  }
+  // HIDDEN: AppIntro disabled — re-enable by uncommenting this block
+  // if (!(profile as any).introSeen && (profile as any).currentWeek <= 1) {
+  //   return (
+  //     <Suspense fallback={<RouteFallback />}>
+  //       <AppIntro />
+  //     </Suspense>
+  //   );
+  // }
 
   const gateCtx: GateContextType = {
     gate: gateStatus || null,
