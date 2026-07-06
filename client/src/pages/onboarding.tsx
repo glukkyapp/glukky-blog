@@ -64,10 +64,10 @@ export default function Onboarding() {
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
 
   const [consentChoices, setConsentChoices] = useState<Record<ConsentService, boolean>>({
-    posthog: false,
-    onesignal: false,
-    revenuecat: false,
-    claude: false,
+    posthog: true,
+    onesignal: true,
+    revenuecat: true,
+    claude: true,
   });
   const { bulkUpdateConsent } = useConsent();
 
