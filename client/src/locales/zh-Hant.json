@@ -1123,7 +1123,7 @@
   },
   "consent": {
     "onboarding_title": "你的私隱設定",
-    "onboarding_intro": "我們使用少量第三方服務來提供 Glukky 的功能。你可以選擇每項服務可取用哪些資料，所有項目預設為關閉。",
+    "onboarding_intro": "我們使用少量第三方服務來提供 Glukky 的功能。你可以選擇每項服務可取用哪些資料。",
     "onboarding_save": "儲存並繼續",
     "onboarding_footer": "你可隨時在「個人資料」中更新這些設定。",
     "recommend_all": "我們建議開啟所有選項，以獲得最佳使用體驗。",

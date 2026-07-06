@@ -9,10 +9,10 @@ export type ConsentState = Record<ConsentService, boolean>;
 const ALL_SERVICES: ConsentService[] = ["posthog", "onesignal", "revenuecat", "claude"];
 
 const DEFAULT_STATE: ConsentState = {
-  posthog: false,
-  onesignal: false,
-  revenuecat: false,
-  claude: false,
+  posthog: true,
+  onesignal: true,
+  revenuecat: true,
+  claude: true,
 };
 
 interface ConsentContextValue {
