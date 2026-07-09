@@ -151,8 +151,8 @@ export const ui = {
         "Glukky is launching soon. Tap below to be notified when it's live.",
       ctaButton: "Get the app",
       spotsNote: "Free to join · 20 spots only",
-      joinLabel: "I want to learn more",
-      joinHint: "Please enter your email below. If the form does not appear, scroll down to refresh.",
+      joinLabel: null,
+      joinHint: "",
     },
     privacy: {
       title: "Privacy Policy",

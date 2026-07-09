@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Glukky — 為忙碌的照顧者而設</title>
+  <title>Glukky — 為忙碌的子女而設</title>
   <meta name="description" content="每天自動追蹤血糖數據，讓父母更關注健康。有異常立即通知你，不用天天打電話確認。" />
   <meta property="og:title" content="Glukky — 工作再忙，他們的健康不必等你" />
   <meta property="og:description" content="每天自動追蹤血糖數據，讓父母更關注健康。有異常立即通知你，不用天天打電話確認。" />
   <meta property="og:image" content="images/screen1.png" />
+  <script src="https://waitlister.me/js/embed.js" defer></script>
   <style>
     /* ── Tokens ───────────────────────────────────────── */
     :root {
@@ -76,7 +77,6 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      text-decoration: none;
     }
     .nav-logo img {
       height: 34px;
@@ -144,6 +144,17 @@
       box-shadow: 0 8px 24px rgba(33,75,54,0.3);
     }
     .btn-cta:active { transform: translateY(0); }
+    .wl-hint {
+      margin-top: 14px;
+      font-size: 14px;
+      color: var(--fg-soft);
+    }
+    .hero-embed {
+      margin-top: 32px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
 
     /* ── Feature rows ─────────────────────────────────── */
     .features { background: var(--bg); }
@@ -158,7 +169,6 @@
     .feature-row:last-child { border-bottom: none; }
     .feature-row.reverse { direction: rtl; }
     .feature-row.reverse > * { direction: ltr; }
-    .feature-text {}
     .feature-number {
       font-size: 12px;
       font-weight: 700;
@@ -262,11 +272,6 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.25);
     }
     .btn-waitlist:active { transform: translateY(0); }
-    .waitlist-note {
-      margin-top: 16px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.45);
-    }
 
     /* ── Footer ───────────────────────────────────────── */
     footer {
@@ -291,7 +296,6 @@
         padding: 40px 0;
       }
       .feature-row.reverse { direction: ltr; }
-      .feature-screenshot { order: -1; }
       .phone-frame img { width: 180px; }
 
       .signup { padding: 56px 0; }
@@ -303,23 +307,31 @@
   <!-- ── Nav ── -->
   <nav>
     <div class="nav-inner">
-      <a class="nav-logo" href="#">
+      <span class="nav-logo">
         <img src="images/logo.png" alt="Glukky" width="34" height="34" />
         <span class="nav-logo-name">Glukky</span>
-      </a>
+      </span>
     </div>
   </nav>
 
   <!-- ── Hero ── -->
-  <section class="hero">
+  <section class="hero" id="waitlist-section">
     <div class="container">
-      <div class="hero-eyebrow">為忙碌的照顧者而設</div>
+      <div class="hero-eyebrow">為忙碌的子女而設</div>
       <h1>工作再忙，<br>他們的健康不必等你</h1>
       <div class="hero-subtitle">
         <p>每天自動追蹤血糖數據，讓父母更關注健康</p>
         <p>有異常立即通知你，不用天天打電話確認</p>
       </div>
-      <a href="#signup" class="btn-cta">加入早鳥名單</a>
+      <button
+        type="button"
+        class="btn-cta"
+        onclick="document.getElementById('wl-hint').style.display='block'"
+      >加入早鳥名單</button>
+      <p id="wl-hint" class="wl-hint" style="display:none">請在下方輸入您的電子郵件。如果表格未顯示，請再次刷新。</p>
+      <div class="hero-embed">
+        <div class="waitlister-form" data-waitlist-key="AbGYSXkxZa64" data-height="400px"></div>
+      </div>
     </div>
   </section>
 
@@ -386,9 +398,7 @@
     <div class="container">
       <h2>加入早鳥名單</h2>
       <p>產品上線時，你將是第一個知道的人</p>
-      <!-- Waitlist embed goes here -->
-      <a href="#" class="btn-waitlist" onclick="return false;">加入早鳥名單</a>
-      <p class="waitlist-note">我們不會分享您的電子郵件，僅用於通知產品上線</p>
+      <a href="#waitlist-section" class="btn-waitlist">加入早鳥名單</a>
     </div>
   </section>
 
