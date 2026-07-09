@@ -6,6 +6,10 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 channel = "stable-24_05"
 
 [[ports]]
+localPort = 3001
+externalPort = 3003
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
@@ -49,6 +53,10 @@ args = "week1-gate-check"
 task = "workflow.run"
 args = "Preview blog"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Preview carer landing"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -80,6 +88,18 @@ waitForPort = 8080
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "Preview carer landing"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node carer-landing/serve.mjs"
+waitForPort = 3001
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.0", "javascript_anthropic_ai_integrations:2.0.0"]

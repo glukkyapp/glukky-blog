@@ -1,5 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -129,10 +128,6 @@ app.use((req, res, next) => {
     res.setHeader("Content-Type", "application/json");
     res.send(AASA_CONTENT);
   });
-
-  const carerDir = path.resolve(process.cwd(), "carer-landing");
-  app.get("/carer", (_req, res) => res.sendFile(path.join(carerDir, "index.html")));
-  app.use("/carer", express.static(carerDir));
 
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
