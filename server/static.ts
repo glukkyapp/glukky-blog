@@ -63,6 +63,8 @@ export function serveStatic(app: Express) {
     }),
   );
 
+  app.use("/carer", express.static(path.resolve(process.cwd(), "carer-landing")));
+
   app.use("/{*path}", (_req, res) => {
     sendIndex(res);
   });
