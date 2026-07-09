@@ -129,6 +129,13 @@ app.use((req, res, next) => {
     res.send(AASA_CONTENT);
   });
 
+  app.get("/download-carer", (_req, res) => {
+    res.download(
+      process.cwd() + "/carer-landing.zip",
+      "carer-landing.zip",
+    );
+  });
+
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
