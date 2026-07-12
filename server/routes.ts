@@ -4024,19 +4024,36 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
           // Fire-and-forget: flag overlap if logged within 2 hrs of a prior different-type meal.
           // MEAL_GAP_LOOKBACK_MS = 2 * 60 * 60 * 1000 — distinct from the 90-min HsTix recordable window.
+          // Fetches both current and previous local date to handle cross-midnight cases
+          // (e.g. dinner at 23:30 → breakfast at 00:45 next local date is still within 2 hrs).
           void (async () => {
             try {
               const snapMealType = snap.mealType;
               if (!snapMealType) return;
-              const gapCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
-              const sameDaySnaps = await storage.getMealSnapsByLocalDate(userId, snap.localDate);
-              const priorOverlap = sameDaySnaps.find(s =>
-                s.id !== snap.id &&
-                s.mealType !== null &&
-                s.mealType !== snapMealType &&
-                new Date(s.snapTime).getTime() >= gapCutoff.getTime() &&
-                !s.isDeleted
-              );
+              const MEAL_GAP_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+              const gapCutoff = new Date(new Date(snap.snapTime).getTime() - MEAL_GAP_LOOKBACK_MS);
+
+              // Derive the previous local date string for cross-midnight coverage.
+              const [ly, lm, ld] = snap.localDate.split("-").map(Number);
+              const prevDateObj = new Date(ly, lm - 1, ld - 1);
+              const prevLocalDate = `${prevDateObj.getFullYear()}-${String(prevDateObj.getMonth() + 1).padStart(2, "0")}-${String(prevDateObj.getDate()).padStart(2, "0")}`;
+
+              const [currentDateSnaps, prevDateSnaps] = await Promise.all([
+                storage.getMealSnapsByLocalDate(userId, snap.localDate),
+                storage.getMealSnapsByLocalDate(userId, prevLocalDate),
+              ]);
+
+              // Find the most recent prior snap of a different meal type within the 2-hr window.
+              const priorOverlap = [...currentDateSnaps, ...prevDateSnaps]
+                .filter(s =>
+                  s.id !== snap.id &&
+                  s.mealType !== null &&
+                  s.mealType !== snapMealType &&
+                  new Date(s.snapTime).getTime() >= gapCutoff.getTime() &&
+                  !s.isDeleted
+                )
+                .sort((a, b) => new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime())[0];
+
               if (priorOverlap) {
                 await storage.setMealSnapOverlap(snap.id, userId);
               }

@@ -1371,9 +1371,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setMealSnapOverlap(snapId: number, userId: string): Promise<void> {
+    // Idempotent: only updates if not already flagged, safe for retries.
     await db.update(mealSnaps)
       .set({ previousMealOverlap: true })
-      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
+      .where(and(
+        eq(mealSnaps.id, snapId),
+        eq(mealSnaps.userId, userId),
+        eq(mealSnaps.previousMealOverlap, false),
+      ));
   }
 
   async dismissMealSnapOverlap(snapId: number, userId: string): Promise<boolean> {
