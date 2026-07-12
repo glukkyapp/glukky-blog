@@ -263,9 +263,9 @@ export default function Onboarding() {
           title={t("onboarding.medication_title")}
           footer={cardFooter}
         >
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2 auto-rows-fr">
             {MEDICATION_OPTIONS.map(({ value, labelKey }) => (
-              <PillOption
+              <IconTileOption
                 key={value}
                 label={t(labelKey)}
                 selected={diabetesMedication === value}

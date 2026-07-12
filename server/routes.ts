@@ -813,6 +813,9 @@ export async function registerRoutes(
       const glucoseGroup = deriveGlucoseGroupFromCondition(healthCondition) ?? undefined;
 
       const VALID_DIABETES_MEDICATIONS = ["none", "one_oral", "multi_oral", "insulin", "prefer_not"] as const;
+      if (diabetesMedication != null && diabetesMedication !== "" && !VALID_DIABETES_MEDICATIONS.includes(diabetesMedication)) {
+        return res.status(400).json({ message: "Invalid diabetesMedication value" });
+      }
       const resolvedMedication = healthCondition === "diabetes" && diabetesMedication && VALID_DIABETES_MEDICATIONS.includes(diabetesMedication)
         ? diabetesMedication
         : null;

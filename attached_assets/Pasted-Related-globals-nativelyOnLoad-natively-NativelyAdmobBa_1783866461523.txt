@@ -1,0 +1,28 @@
+Related globals: nativelyOnLoad, natively, NativelyAdmobBanner, NativelyAdmobInterstitial, NativelyAppleSignInService, NativelyAudioRecorder, NativelyBiometrics, NativelyCamera, NativelyClipboard, NativelyContacts, NativelyDatePicker, NativelyGeolocation, NativelyHealth, NativelyInfo, NativelyLocation, NativelyMediaPicker, NativelyMessage, NativelyNFCService, NativelyNotifications, NativelyPurchases, NativelyScanner, NativelyStorage, NativelyCalendar, NativelyFirebaseNotifications, NativelyKlaviyoNotifications, onesignal_setexternalid_response_mrhvzzyw8s7ddn8jx1w, onesignal_playerid_response_mrhvzzyxtu49psme67
+window.natively: YES
+window.NativelyPush: NO
+window.OneSignal: NO
+natively keys: isDebug, min_app_version, app_version, injected, observers, onNativeError, onTabChanged, isIOSApp, isAndroidApp
+NativelyFirebaseNotifications methods: firebase_get_token, firebase_get_apns_token, firebase_request_permission, firebase_has_permission, firebase_subscribe_to_topic, firebase_unsubscribe_from_topic
+NativelyFirebaseNotifications props: id
+fb.firebase_get_token() => undefined
+fb.firebase_get_apns_token() => undefined
+fb.firebase_subscribe_to_topic() => undefined
+fb.firebase_unsubscribe_from_topic() => undefined
+natively.observers type: object
+natively.observers keys: empty
+nativelyOnLoad type: function
+nativelyOnLoad is already a function — wrapping to also probe
+nativelyOnLoad: not triggered within 5s (SDK already loaded?)
+NativelyNotifications methods: getOneSignalId, requestPermission, getPermissionStatus, getExternalId, setExternalId, removeExternalId
+NativelyNotifications props: id
+notif.id BEFORE call: "mrhw0b24a60retgswdg"
+getOneSignalId() direct return: undefined
+getOneSignalId() return type: undefined
+getOneSignalId(fn callback) result: {"playerId":"b91baba2-ad91-41d3-b52a-4bbf2d5d8eb8"}
+✅ Player ID via fn callback: b91baba2-ad91-41d3-b52a-4bbf2d5d8eb8
+getOneSignalId({callback}): not called within 5s
+notif.id AFTER 3s delay: "mrhw0b24a60retgswdg"
+notif props after delay: {"id":"mrhw0b24a60retgswdg"}
+observers keys after calls: empty
+DB stored player ID: b91baba2-ad91-41d3-b52a-4bbf2d5d8eb8
