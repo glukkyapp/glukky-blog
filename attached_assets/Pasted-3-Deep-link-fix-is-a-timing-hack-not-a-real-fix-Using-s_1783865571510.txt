@@ -1,0 +1,20 @@
+3. Deep-link fix is a timing hack, not a real fix
+Using setTimeout to prevent the home-screen render from overwriting the deep-link navigation is a classic race-condition band-aid. It will work on your test device and fail intermittently on slower devices or under cold-start conditions, because the timeout duration is a guess, not a guarantee that auth/home-render has actually finished.
+
+Fix: instead of a timer, use a state flag (e.g., pendingDeepLink) set when the notification is tapped, and check that flag inside the home-screen's render/redirect effect — skip the home redirect if a pending deep link exists, and clear the flag once navigation completes. This ties the fix to actual app state rather than an arbitrary delay, and is the more robust pattern used for exactly this kind of resume-race bug.
+
+4. Overlap detection is coupled to the AI advice endpoint
+Setting previous_meal_overlap inside POST /api/snap/advice mixes two unrelated concerns — generating food advice and flagging meal timing — in a single request handler. This isn't a bug today, but it means if the advice endpoint is ever retried, cached, or fails partway, the overlap flag logic either doesn't run or could run twice. Worth confirming the endpoint is idempotent, or moving the overlap check into its own lightweight step that fires reliably regardless of advice-generation success or failure.
+
+5. No error handling specified for the walk answer submission
+If POST /api/snap/post-meal fails after the user taps Yes/No (network drop, timeout), the ticket doesn't say what happens to the UI. Since this is the very last step before the card closes, a silent failure here means the walk data — one of your two core outcome measures — quietly goes missing with no visibility to the user or a retry path.
+
+Fix: on submission failure, keep the card open with a brief retry option rather than closing regardless of success.
+
+6. Two different time windows, easy to confuse during implementation
+The overlap flag uses a 2-hour lookback; the HsTix recordable window uses 90 minutes. These are two separate features solving two separate problems (data-quality flagging vs. logging validity), which is intentional — but because both are "meal timing windows" living in the same ticket, there's real risk an implementer conflates them or reuses one constant for both. Worth adding an explicit code comment at each constant clarifying which concept it belongs to, so a future edit to one doesn't accidentally change the other.
+
+Not Bugs, But Worth Confirming Before Merge
+Tooltip must work on tap for touch devices, not just hover — the ticket does say "tapping/hovering," so this looks covered, just confirm the tooltip doesn't require a hover-only trigger on mobile.
+
+Dismiss endpoint ownership check — make sure it verifies the snap belongs to the requesting user, not just that a snap with that ID exists.
