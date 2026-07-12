@@ -853,7 +853,7 @@ export async function registerRoutes(
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal, healthCondition, referralSource, diabetesMedication } = req.body;
+      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal, healthCondition, referralSource, diabetesMedication, isPilotParticipant, pilotEnrolledAt } = req.body;
 
       const sortedStruggles = sortStruggles(struggles || []);
       const hasLateDinner = dinnerTime === "after_9pm";
@@ -868,6 +868,27 @@ export async function registerRoutes(
       const resolvedMedication = healthCondition === "diabetes" && diabetesMedication && VALID_DIABETES_MEDICATIONS.includes(diabetesMedication)
         ? diabetesMedication
         : null;
+
+      // Pilot fields — only applied when explicitly provided; normal onboarding
+      // calls omit them and are unaffected. Validate before constructing profileData.
+      const pilotOverride: { isPilotParticipant?: boolean; pilotEnrolledAt?: Date | null } = {};
+      if (isPilotParticipant !== undefined) {
+        if (typeof isPilotParticipant !== "boolean") {
+          return res.status(400).json({ message: "isPilotParticipant must be a boolean" });
+        }
+        pilotOverride.isPilotParticipant = isPilotParticipant;
+      }
+      if (pilotEnrolledAt !== undefined) {
+        if (pilotEnrolledAt === null) {
+          pilotOverride.pilotEnrolledAt = null;
+        } else {
+          const d = new Date(pilotEnrolledAt as string);
+          if (isNaN(d.getTime())) {
+            return res.status(400).json({ message: "pilotEnrolledAt must be a valid ISO timestamp or null" });
+          }
+          pilotOverride.pilotEnrolledAt = d;
+        }
+      }
 
       const existingProfile = await storage.getProfile(userId);
       const profileData: any = {
@@ -890,6 +911,7 @@ export async function registerRoutes(
         referralSource: referralSource || null,
         glucoseGroup: glucoseGroup ?? null,
         diabetesMedication: resolvedMedication,
+        ...pilotOverride,
       };
 
       let profile;
