@@ -804,13 +804,18 @@ export async function registerRoutes(
   app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal, healthCondition, referralSource } = req.body;
+      const { walksPerWeek, walkDuration, dinnerTime, sleepPattern, eatingOutFrequency, struggles, notificationEmail, preferredLanguage, name, goal, healthCondition, referralSource, diabetesMedication } = req.body;
 
       const sortedStruggles = sortStruggles(struggles || []);
       const hasLateDinner = dinnerTime === "after_9pm";
 
       const { deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
       const glucoseGroup = deriveGlucoseGroupFromCondition(healthCondition) ?? undefined;
+
+      const VALID_DIABETES_MEDICATIONS = ["none", "one_oral", "multi_oral", "insulin", "prefer_not"] as const;
+      const resolvedMedication = healthCondition === "diabetes" && diabetesMedication && VALID_DIABETES_MEDICATIONS.includes(diabetesMedication)
+        ? diabetesMedication
+        : null;
 
       const existingProfile = await storage.getProfile(userId);
       const profileData: any = {
@@ -832,6 +837,7 @@ export async function registerRoutes(
         healthCondition: healthCondition || null,
         referralSource: referralSource || null,
         glucoseGroup: glucoseGroup ?? null,
+        diabetesMedication: resolvedMedication,
       };
 
       let profile;

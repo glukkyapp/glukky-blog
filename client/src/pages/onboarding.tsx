@@ -97,6 +97,8 @@ export default function Onboarding() {
   const [eatingOutFrequency, setEatingOutFrequency] = useState<string>("");
   const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
   const [healthCondition, setHealthCondition] = useState<string>("");
+  const [diabetesMedication, setDiabetesMedication] = useState<string>("");
+  const [onMedicationStep, setOnMedicationStep] = useState(false);
   const [referralSource, setReferralSource] = useState<string>("");
   const [referralOther, setReferralOther] = useState<string>("");
   const [notificationEmail, setNotificationEmail] = useState("");
@@ -111,12 +113,24 @@ export default function Onboarding() {
   const handleNext = () => {
     hapticTap("SOFT");
     setDirection("forward");
-    setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
+    if (step === TOTAL_STEPS && healthCondition === "diabetes" && !onMedicationStep) {
+      setOnMedicationStep(true);
+    } else {
+      setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
+    }
   };
   const handleBack = () => {
     hapticTap("SOFT");
     setDirection("backward");
-    setStep((s) => Math.max(s - 1, 1));
+    if (step > TOTAL_STEPS && healthCondition === "diabetes") {
+      setOnMedicationStep(true);
+      setStep(TOTAL_STEPS);
+    } else if (onMedicationStep) {
+      setOnMedicationStep(false);
+      setDiabetesMedication("");
+    } else {
+      setStep((s) => Math.max(s - 1, 1));
+    }
   };
 
   const handleSubmit = async () => {
@@ -147,6 +161,7 @@ export default function Onboarding() {
         goal: userGoal.trim() || null,
         healthCondition: healthCondition || null,
         referralSource: referralSource === "others" ? (referralOther.trim() || "others") : (referralSource || null),
+        diabetesMedication: healthCondition === "diabetes" ? (diabetesMedication || null) : null,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       syncOneSignalLanguage(i18n.language || "en");
@@ -191,7 +206,7 @@ export default function Onboarding() {
     return false;
   };
 
-  const backButton = step > 1 ? (
+  const backButton = (step > 1 || onMedicationStep) ? (
     <Button
       variant="ghost"
       onClick={handleBack}
@@ -203,7 +218,7 @@ export default function Onboarding() {
     </Button>
   ) : null;
 
-  const ctaButton = step <= TOTAL_STEPS ? (
+  const ctaButton = onMedicationStep ? null : step <= TOTAL_STEPS ? (
     <Button
       onClick={handleNext}
       disabled={isNextDisabled()}
@@ -232,7 +247,43 @@ export default function Onboarding() {
     </div>
   );
 
+  const MEDICATION_OPTIONS = [
+    { value: "none", labelKey: "onboarding.medication_none" },
+    { value: "one_oral", labelKey: "onboarding.medication_one_oral" },
+    { value: "multi_oral", labelKey: "onboarding.medication_multi_oral" },
+    { value: "insulin", labelKey: "onboarding.medication_insulin" },
+    { value: "prefer_not", labelKey: "onboarding.medication_prefer_not" },
+  ] as const;
+
   const renderStep = () => {
+    if (onMedicationStep) {
+      return (
+        <OnboardingCard
+          testId="card-step-medication"
+          title={t("onboarding.medication_title")}
+          footer={cardFooter}
+        >
+          <div className="flex flex-col gap-2">
+            {MEDICATION_OPTIONS.map(({ value, labelKey }) => (
+              <PillOption
+                key={value}
+                label={t(labelKey)}
+                selected={diabetesMedication === value}
+                onClick={() => {
+                  setDiabetesMedication(value);
+                  hapticTap("SOFT");
+                  setDirection("forward");
+                  setOnMedicationStep(false);
+                  setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
+                }}
+                testId={`option-medication-${value}`}
+              />
+            ))}
+          </div>
+        </OnboardingCard>
+      );
+    }
+
     // Consent is always the last step — handle it before the switch so its
     // position never collides with a hidden step's case number.
     if (step > TOTAL_STEPS) {

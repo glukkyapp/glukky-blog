@@ -86,6 +86,7 @@ export const userProfiles = pgTable("user_profiles", {
   consecutiveSkippedMeals: integer("consecutive_skipped_meals").notNull().default(0),
   glucoseGroup: text("glucose_group"),
   glucosePersonalisedSeen: boolean("glucose_personalised_seen").notNull().default(true),
+  diabetesMedication: text("diabetes_medication"),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {

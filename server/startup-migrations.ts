@@ -168,6 +168,21 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: `UPDATE user_profiles SET name = 'cynthia'
           WHERE user_id = 'eac37b12-0545-4a27-ad8e-0d81aa3e5224'`,
   },
+  {
+    name: "user_profiles.diabetes_medication",
+    sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS diabetes_medication text",
+  },
+  {
+    name: "user_profiles.diabetes_medication_check",
+    sql: `DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_profiles_diabetes_medication_check'
+      ) THEN
+        ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_diabetes_medication_check
+          CHECK (diabetes_medication IS NULL OR diabetes_medication IN ('none','one_oral','multi_oral','insulin','prefer_not'));
+      END IF;
+    END $$`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {
