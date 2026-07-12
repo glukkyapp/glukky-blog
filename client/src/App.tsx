@@ -1191,18 +1191,37 @@ function AuthenticatedApp() {
               const t = setTimeout(() => resolve("__timeout__"), 6000);
               try {
                 let directReturn: any;
+                // Try every known argument shape in order of preference.
+                // 1. Object-arg with callback (most common in newer SDK)
                 try {
                   directReturn = notif.setExternalId(
                     { externalId: userId },
-                    (res: any) => { clearTimeout(t); resolve(res); },
+                    (res: any) => { clearTimeout(t); resolve(res ?? "__ok__"); },
                   );
                 } catch {
-                  // Some implementations take just the object.
-                  directReturn = notif.setExternalId({ externalId: userId });
+                  // 2. String-arg with callback (some Build Natively SDK variants)
+                  try {
+                    directReturn = notif.setExternalId(
+                      userId,
+                      (res: any) => { clearTimeout(t); resolve(res ?? "__ok__"); },
+                    );
+                  } catch {
+                    // 3. String-arg, no callback
+                    try {
+                      directReturn = notif.setExternalId(userId);
+                    } catch {
+                      // 4. Object-arg, no callback (last resort)
+                      directReturn = notif.setExternalId({ externalId: userId });
+                    }
+                  }
                 }
-                if (directReturn && typeof directReturn.then === "function") {
+                // Synchronous non-null, non-promise return = success
+                if (directReturn != null && typeof directReturn.then !== "function") {
+                  clearTimeout(t);
+                  resolve(directReturn);
+                } else if (directReturn && typeof directReturn.then === "function") {
                   directReturn
-                    .then((v: any) => { clearTimeout(t); resolve(v); })
+                    .then((v: any) => { clearTimeout(t); resolve(v ?? "__ok__"); })
                     .catch((e: any) => { clearTimeout(t); resolve({ __throw: e?.message ?? String(e) }); });
                 }
               } catch (e: any) {

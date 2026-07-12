@@ -190,7 +190,7 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
   }
 
   let externalIds = Array.from(new Set(payload.externalIds ?? []));
-  const playerIds = Array.from(new Set(payload.playerIds ?? []));
+  let playerIds = Array.from(new Set(payload.playerIds ?? []));
 
   if (externalIds.length === 0 && playerIds.length === 0) {
     log("No external_ids or player_ids to send to, skipping", "onesignal");
@@ -198,8 +198,9 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
   }
 
   // MCHK §5 — OneSignal consent gate.
-  // Sends targeting externalIds (user DB IDs) can be verified; player_id
-  // targeting cannot resolve to a user_id, so those are skipped entirely.
+  // Both externalIds and playerIds are verified via user_consents before sending.
+  // player_ids can be resolved to a user_id through user_profiles.onesignal_player_id,
+  // so blanket-blocking them was incorrect — they are consent-checked the same way.
   if (externalIds.length > 0) {
     const consented = await Promise.all(
       externalIds.map(async (uid) => {
@@ -220,8 +221,42 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
       return { success: false, notificationId: null };
     }
   } else if (playerIds.length > 0) {
-    log("OneSignal send SKIPPED: player_id targeting cannot be consent-checked (no user_id available). MCHK §5.", "onesignal");
-    return { success: false, notificationId: null };
+    // Resolve each player_id to a user_id via user_profiles, then check consent.
+    // Only send to player_ids that resolve to a user who has consented.
+    const consentedPlayerIds = (
+      await Promise.all(
+        playerIds.map(async (pid) => {
+          try {
+            const { rows: profileRows } = await pool.query<{ user_id: string }>(
+              `SELECT user_id FROM user_profiles WHERE onesignal_player_id = $1 LIMIT 1`,
+              [pid]
+            );
+            if (profileRows.length === 0) {
+              log(`OneSignal MCHK §5: player_id ${pid} not linked to any user, skipping.`, "onesignal");
+              return null;
+            }
+            const uid = profileRows[0].user_id;
+            const { rows: consentRows } = await pool.query<{ consented: boolean }>(
+              `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'onesignal' ORDER BY consented_at DESC LIMIT 1`,
+              [uid]
+            );
+            if (consentRows.length > 0 && consentRows[0].consented) {
+              return pid;
+            }
+            log(`OneSignal MCHK §5: user ${uid} (player_id=${pid}) has not consented, skipping.`, "onesignal");
+            return null;
+          } catch {
+            return null;
+          }
+        })
+      )
+    ).filter((pid): pid is string => pid !== null);
+
+    if (consentedPlayerIds.length === 0) {
+      log("OneSignal send SKIPPED: no player_id recipients resolved with consent. MCHK §5.", "onesignal");
+      return { success: false, notificationId: null };
+    }
+    playerIds = consentedPlayerIds;
   }
 
   // Choose the target axis. New callers always pass exactly one;

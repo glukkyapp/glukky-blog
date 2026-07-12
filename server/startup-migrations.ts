@@ -103,6 +103,17 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: `CREATE INDEX IF NOT EXISTS user_consents_user_service_idx ON user_consents (user_id, service_name, consented_at DESC)`,
   },
   {
+    name: "consent.backfill_onesignal_existing_users",
+    sql: `INSERT INTO user_consents (user_id, service_name, consented, consented_at)
+          SELECT up.user_id, 'onesignal', true, NOW()
+          FROM user_profiles up
+          WHERE (up.onesignal_player_id IS NOT NULL OR up.onesignal_external_id IS NOT NULL)
+          AND NOT EXISTS (
+            SELECT 1 FROM user_consents uc
+            WHERE uc.user_id = up.user_id AND uc.service_name = 'onesignal'
+          )`,
+  },
+  {
     name: "user_data.create_user_data_actions",
     sql: `CREATE TABLE IF NOT EXISTS user_data_actions (
       id SERIAL PRIMARY KEY,
