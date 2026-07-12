@@ -335,6 +335,9 @@ export const mealSnaps = pgTable("meal_snaps", {
   postMealSymptom: text("post_meal_symptom"),
   postMealRecordedAt: timestamp("post_meal_recorded_at", { withTimezone: true }),
   postMealSkipped: boolean("post_meal_skipped").notNull().default(false),
+  previousMealOverlap: boolean("previous_meal_overlap").notNull().default(false),
+  overlapDismissed: boolean("overlap_dismissed").notNull().default(false),
+  postMealWalked: boolean("post_meal_walked"),
   isDeleted: boolean("is_deleted").notNull().default(false),
 }, (table) => ({
   userDateIdx: index("meal_snaps_user_date_idx").on(table.userId, table.localDate),

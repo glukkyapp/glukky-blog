@@ -3994,7 +3994,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             comboKey: activeComboKey,
           });
 
-          // Fire-and-forget: schedule HStix reminder 60 min from now.
+          // Fire-and-forget: schedule HStix reminder 55 min from now.
           // Cancels any pending reminder from a previous snap first.
           void (async () => {
             try {
@@ -4010,7 +4010,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
                 subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
                 message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
                 deepLink: `/food-log?snap=${snap.id}`,
-                send_after: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                send_after: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
                 externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
                 playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],
               });
@@ -4019,6 +4019,29 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
               }
             } catch (e: any) {
               console.warn("[snap/hstix-reminder] scheduling failed:", e?.message ?? e);
+            }
+          })();
+
+          // Fire-and-forget: flag overlap if logged within 2 hrs of a prior different-type meal.
+          // MEAL_GAP_LOOKBACK_MS = 2 * 60 * 60 * 1000 — distinct from the 90-min HsTix recordable window.
+          void (async () => {
+            try {
+              const snapMealType = snap.mealType;
+              if (!snapMealType) return;
+              const gapCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+              const sameDaySnaps = await storage.getMealSnapsByLocalDate(userId, snap.localDate);
+              const priorOverlap = sameDaySnaps.find(s =>
+                s.id !== snap.id &&
+                s.mealType !== null &&
+                s.mealType !== snapMealType &&
+                new Date(s.snapTime).getTime() >= gapCutoff.getTime() &&
+                !s.isDeleted
+              );
+              if (priorOverlap) {
+                await storage.setMealSnapOverlap(snap.id, userId);
+              }
+            } catch (e: any) {
+              console.warn("[snap/overlap-check] failed:", e?.message ?? e);
             }
           })();
 
@@ -4734,6 +4757,8 @@ No explanation, just JSON.`,
           postMealGlucoseMmol: s.postMealGlucoseMmol ?? null,
           postMealSymptom: s.postMealSymptom ?? null,
           postMealSkipped: s.postMealSkipped,
+          previousMealOverlap: s.previousMealOverlap,
+          overlapDismissed: s.overlapDismissed,
         }));
       res.json({ month, items });
     } catch (error: any) {
@@ -4745,7 +4770,7 @@ No explanation, just JSON.`,
   app.post("/api/snap/post-meal", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { snapId, glucoseMmol, symptom, skip, fastingBaseline, fastingBaselineEstimated } = req.body;
+      const { snapId, glucoseMmol, symptom, skip, fastingBaseline, fastingBaselineEstimated, postMealWalked } = req.body;
       if (!snapId || typeof snapId !== "number") return res.status(400).json({ message: "snapId required" });
       if (glucoseMmol !== undefined && (typeof glucoseMmol !== "number" || glucoseMmol < 2.0 || glucoseMmol > 30.0)) {
         return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
@@ -4784,6 +4809,10 @@ No explanation, just JSON.`,
       });
       if (!updated) return res.status(404).json({ message: "Snap not found" });
 
+      if (typeof postMealWalked === "boolean") {
+        await storage.setPostMealWalked(snapId, userId, postMealWalked);
+      }
+
       if (localDate) {
         await storage.reaggregateDailyGlucoseForDate(userId, localDate);
       }
@@ -4808,6 +4837,22 @@ No explanation, just JSON.`,
     } catch (error: any) {
       console.error("post-meal error:", error);
       res.status(500).json({ message: "Failed to save post-meal record." });
+    }
+  });
+
+  app.patch("/api/snap/:id/dismiss-overlap", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const snapId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(snapId) || snapId <= 0) {
+        return res.status(400).json({ message: "invalid snap id" });
+      }
+      const dismissed = await storage.dismissMealSnapOverlap(snapId, userId);
+      if (!dismissed) return res.status(404).json({ message: "Snap not found" });
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("dismiss-overlap error:", error);
+      res.status(500).json({ message: "Failed to dismiss overlap." });
     }
   });
 

@@ -344,6 +344,9 @@ function AuthenticatedApp() {
   // cancel effect would then nuke the callback (the ggg regression
   // we are fixing). A ref bypasses the dep array entirely.
   const paywallInFlightRef = useRef(false);
+  // Stores the deep-link path received from a notification so redirect effects
+  // can skip their redirect while navigation to the deep-link is in flight.
+  const pendingDeepLink = useRef<string | null>(null);
 
   // Safety-net: if loading takes more than 5s (stuck profile fetch,
   // slow plan fetch, etc.), bypass the skeleton so the app never stays
@@ -353,6 +356,7 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!profileLoading && !(profile && planLoading)) return;
     const timer = setTimeout(() => {
+      if (pendingDeepLink.current) return;
       setLoadingStuck(true);
       setLocation("/onboarding");
     }, 5000);
@@ -527,6 +531,19 @@ function AuthenticatedApp() {
     })();
   }, [cancelBackgroundVerifyPoller, refreshPremiumThenRefetch]);
 
+  // Clear the pendingDeepLink ref once the router has confirmed the navigation
+  // by landing on the target path (or any path other than "/", which signals
+  // the app has moved on from its initial loading state).
+  useEffect(() => {
+    if (pendingDeepLink.current !== null) {
+      const [targetPath] = pendingDeepLink.current.split("?");
+      const [currentPath] = location.split("?");
+      if (currentPath === targetPath) {
+        pendingDeepLink.current = null;
+      }
+    }
+  }, [location]);
+
   // Notification deep-link handler: listens for Natively/OneSignal
   // postMessage events that carry a deepLink path and navigates the
   // in-app router to that path. Handles multiple payload shapes that
@@ -545,6 +562,7 @@ function AuthenticatedApp() {
           (raw.notification as any)?.additionalData?.deepLink ??
           (raw.additionalData as any)?.deepLink;
         if (typeof link === "string" && link.startsWith("/")) {
+          pendingDeepLink.current = link;
           setLocation(link);
         }
       } catch {}

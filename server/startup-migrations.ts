@@ -173,6 +173,18 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS diabetes_medication text",
   },
   {
+    name: "meal_snaps.previous_meal_overlap",
+    sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS previous_meal_overlap boolean NOT NULL DEFAULT false",
+  },
+  {
+    name: "meal_snaps.overlap_dismissed",
+    sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS overlap_dismissed boolean NOT NULL DEFAULT false",
+  },
+  {
+    name: "meal_snaps.post_meal_walked",
+    sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS post_meal_walked boolean",
+  },
+  {
     name: "user_profiles.diabetes_medication_check",
     sql: `DO $$ BEGIN
       IF NOT EXISTS (

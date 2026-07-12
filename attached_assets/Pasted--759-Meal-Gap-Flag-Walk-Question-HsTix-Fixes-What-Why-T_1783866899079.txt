@@ -1,0 +1,36 @@
+#759 - Meal Gap Flag, Walk Question & HsTix Fixes
+What & Why
+Three related improvements to the meal/glucose recording flow:
+
+Meal gap flag: Flag meals logged within 2 hours of a previous meal of a different category. Show a dismissible alert in the food log next to the glucose colour dot. Warn the user that the glucose reading may be affected by the prior meal.
+"Did you walk?" step: After a user successfully logs their post-meal glucose (hstix), ask "Did you walk after this meal?" (Yes/No) as a final step before the card closes. Store the answer.
+HsTix timing fixes: Change the push notification from 60 min to 55 min post-meal. Narrow the recordable window from 2 hours to 90 minutes. Fix the push notification deep-link so tapping it reliably opens the glucose logging sheet (not the home screen).
+Done looks like
+A meal flagged for a gap shows a small ⚠️ icon next to the colour dot in the food log; tapping it (touch-first, not hover-only) shows the tooltip text and a dismiss button
+The flag is dismissible per meal; it stays dismissed
+The "Did you walk?" question appears as the last step of the PostMealCard after glucose is entered; Yes/No closes the card; the answer is stored on the meal record
+If POST /api/snap/post-meal fails while submitting the walk answer, the card stays open with a brief retry option rather than closing silently
+The HsTix push notification fires 55 min after meal logging (was 60)
+The "記錄血糖" button and home-screen PostMealCard only appear within 90 min of the meal snap (was 2 hours)
+Tapping the HsTix push notification consistently opens the food log with the glucose sheet pre-opened, not the home screen
+Out of scope
+The "Did you walk?" step does not appear when the user skips glucose (selects "No" to recording)
+Walk answer does not connect to or update the weekly planner, walk_completed, or any planning logic
+The meal gap flag does not affect glucose impact colour or advice
+Translations to use
+Key	EN	zh-Hant	yue
+food_log.overlap_tooltip	Logged within 2 hrs of your previous meal — glucose reading may be affected.	與上一餐相隔不足2小時，血糖讀數可能受影響。	同上一餐相隔唔夠兩個鐘，血糖讀數可能受影響。
+glucose.walked_title	Did you walk after this meal?	用餐後您有散步嗎？	食完飯之後你有冇散步？
+glucose.walked_yes	Yes	有	有
+glucose.walked_no	No	沒有	冇
+Steps
+Schema — meal gap flag — Add two boolean columns to meal_snaps: previous_meal_overlap (default false) and overlap_dismissed (default false), via a startup migration.
+Schema — walk answer — Add post_meal_walked boolean (nullable) to meal_snaps via a startup migration.
+Backend — gap detection — On POST /api/snap/advice, after the snap record is inserted, run the overlap check as a separate idempotent step: query the user's meal_snaps for the most recent snap of a different mealType within the last 2 hours (this constant is the meal-gap lookback, separate from the 90-min HsTix window — add a named constant with a comment at the usage site to prevent confusion). If found and previous_meal_overlap is still false, set it to true. Using a conditional update (WHERE previous_meal_overlap = false) makes the check safe to re-run on retry.
+Backend — dismiss endpoint — Add PATCH /api/snap/:id/dismiss-overlap to set overlap_dismissed = true. Verify that the snap's userId matches the authenticated session user before updating — do not rely solely on the snap ID existing.
+Backend — walk answer — Accept postMealWalked (boolean) in the POST /api/snap/post-meal body and persist it to post_meal_walked.
+Frontend — overlap alert in food log — In food-log.tsx, next to the glucose colour dot, render a small ⚠️ icon when previous_meal_overlap && !overlap_dismissed. The trigger must be tap-based (not hover-only) so it works on touch devices: tapping shows the tooltip text and a dismiss button inline. Dismissing calls the dismiss endpoint and optimistically updates the local React Query cache.
+Frontend — "Did you walk?" step in PostMealCard — Add a new "walked" step to the state machine. After the user submits their glucose value (keypad step), transition to "walked" before calling the API. Collect the Yes/No answer and include it in the POST /api/snap/post-meal payload. If the API call fails, keep the card open and show a retry option — do not close silently.
+Frontend — deep-link fix (state flag, not timer) — In App.tsx, replace any setTimeout-based workaround with a pendingDeepLink state ref: set it when the notification message is received, navigate immediately, and clear it once navigation is confirmed. Inside the home screen's redirect/render effect, check pendingDeepLink and skip the home redirect if a deep link is pending. This avoids the race condition on cold-start and slow devices.
+HsTix timing — Change the send_after delay from 60 min to 55 min in server/routes.ts. Add a comment: // HsTix reminder window: 55 min post-meal.
+HsTix window — Change the getPendingPostMealSnap cutoff in server/storage.ts from 2 * 60 * 60 * 1000 to 90 * 60 * 1000. Add a comment: // HsTix recordable window: 90 min post-meal (separate from the 2-hr meal-gap lookback). Apply the same 90-min check to the food-log "記錄血糖" button visibility.

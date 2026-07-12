@@ -1121,7 +1121,13 @@
     "alert_disclaimer": "This is general self-care information only. Always follow your doctor's personal guidance.",
     "alert_confirm": "I understand, continue recording",
     "alert_cancel_record": "Cancel recording",
-    "alert_cancel": "Cancel"
+    "alert_cancel": "Cancel",
+    "walked_title": "Did you walk after this meal?",
+    "walked_yes": "Yes",
+    "walked_no": "No"
+  },
+  "food_log": {
+    "overlap_tooltip": "Logged within 2 hrs of your previous meal — glucose reading may be affected."
   },
   "consent": {
     "onboarding_title": "Your Privacy Settings",

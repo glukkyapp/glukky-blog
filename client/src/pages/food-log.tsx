@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, AlertTriangle, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import PostMealCard from "@/components/PostMealCard";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface MealLogItem {
   id: number;
@@ -17,6 +17,8 @@ interface MealLogItem {
   postMealGlucoseMmol: number | null;
   postMealSymptom: string | null;
   postMealSkipped: boolean | null;
+  previousMealOverlap: boolean;
+  overlapDismissed: boolean;
 }
 
 interface MealLogResponse {
@@ -65,9 +67,9 @@ function formatTime(snapTime: string): string {
   }
 }
 
-function isWithin2h(snapTime: string): boolean {
+function isWithin90min(snapTime: string): boolean {
   const diff = Date.now() - new Date(snapTime).getTime();
-  return diff >= 0 && diff < 2 * 60 * 60 * 1000;
+  return diff >= 0 && diff < 90 * 60 * 1000;
 }
 
 const MEAL_TYPE_LABEL: Record<string, string> = {
@@ -144,6 +146,7 @@ export default function FoodLog() {
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
   const [glucoseSheetSnapId, setGlucoseSheetSnapId] = useState<number | null>(null);
+  const [expandedOverlap, setExpandedOverlap] = useState<Set<number>>(new Set());
 
   // Auto-open the glucose entry sheet when the user arrives via a push
   // notification that included ?snap=<id> (hstix_reminder redirect URL).
@@ -271,8 +274,19 @@ export default function FoodLog() {
                       ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600")
                       : null;
                     const hasPostMeal = item.postMealGlucoseMmol !== null && item.postMealGlucoseMmol !== undefined;
-                    const withinWindow = isWithin2h(item.snapTime);
+                    const withinWindow = isWithin90min(item.snapTime);
                     const needsGlucoseLog = withinWindow && !hasPostMeal && !item.postMealSkipped;
+                    const showOverlapWarning = item.previousMealOverlap && !item.overlapDismissed;
+                    const overlapExpanded = expandedOverlap.has(item.id);
+
+                    const handleDismissOverlap = () => {
+                      queryClient.setQueryData(["/api/snap/meal-log", month], (old: any) => {
+                        if (!old) return old;
+                        return { ...old, items: old.items.map((i: MealLogItem) => i.id === item.id ? { ...i, overlapDismissed: true } : i) };
+                      });
+                      setExpandedOverlap(prev => { const next = new Set(prev); next.delete(item.id); return next; });
+                      void apiRequest("PATCH", `/api/snap/${item.id}/dismiss-overlap`, {}).catch(() => {});
+                    };
 
                     return (
                       <div
@@ -307,8 +321,43 @@ export default function FoodLog() {
                                 aria-label={glucoseLabel(effectiveImpact)}
                               />
                             )}
+                            {showOverlapWarning && (
+                              <button
+                                type="button"
+                                data-testid={`button-food-log-overlap-${item.id}`}
+                                onClick={() => setExpandedOverlap(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                  return next;
+                                })}
+                                className="text-amber-500 hover:text-amber-600 transition-colors"
+                                aria-label="Meal gap warning"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
+
+                        {showOverlapWarning && overlapExpanded && (
+                          <div
+                            data-testid={`food-log-overlap-tooltip-${item.id}`}
+                            className="flex items-start justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-2"
+                          >
+                            <p className="text-xs text-amber-800 leading-relaxed flex-1">
+                              {t("food_log.overlap_tooltip")}
+                            </p>
+                            <button
+                              type="button"
+                              data-testid={`button-food-log-dismiss-overlap-${item.id}`}
+                              onClick={handleDismissOverlap}
+                              className="flex-shrink-0 text-amber-600 hover:text-amber-800 transition-colors mt-0.5"
+                              aria-label="Dismiss"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
 
                         {hasPostMeal && (
                           <div className="flex items-center gap-2 flex-wrap">

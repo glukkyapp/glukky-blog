@@ -139,6 +139,9 @@ export interface IStorage {
   updateMealSnapPostMeal(snapId: number, userId: string, data: { glucoseMmol?: number; symptom?: string; skipped?: boolean; recordedAt?: Date }): Promise<boolean>;
   updateMealSnapPostMealWithHistory(snapId: number, userId: string, data: { glucoseMmol?: number; symptom?: string; skipped?: boolean; recordedAt?: Date; glucoseImpact?: string }): Promise<{ updated: boolean; localDate: string | null }>;
   getPendingPostMealSnap(userId: string): Promise<MealSnap | null>;
+  setMealSnapOverlap(snapId: number, userId: string): Promise<void>;
+  dismissMealSnapOverlap(snapId: number, userId: string): Promise<boolean>;
+  setPostMealWalked(snapId: number, userId: string, walked: boolean): Promise<void>;
   getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }>;
   getTotalPairedEntries(userId: string): Promise<number>;
   getTotalSnaps(userId: string): Promise<number>;
@@ -1350,7 +1353,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingPostMealSnap(userId: string): Promise<MealSnap | null> {
-    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    // HsTix recordable window: 90 min post-meal (separate from the 2-hr meal-gap lookback)
+    const cutoff = new Date(Date.now() - 90 * 60 * 1000);
     const [snap] = await db.select()
       .from(mealSnaps)
       .where(and(
@@ -1364,6 +1368,26 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(mealSnaps.snapTime))
       .limit(1);
     return snap ?? null;
+  }
+
+  async setMealSnapOverlap(snapId: number, userId: string): Promise<void> {
+    await db.update(mealSnaps)
+      .set({ previousMealOverlap: true })
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
+  }
+
+  async dismissMealSnapOverlap(snapId: number, userId: string): Promise<boolean> {
+    const result = await db.update(mealSnaps)
+      .set({ overlapDismissed: true })
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
+      .returning({ id: mealSnaps.id });
+    return result.length > 0;
+  }
+
+  async setPostMealWalked(snapId: number, userId: string, walked: boolean): Promise<void> {
+    await db.update(mealSnaps)
+      .set({ postMealWalked: walked })
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
   }
 
   async getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }> {

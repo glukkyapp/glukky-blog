@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { ChevronUp, ChevronDown, Delete } from "lucide-react";
 import { hapticTap } from "@/lib/haptics";
@@ -21,7 +20,7 @@ interface Props {
   initialStep?: "ask" | "keypad";
 }
 
-type Step = "ask" | "keypad" | "symptom";
+type Step = "ask" | "keypad" | "symptom" | "walked";
 
 const INTEGER_RANGE = Array.from({ length: 19 }, (_, i) => i + 2);
 const DEFAULT_INT_IDX = 8;
@@ -164,6 +163,8 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
   const [fastingUnknown, setFastingUnknown] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [alertType, setAlertType] = useState<"low" | "high" | null>(null);
+  const [walkedAnswer, setWalkedAnswer] = useState<boolean | null>(null);
+  const [submitError, setSubmitError] = useState(false);
 
   const glucoseValue =
     intPart !== null && decPart !== null
@@ -193,13 +194,13 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       setAlertType("high");
       return;
     }
-    void submit(false);
+    setStep("walked");
   };
 
   const handleAlertConfirm = () => {
     hapticTap("LIGHT");
     setAlertType(null);
-    void submit(false);
+    setStep("walked");
   };
 
   const handleAlertCancel = () => {
@@ -207,8 +208,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
     setAlertType(null);
   };
 
-  const submit = async (skip: boolean) => {
+  const submit = async (skip: boolean, walked: boolean | null = null) => {
     setSubmitting(true);
+    setSubmitError(false);
     try {
       const isSymptomOnly = !skip && glucoseValue === null;
       await apiRequest("POST", "/api/snap/post-meal", {
@@ -222,6 +224,7 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
               ...(!hasFastingBaseline && !fastingUnknown && selectedFasting !== null
                 ? { fastingBaseline: selectedFasting, fastingBaselineEstimated: false }
                 : {}),
+              ...(walked !== null ? { postMealWalked: walked } : {}),
             }),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
@@ -236,6 +239,7 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       onDone();
     } catch (e) {
       console.error("[PostMealCard] submit error:", e);
+      setSubmitError(true);
     } finally {
       setSubmitting(false);
     }
@@ -270,6 +274,49 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
             data-testid="button-post-meal-no"
           >
             {t("glucose.post_meal_no")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "walked") {
+    return (
+      <div
+        className="rounded-2xl p-5 flex flex-col gap-4"
+        style={cardStyle}
+        data-testid="card-post-meal-walked"
+      >
+        <p className="text-sm font-medium text-foreground">{t("glucose.walked_title")}</p>
+        {submitError && (
+          <p className="text-xs text-destructive text-center">
+            Something went wrong.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => { void submit(false, walkedAnswer); }}
+            >
+              Try again
+            </button>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button
+            className="flex-1"
+            disabled={submitting}
+            onClick={() => { hapticTap("LIGHT"); setWalkedAnswer(true); void submit(false, true); }}
+            data-testid="button-post-meal-walked-yes"
+          >
+            {t("glucose.walked_yes")}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1"
+            disabled={submitting}
+            onClick={() => { hapticTap("SOFT"); setWalkedAnswer(false); void submit(false, false); }}
+            data-testid="button-post-meal-walked-no"
+          >
+            {t("glucose.walked_no")}
           </Button>
         </div>
       </div>

@@ -1125,7 +1125,13 @@
     "alert_disclaimer": "以上僅為一般自我護理資訊，請務必遵從醫生的個人指示。",
     "alert_confirm": "我明白，繼續記錄",
     "alert_cancel_record": "取消記錄",
-    "alert_cancel": "取消"
+    "alert_cancel": "取消",
+    "walked_title": "用餐後您有散步嗎？",
+    "walked_yes": "有",
+    "walked_no": "沒有"
+  },
+  "food_log": {
+    "overlap_tooltip": "與上一餐相隔不足2小時，血糖讀數可能受影響。"
   },
   "consent": {
     "onboarding_title": "你的私隱設定",
