@@ -328,6 +328,9 @@ export default function Onboarding() {
           <p className="text-[11px] text-muted-foreground text-center mt-4">
             {t("consent.onboarding_footer")}
           </p>
+          <p className="text-xs text-muted-foreground mt-3 leading-relaxed" data-testid="text-disclaimer-onboarding">
+            {t("disclaimer.onboarding")}
+          </p>
         </OnboardingCard>
       );
     }

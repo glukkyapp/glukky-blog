@@ -1026,6 +1026,9 @@ export default function ProfilePage() {
             {t("profile.delete_account.fallback_link_text")}
           </a>
         </div>
+        <p className="text-xs text-muted-foreground text-center mt-4" data-testid="text-disclaimer-footer">
+          {t("disclaimer.footer")}
+        </p>
       </div>
     </div>
   );

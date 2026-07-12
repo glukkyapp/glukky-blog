@@ -1997,6 +1997,9 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>)}
+    <p className="text-xs text-muted-foreground text-center px-4 pb-4" data-testid="text-disclaimer-footer">
+      {t("disclaimer.footer")}
+    </p>
     </motion.div>
     <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />

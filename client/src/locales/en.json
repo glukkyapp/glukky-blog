@@ -1147,5 +1147,10 @@
     "revenuecat_desc": "Links your App Store subscription to your Glukky account. Required for premium access.",
     "claude_label": "AI food recognition (Anthropic Claude)",
     "claude_desc": "Analyses photos you take in FoodSnap. Meal photos are sent to Anthropic. Required to use FoodSnap."
+  },
+  "disclaimer": {
+    "onboarding": "Glukky builds a personalised picture of your dietary and blood sugar patterns based on the data you log. Results reflect long-term trends, not medical diagnoses. Individual readings can be affected by stress, sleep, illness, and other factors that may not always be recorded. Please consult your doctor before making any changes to your medication or treatment plan.",
+    "hstix": "Readings can be affected by many factors, such as stress, illness, or differences in meal timing. The more you log, the clearer your personal pattern becomes.",
+    "footer": "The information in this app is not a substitute for medical advice."
   }
 }

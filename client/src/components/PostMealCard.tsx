@@ -276,6 +276,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
             {t("glucose.post_meal_no")}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+          {t("disclaimer.hstix")}
+        </p>
       </div>
     );
   }
@@ -319,6 +322,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
             {t("glucose.walked_no")}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+          {t("disclaimer.hstix")}
+        </p>
       </div>
     );
   }
@@ -434,6 +440,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
           >
             {t("glucose.keypad_confirm")}
           </Button>
+          <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+            {t("disclaimer.hstix")}
+          </p>
         </div>
 
         <Dialog open={alertType !== null} onOpenChange={(open) => { if (!open) setAlertType(null); }}>
@@ -509,6 +518,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       >
         {t("glucose.keypad_confirm")}
       </Button>
+      <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+        {t("disclaimer.hstix")}
+      </p>
     </div>
   );
 }
