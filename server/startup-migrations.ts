@@ -196,6 +196,14 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS post_meal_walked boolean",
   },
   {
+    name: "user_profiles.is_pilot_participant",
+    sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS is_pilot_participant boolean NOT NULL DEFAULT false",
+  },
+  {
+    name: "user_profiles.pilot_enrolled_at",
+    sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS pilot_enrolled_at timestamptz NULL DEFAULT NULL",
+  },
+  {
     name: "user_profiles.diabetes_medication_check",
     sql: `DO $$ BEGIN
       IF NOT EXISTS (

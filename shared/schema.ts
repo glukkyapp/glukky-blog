@@ -87,6 +87,10 @@ export const userProfiles = pgTable("user_profiles", {
   glucoseGroup: text("glucose_group"),
   glucosePersonalisedSeen: boolean("glucose_personalised_seen").notNull().default(true),
   diabetesMedication: text("diabetes_medication"),
+  // Clinical pilot fields — set manually by a clinician after face-to-face enrollment.
+  // Never touched by onboarding or any user-facing flow.
+  isPilotParticipant: boolean("is_pilot_participant").notNull().default(false),
+  pilotEnrolledAt: timestamp("pilot_enrolled_at", { withTimezone: true }),
 });
 
 export const weeklyPlans = pgTable("weekly_plans", {
