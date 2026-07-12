@@ -325,6 +325,55 @@ export async function registerRoutes(
     }
   });
 
+  // Admin-only endpoint to enroll a user in the clinical pilot.
+  // Requires x-admin-secret header. Accepts { email } or { userId }.
+  // Sets is_pilot_participant = true and pilot_enrolled_at = NOW() atomically.
+  // A companion unenroll action resets both fields to defaults.
+  app.post("/api/admin/enroll-pilot", async (req, res) => {
+    try {
+      const adminSecret = process.env.ADMIN_WIPE_SECRET;
+      if (!adminSecret) {
+        return res.status(503).json({ message: "Admin secret not configured" });
+      }
+      if (req.header("x-admin-secret") !== adminSecret) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const schema = z.object({
+        email: z.string().email().optional(),
+        userId: z.string().optional(),
+        unenroll: z.boolean().optional().default(false),
+      }).refine((d) => d.email || d.userId, { message: "Provide email or userId" });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+      let user: { id: string; email: string | null | undefined } | undefined;
+      if (parsed.data.email) {
+        user = await authStorage.getUserByEmail(parsed.data.email.toLowerCase()) ?? undefined;
+        if (!user) return res.status(404).json({ message: "User not found", email: parsed.data.email });
+      } else {
+        user = await authStorage.getUser(parsed.data.userId!) ?? undefined;
+        if (!user) return res.status(404).json({ message: "User not found", userId: parsed.data.userId });
+      }
+      const unenroll = parsed.data.unenroll === true;
+      const updated = await storage.updateProfile(user.id, {
+        isPilotParticipant: !unenroll,
+        pilotEnrolledAt: unenroll ? null : new Date(),
+      });
+      if (!updated) return res.status(404).json({ message: "Profile not found for user" });
+      console.log(`[admin/enroll-pilot] ${unenroll ? "Unenrolled" : "Enrolled"} ${user.email ?? user.id}`);
+      res.json({
+        ok: true,
+        userId: user.id,
+        isPilotParticipant: updated.isPilotParticipant,
+        pilotEnrolledAt: updated.pilotEnrolledAt,
+      });
+    } catch (error: any) {
+      console.error("Error enrolling pilot participant:", error);
+      res.status(500).json({ message: error?.message || "Failed to enroll pilot participant" });
+    }
+  });
+
   app.post("/api/auth/delete-account", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
