@@ -11,7 +11,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Moon, Sunset, Check, Eye, X } from "lucide-react";
+import { Moon, Sunset, Check, Eye, EyeOff, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading, usePromiseLoading } from "@/components/global-loading-overlay";
 import { track, trackException, setUserProperties } from "@/lib/posthog";
@@ -99,6 +106,8 @@ export default function Onboarding() {
   const [healthCondition, setHealthCondition] = useState<string>("");
   const [diabetesMedication, setDiabetesMedication] = useState<string>("");
   const [onMedicationStep, setOnMedicationStep] = useState(false);
+  const [hideWarningShown, setHideWarningShown] = useState(false);
+  const [hideWarningOpen, setHideWarningOpen] = useState(false);
   const [referralSource, setReferralSource] = useState<string>("");
   const [referralOther, setReferralOther] = useState<string>("");
   const [notificationEmail, setNotificationEmail] = useState("");
@@ -115,6 +124,9 @@ export default function Onboarding() {
     setDirection("forward");
     if (step === TOTAL_STEPS && healthCondition === "diabetes" && !onMedicationStep) {
       setOnMedicationStep(true);
+    } else if (step === TOTAL_STEPS && healthCondition === "hide" && !hideWarningShown) {
+      setHideWarningShown(true);
+      setHideWarningOpen(true);
     } else {
       setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
     }
@@ -127,7 +139,6 @@ export default function Onboarding() {
       setStep(TOTAL_STEPS);
     } else if (onMedicationStep) {
       setOnMedicationStep(false);
-      setDiabetesMedication("");
     } else {
       setStep((s) => Math.max(s - 1, 1));
     }
@@ -218,7 +229,22 @@ export default function Onboarding() {
     </Button>
   ) : null;
 
-  const ctaButton = onMedicationStep ? null : step <= TOTAL_STEPS ? (
+  const ctaButton = onMedicationStep ? (
+    <Button
+      onClick={() => {
+        hapticTap("SOFT");
+        setDirection("forward");
+        setOnMedicationStep(false);
+        setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
+      }}
+      disabled={!diabetesMedication}
+      className="btn-pop w-full"
+      style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 48 }}
+      data-testid="button-medication-next"
+    >
+      {t("onboarding.next")}
+    </Button>
+  ) : step <= TOTAL_STEPS ? (
     <Button
       onClick={handleNext}
       disabled={isNextDisabled()}
@@ -272,9 +298,6 @@ export default function Onboarding() {
                 onClick={() => {
                   setDiabetesMedication(value);
                   hapticTap("SOFT");
-                  setDirection("forward");
-                  setOnMedicationStep(false);
-                  setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
                 }}
                 testId={`option-medication-${value}`}
               />
@@ -621,6 +644,13 @@ export default function Onboarding() {
                 onClick={() => setHealthCondition("no_but_health")}
                 testId="option-no-but-health"
               />
+              <IconTileOption
+                icon={<EyeOff size={28} style={{ color: GREEN_DARK }} />}
+                label={t("onboarding.q6_hide")}
+                selected={healthCondition === "hide"}
+                onClick={() => setHealthCondition("hide")}
+                testId="option-hide-condition"
+              />
             </div>
           </OnboardingCard>
         );
@@ -701,6 +731,39 @@ export default function Onboarding() {
       <div className={direction === "forward" ? "slide-in-forward" : "slide-in-backward"} key={step}>
         {renderStep()}
       </div>
+
+      <Dialog open={hideWarningOpen} onOpenChange={setHideWarningOpen}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle style={{ color: GREEN_DARK }}>{t("onboarding.hide_warning_title")}</DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="text-sm leading-relaxed">
+            {t("onboarding.hide_warning_body")}
+          </DialogDescription>
+          <div className="flex flex-col gap-2 mt-2">
+            <Button
+              onClick={() => setHideWarningOpen(false)}
+              className="w-full"
+              style={{ background: GREEN_DARK, color: "#fff", borderRadius: 999, height: 44 }}
+              data-testid="button-hide-warning-reconsider"
+            >
+              {t("onboarding.hide_warning_reconsider")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setHideWarningOpen(false);
+                setStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
+              }}
+              className="w-full"
+              style={{ color: GREEN_DARK, borderRadius: 999, height: 44, opacity: 0.75 }}
+              data-testid="button-hide-warning-continue"
+            >
+              {t("onboarding.hide_warning_continue")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

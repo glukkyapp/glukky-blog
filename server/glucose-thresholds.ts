@@ -31,7 +31,7 @@ export function deriveGlucoseGroupFromCondition(
   healthCondition: string | null | undefined,
 ): GlucoseGroup | null {
   if (healthCondition === "diabetes") return "t2dm";
-  if (healthCondition === "prediabetes" || healthCondition === "no_but_health") return "healthy";
+  if (healthCondition === "prediabetes" || healthCondition === "no_but_health" || healthCondition === "hide") return "healthy";
   return null;
 }
 
