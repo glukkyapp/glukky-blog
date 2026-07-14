@@ -1,6 +1,7 @@
 // Health values and PII stripped before sending — MCHK Code §1.4.1
 import { PostHog } from "posthog-node";
 import { createHash } from "crypto";
+import { pool } from "./db";
 
 let client: PostHog | null = null;
 
@@ -49,7 +50,9 @@ export function trackServer(
   distinctId: string | null,
   event: string,
   properties?: Record<string, unknown>,
+  consented?: boolean | null,
 ): void {
+  if (consented === false) return;
   const c = getClient();
   if (!c) return;
   try {
@@ -67,7 +70,9 @@ export function captureException(
   error: unknown,
   distinctId?: string | null,
   context?: Record<string, unknown>,
+  consented?: boolean | null,
 ): void {
+  if (consented === false) return;
   const c = getClient();
   if (!c) return;
   try {
@@ -93,6 +98,20 @@ export function captureException(
     }
   } catch (e) {
     console.warn("[posthog/server] captureException failed:", e);
+  }
+}
+
+export async function getPosthogConsent(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const result = await pool.query<{ consented: boolean }>(
+      `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'posthog' ORDER BY consented_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (result.rows.length === 0) return false;
+    return result.rows[0].consented === true;
+  } catch {
+    return false;
   }
 }
 

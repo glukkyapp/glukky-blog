@@ -74,11 +74,27 @@ function flushPending(): void {
   }
 }
 
-export function initPostHog(): void {
+export function optOut(): void {
+  try { posthog.opt_out_capturing(); } catch (e) {
+    if (import.meta.env.DEV) console.warn("[posthog] opt_out_capturing failed:", e);
+  }
+}
+
+export function optIn(): void {
+  try { posthog.opt_in_capturing(); } catch (e) {
+    if (import.meta.env.DEV) console.warn("[posthog] opt_in_capturing failed:", e);
+  }
+}
+
+export function initPostHog(consented = true): void {
   if (initialized) return;
   if (typeof window === "undefined") return;
   const key = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
   if (!key) return;
+
+  if (!consented) {
+    posthog.opt_out_capturing();
+  }
 
   posthog.init(key, {
     api_host: "https://us.i.posthog.com",

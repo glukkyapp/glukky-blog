@@ -6,7 +6,7 @@ import { setupAuth } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { startNotificationScheduler } from "./notifications";
 import { cleanupDuplicatePlayerIds } from "./onesignal";
-import { captureException, shutdownPostHog } from "./posthog";
+import { captureException, getPosthogConsent, shutdownPostHog } from "./posthog";
 import { runStartupMigrations } from "./startup-migrations";
 
 const app = express();
@@ -90,7 +90,7 @@ app.use((req, res, next) => {
   registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  app.use(async (err: any, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
@@ -98,11 +98,12 @@ app.use((req, res, next) => {
 
     try {
       const userId = (req as any)?.user?.claims?.sub as string | undefined;
+      const consented = await getPosthogConsent(userId);
       captureException(err, userId, {
         path: req.path,
         method: req.method,
         status,
-      });
+      }, consented);
     } catch (e) {
       console.warn("[posthog] error-mw captureException failed:", e);
     }

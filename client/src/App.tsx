@@ -33,7 +33,7 @@ import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
 import GlucometerNudge from "@/components/glucometer-nudge";
-import { identifyUser, resetUser, track, initPostHog } from "@/lib/posthog";
+import { identifyUser, resetUser, track, initPostHog, optOut, optIn } from "@/lib/posthog";
 import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 
@@ -1844,14 +1844,23 @@ function App() {
   // no events.
   // MCHK §5 — Only init after consent is loaded AND posthog consent is true.
   // posthogInitRef prevents double-init if consentState.posthog toggles.
+  // Ref always reflects the latest posthog consent value so the idle callback
+  // reads the most current state even if consent changed while it was pending.
+  const posthogConsentRef = useRef(consentState.posthog);
+  useEffect(() => {
+    posthogConsentRef.current = consentState.posthog;
+  }, [consentState.posthog]);
+
+  // Defer PostHog init to an idle callback. Always init once consent is
+  // loaded, passing the ref-resolved consent so stale closures cannot
+  // initialise in captured-on state after the user opted out during the wait.
   const posthogInitRef = useRef(false);
   useEffect(() => {
     if (!isConsentLoaded) return;
-    if (!consentState.posthog) return;
     if (posthogInitRef.current) return;
     posthogInitRef.current = true;
     let cancelled = false;
-    const start = () => { if (!cancelled) initPostHog(); };
+    const start = () => { if (!cancelled) initPostHog(posthogConsentRef.current); };
     const w = window as Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -1870,6 +1879,17 @@ function App() {
       }
       if (timeoutHandle != null) window.clearTimeout(timeoutHandle);
     };
+  }, [isConsentLoaded]);
+
+  // Opt-out/in immediately on consent changes. optOut() works even before
+  // init — it sets the localStorage flag that posthog.init() will respect.
+  useEffect(() => {
+    if (!isConsentLoaded) return;
+    if (consentState.posthog === false) {
+      optOut();
+    } else if (posthogInitRef.current) {
+      optIn();
+    }
   }, [isConsentLoaded, consentState.posthog]);
 
   useEffect(() => {

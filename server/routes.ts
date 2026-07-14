@@ -40,7 +40,7 @@ import {
   type RevenueCatWebhookBody,
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
-import { trackServer, captureException } from "./posthog";
+import { trackServer, captureException, getPosthogConsent } from "./posthog";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -1555,7 +1555,8 @@ export async function registerRoutes(
               });
               try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 1):", e); }
               if (isFirstEverResolution) {
-                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" });
+                const _phc1 = await getPosthogConsent(userId);
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" }, _phc1);
               }
             }
             dietJustGraduated = true;
@@ -1565,7 +1566,8 @@ export async function registerRoutes(
                 skippedStruggles: [...skipped, currentStruggleForReflection],
               });
               if (isFirstEverResolution) {
-                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "skipped" });
+                const _phc2 = await getPosthogConsent(userId);
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "skipped" }, _phc2);
               }
             }
             dietJustSkipped = true;
@@ -1575,7 +1577,8 @@ export async function registerRoutes(
                 difficultStruggles: [...difficult, currentStruggleForReflection],
               });
               if (isFirstEverResolution) {
-                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "moved_on" });
+                const _phc3 = await getPosthogConsent(userId);
+                trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "moved_on" }, _phc3);
               }
             }
             dietJustMovedOn = true;
@@ -2337,7 +2340,8 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       console.error("Error setting dinner label:", error);
-      captureException(error, req.user?.claims?.sub, { route: "/api/plan/dinner-label", method: "POST" });
+      const _phcDl = await getPosthogConsent(req.user?.claims?.sub);
+      captureException(error, req.user?.claims?.sub, { route: "/api/plan/dinner-label", method: "POST" }, _phcDl);
       res.status(500).json({ message: "Failed to set dinner label" });
     }
   });
@@ -2462,7 +2466,8 @@ export async function registerRoutes(
       res.json({ ...result, nextDayAdjustment, isBackfill: logIsBackfill, coinsAwarded });
     } catch (error) {
       console.error("Error creating log:", error);
-      captureException(error, req.user?.claims?.sub, { route: "/api/log", method: "POST" });
+      const _phcLog = await getPosthogConsent(req.user?.claims?.sub);
+      captureException(error, req.user?.claims?.sub, { route: "/api/log", method: "POST" }, _phcLog);
       res.status(500).json({ message: "Failed to create log" });
     }
   });
@@ -3767,7 +3772,8 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
         const sauceOptions = sauceVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
         const toppingOptions = toppingVocabs.filter(Boolean).map(v => ({ id: v!.internalId, label: getIngredientLabel(v!, locale) }));
 
-        trackServer(userId, "snap_label_succeeded_server", { source: "food_label", isFirstSnap });
+        const _phcLabel1 = await getPosthogConsent(userId);
+        trackServer(userId, "snap_label_succeeded_server", { source: "food_label", isFirstSnap }, _phcLabel1);
 
         return res.json({
           name: foodName,
@@ -3821,7 +3827,8 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
 
         const first = resolvedCombos[0];
 
-        trackServer(userId, "snap_label_succeeded_server", { source: "combos", isFirstSnap });
+        const _phcLabel2 = await getPosthogConsent(userId);
+        trackServer(userId, "snap_label_succeeded_server", { source: "combos", isFirstSnap }, _phcLabel2);
 
         return res.json({
           name: foodName,
@@ -3873,7 +3880,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       const rawExtras = typeof labelsParsed.extras === "string" ? labelsParsed.extras.trim() || null : null;
       const claudeExtras = stripExtrasContainedInName(foodName, rawExtras);
 
-      trackServer(userId, "snap_label_succeeded_server", { source: "claude", isFirstSnap });
+      const _phcLabel3 = await getPosthogConsent(userId);
+      trackServer(userId, "snap_label_succeeded_server", { source: "claude", isFirstSnap }, _phcLabel3);
 
       res.json({
         name: foodName,
@@ -3886,7 +3894,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       });
     } catch (error: any) {
       console.error("Snap label error:", error);
-      captureException(error, req.user?.claims?.sub, { route: "/api/snap/label", method: "POST" });
+      const _phcSl = await getPosthogConsent(req.user?.claims?.sub);
+      captureException(error, req.user?.claims?.sub, { route: "/api/snap/label", method: "POST" }, _phcSl);
       res.status(500).json({ message: "Food identification failed. Please try again." });
     }
   });
@@ -4149,8 +4158,9 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         if (cachedAdvice) {
           const snapId = await insertSnapRecord(cachedAdvice);
           try {
+            const _phcGpu1 = await getPosthogConsent(userId);
             const _cnt = await storage.getTotalSnaps(userId);
-            if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+            if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu1);
           } catch {}
           return res.json({
             advice: cachedAdvice,
@@ -4170,8 +4180,9 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId);
         const snapId = await insertSnapRecord(existingCachedAdvice);
         try {
+          const _phcGpu2 = await getPosthogConsent(userId);
           const _cnt = await storage.getTotalSnaps(userId);
-          if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+          if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu2);
         } catch {}
         return res.json({
           advice: existingCachedAdvice,
@@ -4374,15 +4385,17 @@ No explanation, just JSON.`,
 
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
+      const _phcAdv = await getPosthogConsent(userId);
       trackServer(userId, "snap_advice_succeeded_server", {
         adviceSource: cleanedResults.find(r => r.locale === lang)?.fromCache ? "cache" : "claude",
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
-      });
+      }, _phcAdv);
 
       const snapId = await insertSnapRecord(userAdvice);
       try {
+        const _phcGpu3 = await getPosthogConsent(userId);
         const _cnt = await storage.getTotalSnaps(userId);
-        if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt });
+        if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu3);
       } catch {}
       res.json({
         advice: userAdvice,
@@ -4396,7 +4409,8 @@ No explanation, just JSON.`,
       });
     } catch (error: any) {
       console.error("Snap advice error:", error);
-      captureException(error, req.user?.claims?.sub, { route: "/api/snap/advice", method: "POST" });
+      const _phcSa = await getPosthogConsent(req.user?.claims?.sub);
+      captureException(error, req.user?.claims?.sub, { route: "/api/snap/advice", method: "POST" }, _phcSa);
       res.status(500).json({ message: "Diet advice generation failed. Please try again." });
     }
   });
@@ -5299,7 +5313,8 @@ No explanation, just JSON.`,
       });
     } catch (error: any) {
       console.error("Error refreshing premium status:", error);
-      captureException(error, req.user?.claims?.sub, { route: "/api/refresh-premium-status", method: "POST" });
+      const _phcRps = await getPosthogConsent(req.user?.claims?.sub);
+      captureException(error, req.user?.claims?.sub, { route: "/api/refresh-premium-status", method: "POST" }, _phcRps);
       res.status(500).json({ message: "Failed to refresh premium status" });
     }
   };
@@ -5381,18 +5396,19 @@ No explanation, just JSON.`,
           (result.userId ? ` user=${result.userId}` : ""),
       );
 
+      const _phcWh = await getPosthogConsent(result.userId ?? null);
       trackServer(result.userId ?? null, "revenuecat_webhook_processed", {
         type: result.type ?? event.type ?? null,
         outcome: result.outcome,
-      });
+      }, _phcWh);
       if (result.outcome === "granted" && result.userId) {
-        trackServer(result.userId, "subscription_started");
+        trackServer(result.userId, "subscription_started", undefined, _phcWh);
       }
 
       return res.status(200).json({ ok: true, ...result });
     } catch (error: any) {
       console.error("[revenuecat/webhook] error:", error?.message || error);
-      captureException(error, null, { route: "/api/revenuecat/webhook", method: "POST" });
+      captureException(error, null, { route: "/api/revenuecat/webhook", method: "POST" }, false);
       // Return 500 so RevenueCat retries the delivery. Transient DB / network
       // issues should not silently drop entitlement-changing events.
       return res.status(500).json({ ok: false, error: "internal_error" });
@@ -5522,7 +5538,8 @@ No explanation, just JSON.`,
           });
           if (!wasPersonalised) {
             await storage.updateProfile(userId, { glucosePersonalisedSeen: false });
-            trackServer(userId, "glucose_pattern_personalized_unlocked", { readingCount });
+            const _phcNightly = await getPosthogConsent(userId);
+            trackServer(userId, "glucose_pattern_personalized_unlocked", { readingCount }, _phcNightly);
           }
         } else {
           await storage.upsertUserGlucoseThresholds({
