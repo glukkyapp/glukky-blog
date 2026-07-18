@@ -2724,6 +2724,8 @@ export async function registerRoutes(
         capacity: 60,
         reward: profile.piggyBankReward ?? null,
         needsRewardSetup: profile.piggyBankNeedsRewardSetup,
+        // Only expose introSeen=false (show popup) after onboarding is complete.
+        introSeen: !profile.onboardingComplete ? true : profile.introSeen,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch piggy bank" });

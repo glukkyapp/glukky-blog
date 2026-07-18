@@ -79,6 +79,7 @@ interface PiggyBankData {
   capacity: number;
   reward: string | null;
   needsRewardSetup: boolean;
+  introSeen: boolean;
 }
 
 function GlobalPiggyBankPopup() {
@@ -95,6 +96,18 @@ function GlobalPiggyBankPopup() {
   const [dialogMode, setDialogMode] = useState<"first_time" | "edit">("first_time");
 
   const PIGGY_INTRO_SKIPPED_KEY = "piggy_intro_skipped";
+
+  const introShownRef = useRef(false);
+
+  useEffect(() => {
+    if (piggy && !piggy.introSeen && !introShownRef.current) {
+      introShownRef.current = true;
+      apiRequest("PATCH", "/api/profile/intro-seen").catch(() => {});
+      setDialogMode("first_time");
+      setDialogStep("intro");
+      setShowRewardSetup(true);
+    }
+  }, [piggy?.introSeen]);
 
   useEffect(() => {
     if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
@@ -164,7 +177,7 @@ function GlobalPiggyBankPopup() {
                 <DialogTitle className="sr-only">{t("roadmap.reward_setup_title")}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col items-center text-center gap-4 py-2">
-                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-piggy-intro-body">
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line text-left" data-testid="text-piggy-intro-body">
                   {t("roadmap.piggy_intro_body")}
                 </p>
                 <Button

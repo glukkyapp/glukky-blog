@@ -272,7 +272,7 @@
     "coins_count": "{{coins}} / {{capacity}} coins",
     "reward_setup_title": "Set Your First Goal",
     "reward_setup_desc": "Set a reward for when your piggy bank is full (60 coins).",
-    "piggy_intro_body": "Every time you complete a daily task, you earn some piggy coins. Collect 60 and you can redeem the reward you set here!",
+    "piggy_intro_body": "We know it's hard to keep healthy!\nReward yourself:\nTake a photo to log a meal → 1 coin\nLog blood sugar after eating → 1 coin\nWeekly meal score ≥ 80 → 5 coins\nLog breakfast, lunch & dinner every day for a week → 10 coins\nCollect 60 coins and claim the reward you set for yourself — what's something you've been wanting lately?",
     "skip_for_now": "Skip for now, set it later",
     "reward_placeholder": "e.g. A nice meal out, new shoes...",
     "saving": "Saving...",
