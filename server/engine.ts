@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { weeklyPlans, weeklyPlanDays, userProfiles } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { awardDinnerGraduationCoin } from "./achievements";
+
 import {
   STRUGGLE_PRIORITY, DIET_TIP_LADDERS, MITIGATION_TRIO_LABELS,
   type UserProfile, type WeeklyPlan, type WeeklyPlanDay, type DailyLog,
@@ -716,9 +716,6 @@ export async function processDinnerGraduation(userId: string, eventDate: string)
 
   if (dinnerOutcomeType === "mastered") {
     await storage.updateProfile(userId, { dinnerMastered: true });
-    try { await awardDinnerGraduationCoin(userId, eventDate); } catch (err) {
-      console.error("Dinner graduation coin grant failed", { userId, eventDate, err });
-    }
   } else if (dinnerOutcomeType === "moved_on" || dinnerOutcomeType === "not_relevant") {
     await storage.updateProfile(userId, { dinnerExitType: dinnerOutcomeType });
   }

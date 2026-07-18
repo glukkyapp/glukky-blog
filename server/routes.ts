@@ -22,9 +22,10 @@ import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_
 import type { FoodLabel } from "@shared/schema";
 import { pickSources } from "./advice-sources";
 import {
-  evaluateDailyAchievements,
-  evaluateWeeklyAchievements,
-  awardStruggleGraduationCoin,
+  awardSnapCoin,
+  awardGlucoseCoin,
+  awardWeeklyMealScoreCoin,
+  awardWeeklyTripleMealCoin,
 } from "./achievements";
 import { canUseFeature, getGateStatus, computePremiumRefreshUpdate } from "./gate";
 import { BUILD_INFO } from "./build-info";
@@ -1553,7 +1554,6 @@ export async function registerRoutes(
                 skippedStruggles: skipped.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles: difficult.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 1):", e); }
               if (isFirstEverResolution) {
                 const _phc1 = await getPosthogConsent(userId);
                 trackServer(userId, "struggle_completed", { struggle_category: currentStruggleForReflection, status: "mastered" }, _phc1);
@@ -1596,7 +1596,6 @@ export async function registerRoutes(
                 skippedStruggles2: skipped2.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles2: difficult2.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 2):", e); }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -1627,7 +1626,6 @@ export async function registerRoutes(
                 skippedStruggles3: skipped3.filter(s => s !== currentStruggleForReflection),
                 difficultStruggles3: difficult3.filter(s => s !== currentStruggleForReflection),
               });
-              try { await awardStruggleGraduationCoin(userId, currentStruggleForReflection, today); } catch (e) { console.error("Struggle graduation coin error (cycle 3+):", e); }
             }
             dietJustGraduated = true;
           } else if (dietEvaluation.type === "not_relevant") {
@@ -1862,12 +1860,38 @@ export async function registerRoutes(
       if (completedWeekNum > 0) {
         const completedPlan = await storage.getWeeklyPlan(userId, completedWeekNum);
         if (completedPlan) {
-          const completedPlanDays = await storage.getWeeklyPlanDays(completedPlan.id);
           const completedPlanStart = typeof completedPlan.startDate === "string"
             ? completedPlan.startDate
             : (completedPlan.startDate as any).toISOString().split("T")[0];
-          const completedLogs = await storage.getDailyLogsByWeek(userId, completedWeekNum, completedPlanStart);
-          coinsAwarded = await evaluateWeeklyAchievements(userId, completedWeekNum, completedPlan, completedPlanDays, completedLogs);
+          const weekEndDate = new Date(new Date(completedPlanStart + "T00:00:00Z").getTime() + 6 * 86400000);
+          const weekEnd = weekEndDate.toISOString().split("T")[0];
+          const weekSnaps = await storage.getMealSnapsByDateRange(userId, completedPlanStart, weekEnd);
+          const activeSnaps = weekSnaps.filter(s => !s.isDeleted);
+          const snapsWithImpact = activeSnaps.filter(s => s.glucoseImpact);
+          const dayMealTypes = new Map<string, Set<string>>();
+          for (const snap of activeSnaps) {
+            if (!dayMealTypes.has(snap.localDate)) dayMealTypes.set(snap.localDate, new Set());
+            if (snap.mealType === "breakfast" || snap.mealType === "lunch" || snap.mealType === "dinner") {
+              dayMealTypes.get(snap.localDate)!.add(snap.mealType);
+            }
+          }
+          const wkSignalQuality = snapsWithImpact.length > 0
+            ? snapsWithImpact.filter(s =>
+                s.glucoseImpact === "low" || s.glucoseImpact === "medium" || isHealthyFood(s.foodName)
+              ).length / snapsWithImpact.length
+            : 0;
+          const wkTimingRegularity = dayMealTypes.size > 0
+            ? [...dayMealTypes.values()].filter(s => s.size >= 2).length / dayMealTypes.size
+            : 0;
+          const wkFreqConsistency = activeSnaps.length > 0
+            ? new Set(activeSnaps.map(s => s.localDate)).size / 7
+            : 0;
+          const weeklyScore = Math.round(wkSignalQuality * 50 + wkTimingRegularity * 25 + wkFreqConsistency * 25);
+          const [scoreCoins, tripleCoins] = await Promise.all([
+            awardWeeklyMealScoreCoin(userId, completedWeekNum, weeklyScore),
+            awardWeeklyTripleMealCoin(userId, completedWeekNum, completedPlanStart),
+          ]);
+          coinsAwarded = scoreCoins + tripleCoins;
         }
       }
 
@@ -2441,27 +2465,7 @@ export async function registerRoutes(
         }
       }
 
-      let coinsAwarded = 0;
-      try {
-        if (plan && finalLog) {
-          const achievePlanDays = await storage.getWeeklyPlanDays(plan.id);
-          const logDateObj = new Date(date + "T00:00:00");
-          const planStartObj = new Date(plan.startDate + "T00:00:00");
-          const dayOffset = Math.round((logDateObj.getTime() - planStartObj.getTime()) / (1000 * 60 * 60 * 24));
-          const achieveTodayPlanDay = achievePlanDays.find(d => d.dayOfWeek === dayOffset);
-          let prevWeekPlanDay: any = undefined;
-          if (plan.weekNumber > 1) {
-            const prevPlan = await storage.getWeeklyPlan(userId, plan.weekNumber - 1);
-            if (prevPlan) {
-              const prevPlanDays = await storage.getWeeklyPlanDays(prevPlan.id);
-              prevWeekPlanDay = prevPlanDays.find(d => d.dayOfWeek === dayOffset);
-            }
-          }
-          coinsAwarded = await evaluateDailyAchievements(userId, date, finalLog, plan, achieveTodayPlanDay, prevWeekPlanDay);
-        }
-      } catch (achErr) {
-        console.error("Daily achievement evaluation error:", achErr);
-      }
+      const coinsAwarded = 0;
 
       res.json({ ...result, nextDayAdjustment, isBackfill: logIsBackfill, coinsAwarded });
     } catch (error) {
@@ -4074,6 +4078,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             comboKey: activeComboKey,
           });
 
+          // Fire-and-forget: award 1 coin for snap completion.
+          void awardSnapCoin(userId, snap.id).catch(e => {
+            console.warn("[snap/coin] Award failed:", e?.message ?? e);
+          });
+
           // Fire-and-forget: schedule HStix reminder 55 min from now.
           // Cancels any pending reminder from a previous snap first.
           void (async () => {
@@ -4921,6 +4930,14 @@ No explanation, just JSON.`,
       if (!skip) {
         await storage.updateProfile(userId, { consecutiveSkippedMeals: 0 });
       }
+
+      // Fire-and-forget: award 1 coin when a glucose reading is logged.
+      if (glucoseMmol !== undefined) {
+        void awardGlucoseCoin(userId, snapId).catch(e => {
+          console.warn("[post-meal/coin] Award failed:", e?.message ?? e);
+        });
+      }
+
       if (glucoseMmol !== undefined) {
         const profile = await storage.getProfile(userId);
         if (profile && profile.fastingBaselineMmol === null) {

@@ -1,0 +1,16 @@
+Mostly correct — but there's one direct contradiction with what we just agreed on that needs fixing before this ships.
+
+The contradiction: extra parameter snuck back in
+We just finalized awardSnapCoin(userId, snapId) — two parameters, no localDate, because snapId alone is already a sufficient dedup key. But step 4 of this ticket says to call it as awardSnapCoin(userId, snap.id, snap.localDate) — three arguments, with localDate back in. That's the exact parameter we agreed was redundant and dropped. Either the wiring instruction is outdated (written before that decision), or the function signature drifted back to including it. Pick one and make step 2 and step 4 match. My recommendation: keep the two-argument version we already agreed on, and fix step 4 to drop the third argument.
+
+Everything else lines up well
+Per-user, per-week dedup for the two weekly award types is sound. Since getPiggyBankEvent scopes lookups by user, and each weekly award uses a fixed label ("weekly_meal_score_80" or "weekly_triple_meal") plus the week number, there's no risk of one week's award blocking a different week's, or one user's award blocking another's.
+
+The "fire-and-forget try/catch" pattern for coin awards is a good safety choice. It means if the coin-awarding logic fails for any reason, it won't take down the actual snap-saving or glucose-logging feature — those are the important actions, coins are a bonus layer.
+
+Removing all the old triggers cleanly (walk, diet tip, dinner, standing tap, graduation) and keeping the daily log route returning coinsAwarded: 0 (rather than removing the field) is a sensible way to avoid breaking the frontend, since the field still exists, it just always reports zero now.
+
+Scope boundaries are respected — not touching the 60-coin cap, not retroactively awarding old snaps, not changing the popup UI. All correctly left alone.
+
+One more thing worth double-checking
+For awardWeeklyTripleMealCoin, confirm that "every day has breakfast, lunch and dinner" correctly excludes soft-deleted snaps at the database query level, not just in memory after fetching — otherwise a user could have deleted meals still counting toward their reward. The ticket does mention "excluding deleted snaps," so just make sure that filter is applied in the actual getMealSnapsByDateRange call or the subsequent check, not skipped.
