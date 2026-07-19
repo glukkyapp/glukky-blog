@@ -19,6 +19,7 @@ import { track } from "@/lib/posthog";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 import PostMealCard from "@/components/PostMealCard";
 import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
+import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -76,6 +77,8 @@ export default function Home() {
   });
 
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
+  const { data: piggy } = useQuery<PiggyBankData>({ queryKey: ["/api/piggybank"] });
+  const { data: devCheck } = useQuery<{ isDev: boolean }>({ queryKey: ["/api/dev/check"] });
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
   const [recorded, setRecorded] = useState(false);
@@ -1495,6 +1498,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
 
       {mealWindow && (
         <div data-testid="section-meal-suggestion">
