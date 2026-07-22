@@ -230,6 +230,9 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
       queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
+      if (!skip && glucoseValue !== null) {
+        queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+      }
       if (!skip && !isSymptomOnly && glucoseValue !== null) {
         track("glucose_completed", { recorded: true });
       }
