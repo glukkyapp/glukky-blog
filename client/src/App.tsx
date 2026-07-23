@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
+import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,10 +95,14 @@ function GlobalPiggyBankPopup() {
   const [congratsShown, setCongratsShown] = useState(false);
   const [dialogStep, setDialogStep] = useState<"intro" | "goal">("intro");
   const [dialogMode, setDialogMode] = useState<"first_time" | "edit">("first_time");
+  const [coinPopupVisible, setCoinPopupVisible] = useState(false);
+  const [coinPopupCount, setCoinPopupCount] = useState(0);
 
   const PIGGY_INTRO_SKIPPED_KEY = "piggy_intro_skipped";
 
   const introShownRef = useRef(false);
+  const prevCoinsRef = useRef<number | null>(null);
+  const pendingCongratsRef = useRef(false);
 
   useEffect(() => {
     if (piggy && !piggy.introSeen && !introShownRef.current) {
@@ -109,6 +114,31 @@ function GlobalPiggyBankPopup() {
     }
   }, [piggy?.introSeen]);
 
+  // Coin-saved popup: fires whenever the cached coin count increases.
+  useEffect(() => {
+    if (!piggy) return;
+    if (prevCoinsRef.current === null) {
+      // First load — just record baseline, never show popup.
+      prevCoinsRef.current = piggy.coins;
+      return;
+    }
+    if (piggy.coins > prevCoinsRef.current) {
+      const delta = piggy.coins - prevCoinsRef.current;
+      prevCoinsRef.current = piggy.coins;
+      setCoinPopupCount(delta);
+      setCoinPopupVisible(true);
+      // Bank just hit capacity — chain congrats after the popup auto-dismisses.
+      if (piggy.coins >= piggy.capacity && !piggy.needsRewardSetup) {
+        setCongratsShown(true); // prevent the standalone congrats effect from double-firing
+        pendingCongratsRef.current = true;
+      }
+    } else {
+      prevCoinsRef.current = piggy.coins;
+    }
+  }, [piggy?.coins]);
+
+  // Standalone congrats: covers the case where the app is opened with a
+  // bank that was already full (no coin-increase delta to detect).
   useEffect(() => {
     if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
       setCongratsShown(true);
@@ -116,6 +146,15 @@ function GlobalPiggyBankPopup() {
       hapticPattern("..oO-Oo..", 80);
     }
   }, [piggy?.coins, piggy?.needsRewardSetup]);
+
+  const handleCoinPopupDismiss = useCallback(() => {
+    setCoinPopupVisible(false);
+    if (pendingCongratsRef.current) {
+      pendingCongratsRef.current = false;
+      hapticPattern("..oO-Oo..", 80);
+      setShowCongrats(true);
+    }
+  }, []);
 
   useEffect(() => {
     const handleOpenReward = () => {
@@ -165,6 +204,8 @@ function GlobalPiggyBankPopup() {
 
   return (
     <>
+      <CoinSavedPopup coins={coinPopupCount} visible={coinPopupVisible} onDismiss={handleCoinPopupDismiss} />
+
       <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
         <DialogContent
           data-testid="modal-reward-setup-global"
