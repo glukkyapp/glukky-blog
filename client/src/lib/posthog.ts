@@ -2,6 +2,8 @@
 import posthog from "posthog-js";
 
 let initialized = false;
+
+const INTERNAL_EMAILS = new Set(["cynthiayuyu@hotmail.com"]);
 type Pending =
   | { kind: "identify"; id: string; properties?: Record<string, unknown> }
   | { kind: "reset" }
@@ -116,7 +118,12 @@ export function initPostHog(consented = true): void {
 export function identifyUser(
   id: string,
   properties?: Record<string, unknown>,
+  email?: string | null,
 ): void {
+  if (email && INTERNAL_EMAILS.has(email.toLowerCase())) {
+    try { posthog.opt_out_capturing(); } catch (e) { /* silent */ }
+    return;
+  }
   const clean = sanitise(properties);
   if (!initialized) {
     pending.push({ kind: "identify", id, properties: clean });

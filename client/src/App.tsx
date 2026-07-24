@@ -1004,7 +1004,7 @@ function AuthenticatedApp() {
     if (currentId) {
       identifyUser(currentId, {
         is_premium: gateStatus?.isPremium ?? undefined,
-      });
+      }, user?.email);
       // MCHK §5 — only alias userId to RevenueCat when user has consented.
       // Do NOT call logoutFromRevenueCat() on consent revocation — only on
       // auth-user switch (handled above). Waiting for isConsentLoaded avoids
