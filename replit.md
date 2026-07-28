@@ -79,6 +79,22 @@ When adding new diet tips to DIET_TIP_LADDERS in shared/schema.ts, also add an i
 - Articles in the `*.zh-Hant.mjs` files must be written in **formal Traditional Chinese** (suitable for a wider Trad-Chinese reading audience), not HK Cantonese colloquial. HK-specific facts (CHP guidelines, local food references) stay accurate via the citation, but framing prose stays in formal Trad Chinese.
 - Citation entries (`sources[].label` and `sources[].publisher`) stay in **English in every locale**, regardless of the article language. Do not translate study titles, journal names, or organisation names into Chinese.
 
+## Data-use restrictions
+
+User health data — including glucose readings, post-meal symptoms, food logs, medication details, dietary struggles, and sleep patterns — is collected solely to deliver the app's personalised health-planning features to the individual user who provided it.
+
+**This data must not be used for:**
+1. AI/ML model training or fine-tuning (including prompting any model with identifiable user health records as training examples).
+2. Research studies, academic analysis, or aggregated cohort analysis of any kind.
+3. Sharing with any third party beyond the three consented services below.
+
+**Permitted third-party data flows (all require explicit user consent):**
+- **PostHog** — behavioural analytics only; all health fields and PII are stripped by `BLOCKED_KEYS` before any event leaves the device or server (MCHK §1.4.1). User IDs are SHA-256 hashed server-side.
+- **Claude (Anthropic)** — food recognition and dietary advice for the individual user's current session only; gated by per-user `claude` consent record (MCHK §5).
+- **OneSignal** — push notification delivery; no health values appear in notification content; gated by per-user push consent (MCHK §5).
+
+These rules are enforced in code at the data-exit points (MCHK §6). Any proposed change that would send health data to a new destination, use stored records for model training, or enable population-level analysis must be explicitly approved by the product owner before implementation.
+
 ## Gotchas
 
 - **Paywall Price Hardcoding:** The paywall headline price is hardcoded in locale files (`en.json`, `zh-Hant.json`, `yue.json`). Changing the price requires editing these strings directly.

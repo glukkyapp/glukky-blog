@@ -3440,7 +3440,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
 
-      // MCHK §5 — Claude consent gate
+      // MCHK §5 — Claude consent gate; §6 — food image and snap data must not be used for model training or research (see replit.md "Data-use restrictions")
       const { rows: _labelConsent } = await pool.query<{ consented: boolean }>(
         `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'claude' ORDER BY consented_at DESC LIMIT 1`,
         [userId]
@@ -3987,7 +3987,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     try {
       const userId = req.user.claims.sub;
 
-      // MCHK §5 — Claude consent gate
+      // MCHK §5 — Claude consent gate; §6 — dietary advice data must not be used for model training or research (see replit.md "Data-use restrictions")
       const { rows: _adviceConsent } = await pool.query<{ consented: boolean }>(
         `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'claude' ORDER BY consented_at DESC LIMIT 1`,
         [userId]

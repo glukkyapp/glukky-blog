@@ -1,4 +1,5 @@
 // Health values and PII stripped before sending — MCHK Code §1.4.1
+// MCHK §6 — Health data must not be used for model training, research studies, or any third-party beyond PostHog/Claude/OneSignal with explicit user consent. See replit.md "Data-use restrictions".
 import { PostHog } from "posthog-node";
 import { createHash } from "crypto";
 import { pool } from "./db";
