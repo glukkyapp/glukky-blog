@@ -685,7 +685,8 @@
     "no_walks": "未有",
     "dinner_before_9pm": "9點前",
     "dinner_after_9pm": "9點後（努力改善緊！）",
-    "late_dinner_timing": "晚餐時間管理"
+    "late_dinner_timing": "晚餐時間管理",
+    "confidentiality_link": "私隱聲明"
   },
   "popup": {
     "coin_saved_one": "已儲{{count}}個硬幣！",

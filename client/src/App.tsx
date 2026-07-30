@@ -62,6 +62,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 const FoodReports = lazy(() => import("@/pages/food-reports"));
 const FoodLog = lazy(() => import("@/pages/food-log"));
 const GlucosePatterns = lazy(() => import("@/pages/glucose-patterns"));
+const Confidentiality = lazy(() => import("@/pages/confidentiality"));
 
 const RouteFallback = () => (
   <div
@@ -1742,6 +1743,7 @@ function AuthenticatedApp() {
                 <Route path="/food-reports" component={FoodReports} />
                 <Route path="/food-log" component={FoodLog} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
+                <Route path="/confidentiality" component={Confidentiality} />
                 <Route component={WeeklyPlanner} />
               </Switch>
             </Suspense>
@@ -1793,6 +1795,7 @@ function AuthenticatedApp() {
                 <Route path="/food-reports" component={FoodReports} />
                 <Route path="/food-log" component={FoodLog} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
+                <Route path="/confidentiality" component={Confidentiality} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

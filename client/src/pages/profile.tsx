@@ -1026,7 +1026,17 @@ export default function ProfilePage() {
             {t("profile.delete_account.fallback_link_text")}
           </a>
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-4" data-testid="text-disclaimer-footer">
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          <a
+            href="/confidentiality"
+            onClick={(e) => { e.preventDefault(); setLocation("/confidentiality"); }}
+            className="underline hover:text-foreground transition-colors"
+            data-testid="link-confidentiality"
+          >
+            {t("profile.confidentiality_link")}
+          </a>
+        </p>
+        <p className="text-xs text-muted-foreground text-center mt-2" data-testid="text-disclaimer-footer">
           {t("disclaimer.footer")}
         </p>
       </div>

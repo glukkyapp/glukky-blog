@@ -681,7 +681,8 @@
     "no_walks": "None yet",
     "dinner_before_9pm": "Before 9pm",
     "dinner_after_9pm": "After 9pm (working on it!)",
-    "late_dinner_timing": "Late Dinner Timing"
+    "late_dinner_timing": "Late Dinner Timing",
+    "confidentiality_link": "Confidentiality Statement"
   },
   "popup": {
     "coin_saved_one": "+{{count}} coin saved!",
