@@ -2778,7 +2778,7 @@ export async function registerRoutes(
   // source of truth. The advice endpoint reads the snap counter to
   // populate its existing adviceUsedToday/adviceLimit response fields
   // for backward client compatibility.
-  const SNAP_LABEL_DAILY_LIMIT = 2;
+  const SNAP_LABEL_DAILY_LIMIT = 5;
   const snapLabelCount = new Map<string, { date: string; count: number }>();
   // Backstop counter for /api/snap/advice. The label cap above
   // already bounds normal-flow advice (advice runs after an admitted
