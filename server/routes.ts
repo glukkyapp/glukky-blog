@@ -4225,6 +4225,62 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const tagInstruction = `\n\nAfter your advice, on a NEW line output ONLY a JSON object with these keys (no other text on that line):\n{"is_sugary_food":true/false,"is_sugary_drink":true/false,"is_oily":true/false,"is_snack":true/false}`;
 
+      // Server-side "Next time" principles — picked randomly per request so
+      // advice varies even for the same cached dish. Claude only generates the
+      // "Right now" section; "Next time" is assembled here and never cached.
+      const NEXT_TIME_PRINCIPLES: Record<string, string[]> = {
+        en: [
+          "Load up on non-starchy vegetables — they help slow glucose absorption.",
+          "Cut back on added sugars and refined grains.",
+          "Choose whole, less-processed ingredients where you can.",
+          "Eat your carbs earlier in the day rather than later.",
+          "Add a protein source — fish, tofu, egg, or lean meat all work well.",
+          "Swap to higher-fibre carbs, like brown rice or wholegrain noodles.",
+          "Include some healthy fats — a handful of nuts, some avocado, or oily fish.",
+          "Avoid sugary drinks alongside your meal.",
+          "Go easy on added salt and sodium.",
+        ],
+        "zh-Hant": [
+          "多吃非澱粉類蔬菜——有助減緩血糖上升。",
+          "減少攝取添加糖和精製穀物。",
+          "盡量選擇天然、少加工的食材。",
+          "把碳水化合物留在一天較早的時候吃。",
+          "加點蛋白質——魚、豆腐、雞蛋或瘦肉都是好選擇。",
+          "換成高纖維碳水化合物，如糙米或全麥麵條。",
+          "加入一些健康脂肪——少量堅果、牛油果或油性魚類。",
+          "用餐時避免含糖飲料。",
+          "留意鹽分和鈉的攝取量。",
+        ],
+        yue: [
+          "多食非澱粉類蔬菜——有助減慢血糖上升。",
+          "少食添加糖同精製穀物。",
+          "盡量揀天然、少加工嘅食材。",
+          "碳水化合物盡量留喺一日較早嘅時候食。",
+          "加啲蛋白質——魚、豆腐、雞蛋或瘦肉都係好選擇。",
+          "換成高纖維碳水，例如糙米或全麥麵。",
+          "加入少少健康脂肪——少量堅果、牛油果或油性魚類。",
+          "食飯時唔好飲含糖飲料。",
+          "注意鹽同鈉嘅攝取量。",
+        ],
+      };
+
+      const buildNextTimeLine = (locale: string): string => {
+        const list = NEXT_TIME_PRINCIPLES[locale] ?? NEXT_TIME_PRINCIPLES["en"];
+        const label = locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:";
+        const connector = locale === "zh-Hant" || locale === "yue" ? "另外，" : "Also, ";
+        const idx1 = Math.floor(Math.random() * list.length);
+        if (Math.random() < 0.5 || list.length < 2) return `${label} ${list[idx1]}`;
+        let idx2 = Math.floor(Math.random() * (list.length - 1));
+        if (idx2 >= idx1) idx2++;
+        const tip1 = list[idx1];
+        const tip2Src = list[idx2];
+        // Lowercase the first letter for English so it reads naturally after "Also, "
+        const tip2 = locale === "en"
+          ? tip2Src.charAt(0).toLowerCase() + tip2Src.slice(1)
+          : tip2Src;
+        return `${label} ${tip1} ${connector}${tip2}`;
+      };
+
       const advicePromptSystem = (locale: string, includeTagLine: boolean) => `You are a dietary advisor helping a person manage blood sugar levels and glycaemic impact through practical food choices. Your sole focus is glycaemic impact and practical sugar reduction.
 
 Users are based in Hong Kong. You are familiar with local foods: congee, dim sum, rice noodles, wonton noodles, Hong Kong milk tea (with condensed milk), pineapple buns, char siu, egg tarts, curry fish balls, roast meats, cha chaan teng dishes, claypot rice, hotpot, siu mai, har gow, cheung fun, lo mai gai, turnip cake.
@@ -4249,10 +4305,9 @@ Always reply in this format (the optional cultural opener, if any, comes first o
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ${locale === "zh-Hant" || locale === "yue" ? "⚠️ 注意：" : "⚠️ Watch out:"} [the single biggest GI or sugar risk — 1 concise sentence]
 ${locale === "zh-Hant" ? "⚡ 現在：" : locale === "yue" ? "⚡ 依家：" : "⚡ Right now:"} [1–2 specific things to do with THIS meal right now]
-${locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:"} [1–2 changes for the next time this dish is prepared or ordered]
 
-If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ and 📝 lines instead. In that case output only 3 lines (Blood sugar impact, ⚡, 📝).
-If there is a genuine concern, output all 4 lines.
+If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ line instead. In that case output only 2 lines (Blood sugar impact, ⚡).
+If there is a genuine concern, output all 3 lines.
 
 Evidence-based principles from Diabetes Care 2019 Consensus & WHO/ADA guidance.
 Stay strictly within these lists. Do NOT invent principles outside them.
@@ -4265,17 +4320,6 @@ For ⚡ Right now, draw ONLY from these actions (pick 1–2 most relevant to thi
 5. Reduce the portion of carbs in this meal.
 
 You have identified the meal as Blood sugar impact: [High / Medium / Low]. Principle 2 and 4 are only for meals identified as high blood sugar impact. If Blood sugar impact is high, include at least one of them in the ⚡ Right now section. Other principles may be included alongside.
-
-For 📝 Next time, draw ONLY from these changes (pick 1–2 most relevant to this specific meal):
-1. Emphasize non-starchy vegetables.
-2. Minimize added sugars and refined grains.
-3. Prefer whole, minimally processed foods over highly processed foods.
-4. Eat most carbs earlier in the day.
-5. Add protein to the meal (e.g. fish, tofu, egg, lean meat).
-6. Choose high-fibre carbs (e.g. brown rice over white, wholegrain noodles).
-7. Include healthy fats (e.g. nuts, avocado, oily fish).
-8. Don't drink sugary drinks with meals.
-9. Limit added salt and sodium.
 
 Hard constraints on your advice:
 - Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.
@@ -4391,8 +4435,10 @@ No explanation, just JSON.`,
         ? computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId)
         : computeFocusPanel(struggle, tipIndexForPanel, null, resolvedPortionId, claudeTags);
 
-      const userAdvice = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
-      const userAdviceSources = pickSources(userAdvice);
+      const userAdviceClaude = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
+      const userAdviceSources = pickSources(userAdviceClaude);
+      // Append a randomly-picked "Next time" line — never cached, always fresh.
+      const userAdvice = userAdviceClaude + "\n" + buildNextTimeLine(lang);
 
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
