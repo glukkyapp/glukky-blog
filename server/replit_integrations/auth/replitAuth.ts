@@ -3,7 +3,7 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import { authStorage } from "./storage";
-import { exchangeAuthCodeForRefreshToken } from "../../apple-auth";
+import { exchangeAuthCodeForRefreshToken, verifyAppleIdentityToken } from "../../apple-auth";
 import { storage } from "../../storage";
 import { pool } from "../../db";
 
@@ -102,17 +102,40 @@ export async function setupAuth(app: Express) {
   // Apple Sign In — unified login + silent register
   app.post("/api/auth/apple-signin", async (req, res) => {
     try {
-      const { subject, email, authorizationCode, givenname, familyname } = req.body;
-      if (!subject) {
-        return res.status(400).json({ message: "Apple subject is required" });
+      const { identityToken, email, authorizationCode, givenname, familyname } = req.body;
+
+      // identityToken is the RS256-signed JWT Apple issues on every sign-in.
+      // We verify it against Apple's public JWKS before trusting any identity
+      // claims. A client-supplied `subject` field is NOT used — it cannot be
+      // authenticated without this step and would allow impersonation of any
+      // user whose Apple sub value an attacker has obtained.
+      if (!identityToken || typeof identityToken !== "string") {
+        return res.status(400).json({ message: "Apple identityToken is required" });
       }
 
+      let verifiedSub: string;
+      let verifiedEmail: string | undefined;
+      try {
+        const verified = await verifyAppleIdentityToken(identityToken);
+        verifiedSub = verified.sub;
+        verifiedEmail = verified.email;
+      } catch (verifyErr: any) {
+        console.warn(`[apple-signin] identity token verification failed: ${verifyErr?.message ?? verifyErr}`);
+        return res.status(401).json({ message: "Apple identity token verification failed" });
+      }
+
+      // Use the email Apple provides in the token (first sign-in only); fall
+      // back to the body email only when the token itself carries none — Apple
+      // occasionally omits it on re-authorisation flows.
+      const resolvedEmail = verifiedEmail || (typeof email === "string" ? email : undefined);
+
+      const subject = verifiedSub;
       let user = await authStorage.getUserByAppleId(subject);
 
-      if (!user && email) {
+      if (!user && resolvedEmail) {
         // Not found by Apple ID — check if an email-registered account already exists.
         // If so, link the Apple ID to it rather than creating a duplicate.
-        const existingByEmail = await authStorage.getUserByEmail(email.toLowerCase());
+        const existingByEmail = await authStorage.getUserByEmail(resolvedEmail.toLowerCase());
         if (existingByEmail) {
           await authStorage.linkAppleIdToUser(existingByEmail.id, subject);
           user = existingByEmail;
@@ -122,7 +145,7 @@ export async function setupAuth(app: Express) {
 
       if (!user) {
         // Genuinely new Apple user — create account silently, no error shown to UI
-        user = await authStorage.createAppleUser(subject, email || undefined);
+        user = await authStorage.createAppleUser(subject, resolvedEmail);
       }
 
       // Write Apple name to the profile for all resolution paths (found by apple_id,

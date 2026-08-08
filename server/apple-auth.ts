@@ -1,4 +1,124 @@
-import { sign as cryptoSign } from "crypto";
+import { sign as cryptoSign, createPublicKey, createVerify } from "crypto";
+
+// ─── Apple identity token verification ──────────────────────────────────────
+
+interface AppleJwk {
+  kty: string;
+  kid: string;
+  use: string;
+  alg: string;
+  n: string;
+  e: string;
+}
+
+let _jwksCache: { keys: AppleJwk[]; fetchedAt: number } | null = null;
+const JWKS_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function base64urlToBuffer(s: string): Buffer {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), "=");
+  return Buffer.from(padded, "base64");
+}
+
+async function fetchAppleJwks(): Promise<AppleJwk[]> {
+  const now = Date.now();
+  if (_jwksCache && now - _jwksCache.fetchedAt < JWKS_TTL_MS) {
+    return _jwksCache.keys;
+  }
+  const resp = await fetch("https://appleid.apple.com/auth/keys");
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch Apple JWKS: HTTP ${resp.status}`);
+  }
+  const data = (await resp.json()) as { keys: AppleJwk[] };
+  _jwksCache = { keys: data.keys, fetchedAt: now };
+  return data.keys;
+}
+
+function _verifyTokenWithKey(
+  jwk: AppleJwk,
+  headerB64: string,
+  payloadB64: string,
+  sigB64: string,
+  payload: { sub: string; email?: string },
+): { sub: string; email?: string } {
+  const publicKey = createPublicKey({ key: jwk as any, format: "jwk" });
+  const verifier = createVerify("RSA-SHA256");
+  verifier.update(`${headerB64}.${payloadB64}`);
+  const sig = base64urlToBuffer(sigB64);
+  const valid = verifier.verify(publicKey, sig);
+  if (!valid) {
+    throw new Error("Apple identity token: signature verification failed");
+  }
+  return { sub: payload.sub, email: payload.email };
+}
+
+/**
+ * Verifies an Apple identity token (JWT, RS256) against Apple's public JWKS.
+ * Returns the cryptographically confirmed { sub, email } on success.
+ * Throws a descriptive error on any failure — callers should treat any throw
+ * as an authentication failure and return 401.
+ *
+ * Why: Apple Sign-In sends both a one-time `authorizationCode` (used here for
+ * the server-to-server token exchange) and an `identityToken` (signed JWT).
+ * Only the identityToken carries Apple's cryptographic guarantee that the
+ * `sub` value came from a real Apple authentication for this app. Trusting a
+ * client-supplied `subject` field directly (without verifying this JWT) would
+ * allow anyone who knows another user's Apple sub to impersonate that user.
+ */
+export async function verifyAppleIdentityToken(
+  identityToken: string,
+): Promise<{ sub: string; email?: string }> {
+  const parts = identityToken.split(".");
+  if (parts.length !== 3) {
+    throw new Error("Apple identity token: invalid JWT format");
+  }
+  const [headerB64, payloadB64, sigB64] = parts;
+
+  const header = JSON.parse(base64urlToBuffer(headerB64).toString("utf8")) as {
+    alg: string;
+    kid: string;
+  };
+  const payload = JSON.parse(base64urlToBuffer(payloadB64).toString("utf8")) as {
+    iss: string;
+    aud: string;
+    exp: number;
+    sub: string;
+    email?: string;
+  };
+
+  // Validate standard JWT claims before touching the signature
+  if (payload.iss !== "https://appleid.apple.com") {
+    throw new Error(`Apple identity token: invalid issuer "${payload.iss}"`);
+  }
+  if (Math.floor(Date.now() / 1000) > payload.exp) {
+    throw new Error("Apple identity token: token has expired");
+  }
+  const clientId = process.env.APPLE_CLIENT_ID;
+  if (clientId && payload.aud !== clientId) {
+    throw new Error(
+      `Apple identity token: audience mismatch (got "${payload.aud}", expected "${clientId}")`,
+    );
+  }
+
+  // Find the matching public key by kid; retry once after a cache bust in case
+  // Apple has rotated keys since our last fetch.
+  let keys = await fetchAppleJwks();
+  let jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk) {
+    _jwksCache = null;
+    keys = await fetchAppleJwks();
+    jwk = keys.find((k) => k.kid === header.kid);
+    if (!jwk) {
+      throw new Error(
+        `Apple identity token: no JWKS key found for kid="${header.kid}"`,
+      );
+    }
+  }
+
+  return _verifyTokenWithKey(jwk, headerB64, payloadB64, sigB64, payload);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Generates an Apple client_secret JWT (ES256) for server-to-server API calls.
