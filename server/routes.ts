@@ -2,6 +2,7 @@ import type { Express } from "express";
 import path from "path";
 import { existsSync } from "fs";
 import { timingSafeEqual } from "crypto";
+import { adminLimiter, aiSnapLimiter } from "./rate-limiters";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
@@ -290,7 +291,7 @@ export async function registerRoutes(
   // (OneSignal player + RevenueCat subscriber) and atomic session
   // invalidation. Do not add raw delete logic here or push notifications
   // and RC records will silently survive.
-  app.post("/api/admin/wipe-user", async (req, res) => {
+  app.post("/api/admin/wipe-user", adminLimiter, async (req, res) => {
     try {
       const adminSecret = process.env.ADMIN_WIPE_SECRET;
       if (!adminSecret) {
@@ -333,7 +334,7 @@ export async function registerRoutes(
   // Requires x-admin-secret header. Accepts { email } or { userId }.
   // Sets is_pilot_participant = true and pilot_enrolled_at = NOW() atomically.
   // A companion unenroll action resets both fields to defaults.
-  app.post("/api/admin/enroll-pilot", async (req, res) => {
+  app.post("/api/admin/enroll-pilot", adminLimiter, async (req, res) => {
     try {
       const adminSecret = process.env.ADMIN_WIPE_SECRET;
       if (!adminSecret) {
@@ -3422,7 +3423,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/snap/label", isAuthenticated, async (req: any, res) => {
+  app.post("/api/snap/label", isAuthenticated, aiSnapLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -3892,7 +3893,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     }
   });
 
-  app.post("/api/snap/disambiguate", isAuthenticated, async (req: any, res) => {
+  app.post("/api/snap/disambiguate", isAuthenticated, aiSnapLimiter, async (req: any, res) => {
     try {
       const { text, field, locale } = req.body;
       if (!text || !field) return res.status(400).json({ message: "text and field required" });
@@ -3969,7 +3970,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
     return null;
   }
 
-  app.post("/api/snap/advice", isAuthenticated, async (req: any, res) => {
+  app.post("/api/snap/advice", isAuthenticated, aiSnapLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 

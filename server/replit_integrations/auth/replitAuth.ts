@@ -6,6 +6,7 @@ import { authStorage } from "./storage";
 import { exchangeAuthCodeForRefreshToken, verifyAppleIdentityToken } from "../../apple-auth";
 import { storage } from "../../storage";
 import { pool } from "../../db";
+import { authLimiter } from "../../rate-limiters";
 
 declare module "express-session" {
   interface SessionData {
@@ -39,7 +40,7 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
       if (!email || !password) {
@@ -69,7 +70,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
       if (!email || !password) {
@@ -100,7 +101,7 @@ export async function setupAuth(app: Express) {
   });
 
   // Apple Sign In — unified login + silent register
-  app.post("/api/auth/apple-signin", async (req, res) => {
+  app.post("/api/auth/apple-signin", authLimiter, async (req, res) => {
     try {
       const { identityToken, email, authorizationCode, givenname, familyname } = req.body;
 
