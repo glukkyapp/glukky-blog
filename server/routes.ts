@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import path from "path";
 import { existsSync } from "fs";
+import { timingSafeEqual } from "crypto";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
@@ -296,7 +297,9 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Admin wipe not configured" });
       }
       const provided = req.header("x-admin-secret");
-      if (provided !== adminSecret) {
+      const providedBuf = Buffer.from(provided ?? "");
+      const secretBuf = Buffer.from(adminSecret);
+      if (!provided || providedBuf.byteLength !== secretBuf.byteLength || !timingSafeEqual(providedBuf, secretBuf)) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const schema = z.object({
@@ -336,7 +339,10 @@ export async function registerRoutes(
       if (!adminSecret) {
         return res.status(503).json({ message: "Admin secret not configured" });
       }
-      if (req.header("x-admin-secret") !== adminSecret) {
+      const providedPilot = req.header("x-admin-secret");
+      const providedPilotBuf = Buffer.from(providedPilot ?? "");
+      const secretPilotBuf = Buffer.from(adminSecret);
+      if (!providedPilot || providedPilotBuf.byteLength !== secretPilotBuf.byteLength || !timingSafeEqual(providedPilotBuf, secretPilotBuf)) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const schema = z.object({
