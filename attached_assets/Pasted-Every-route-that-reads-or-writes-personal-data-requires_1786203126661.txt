@@ -1,0 +1,14 @@
+Every route that reads or writes personal data requires a verified login. Unlike the parking app's completely open API, every endpoint touching profile data, food logs, glucose readings, data exports, and account deletion in Glukky checks a verified session token first, then further scopes the query to that specific user's own ID — not just "is someone logged in," but "is this the right person's data." This was independently verified across the reviewed portion of the codebase and confirmed by a live test (an unauthorized account was correctly blocked from viewing another account's glucose data).
+
+Sign in with Apple now cryptographically verifies identity. We found and fixed a real vulnerability where the server was trusting a self-reported user ID from the app instead of verifying Apple's signed proof. This has been corrected: the server now fetches Apple's public verification keys, checks the token's signature, issuer, expiry, and audience, and only trusts an identity after that check passes — matching Apple's own required standard. Forged login attempts are now rejected before any account lookup even happens.
+
+A privilege-escalation bug in our clinical pilot enrollment was found and closed. Any logged-in user could previously grant themselves pilot-participant status through a normal profile update. That capability has been removed entirely from the general endpoint; only an admin-authenticated route can now enroll or unenroll someone.
+
+Dead, unused code was removed. An entire unused chat feature — never connected to the frontend, with no corresponding database tables — was deleted to reduce the codebase's attack surface and review complexity.
+
+What's Still Outstanding
+Admin-only endpoints rely on a single shared secret rather than full session authentication. This is a common and acceptable pattern for internal ops tooling, provided the secret itself is long, random, and never exposed — but it's a lower-assurance mechanism than full user authentication and depends on that secret staying secure.
+
+No rate limiting has been added yet to login, admin, or AI-calling endpoints. This doesn't expose data by itself, but it means these endpoints could theoretically be hit repeatedly without an automatic slowdown or lockout.
+
+A full line-by-line review of the entire backend is not yet complete — roughly 80% of the codebase (food-snap creation, the AI food-analysis integration, and related routes) has not yet been independently reviewed for the same ownership/authorization checks confirmed elsewhere.
