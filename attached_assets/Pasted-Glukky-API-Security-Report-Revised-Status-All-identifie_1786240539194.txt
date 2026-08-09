@@ -1,0 +1,23 @@
+Glukky API Security Report — Revised
+Status: All identified issues resolved as of August 8, 2026
+
+Background
+This review was prompted by the Hong Kong parking-app controversy (unauthenticated raw API server, exposed developer contact info, scraped competitor data), which raised the question of whether Glukky's own backend had similar gaps. Testing combined manual verification (cross-account browser tests) with a full code review of server/routes.ts.
+
+Summary Table
+Area	Original Finding	Status	Verification Method
+User data endpoints (data export, PDF export, profile, correction requests)	Needed confirmation that isAuthenticated middleware and per-user scoping were present	Confirmed secure	Code review — all routes correctly extract userId from verified session token, not client input
+Glucose pattern endpoint	Manual test with second account	Confirmed secure	Returned "unauthorised" when accessed while logged in as a different user
+Meal suggestions endpoint	Query scoped to requesting user	Confirmed secure	Code review — eq(mealSnaps.userId, userId) filter present
+Admin wipe/pilot-enrollment endpoints	Used custom header secret (x-admin-secret) instead of standard auth middleware	Fixed	User confirmed resolution
+Remaining routes (meal-snap creation, glucose readings, Claude/food-analysis endpoint, RevenueCat webhook)	Not visible in initial code chunks; risk of missing per-user ownership checks (BOLA)	Fixed	User confirmed resolution
+OneSignal register endpoint	Returned 404 on direct browser access	No action needed	Endpoint requires POST with payload; not a data-exposure risk
+What Was Actually Wrong (Root Causes)
+Missing authentication middleware on admin routes: /api/admin/wipe-user and /api/admin/enroll-pilot relied solely on a static shared secret in a request header rather than the app's standard session-based isAuthenticated check used everywhere else — a weaker, single-point-of-failure pattern.
+
+Unverified routes beyond the initial code sample: The first code review only covered lines 1-1200 of routes.ts. Routes handling glucose readings, meal-snap creation, and the Claude food-analysis call were not yet confirmed to enforce per-user ownership checks (the same class of flaw — Broken Object-Level Authorization — that exposed the parking app's competitor data).
+
+What Was Confirmed Secure From the Start
+Every user-facing data route (/api/user/data-export, /api/user/pdf-export, /api/profile, /api/user/correction-request, /api/user/deletion-status, account deletion/cancellation) correctly pulls the user ID from the authenticated session token (req.user.claims.sub), never from client-supplied input — this is the exact protection the parking app lacked.
+
+The manual cross-account test on the glucose pattern link returned "unauthorised" as expected, matching the code-level guarantees.
