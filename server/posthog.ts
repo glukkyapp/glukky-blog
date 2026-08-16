@@ -4,6 +4,12 @@ import { PostHog } from "posthog-node";
 import { createHash } from "crypto";
 import { pool } from "./db";
 
+// Dev/internal accounts — never tracked server-side, regardless of in-app consent.
+// Checked before the DB read so no capture() call ever fires for these IDs.
+const DEV_USER_IDS = new Set([
+  "25b37f85-0968-40b0-a49c-0fd4dff94a25", // cynthiayuyu@hotmail.com
+]);
+
 let client: PostHog | null = null;
 
 function getClient(): PostHog | null {
@@ -104,6 +110,7 @@ export function captureException(
 
 export async function getPosthogConsent(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
+  if (DEV_USER_IDS.has(userId)) return false; // short-circuit — never hits DB, no capture fires
   try {
     const result = await pool.query<{ consented: boolean }>(
       `SELECT consented FROM user_consents WHERE user_id = $1 AND service_name = 'posthog' ORDER BY consented_at DESC LIMIT 1`,
