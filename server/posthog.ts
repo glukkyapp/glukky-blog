@@ -7,7 +7,8 @@ import { pool } from "./db";
 // Dev/internal accounts — never tracked server-side, regardless of in-app consent.
 // Checked before the DB read so no capture() call ever fires for these IDs.
 const DEV_USER_IDS = new Set([
-  "25b37f85-0968-40b0-a49c-0fd4dff94a25", // cynthiayuyu@hotmail.com
+  "25b37f85-0968-40b0-a49c-0fd4dff94a25", // cynthiayuyu@hotmail.com — email/password account
+  "da5883b1-dbfe-49c9-8b71-50f3158a9a25", // cynthiayuyu@hotmail.com — Apple Sign-In account (production)
 ]);
 
 let client: PostHog | null = null;

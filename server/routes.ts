@@ -2781,7 +2781,8 @@ export async function registerRoutes(
   // Internal/test allowlist: these user IDs bypass the snap/label and snap/advice daily caps.
   const UNLIMITED_SNAP_USER_IDS = new Set<string>([
     "cee83e6f-0ae6-402d-a973-bc46c64a19b4", // yusycyn@gmail.com (correct production user id; old 352049ea-… was stale and never matched)
-    "25b37f85-0968-40b0-a49c-0fd4dff94a25", // cynthiayuyu@hotmail.com
+    "25b37f85-0968-40b0-a49c-0fd4dff94a25", // cynthiayuyu@hotmail.com — email/password account
+    "da5883b1-dbfe-49c9-8b71-50f3158a9a25", // cynthiayuyu@hotmail.com — Apple Sign-In account (production)
     "e6a689aa-3092-488b-adcc-ef9d68315cbd", // bbb@gmail.com
     "f9396538-ff03-49f9-a6f7-8dab8039ebfb", // iva_40@yahoo.com.hk
   ]);
