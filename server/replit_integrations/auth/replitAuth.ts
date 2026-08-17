@@ -105,32 +105,51 @@ export async function setupAuth(app: Express) {
     try {
       const { identityToken, email, authorizationCode, givenname, familyname } = req.body;
 
-      // identityToken is the RS256-signed JWT Apple issues on every sign-in.
-      // We verify it against Apple's public JWKS before trusting any identity
-      // claims. A client-supplied `subject` field is NOT used — it cannot be
-      // authenticated without this step and would allow impersonation of any
-      // user whose Apple sub value an attacker has obtained.
-      if (!identityToken || typeof identityToken !== "string") {
-        return res.status(400).json({ message: "Apple identityToken is required" });
+      // SECURITY NOTE — TEMPORARY FALLBACK (tracked, not permanent):
+      // The correct flow is to verify the RS256-signed identityToken Apple
+      // issues on every sign-in against Apple's public JWKS, and derive `sub`
+      // from the verified payload — never from the client-supplied `subject`
+      // field, which cannot be authenticated and would allow impersonation.
+      //
+      // The current iOS bridge does NOT yet send identityToken. Until the iOS
+      // app is updated and that version is live, we fall back to the
+      // client-supplied `subject`. Every such unauthenticated login emits a
+      // [TEMP-SECURITY] warning so the state is visible in production logs.
+      //
+      // Stage 3: once the new iOS build is live, remove the fallback block
+      // below and restore the hard requirement + 400 on missing token.
+
+      let subject: string;
+      let resolvedEmail: string | undefined;
+
+      if (identityToken && typeof identityToken === "string") {
+        // Preferred path — verify token cryptographically.
+        let verifiedSub: string;
+        let verifiedEmail: string | undefined;
+        try {
+          const verified = await verifyAppleIdentityToken(identityToken);
+          verifiedSub = verified.sub;
+          verifiedEmail = verified.email;
+        } catch (verifyErr: any) {
+          console.warn(`[apple-signin] identity token verification failed: ${verifyErr?.message ?? verifyErr}`);
+          return res.status(401).json({ message: "Apple identity token verification failed" });
+        }
+        subject = verifiedSub;
+        // Use the email Apple provides in the token (first sign-in only); fall
+        // back to the body email only when the token itself carries none.
+        resolvedEmail = verifiedEmail || (typeof email === "string" ? email : undefined);
+      } else {
+        // [TEMP-SECURITY] Fallback: no identityToken supplied by iOS bridge.
+        // Trusting client-supplied subject without cryptographic verification.
+        // Remove this block once iOS app sends identityToken on every sign-in.
+        const clientSubject = req.body.subject;
+        if (!clientSubject || typeof clientSubject !== "string") {
+          return res.status(400).json({ message: "Apple sign-in requires either identityToken or subject" });
+        }
+        console.warn(`[TEMP-SECURITY] apple-signin without identityToken — subject=${clientSubject} ip=${req.ip}. iOS bridge must be updated to send identityToken.`);
+        subject = clientSubject;
+        resolvedEmail = typeof email === "string" ? email : undefined;
       }
-
-      let verifiedSub: string;
-      let verifiedEmail: string | undefined;
-      try {
-        const verified = await verifyAppleIdentityToken(identityToken);
-        verifiedSub = verified.sub;
-        verifiedEmail = verified.email;
-      } catch (verifyErr: any) {
-        console.warn(`[apple-signin] identity token verification failed: ${verifyErr?.message ?? verifyErr}`);
-        return res.status(401).json({ message: "Apple identity token verification failed" });
-      }
-
-      // Use the email Apple provides in the token (first sign-in only); fall
-      // back to the body email only when the token itself carries none — Apple
-      // occasionally omits it on re-authorisation flows.
-      const resolvedEmail = verifiedEmail || (typeof email === "string" ? email : undefined);
-
-      const subject = verifiedSub;
       let user = await authStorage.getUserByAppleId(subject);
 
       if (!user && resolvedEmail) {
