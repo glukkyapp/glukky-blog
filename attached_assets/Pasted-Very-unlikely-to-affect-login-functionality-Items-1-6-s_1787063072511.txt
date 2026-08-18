@@ -1,0 +1,21 @@
+Very unlikely to affect login/functionality
+Items 1-6 (secrets, SQL injection, XSS, rate limiting, error messages) — these were confirmed as already correctly implemented, not changes being proposed. Since nothing needs to change here, there's no risk to login or app function from these items at all.
+
+The real risk is specifically in item 7 (dependency updates) — and it varies by package
+Low risk — safe:
+
+rollup, vite, postcss, picomatch, minimatch — if genuinely build-time-only (needs verification per my last note), updating these can't affect runtime login behavior at all, since they don't run when your app is live; they only run when the code is being built/bundled.
+
+Medium risk — worth testing before trusting:
+
+ws (WebSocket library) and path-to-regexp (used for URL routing) — if either of these gets a version bump that changes behavior, it could subtly affect how login requests are routed or how real-time connections work. A patch-level update (npm audit fix without --force) is usually safe, but should still be tested by actually logging in afterward, not just assumed.
+
+lodash — a utility library; low risk of breaking login specifically unless the auth code happens to use a lodash function whose behavior changed.
+
+Higher risk — this is the one to actually worry about:
+
+drizzle-orm — this is your database ORM, meaning it's directly involved in every database query, including the queries used during login (looking up users, checking credentials, etc.). If fixing its vulnerability requires a major version bump (--force), that's the one most likely to actually break login — major ORM version changes can alter query syntax, connection handling, or behavior in ways that cause silent failures or errors during exactly the kind of database lookups login depends on.
+
+Separate, standalone risk:
+
+xlsx — only affects login if your login flow somehow touches spreadsheet import/export (unlikely for a login/auth path specifically), so this is probably unrelated to login regardless of how it's fixed.
