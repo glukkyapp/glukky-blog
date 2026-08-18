@@ -88,7 +88,7 @@
     "tw-animate-css": "^1.2.5",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
-    "ws": "^8.18.0",
+    "ws": "^8.21.3",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.5.4"
@@ -121,7 +121,11 @@
   "overrides": {
     "drizzle-kit": {
       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
-    }
+    },
+    "path-to-regexp": "^8.4.2",
+    "lodash": "^4.18.1",
+    "nanoid": "^3.3.18",
+    "protobufjs": "^7.6.5"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
