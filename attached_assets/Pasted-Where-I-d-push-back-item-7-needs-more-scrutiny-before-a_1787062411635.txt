@@ -1,0 +1,17 @@
+Where I'd push back — item 7 needs more scrutiny before approving "just run npm audit fix"
+1. "Build-time only" needs verification, not just assertion
+
+The agent claims rollup, vite, postcss, picomatch, minimatch are build-time only and "don't run in production." This is often true for a typical bundler setup, but it's an assumption, not something it demonstrated. Ask directly: "How did you confirm these are dev-dependencies not bundled into the production server code, rather than just assuming based on package name?" A quick npm ls <package> showing it's nested only under devDependencies would prove this properly.
+
+2. npm audit fix (without --force) is generally safe, but not guaranteed harmless
+
+Plain npm audit fix only applies patch/minor version bumps that shouldn't break your code — reasonably safe to run. But if any of those 13 vulnerabilities require npm audit fix --force, that can bump major versions and potentially break your app (especially something core like drizzle-orm, which is your database ORM — a major version bump there could change query syntax or behavior). Ask the agent to confirm: does fixing these require --force, or do they resolve with the plain, safe command? If --force is needed for drizzle-orm specifically, that should be tested carefully, not casually approved in the same breath as the others.
+
+3. xlsx is worth naming as the standout concern
+
+The xlsx package (SheetJS) has had well-known prototype pollution and ReDoS vulnerabilities in past versions, and importantly, the SheetJS project stopped publishing security-patched fixes to the standard npm registry for a while — meaning npm audit fix sometimes can't actually resolve xlsx vulnerabilities the normal way, and may require manually switching to a different install source or package entirely. Ask specifically: "Does npm audit fix actually resolve the xlsx vulnerability, or does that one need a separate manual fix?"
+
+What to ask before approving
+"Before running audit fix: (1) confirm which of these packages are genuinely dev-only via npm ls, not just assumed by name, (2) confirm whether any fixes require --force — especially for drizzle-orm — and flag those separately for manual testing rather than auto-applying, and (3) confirm whether xlsx's vulnerability is actually fixable via npm audit fix or needs a different approach."
+
+Once those three are clarified, the plain npm audit fix (non-force) is safe to run for the remaining ones.
