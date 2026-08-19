@@ -1,12 +1,12 @@
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Home, Utensils, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp } from "lucide-react";
+import { Home, ClipboardList, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
 import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
+import { isReportLocation } from "@/lib/report-navigation";
 
 const NAV_TAP = { scale: 0.82 };
 const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 20, mass: 0.5 };
@@ -20,13 +20,13 @@ const NAV_FEATURE_MAP: Record<string, string> = {
 export default function FloatingNavBar() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
-  const [activePath, setActivePath] = useState(location || "/");
+  const search = useSearch();
   const isMobile = useIsMobile();
   const { gate, isLocked, showPaywall } = useGate();
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
-    { key: "food", label: t("nav.food"), path: "/food-log", icon: Utensils },
+    { key: "report", label: t("nav.report", "Report"), path: "/report", icon: ClipboardList },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
     ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
     { key: "glucose", label: t("glucose.patterns_nav"), path: "/glucose-patterns", icon: TrendingUp },
@@ -35,7 +35,10 @@ export default function FloatingNavBar() {
   ];
 
   const isActive = (path: string) =>
-    path === "/" ? activePath === "/" || activePath === "" : activePath.startsWith(path);
+    path === "/" ? location === "/" || location === "" :
+    path === "/report"
+      ? isReportLocation(search ? `${location}?${search.replace(/^\?/, "")}` : location)
+      : location.startsWith(path);
 
   const isNavLocked = (key: string): boolean => {
     // Profile is always reachable so the user can access settings,
@@ -98,8 +101,7 @@ export default function FloatingNavBar() {
       return;
     }
     hapticTap("LIGHT");
-    setActivePath(path);
-    setLocation(path);
+    setLocation(key === "report" ? "/report" : path);
   };
 
   return (
@@ -140,6 +142,7 @@ export default function FloatingNavBar() {
                 border: "none",
               }}
               data-testid={`nav-tab-${key}`}
+              aria-current={active ? "page" : undefined}
             >
               {locked ? <Lock size={18} /> : <Icon size={22} strokeWidth={active ? 2.5 : 2} />}
               <motion.span

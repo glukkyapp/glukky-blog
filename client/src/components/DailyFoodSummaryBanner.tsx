@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SnapEntry {
@@ -204,11 +205,17 @@ interface Props {
   tz?: string;
   timeOverride?: number | null;
   dateOverride?: string | null;
+  onViewMeal?: () => void;
+  viewMealLabel?: string;
 }
 
-export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props) {
+export function DailyFoodSummaryBanner({
+  tz,
+  dateOverride,
+  onViewMeal,
+  viewMealLabel = "了解這餐",
+}: Props) {
   const { t } = useTranslation();
-  const hour = timeOverride ?? new Date().getHours();
   const yesterday = getYesterday(tz, dateOverride);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -220,10 +227,9 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
       if (!res.ok) throw new Error("Failed to fetch daily summary");
       return res.json();
     },
-    enabled: hour >= 8,
   });
 
-  if (hour < 8 || isLoading) return null;
+  if (isLoading) return null;
 
   const snaps = data?.snaps ?? [];
   const irregularMealCount = data?.irregularMealCount ?? 0;
@@ -242,8 +248,31 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
       onClick={() => setTooltip(null)}
     >
       <CardContent className="pt-3 pb-3">
+        <div className="rounded-lg bg-background/60 px-3 py-2.5 flex flex-col gap-1">
+          <p className="text-lg font-semibold leading-relaxed text-foreground" data-testid="text-daily-summary-primary">
+            {primary}
+          </p>
+          {primarySuggestion && (
+            <p className="text-base text-muted-foreground leading-relaxed">{primarySuggestion}</p>
+          )}
+          {snaps.length > 0 && onViewMeal && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewMeal();
+              }}
+              className="mt-2 inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.97]"
+              data-testid="button-daily-view-meal"
+            >
+              {viewMealLabel}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
         {snaps.length > 0 && (
-          <div ref={containerRef} className="mb-3">
+          <div ref={containerRef} className="mt-3">
             <p className="text-[10px] text-muted-foreground/60 mb-1.5 font-medium tracking-wide uppercase">
               昨日飲食時間軸
             </p>
@@ -294,15 +323,7 @@ export function DailyFoodSummaryBanner({ tz, timeOverride, dateOverride }: Props
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <div className="rounded-lg bg-background/60 px-3 py-2.5 flex flex-col gap-1">
-            <p className="text-lg font-semibold leading-relaxed text-foreground" data-testid="text-daily-summary-primary">
-              {primary}
-            </p>
-            {primarySuggestion && (
-              <p className="text-base text-muted-foreground leading-relaxed">{primarySuggestion}</p>
-            )}
-          </div>
+        <div className="mt-3 flex flex-col gap-2">
           {secondary.map((s, i) => (
             <div key={i} className="rounded-lg bg-background/60 px-3 py-2.5 flex flex-col gap-1">
               <p className="text-lg font-semibold leading-relaxed text-foreground" data-testid={`text-daily-summary-secondary-${i}`}>

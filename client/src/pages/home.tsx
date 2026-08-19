@@ -16,9 +16,7 @@ import giftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_prev
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
-import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 import PostMealCard from "@/components/PostMealCard";
-import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
@@ -1541,10 +1539,6 @@ export default function Home() {
           onDone={() => queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] })}
         />
       )}
-
-      {profile && <DailyFoodSummaryBanner tz={profile.deviceTimezone ?? undefined} timeOverride={devTime?.timeOverride ?? null} dateOverride={devTime?.dateOverride ?? null} />}
-
-      <WeeklyCard weekStart={getWeekStart(profile?.deviceTimezone ?? undefined)} />
 
       {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
         <Card className="is-alert border-amber-300/50 bg-amber-50 dark:bg-amber-950/20" data-testid="card-catchup-banner">

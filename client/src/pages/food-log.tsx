@@ -191,6 +191,10 @@ export default function FoodLog() {
   };
 
   const handleBack = () => {
+    if (new URLSearchParams(search).get("from") === "report") {
+      setLocation("/report");
+      return;
+    }
     if (window.history.length > 1) {
       window.history.back();
     } else {

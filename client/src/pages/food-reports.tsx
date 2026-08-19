@@ -200,7 +200,19 @@ function HighlightedText({ text }: { text: string }) {
   );
 }
 
-export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string; variant?: "home" | "reports" }) {
+interface WeeklyCardProps {
+  weekStart: string;
+  variant?: "home" | "reports" | "preview";
+  onOpenWeekly?: () => void;
+  openWeeklyLabel?: string;
+}
+
+export function WeeklyCard({
+  weekStart,
+  variant = "home",
+  onOpenWeekly,
+  openWeeklyLabel = "查看本週報告",
+}: WeeklyCardProps) {
   const { t } = useTranslation();
   const [scoreExpanded, setScoreExpanded] = useState(false);
   const { data, isLoading } = useQuery<WeeklySummary>({
@@ -226,7 +238,7 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
 
   if (data.insufficient) {
     return (
-      <Card data-testid="card-weekly-report">
+      <Card data-testid={variant === "preview" ? "card-weekly-preview" : "card-weekly-report"}>
         <CardHeader className="pb-2 pt-4">
           <CardTitle className="text-base">本週飲食摘要</CardTitle>
         </CardHeader>
@@ -234,6 +246,16 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
           <p className="text-sm text-muted-foreground">
             繼續使用 Food Snap 記錄飲食，下週將生成完整報告。（已記錄{data.snapCount}餐）
           </p>
+          {variant === "preview" && onOpenWeekly && (
+            <button
+              type="button"
+              onClick={onOpenWeekly}
+              className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.98]"
+              data-testid="button-open-weekly-report"
+            >
+              {openWeeklyLabel}
+            </button>
+          )}
         </CardContent>
       </Card>
     );
@@ -349,6 +371,48 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
     }
   }
 
+  const scoreVerdict = data.score !== undefined
+    ? data.score >= 80
+      ? "本週飲食控制良好，繼續保持。"
+      : data.score >= 60
+        ? "本週飲食表現尚可，仍有進步空間。"
+        : "本週飲食有待改善，繼續記錄有助了解規律。"
+    : null;
+
+  if (variant === "preview") {
+    return (
+      <Card data-testid="card-weekly-preview">
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-base">本週飲食摘要</CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4 flex flex-col gap-3">
+          {data.score !== undefined && (
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">本週分數</p>
+                <span className="text-4xl font-bold text-foreground" data-testid="text-weekly-preview-score">{data.score}</span>
+              </div>
+              {scoreVerdict && <p className="flex-1 text-sm text-muted-foreground">{scoreVerdict}</p>}
+            </div>
+          )}
+          {data.hasAiDays && data.dayBreakdown && (
+            <WeeklyDonut breakdown={data.dayBreakdown} />
+          )}
+          {onOpenWeekly && (
+            <button
+              type="button"
+              onClick={onOpenWeekly}
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.98]"
+              data-testid="button-open-weekly-report"
+            >
+              {openWeeklyLabel}
+            </button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card data-testid="card-weekly-report">
       <CardHeader className="pb-2 pt-4">
@@ -360,9 +424,7 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
             <span className="text-4xl font-bold text-foreground" data-testid="text-weekly-score">{data.score}</span>
             <div className="flex-1">
               <p className="text-sm text-muted-foreground">
-                {data.score >= 80 ? "本週飲食控制良好，繼續保持。"
-                  : data.score >= 60 ? "本週飲食表現尚可，仍有進步空間。"
-                  : "本週飲食有待改善，繼續記錄有助了解規律。"}
+                {scoreVerdict}
               </p>
               <p className="text-xs text-muted-foreground/60 mt-0.5">截至今日</p>
             </div>
@@ -392,7 +454,7 @@ export function WeeklyCard({ weekStart, variant = "home" }: { weekStart: string;
             </div>
           </div>
         )}
-        {variant === "home" && data.hasAiDays && data.dayBreakdown && (
+        {(variant === "home" || variant === "reports") && data.hasAiDays && data.dayBreakdown && (
           <WeeklyDonut breakdown={data.dayBreakdown} />
         )}
         {variant === "reports" && data.dailyGrid && data.dailyGrid.length > 0 && (

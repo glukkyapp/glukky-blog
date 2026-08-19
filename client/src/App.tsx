@@ -37,6 +37,7 @@ import GlucometerNudge from "@/components/glucometer-nudge";
 import { identifyUser, resetUser, track, initPostHog, optOut, optIn } from "@/lib/posthog";
 import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
+import MainFontToggle from "@/components/main-font-toggle";
 
 declare global {
   interface Window {
@@ -59,7 +60,7 @@ const HealthInfo = lazy(() => import("@/pages/health-info"));
 const AppIntro = lazy(() => import("@/pages/app-intro"));
 const DevPanel = lazy(() => import("@/pages/dev-panel"));
 const NotFound = lazy(() => import("@/pages/not-found"));
-const FoodReports = lazy(() => import("@/pages/food-reports"));
+const Report = lazy(() => import("@/pages/report"));
 const FoodLog = lazy(() => import("@/pages/food-log"));
 const GlucosePatterns = lazy(() => import("@/pages/glucose-patterns"));
 const Confidentiality = lazy(() => import("@/pages/confidentiality"));
@@ -1740,7 +1741,8 @@ function AuthenticatedApp() {
               <Switch>
                 <Route path="/profile" component={Profile} />
                 <Route path="/health-info" component={HealthInfo} />
-                <Route path="/food-reports" component={FoodReports} />
+                <Route path="/report" component={Report} />
+                <Route path="/food-reports" component={Report} />
                 <Route path="/food-log" component={FoodLog} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route path="/confidentiality" component={Confidentiality} />
@@ -1749,6 +1751,7 @@ function AuthenticatedApp() {
             </Suspense>
           </div>
           <FloatingNavBar />
+          <MainFontToggle />
           <GlobalPiggyBankPopup />
           <GlucometerNudge />
           {unlockingOverlay && <UnlockingOverlay />}
@@ -1792,7 +1795,8 @@ function AuthenticatedApp() {
                 <Route path="/profile" component={Profile} />
                 <Route path="/monthly" component={MonthlyReport} />
                 <Route path="/dev" component={DevPanel} />
-                <Route path="/food-reports" component={FoodReports} />
+                <Route path="/report" component={Report} />
+                <Route path="/food-reports" component={Report} />
                 <Route path="/food-log" component={FoodLog} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route path="/confidentiality" component={Confidentiality} />
@@ -1802,6 +1806,7 @@ function AuthenticatedApp() {
           </AnimatedPageWrapper>
         </div>
         <FloatingNavBar />
+        <MainFontToggle />
         <GlobalPiggyBankPopup />
         <GlucometerNudge />
         {unlockingOverlay && <UnlockingOverlay />}
