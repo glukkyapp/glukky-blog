@@ -73,6 +73,32 @@ console.log("\nRight-now mapping per locale");
   check("no selector numbers leak", mapRightNow("en", "high", [2, 4]).every((t) => !/^\d/.test(t)));
 }
 
+console.log("\nApproved Chinese action copy");
+{
+  const zhHantExpected = [
+    "先吃菜和肉，最後才吃飯或麵",
+    "飯後慢慢喝一杯水",
+    "吃慢一點",
+    "飯後步行10分鐘",
+    "這餐可減少飯或麵的分量",
+  ];
+  const yueExpected = [
+    "先食菜同肉，最後先食飯或麵",
+    "食完飯後慢慢飲一杯水",
+    "食慢啲",
+    "飯後行10分鐘",
+    "呢餐可以減少飯或麵嘅份量",
+  ];
+  check(
+    "zh-Hant uses all approved strings exactly",
+    JSON.stringify(Object.values(RIGHT_NOW_ACTIONS["zh-Hant"])) === JSON.stringify(zhHantExpected),
+  );
+  check(
+    "yue uses all approved strings exactly",
+    JSON.stringify(Object.values(RIGHT_NOW_ACTIONS.yue)) === JSON.stringify(yueExpected),
+  );
+}
+
 console.log("\nNext-time selection");
 {
   // rand sequence: first < 1/3 → vegetable branch
@@ -153,7 +179,29 @@ console.log("\nbuildStructuredAdvice — legacy cached advice (emoji format)");
   const s = buildStructuredAdvice(legacy, "yue", "next");
   check("impact medium", s.impactValue === "medium");
   check("legacy watch-out becomes food-less row", s.watchOut.length === 1 && s.watchOut[0].food === null);
-  check("legacy right-now text preserved", s.rightNow.length === 1 && s.rightNow[0] === "食慢啲，先食菜。");
+  check(
+    "legacy right-now action uses fixed yue copy",
+    s.rightNow.length === 1 && s.rightNow[0] === RIGHT_NOW_ACTIONS.yue[3],
+  );
+  const zhLegacy = buildStructuredAdvice(
+    "血糖影響: 中\n現在：先吃蔬菜和蛋白質，最後才吃碳水化合物。",
+    "zh-Hant",
+    "next",
+  );
+  check(
+    "legacy zh-Hant action uses fixed approved copy",
+    zhLegacy.rightNow.length === 1 && zhLegacy.rightNow[0] === RIGHT_NOW_ACTIONS["zh-Hant"][1],
+  );
+  const englishLegacyInYue = buildStructuredAdvice(
+    "Blood sugar impact: High\nRight now: Go for a 10-minute walk after the meal.",
+    "yue",
+    "next",
+  );
+  check(
+    "legacy English action never leaks into yue",
+    englishLegacyInYue.rightNow.includes(RIGHT_NOW_ACTIONS.yue[4]) &&
+      englishLegacyInYue.rightNow.every((action) => !/[a-z]/i.test(action)),
+  );
   const all = JSON.stringify(s);
   check("no emoji anywhere in payload", !/[\u26A0\u26A1\uFE0F]|⚠|⚡|📝/u.test(all));
 }

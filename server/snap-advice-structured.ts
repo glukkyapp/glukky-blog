@@ -54,18 +54,18 @@ export const RIGHT_NOW_ACTIONS: Record<Locale, Record<number, string>> = {
     5: "Reduce the portion of carbs in this meal.",
   },
   "zh-Hant": {
-    1: "先吃蔬菜和蛋白質，最後才吃碳水化合物。",
-    2: "吃完飯後慢慢喝一杯水，不要邊吃邊喝。",
-    3: "放慢速度，細嚼慢嚥。",
-    4: "飯後散步10分鐘。",
-    5: "減少這餐碳水化合物的份量。",
+    1: "先吃菜和肉，最後才吃飯或麵",
+    2: "飯後慢慢喝一杯水",
+    3: "吃慢一點",
+    4: "飯後步行10分鐘",
+    5: "這餐可減少飯或麵的分量",
   },
   yue: {
-    1: "先食菜同蛋白質，最後先食碳水化合物。",
-    2: "食完之後慢慢飲杯水，唔好邊食邊飲。",
-    3: "食慢啲，細嚼慢嚥。",
-    4: "食完之後行10分鐘。",
-    5: "減少呢餐碳水化合物嘅份量。",
+    1: "先食菜同肉，最後先食飯或麵",
+    2: "食完飯後慢慢飲一杯水",
+    3: "食慢啲",
+    4: "飯後行10分鐘",
+    5: "呢餐可以減少飯或麵嘅份量",
   },
 };
 
@@ -104,6 +104,43 @@ export function normalizeSelectors(impact: Impact | null, selectors: number[]): 
 
 export function mapRightNow(locale: Locale, impact: Impact | null, selectors: number[]): string[] {
   return normalizeSelectors(impact, selectors).map((s) => RIGHT_NOW_ACTIONS[locale][s]);
+}
+
+/**
+ * Legacy cache rows predate the selector-only contract and contain free-form
+ * action text. Recognize the five approved action meanings so cached advice
+ * can use the current fixed copy just like freshly generated advice.
+ */
+const LEGACY_ACTION_MATCHERS: Record<number, RegExp[]> = {
+  1: [
+    /\bvegetables?\b.*\b(protein|meat)\b.*\bcarbs?\b/i,
+    /先[吃食].*(菜|蔬菜).*(肉|蛋白質).*(最後|後).*(飯|麵|碳水)/,
+  ],
+  2: [
+    /\bwater\b.*\b(after|following|finish)/i,
+    /\b(after|following|finish).*?\bwater\b/i,
+    /(飯後|食完|吃完).*(慢慢)?.*[喝飲].*水/,
+  ],
+  3: [
+    /\beat\s+slowly\b/i,
+    /\bslow\s*down\b/i,
+    /(吃慢一點|吃慢點|食慢啲|慢慢吃|慢慢食|放慢速度|細嚼慢嚥)/,
+  ],
+  4: [
+    /\bwalk\b.*\b10[- ]?minute/i,
+    /\b10[- ]?minute.*\bwalk\b/i,
+    /(飯後|食完|吃完).*(散步|步行|行).*(10|十).*分鐘/,
+  ],
+  5: [
+    /\breduce\b.*\bcarbs?\b/i,
+    /(減少|減).*(碳水|飯|麵).*(份量|分量)?/,
+  ],
+};
+
+function legacyActionSelectors(body: string): number[] {
+  return [1, 2, 3, 4, 5].filter((selector) =>
+    LEGACY_ACTION_MATCHERS[selector].some((matcher) => matcher.test(body)),
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -317,8 +354,9 @@ export function buildStructuredAdvice(
       if (numbersOnly && digits.length > 0) {
         rightNow = mapRightNow(loc, impact, digits);
       } else if (body) {
-        // Legacy cached advice: full phrase text — keep it, sanitized.
-        rightNow = [body];
+        // Legacy cached advice used full phrases. Map recognized actions back
+        // to their selector so cache and fresh advice share the approved copy.
+        rightNow = mapRightNow(loc, impact, legacyActionSelectors(body));
       }
       continue;
     }
