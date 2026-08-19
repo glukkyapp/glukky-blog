@@ -1,0 +1,100 @@
+The generated layout is a new report page with a Daily/Weekly switcher. Your three current designs are one long home-page feed, where yesterday’s and this week’s reports appear one after another.
+
+Information architecture
+Generated: Yesterday and This Week are mutually exclusive screens via the top segmented switcher: 昨日 | 本週. Users see one reporting period at a time.
+
+Current: Yesterday’s report is first; the weekly report begins only after scrolling. The user must remember where one report ends and the other begins.
+
+Generated: Daily report has a visible three-part structure: 昨日重點 → 飲食時間 → 本週摘要.
+
+Current: There is one large Yesterday card containing timeline plus two insights, followed by a Weekly card and then three more insight cards. It is structurally less explicit.
+
+Generated: Weekly content is previewed only at the bottom of the Yesterday view, with one clear action: 查看本週報告.
+
+Current: Full weekly report content is embedded immediately below the daily content, so the screen becomes a long feed.
+
+Yesterday report
+Generated: The timeline is simplified into three named meal points — 早餐 9:30, 午餐 12:00, 晚餐 17:00 — and the important insight is separated below a divider.
+
+Current: Timeline has time markers (6時 / 12時 / 18時 / 24時) and coloured dots, but users must infer which dot corresponds to which meal and what each colour means.
+
+Generated: The main finding is visually isolated:
+晚餐（多士配炒滑蛋）血糖影響偏高。
+Then there is one immediate action and a clear button: 查看這餐.
+
+Current: The finding and suggestion sit as consecutive large paragraphs inside the same oversized card. There is no action to inspect the specific meal that caused the finding.
+
+Generated: Eating-time feedback becomes a separate compact card with the abnormal time made visible as a badge: 4:16.
+
+Current: The timing issue appears as another long paragraph inside the same first card: 昨日午餐進食時間不規律（下午04:16進食）. It competes visually with the blood-sugar insight.
+
+Weekly report
+Generated: The weekly score, interpretation, day distribution, and link to detailed report are all contained in one bounded summary card.
+
+Current: Weekly score/chart occupy one card, then recording count, best/worst day, timing pattern, and meal pattern appear as separate cards below. It reads as multiple reports rather than one weekly summary.
+
+Generated: The score is explicitly labelled 本週分數, separating the value 83 from its meaning.
+
+Current: 83 is large, but its label/meaning is less immediate; 截至今日 describes the time period rather than explaining what 83 represents.
+
+Generated: The donut chart has a clearer spatial relationship: labels sit directly beside the orange/red segments, and the number of days sits in the middle.
+
+Current: The donut and legend are already reasonable, but the chart is separated from the score explanation by more empty space and is visually followed by another large card, which weakens the “single weekly summary” feeling.
+
+Generated: The user must intentionally tap 查看本週報告 to enter detailed patterns.
+
+Current: Detailed weekly insights are already expanded by default, including:
+
+星期二飲食最好，星期一飲食要多加留意。
+
+本週午餐有進食時間不規律的情況
+
+午餐是本週血糖影響最高的一餐，晚餐最低
+
+This gives information immediately, but creates a heavy scrolling experience and repeats the same visual format three times.
+
+Visual hierarchy
+Generated: Uses more, smaller cards with headings and dividers. Each card answers one question:
+
+What was yesterday’s key issue?
+
+Was meal timing regular?
+
+How did this week go?
+
+Current: Uses fewer but very tall cards. Each card contains several ideas, which makes headings and actions harder to scan.
+
+Generated: Has a prominent page title, 飲食報告, and a dedicated report-navigation control.
+
+Current: Starts directly with content. There is no clear page-level label that tells the user, “I am now viewing a report.”
+
+Generated: Adds explicit affordances: 查看這餐, 查看本週報告, and the 昨日 / 本週 selector.
+
+Current: The down chevron next to the weekly score is the only obvious interactive sign. It is unclear whether it expands, collapses, or leads elsewhere.
+
+What I would keep vs change
+Keep from current
+
+Large Chinese type.
+
+Warm background and calm colour palette.
+
+The weekly score + donut concept.
+
+The meal timeline concept.
+
+Red/orange risk language, because it is easy to read at a glance.
+
+Adopt from generated
+
+Separate 昨日 and 本週 into switchable views.
+
+Make yesterday’s two findings two compact cards, rather than two paragraphs in one giant card.
+
+Add a specific action for the highlighted meal.
+
+Make the weekly card a short overview with one entry point to detail.
+
+Move the three weekly insight cards to the dedicated 本週 view, rather than showing all of them on the home feed.
+
+One caution: I would not copy the generated mockup literally. It is cleaner architecturally, but it is slightly denser and more “app dashboard” like than your current visual language. Keep your existing generous spacing and larger typography; change the content grouping and navigation, not necessarily the visual style.
