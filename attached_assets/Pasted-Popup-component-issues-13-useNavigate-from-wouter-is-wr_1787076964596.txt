@@ -1,0 +1,117 @@
+Popup component issues
+13. useNavigate from wouter is wrong
+In wouter, useLocation() is the standard hook for navigation, not useNavigate() like React Router. Unless your project has a custom wrapper, this likely breaks. That is a real implementation bug.
+
+14. TTS helper dependency is undefined
+You reference:
+
+splitForTTS
+
+getTTSLang
+
+but say “reuse existing helpers from snap.tsx — move to shared util”. That means the shown component code is incomplete and will not compile until those helpers are actually extracted/imported.
+
+15. speechSynthesis usage is unsafe for SSR / unsupported browsers
+You directly call:
+
+ts
+speechSynthesis.cancel()
+This can break in environments where window is undefined or speech synthesis is unavailable. Use guards:
+
+ts
+if ("speechSynthesis" in window) ...
+You likely only run this client-side, but still safer.
+
+16. impactImg fallback can be wrong
+This line:
+
+ts
+const impactImg = impact === "low" ? glucoseLowImg : impact === "medium" ? glucoseMediumImg : glucoseHighImg;
+If impact is null, you still get glucoseHighImg. That is wrong. Null should mean either:
+
+no image, or
+
+fallback neutral image.
+
+17. Card 1 sentence doesn't match requirement fully
+Requirement says:
+
+glucose PNG + impact level + individual glucose response as one plain sentence
+
+Your proposed UI renders:
+
+impact label as one paragraph
+
+prediction as separate paragraph
+
+That is not one plain sentence. It also won't feel streamlined.
+
+Better:
+
+這餐屬中等血糖影響；根據你的記錄，可能令血糖上升約 2.1 mmol/L。
+
+or without personal record: 這餐屬中等血糖影響；你未有此食物的個人血糖記錄。
+
+18. Card 1 fails when no glucosePrediction
+The requirement says card 1 includes "individual glucose response (plain text)." If no individual record exists, you need an explicit fallback sentence. Right now you just omit it, which creates a thin card.
+
+You need locale strings like:
+
+zh-Hant: 你未有此食物的個人血糖記錄。
+
+yue: 你未有呢款食物嘅個人血糖記錄。
+
+en: You do not have a personal glucose record for this food yet.
+
+19. Card 2 watch-out lines are not user-friendly as raw arrows
+If you literally render:
+
+白飯 --> 精製澱粉
+
+凍檸茶 --> 糖分高
+
+it looks internal, not polished. Better render visually as two-column or label-value lines:
+
+白飯：精製澱粉較高
+
+凍檸茶：糖分較高
+
+You can still parse arrows internally, but render friendlier text.
+
+20. Swipe threshold may conflict with elderly usage
+≥40 px, ≤300 ms is fast and a bit strict for older users. If swiping is secondary and buttons exist, okay — but if you want the gesture to be discoverable, ≤300 ms may reject slower swipes. Consider:
+
+distance ≥ 40 px
+
+time ≤ 600 ms
+
+21. Dot indicators missing test ids
+Requirement says dots need data-testid. Current sample spans do not include them. Same for disclaimer and popup root format consistency.
+
+22. "知道啦！" animation timing may feel abrupt
+450ms dismiss is probably okay, but if the checkmark appears and closes too fast, users may miss feedback. 600–800ms is safer.
+
+23. Learn-more placement may be weak
+Requirement says small text link to health info page. Current plan places it below buttons, self-end. Fine, but if disclaimer sits above it, older users may miss it. If it matters functionally, place it above disclaimer or just under next-time content.
+
+Snap page wiring issues
+24. step === "advice" auto-open + reset on dismiss may destroy state too early
+If onDismiss={reset}, make sure reset():
+
+closes popup
+
+clears snap state
+
+returns to expected camera/home state
+
+But if user taps 了解更多, your code does:
+
+ts
+dismiss(); navigate("/health-info");
+If dismiss() triggers reset(), it may clear context you wanted to preserve before routing.
+
+Need to decide whether:
+
+dismiss means full reset always
+
+or learn-more does close popup but preserve meal/advice state

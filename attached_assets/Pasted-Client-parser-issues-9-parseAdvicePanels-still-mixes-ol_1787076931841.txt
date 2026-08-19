@@ -1,0 +1,67 @@
+Client parser issues
+9. parseAdvicePanels still mixes old and new formats awkwardly
+You say move to text markers instead of emoji, but the parser still checks emoji prefixes too. That’s okay for backward compatibility, but the problem is deeper: it assumes one linear text blob with predictable order.
+
+Common failures:
+
+Claude adds an opener line above everything.
+
+Claude inserts a blank line inside the watch-out block.
+
+Claude outputs Watch out: and then puts one bullet with colon instead of arrow.
+
+Claude returns Right now: 2,4 because server forgot to map number-to-text before sending.
+
+If you really want robustness, parsing should happen server-side, not in the client. The client should receive:
+
+ts
+{
+  bloodSugar: "...",
+  watchOutLines: [...],
+  rightNow: "...",
+  nextTime: "..."
+}
+That is much safer than string parsing in snap.tsx.
+
+10. bloodSugar is stored as raw line
+You comment it as raw line:
+
+ts
+bloodSugar: string; // raw line, e.g. "血糖影響: 中"
+Then card 1 later strips the prefix with regex. This is sloppy. Store structured values instead:
+
+ts
+impactLabel: "高" | "中" | "低" | "High" | "Medium" | "Low"
+or even better:
+
+ts
+impact: "high" | "medium" | "low"
+impactDisplay: string
+Don’t keep reparsing display text in the UI.
+
+11. watchOutLines depends on --> or ->
+That’s okay if the prompt is strict, but brittle if Claude uses:
+
+白飯 → 精製澱粉
+
+白飯: 精製澱粉
+
+白飯 - 精製澱粉
+
+If you really want strictness, then validate/normalize server-side. Otherwise parser should support -->, ->, and →.
+
+12. Healthy-meal fallback logic is incomplete
+You specify:
+
+if Claude omits watch-out, card 2 shows static positive line.
+
+But your parser also allows a rightNow line to exist with no watch-out. That means card 2 may show:
+
+"Good choice!"
+
+divider absent
+
+rightNow text still present
+
+Is that intended? It might be okay, but the task text implies card 2 for healthy meals should show the positive line instead of watch-out, and then still show right-now below only if right-now exists. You need to state that explicitly.
+

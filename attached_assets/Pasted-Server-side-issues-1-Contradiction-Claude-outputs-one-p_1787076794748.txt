@@ -1,0 +1,394 @@
+Server-side issues
+1. Contradiction: "Claude outputs one phrase verbatim" vs "Claude outputs number only"
+Your task description says Claude should output a locale-specific right-now phrase verbatim from the fixed list. But the proposed prompt code tells Claude to output NUMBER only and the server maps it later. Those are two different contracts. If you mix them, your parser and QA will become messy fast.
+
+Pick one only:
+
+Better option: Claude outputs the verbatim phrase, server just validates/matches it.
+
+Safer engineering option: Claude outputs number only, server maps to text before sending to client.
+
+For reliability, I would choose number only internally, then server maps to phrase, and client never sees numbers. That is more deterministic and easier to test. But then your updated task should say that clearly.
+
+2. The "3 sections" wording is misleading
+Your format block says:
+
+impact line
+
+watch-out section
+
+now section
+
+Then server appends next-time later. So Claude is not really outputting the full popup content structure. That’s okay, but the prompt wording should not imply Claude is generating the whole 3-card payload.
+
+Better wording:
+
+Claude outputs impact + optional watch-out + now selector
+
+Server assembles next-time
+
+Client renders 3 cards
+
+Otherwise future developers will misread the contract.
+
+3. NOW_ADVICE_VERBATIM content quality is uneven
+Some Chinese strings are too compressed and unnatural for elderly users:
+
+"減飯麵" is too telegraphic.
+
+"先菜肉，後飯麵" is understandable but still compressed.
+
+"吃慢點" / "食慢啲" is okay.
+
+"吃完飯後喝杯水" is acceptable, but your earlier prompt said "gradually after finishing the meal, not during eating." You are losing specificity.
+
+Better:
+
+zh-Hant:
+
+先吃菜和肉，最後才吃飯或麵
+
+飯後慢慢喝一杯水
+
+吃慢一點
+
+飯後步行10分鐘
+
+這餐可減少飯或麵的分量
+
+yue:
+
+先食菜同肉，最後先食飯或麵
+
+食完飯後慢慢飲一杯水
+
+食慢啲
+
+飯後行10分鐘
+
+呢餐可以減少飯或麵嘅份量
+
+Your current versions are shorter, but maybe too clipped for older users. Elderly-friendly does not mean ultra-short at all costs; it means easy and natural.
+
+4. High-impact rule is too rigid
+You force high impact meals to include one of phrase 2 or 4. That’s reasonable in principle, but if the meal is clearly high-carb breakfast in a setting where walking is awkward, or water advice is irrelevant, this may produce repetitive or unnatural output. The rigidity may worsen your already-existing repetition issue.
+
+Better rule:
+
+For high impact meals, prefer 2 or 4, not must.
+
+Or require at least one from {2,4,5}.
+
+5. buildNextTimeLine(locale, foodDesc) has content bugs
+The vegetable picker currently returns just the vegetable name:
+
+下次試試：白菜
+
+Next time: bok choy
+
+That is incomplete and sounds broken. It should be a usable instruction, e.g.:
+
+下次試試：加一份白菜
+
+Next time: add a serving of bok choy
+
+6. Carb-swap pool has locale/content inconsistencies
+A few examples:
+
+"台式飲品" is culturally odd if Glukky is HK-focused.
+
+"氣泡水加檸檬片" may be okay, but not always culturally typical for older HK users.
+
+"精製砂糖 / 果醬" → "適量肉桂粉、香草精、少許天然蜂蜜" is not a clean swap and "natural honey" is questionable in a diabetes context.
+
+"薯片" → "無調味堅果、鷹嘴豆泥、低鹽爆谷" mixes categories and includes hummus, which may be less familiar.
+
+This pool needs localization, not just translation.
+
+7. foodDesc.toLowerCase() matching is weak for Chinese
+For Chinese locale, .toLowerCase() does nothing useful, and simple substring matching is fragile:
+
+"西蘭花炒牛肉" contains 西蘭花, yes
+
+but "椰菜" vs "高麗菜" vs "白菜" are variant labels
+
+"番茄蛋" may not imply the user already has enough veg, but your filter will exclude tomato if it appears once
+
+This is okay as a heuristic, but don't pretend it is robust personalization. It is only a lightweight anti-repetition trick.
+
+8. Missing server validation
+If Claude returns malformed watch-out lines or bad numbers, where is validation? Right now the plan seems to trust output too much.
+
+You need server-side post-processing like:
+
+clamp right-now numbers to allowed set
+
+dedupe numbers
+
+if high impact and malformed, fallback to 2 safe phrases
+
+if watch-out lines malformed, drop them
+
+if all else fails, use default locale-safe fallback
+
+Without this, client parsing becomes fragile.
+
+Client parser issues
+9. parseAdvicePanels still mixes old and new formats awkwardly
+You say move to text markers instead of emoji, but the parser still checks emoji prefixes too. That’s okay for backward compatibility, but the problem is deeper: it assumes one linear text blob with predictable order.
+
+Common failures:
+
+Claude adds an opener line above everything.
+
+Claude inserts a blank line inside the watch-out block.
+
+Claude outputs Watch out: and then puts one bullet with colon instead of arrow.
+
+Claude returns Right now: 2,4 because server forgot to map number-to-text before sending.
+
+If you really want robustness, parsing should happen server-side, not in the client. The client should receive:
+
+ts
+{
+  bloodSugar: "...",
+  watchOutLines: [...],
+  rightNow: "...",
+  nextTime: "..."
+}
+That is much safer than string parsing in snap.tsx.
+
+10. bloodSugar is stored as raw line
+You comment it as raw line:
+
+ts
+bloodSugar: string; // raw line, e.g. "血糖影響: 中"
+Then card 1 later strips the prefix with regex. This is sloppy. Store structured values instead:
+
+ts
+impactLabel: "高" | "中" | "低" | "High" | "Medium" | "Low"
+or even better:
+
+ts
+impact: "high" | "medium" | "low"
+impactDisplay: string
+Don’t keep reparsing display text in the UI.
+
+11. watchOutLines depends on --> or ->
+That’s okay if the prompt is strict, but brittle if Claude uses:
+
+白飯 → 精製澱粉
+
+白飯: 精製澱粉
+
+白飯 - 精製澱粉
+
+If you really want strictness, then validate/normalize server-side. Otherwise parser should support -->, ->, and →.
+
+12. Healthy-meal fallback logic is incomplete
+You specify:
+
+if Claude omits watch-out, card 2 shows static positive line.
+
+But your parser also allows a rightNow line to exist with no watch-out. That means card 2 may show:
+
+"Good choice!"
+
+divider absent
+
+rightNow text still present
+
+Is that intended? It might be okay, but the task text implies card 2 for healthy meals should show the positive line instead of watch-out, and then still show right-now below only if right-now exists. You need to state that explicitly.
+
+Popup component issues
+13. useNavigate from wouter is wrong
+In wouter, useLocation() is the standard hook for navigation, not useNavigate() like React Router. Unless your project has a custom wrapper, this likely breaks. That is a real implementation bug.
+
+14. TTS helper dependency is undefined
+You reference:
+
+splitForTTS
+
+getTTSLang
+
+but say “reuse existing helpers from snap.tsx — move to shared util”. That means the shown component code is incomplete and will not compile until those helpers are actually extracted/imported.
+
+15. speechSynthesis usage is unsafe for SSR / unsupported browsers
+You directly call:
+
+ts
+speechSynthesis.cancel()
+This can break in environments where window is undefined or speech synthesis is unavailable. Use guards:
+
+ts
+if ("speechSynthesis" in window) ...
+You likely only run this client-side, but still safer.
+
+16. impactImg fallback can be wrong
+This line:
+
+ts
+const impactImg = impact === "low" ? glucoseLowImg : impact === "medium" ? glucoseMediumImg : glucoseHighImg;
+If impact is null, you still get glucoseHighImg. That is wrong. Null should mean either:
+
+no image, or
+
+fallback neutral image.
+
+17. Card 1 sentence doesn't match requirement fully
+Requirement says:
+
+glucose PNG + impact level + individual glucose response as one plain sentence
+
+Your proposed UI renders:
+
+impact label as one paragraph
+
+prediction as separate paragraph
+
+That is not one plain sentence. It also won't feel streamlined.
+
+Better:
+
+這餐屬中等血糖影響；根據你的記錄，可能令血糖上升約 2.1 mmol/L。
+
+or without personal record: 這餐屬中等血糖影響；你未有此食物的個人血糖記錄。
+
+18. Card 1 fails when no glucosePrediction
+The requirement says card 1 includes "individual glucose response (plain text)." If no individual record exists, you need an explicit fallback sentence. Right now you just omit it, which creates a thin card.
+
+You need locale strings like:
+
+zh-Hant: 你未有此食物的個人血糖記錄。
+
+yue: 你未有呢款食物嘅個人血糖記錄。
+
+en: You do not have a personal glucose record for this food yet.
+
+19. Card 2 watch-out lines are not user-friendly as raw arrows
+If you literally render:
+
+白飯 --> 精製澱粉
+
+凍檸茶 --> 糖分高
+
+it looks internal, not polished. Better render visually as two-column or label-value lines:
+
+白飯：精製澱粉較高
+
+凍檸茶：糖分較高
+
+You can still parse arrows internally, but render friendlier text.
+
+20. Swipe threshold may conflict with elderly usage
+≥40 px, ≤300 ms is fast and a bit strict for older users. If swiping is secondary and buttons exist, okay — but if you want the gesture to be discoverable, ≤300 ms may reject slower swipes. Consider:
+
+distance ≥ 40 px
+
+time ≤ 600 ms
+
+21. Dot indicators missing test ids
+Requirement says dots need data-testid. Current sample spans do not include them. Same for disclaimer and popup root format consistency.
+
+22. "知道啦！" animation timing may feel abrupt
+450ms dismiss is probably okay, but if the checkmark appears and closes too fast, users may miss feedback. 600–800ms is safer.
+
+23. Learn-more placement may be weak
+Requirement says small text link to health info page. Current plan places it below buttons, self-end. Fine, but if disclaimer sits above it, older users may miss it. If it matters functionally, place it above disclaimer or just under next-time content.
+
+Snap page wiring issues
+24. step === "advice" auto-open + reset on dismiss may destroy state too early
+If onDismiss={reset}, make sure reset():
+
+closes popup
+
+clears snap state
+
+returns to expected camera/home state
+
+But if user taps 了解更多, your code does:
+
+ts
+dismiss(); navigate("/health-info");
+If dismiss() triggers reset(), it may clear context you wanted to preserve before routing.
+
+Need to decide whether:
+
+dismiss means full reset always
+
+or learn-more does close popup but preserve meal/advice state
+
+25. Removing old sources/disclaimer entirely may reduce traceability too much
+You said sources removed from popup, accessible via health info page. Fine. But make sure "了解更多" lands on the exact relevant health info entry, not just a generic page. Otherwise users lose context.
+
+Content / UX issues
+26. "Good choice!" is too flat
+For healthy meals, "選擇不錯！" / "Good choice!" is acceptable, but a bit dead. Since you want static and not Claude-generated, I’d use:
+
+zh-Hant: 這餐選擇不錯。
+
+yue: 呢餐揀得唔錯。
+
+en: This is a good choice.
+
+Feels calmer and more elderly-friendly.
+
+27. Swipe hint wording is awkward
+Current:
+
+"掃左睇下一個 →"
+
+In Cantonese this is understandable, but a bit colloquial/UI-rough. Better:
+
+向左掃，查看下一張
+
+yue: 向左掃，睇下一張
+
+en: Swipe left for the next card
+
+28. "prediction_text" overclaims certainty
+Current:
+
+Based on your records, this meal may raise your blood sugar by around {{value}} mmol/L.
+
+This is okay, but if prediction quality is shaky, maybe better:
+
+Based on your records, this meal may raise your blood sugar by about {{value}} mmol/L.
+And if no true personal evidence exists, don't use this at all.
+
+29. "Right now" and "Next time" should probably be labeled in UI
+Your card structure implies card 2 and 3 content types are clear from context, but users may benefit from tiny labels:
+
+現在可以做：
+
+下次可試：
+
+Especially for elderly users, explicit labels improve comprehension. The prompt labels do not need to show raw in UI, but the UI can still render human labels.
+
+30. No-emojis rule should be enforced centrally
+You mention stripping emojis from:
+
+card text
+
+button labels
+
+But there is no shown utility doing this. Add one sanitizer on parsed text, otherwise stray emoji from Claude or old data can leak through.
+
+What I would change before implementation
+Minimal architecture correction
+Best version is:
+
+Server
+Server returns already structured data:
+
+ts
+{
+  impact: "high" | "medium" | "low",
+  impactDisplay: "高",
+  watchOutLines: [{ food: "白飯", risk: "精製澱粉較高" }],
+  rightNow: "先吃菜和肉，最後才吃飯或麵",
+  nextTime: "下次可試加一份西蘭花",
+  glucosePredictionText: "...",
+}
+Client
+Client only renders popup. No text parsing in snap.tsx. That will cut a lot of bugs.
