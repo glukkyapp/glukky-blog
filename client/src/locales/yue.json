@@ -923,6 +923,23 @@
     "meal_select_heading": "呢餐係咩餐？",
     "meal_select_continue": "繼續"
   },
+  "snap_popup": {
+    "impact_label": "血糖影響",
+    "impact_low": "低",
+    "impact_medium": "中",
+    "impact_high": "高",
+    "impact_unknown": "血糖影響未知",
+    "personal_response": "你食呢種食物之後，平均血糖係 {{mmol}} mmol/L。",
+    "no_personal_record": "呢種食物暫時未有你嘅個人血糖紀錄。",
+    "now_label": "依家可以做：",
+    "next_label": "下次可試：",
+    "skip": "略過",
+    "got_it": "知道啦！",
+    "listen": "聽建議",
+    "learn_more": "了解更多",
+    "swipe_hint": "向左掃睇更多",
+    "card_of": "第 {{current}} 張，共 {{total}} 張"
+  },
   "slides": {
     "s1_headline": "血糖，由你掌控",
     "s1_body": "每餐記錄，慢慢發現邊啲食物對你更好。",

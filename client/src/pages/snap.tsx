@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Camera, Images, Loader2, RotateCcw, ChevronRight, ChevronDown, UtensilsCrossed, Scale, Droplets, Cherry, Volume2, StopCircle } from "lucide-react";
+import { Camera, Images, Loader2, RotateCcw, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
 import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ import { useGate } from "@/App";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
 import { track, trackException } from "@/lib/posthog";
 import { timedFetch, queryClient } from "@/lib/queryClient";
+import { cancelSpeech } from "@/lib/tts";
+import { SnapAdvicePopup, type StructuredAdvice } from "@/components/snap-advice-popup";
 
 const SNAP_TIMEOUT_MS = 45000;
 
@@ -48,6 +50,7 @@ interface AdviceSource {
 
 interface AdviceResult {
   advice: string;
+  structuredAdvice?: StructuredAdvice | null;
   focusPanelData?: FocusPanelData | null;
   sources?: AdviceSource[];
   adviceUsedToday: number;
@@ -71,164 +74,6 @@ interface LabelForm {
   extras: string;
   toppingIds: string[];
   toppingResolutions: TokenResolution[];
-}
-
-function parseAdvicePanels(advice: string): string[] {
-  const lines = advice
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  const bloodSugar = lines.find(
-    (l) => l.startsWith("🩸") ||
-           l.toLowerCase().startsWith("blood sugar impact") ||
-           l.startsWith("血糖")
-  );
-  const watchOut = lines.find((l) => l.startsWith("⚠️"));
-  const rightNow = lines.find((l) => l.startsWith("⚡"));
-  const nextTime = lines.find((l) => l.startsWith("📝"));
-
-  const panels: string[] = [];
-
-  if (bloodSugar) panels.push(bloodSugar);
-
-  if (watchOut) panels.push(watchOut);
-
-  const adviceParts: string[] = [];
-  if (rightNow) adviceParts.push(rightNow);
-  if (nextTime) adviceParts.push(nextTime);
-  if (adviceParts.length > 0) {
-    panels.push(adviceParts.join("\n"));
-  }
-
-  if (panels.length >= 2) return panels;
-
-  return lines.slice(0, 3);
-}
-
-function getPanelNarrationText(panel: string): string {
-  const stripEmoji = (s: string) =>
-    s.replace(/\p{Extended_Pictographic}\uFE0F?\u20E3?\s*/gu, "").trim();
-  return panel
-    .split("\n")
-    .map(line => stripEmoji(line))
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-}
-
-function splitForTTS(text: string): string[] {
-  if (text.length <= 200) return [text];
-  const parts = text.split(/(?<=[。.！？!?])\s*/u);
-  const chunks: string[] = [];
-  let current = "";
-  for (const part of parts) {
-    if ((current + part).length > 200 && current) {
-      chunks.push(current.trim());
-      current = part;
-    } else {
-      current += part;
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [text];
-}
-
-function getTTSLang(): string {
-  const voices = speechSynthesis.getVoices();
-  if (voices.length === 0) return "zh-HK";
-  return voices.some(v => v.lang.startsWith("zh")) ? "zh-HK" : "en-US";
-}
-
-function detectGlucoseImpact(body: string): "low" | "medium" | "high" | null {
-  const t = body.toLowerCase().trim();
-  if (t === "low"    || t === "低")                  return "low";
-  if (t === "medium" || t === "中" || t === "中等") return "medium";
-  if (t === "high"   || t === "高")                  return "high";
-  return null;
-}
-
-function FocusPanelContent({ data }: { data: FocusPanelData }) {
-  const { t } = useTranslation();
-  const struggleName = data.struggleKey === "portions"
-    ? t("snap.focus_struggle_portions")
-    : t(`struggle.${data.struggleKey}`);
-  return (
-    <div className="flex flex-col gap-3 text-sm leading-relaxed text-center min-h-[64px] justify-center">
-      <p>{t("snap.focus_heading", { struggle: struggleName })}</p>
-      <div className="flex flex-col gap-2">
-        {data.tips.map((tip, i) => (
-          <p key={i}>
-            {tip.timing === "immediate" ? (
-              <>
-                {t("snap.focus_immediate_prefix")}
-                <em><strong>{t(tip.key)}</strong></em>
-                {t("snap.focus_immediate_suffix")}
-              </>
-            ) : (
-              <>
-                {t("snap.focus_future_prefix")}
-                <em><strong>{t(tip.key)}</strong></em>
-              </>
-            )}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SparkBars({ spikes, glucoseGroup }: { spikes: number[]; glucoseGroup: string | null }) {
-  const MAX_MMOL = 15.0;
-  const BASE_MMOL = 3.5;
-  const getColor = (mmol: number) => {
-    if (glucoseGroup === "t2dm") {
-      return mmol >= 10.0 ? "#ef4444" : mmol >= 7.5 ? "#f59e0b" : "#22c55e";
-    }
-    return mmol >= 7.8 ? "#ef4444" : mmol >= 5.9 ? "#f59e0b" : "#22c55e";
-  };
-  return (
-    <div className="flex items-end gap-0.5 h-8 mt-2" data-testid="chart-spark-bars">
-      {spikes.map((mmol, i) => {
-        const pct = Math.min(100, Math.max(6, ((mmol - BASE_MMOL) / (MAX_MMOL - BASE_MMOL)) * 100));
-        return (
-          <div
-            key={i}
-            style={{ height: `${pct}%`, backgroundColor: getColor(mmol), flex: 1, borderRadius: "2px 2px 0 0", opacity: 0.85 }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function PredictionLayer({ prediction }: {
-  prediction: NonNullable<AdviceResult["glucosePrediction"]> | null;
-}) {
-  const { t } = useTranslation();
-  if (!prediction) return null;
-  if (prediction.state === "C") {
-    return (
-      <div className="rounded-xl bg-muted/50 p-3 flex flex-col gap-1 text-xs" data-testid="text-snap-glucose-prediction">
-        <p className="font-semibold text-muted-foreground">{t("glucose.prediction_state_c_title")}</p>
-        <p className="text-muted-foreground">{t("glucose.prediction_state_c_body")}</p>
-      </div>
-    );
-  }
-  const isA = prediction.state === "A";
-  const text = isA
-    ? t("glucose.prediction_state_a", { mmol: (prediction.avgPostMealMmol ?? 0).toFixed(1), count: prediction.pairedCount })
-    : t("glucose.prediction_state_b", { mmol: (prediction.avgPostMealMmol ?? 0).toFixed(1), count: prediction.pairedCount });
-  const hasBars = (prediction.spikeHistory?.length ?? 0) >= 2;
-  return (
-    <div
-      className={`rounded-xl p-3 text-xs font-medium ${isA ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
-      data-testid="text-snap-glucose-prediction"
-    >
-      {text}
-      {hasBars && <SparkBars spikes={prediction.spikeHistory!} glucoseGroup={prediction.glucoseGroup ?? null} />}
-    </div>
-  );
 }
 
 function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
@@ -313,10 +158,7 @@ export default function Snap() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
-  const [advicePanel, setAdvicePanel] = useState(0);
-  const [sourcesExpanded, setSourcesExpanded] = useState<Record<number, boolean>>({});
-  const [ttsPlaying, setTtsPlaying] = useState(false);
-  const ttsPlayingRef = useRef(false);
+  const [advicePopupOpen, setAdvicePopupOpen] = useState(false);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
   const [disambigIndex, setDisambigIndex] = useState(0);
   // "review"  → queue was seeded at label-result time; on exhaust just clean up
@@ -360,53 +202,6 @@ export default function Snap() {
     };
   }, [previewUrl]);
 
-  useEffect(() => {
-    if (ttsPlayingRef.current) {
-      speechSynthesis.cancel();
-      ttsPlayingRef.current = false;
-      setTtsPlaying(false);
-    }
-  }, [advicePanel]);
-
-  useEffect(() => {
-    if (adviceResult) {
-      handleTtsToggle();
-    }
-  }, [adviceResult]);
-
-  function handleTtsToggle() {
-    if (ttsPlayingRef.current) {
-      speechSynthesis.cancel();
-      ttsPlayingRef.current = false;
-      setTtsPlaying(false);
-      return;
-    }
-    const text = getPanelNarrationText(panels[advicePanel] ?? "");
-    if (!text) return;
-    speechSynthesis.cancel();
-    const lang = getTTSLang();
-    const chunks = splitForTTS(text);
-    let idx = 0;
-    const speakNext = () => {
-      if (!ttsPlayingRef.current || idx >= chunks.length) {
-        ttsPlayingRef.current = false;
-        setTtsPlaying(false);
-        return;
-      }
-      const utt = new SpeechSynthesisUtterance(chunks[idx++]);
-      utt.lang = lang;
-      utt.onend = speakNext;
-      utt.onerror = () => {
-        ttsPlayingRef.current = false;
-        setTtsPlaying(false);
-      };
-      speechSynthesis.speak(utt);
-    };
-    ttsPlayingRef.current = true;
-    setTtsPlaying(true);
-    speakNext();
-  }
-
   function reset() {
     setStep("upload");
     setError(null);
@@ -414,11 +209,8 @@ export default function Snap() {
     setPreviewUrl(null);
     setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
     setAdviceResult(null);
-    setAdvicePanel(0);
-    setSourcesExpanded({});
-    speechSynthesis.cancel();
-    ttsPlayingRef.current = false;
-    setTtsPlaying(false);
+    setAdvicePopupOpen(false);
+    cancelSpeech();
     setDisambigQueue([]);
     setDisambigIndex(0);
     setSauceManual(false);
@@ -896,8 +688,6 @@ export default function Snap() {
       }
     }
     setStep("advising");
-    setAdvicePanel(0);
-    setSourcesExpanded({});
     const reqName = overrides?.name ?? form.name;
     const reqCanonical = overrides?.canonicalName ?? labelResult?.canonicalName ?? null;
     const reqPortion = overrides?.portion ?? form.portion;
@@ -975,6 +765,7 @@ export default function Snap() {
       setAdviceResult(data as AdviceResult);
       setSnapId(data.snapId ?? null);
       setStep("advice");
+      setAdvicePopupOpen(true);
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
@@ -1098,23 +889,6 @@ export default function Snap() {
       trackException(err, { phase: "snap_label_resume" });
     }
   }
-
-  const rawPanels = adviceResult ? parseAdvicePanels(adviceResult.advice) : [];
-  const predState = adviceResult?.glucosePrediction?.state;
-  const hasRealGlucose = predState === "A" || predState === "B";
-  const panels = hasRealGlucose
-    ? rawPanels.filter((p) =>
-        !p.startsWith("🩸") &&
-        !p.toLowerCase().startsWith("blood sugar impact") &&
-        !p.startsWith("血糖")
-      )
-    : rawPanels;
-  const focusPanelData = adviceResult?.focusPanelData ?? null;
-  const totalPanels = panels.length + (focusPanelData ? 1 : 0);
-  const isFocusPanel = focusPanelData !== null && advicePanel === panels.length;
-  const impact = advicePanel === 0
-    ? detectGlucoseImpact((panels[0] ?? "").split(": ")[1] ?? "")
-    : null;
 
   useEffect(() => {
     [glucoseLowImg, glucoseMediumImg, glucoseHighImg].forEach(src => {
@@ -1548,150 +1322,20 @@ export default function Snap() {
         <div className="flex flex-col gap-4">
           <p className="text-sm font-semibold">{t("snap.advice_title")}</p>
 
-          <div
-            className="rounded-2xl p-5 flex flex-col gap-5"
-            style={{ background: "#fbfbf3", boxShadow: "0 4px 14px rgba(44, 72, 56, 0.06)" }}
-            data-testid="card-snap-advice"
-          >
-            <div
-              data-testid={`text-snap-advice-panel-${advicePanel}`}
-            >
-              {isFocusPanel && focusPanelData ? (
-                <FocusPanelContent data={focusPanelData} />
-              ) : (
-                <>
-                  {impact && (
-                    <img
-                      src={
-                        impact === "low"    ? glucoseLowImg :
-                        impact === "medium" ? glucoseMediumImg :
-                                             glucoseHighImg
-                      }
-                      alt=""
-                      aria-hidden="true"
-                      className="w-28 h-28 mx-auto mb-3"
-                    />
-                  )}
-                  <div className="text-sm leading-relaxed min-h-[64px] text-left flex flex-col gap-3">
-                    {(panels[advicePanel] ?? "").split("\n").map((line, i) => {
-                      const colonIdx = line.indexOf(": ");
-                      if (colonIdx === -1) {
-                        return <p key={i}>{line}</p>;
-                      }
-                      const heading = line.slice(0, colonIdx + 1).replace(/^\p{Extended_Pictographic}\uFE0F?\u20E3?\s*/u, "");
-                      const body = line.slice(colonIdx + 2);
-                      return (
-                        <div key={i} className="flex flex-col gap-1">
-                          <p className="text-[21px] font-bold leading-snug">{heading}</p>
-                          <p className={impact === "high" ? "text-[28px] font-bold" : ""}>{body}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {!isFocusPanel && (
-              <div className="flex justify-end -mt-2">
-                <button
-                  type="button"
-                  onClick={handleTtsToggle}
-                  data-testid="button-tts-toggle"
-                  aria-label={ttsPlaying ? "Stop narration" : "Play narration"}
-                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground transition-colors active:scale-95 touch-manipulation"
-                >
-                  {ttsPlaying ? <StopCircle className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-              </div>
-            )}
-
-          {advicePanel === 0 && !isFocusPanel && adviceResult.glucosePrediction !== undefined && (
-              <PredictionLayer prediction={adviceResult.glucosePrediction ?? null} />
-            )}
-
-            {!isFocusPanel && adviceResult?.sources && adviceResult.sources.length > 0 && (
-              <div className="flex flex-col gap-2 text-[10px] leading-snug text-muted-foreground">
-                <button
-                  type="button"
-                  className="flex items-center gap-1 self-start text-left hover:text-foreground transition-colors"
-                  onClick={() => {
-                    hapticTap("SOFT");
-                    setSourcesExpanded((prev) => ({ ...prev, [advicePanel]: !prev[advicePanel] }));
-                  }}
-                  data-testid={`button-snap-sources-toggle-${advicePanel}`}
-                >
-                  {sourcesExpanded[advicePanel]
-                    ? <ChevronDown className="w-3 h-3" />
-                    : <ChevronRight className="w-3 h-3" />}
-                  <span>{t("snap.sources_label")}</span>
-                </button>
-                {sourcesExpanded[advicePanel] && (
-                  <ul
-                    className="flex flex-col gap-1 pl-4 list-disc"
-                    data-testid={`list-snap-sources-${advicePanel}`}
-                  >
-                    {adviceResult.sources.map((src, i) => (
-                      <li key={i}>
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline hover:text-foreground transition-colors"
-                          data-testid={`link-snap-source-${advicePanel}-${i}`}
-                        >
-                          {src.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p data-testid={`text-snap-disclaimer-${advicePanel}`}>
-                  {t("snap.advice_disclaimer")}
-                </p>
-              </div>
-            )}
-
-
-            {totalPanels > 1 && (
-              <div className="flex items-center justify-center gap-2" data-testid="nav-snap-advice-dots">
-                {Array.from({ length: totalPanels }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { hapticTap("SOFT"); setAdvicePanel(i); }}
-                    data-testid={`dot-snap-advice-${i}`}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      i === advicePanel
-                        ? "bg-primary"
-                        : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                    }`}
-                    aria-label={`Panel ${i + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              {advicePanel < totalPanels - 1 ? (
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-1"
-                  onClick={() => { hapticTap("SOFT"); setAdvicePanel((p) => p + 1); }}
-                  data-testid="button-snap-advice-next"
-                >
-                  {t("snap.next")}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              ) : null}
-              <Button
-                className="flex-1"
-                onClick={() => { hapticTap("SOFT"); reset(); }}
-                data-testid="button-snap-advice-done"
-              >
-                {t("snap.done")}
-              </Button>
-            </div>
-          </div>
+          {adviceResult.structuredAdvice && (
+            <SnapAdvicePopup
+              open={advicePopupOpen}
+              advice={adviceResult.structuredAdvice}
+              avgPostMealMmol={adviceResult.glucosePrediction?.avgPostMealMmol ?? null}
+              onDismiss={() => {
+                setAdvicePopupOpen(false);
+              }}
+              onCloseOnly={() => {
+                // 了解更多 path: close only the popup, no snap reset.
+                setAdvicePopupOpen(false);
+              }}
+            />
+          )}
 
           {adviceResult && (
             <CounterBadge

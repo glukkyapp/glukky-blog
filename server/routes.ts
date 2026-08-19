@@ -23,6 +23,7 @@ import {
 import { DIET_TIP_LADDERS, DIET_TIP_I18N_KEYS, MITIGATION_TRIO_LABELS, STRUGGLE_PRIORITY, type InsertUserProfile } from "@shared/schema";
 import type { FoodLabel } from "@shared/schema";
 import { pickSources } from "./advice-sources";
+import { buildStructuredAdvice, selectNextTime, sanitizeEmoji, nextTimeLabel } from "./snap-advice-structured";
 import {
   awardSnapCoin,
   awardGlucoseCoin,
@@ -4220,7 +4221,12 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu1);
           } catch {}
           return res.json({
-            advice: cachedAdvice,
+            advice: sanitizeEmoji(cachedAdvice),
+            structuredAdvice: buildStructuredAdvice(
+              cachedAdvice,
+              lang,
+              selectNextTime(lang, [name, sauces, extras].filter(Boolean).join(" ")),
+            ),
             focusPanelData,
             sources: pickSources(cachedAdvice),
             adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
@@ -4242,7 +4248,12 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu2);
         } catch {}
         return res.json({
-          advice: existingCachedAdvice,
+          advice: sanitizeEmoji(existingCachedAdvice),
+          structuredAdvice: buildStructuredAdvice(
+            existingCachedAdvice,
+            lang,
+            selectNextTime(lang, [name, sauces, extras].filter(Boolean).join(" ")),
+          ),
           focusPanelData,
           sources: pickSources(existingCachedAdvice),
           adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
@@ -4271,61 +4282,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const tagInstruction = `\n\nAfter your advice, on a NEW line output ONLY a JSON object with these keys (no other text on that line):\n{"is_sugary_food":true/false,"is_sugary_drink":true/false,"is_oily":true/false,"is_snack":true/false}`;
 
-      // Server-side "Next time" principles — picked randomly per request so
-      // advice varies even for the same cached dish. Claude only generates the
-      // "Right now" section; "Next time" is assembled here and never cached.
-      const NEXT_TIME_PRINCIPLES: Record<string, string[]> = {
-        en: [
-          "Load up on non-starchy vegetables — they help slow glucose absorption.",
-          "Cut back on added sugars and refined grains.",
-          "Choose whole, less-processed ingredients where you can.",
-          "Eat your carbs earlier in the day rather than later.",
-          "Add a protein source — fish, tofu, egg, or lean meat all work well.",
-          "Swap to higher-fibre carbs, like brown rice or wholegrain noodles.",
-          "Include some healthy fats — a handful of nuts, some avocado, or oily fish.",
-          "Avoid sugary drinks alongside your meal.",
-          "Go easy on added salt and sodium.",
-        ],
-        "zh-Hant": [
-          "多吃非澱粉類蔬菜——有助減緩血糖上升。",
-          "減少攝取添加糖和精製穀物。",
-          "盡量選擇天然、少加工的食材。",
-          "把碳水化合物留在一天較早的時候吃。",
-          "加點蛋白質——魚、豆腐、雞蛋或瘦肉都是好選擇。",
-          "換成高纖維碳水化合物，如糙米或全麥麵條。",
-          "加入一些健康脂肪——少量堅果、牛油果或油性魚類。",
-          "用餐時避免含糖飲料。",
-          "留意鹽分和鈉的攝取量。",
-        ],
-        yue: [
-          "多食非澱粉類蔬菜——有助減慢血糖上升。",
-          "少食添加糖同精製穀物。",
-          "盡量揀天然、少加工嘅食材。",
-          "碳水化合物盡量留喺一日較早嘅時候食。",
-          "加啲蛋白質——魚、豆腐、雞蛋或瘦肉都係好選擇。",
-          "換成高纖維碳水，例如糙米或全麥麵。",
-          "加入少少健康脂肪——少量堅果、牛油果或油性魚類。",
-          "食飯時唔好飲含糖飲料。",
-          "注意鹽同鈉嘅攝取量。",
-        ],
-      };
-
-      const buildNextTimeLine = (locale: string): string => {
-        const list = NEXT_TIME_PRINCIPLES[locale] ?? NEXT_TIME_PRINCIPLES["en"];
-        const label = locale === "zh-Hant" || locale === "yue" ? "📝 下次：" : "📝 Next time:";
-        const connector = locale === "zh-Hant" || locale === "yue" ? "另外，" : "Also, ";
-        const idx1 = Math.floor(Math.random() * list.length);
-        if (Math.random() < 0.5 || list.length < 2) return `${label} ${list[idx1]}`;
-        let idx2 = Math.floor(Math.random() * (list.length - 1));
-        if (idx2 >= idx1) idx2++;
-        const tip1 = list[idx1];
-        const tip2Src = list[idx2];
-        // Lowercase the first letter for English so it reads naturally after "Also, "
-        const tip2 = locale === "en"
-          ? tip2Src.charAt(0).toLowerCase() + tip2Src.slice(1)
-          : tip2Src;
-        return `${label} ${tip1} ${connector}${tip2}`;
-      };
+      // Server-side "Next time" selection — one item picked per request
+      // (vegetable / carb swap / fixed tip) so advice varies even for the
+      // same cached dish. Claude never generates the next-time section;
+      // it is assembled here (snap-advice-structured.ts) and never cached.
+      const mealDescriptionForNextTime = [name, sauces, extras].filter(Boolean).join(" ");
 
       const advicePromptSystem = (locale: string, includeTagLine: boolean) => `You are a dietary advisor helping a person manage blood sugar levels and glycaemic impact through practical food choices. Your sole focus is glycaemic impact and practical sugar reduction.
 
@@ -4346,26 +4307,28 @@ Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
   - zh-Hant → "這看起來是茶餐廳常餐。"
   - yue → "呢個望落係茶餐廳常餐。"
 
-Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line):
+Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line). Use ONLY plain text markers — never any emoji characters anywhere in your reply:
 
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
-${locale === "zh-Hant" || locale === "yue" ? "⚠️ 注意：" : "⚠️ Watch out:"} [the single biggest GI or sugar risk — 1 concise sentence]
-${locale === "zh-Hant" ? "⚡ 現在：" : locale === "yue" ? "⚡ 依家：" : "⚡ Right now:"} [1–2 specific things to do with THIS meal right now]
+${locale === "zh-Hant" || locale === "yue" ? "注意：" : "Watch out:"} [1–3 rows of "food --> risk", each risk UNDER SIX WORDS, rows separated by "；" — e.g. "milk tea --> condensed milk sugar；white rice --> fast glucose spike"]
+${locale === "zh-Hant" ? "現在：" : locale === "yue" ? "依家：" : "Right now:"} [ONLY the selector number(s) from the action list below — e.g. "1" or "2,4". Output NO other words on this line.]
 
-If the food is genuinely healthy and low-risk, OMIT the ⚠️ line entirely and affirm the good choice in the ⚡ line instead. In that case output only 2 lines (Blood sugar impact, ⚡).
+If the food is genuinely healthy and low-risk, OMIT the ${locale === "en" ? "Watch out" : "注意"} line entirely; the good choice is affirmed automatically. In that case output only 2 lines (Blood sugar impact, ${locale === "zh-Hant" ? "現在" : locale === "yue" ? "依家" : "Right now"}).
 If there is a genuine concern, output all 3 lines.
 
 Evidence-based principles from Diabetes Care 2019 Consensus & WHO/ADA guidance.
-Stay strictly within these lists. Do NOT invent principles outside them.
+Stay strictly within this list. Do NOT invent actions outside it.
 
-For ⚡ Right now, draw ONLY from these actions (pick 1–2 most relevant to this specific meal):
+Right-now action list (refer to them ONLY by number):
 1. Eat vegetables/protein first, carbs last.
 2. Drink a glass of water gradually after finishing the meal, not during eating.
 3. Eat slowly.
 4. Go for a 10-minute walk after the meal.
 5. Reduce the portion of carbs in this meal.
 
-You have identified the meal as Blood sugar impact: [High / Medium / Low]. Principle 2 and 4 are only for meals identified as high blood sugar impact. If Blood sugar impact is high, include at least one of them in the ⚡ Right now section. Other principles may be included alongside.
+Selection rules:
+- If Blood sugar impact is Low or Medium: select EXACTLY ONE action, and it must be 1, 3, or 5 (never 2 or 4).
+- If Blood sugar impact is High: select EXACTLY TWO actions, and at least one of them must be 2 or 4.
 
 Hard constraints on your advice:
 - Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.
@@ -4483,8 +4446,11 @@ No explanation, just JSON.`,
 
       const userAdviceClaude = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
       const userAdviceSources = pickSources(userAdviceClaude);
-      // Append a randomly-picked "Next time" line — never cached, always fresh.
-      const userAdvice = userAdviceClaude + "\n" + buildNextTimeLine(lang);
+      // Server-selected "Next time" item — never cached, always fresh.
+      const nextTimeText = selectNextTime(lang, mealDescriptionForNextTime);
+      const structuredAdvice = buildStructuredAdvice(userAdviceClaude, lang, nextTimeText);
+      // Append and persist the rendered fixed next-time text after generation.
+      const userAdvice = userAdviceClaude + "\n" + `${nextTimeLabel(lang)} ${nextTimeText}`;
 
       console.log(`[snap/advice] user=${userId} quotaKey=${adviceQuotaKey.key} source=${adviceQuotaKey.source} usedToday=${getDailyCount(snapLabelCount, adviceQuotaKey.key)}/${SNAP_LABEL_DAILY_LIMIT}`);
 
@@ -4501,7 +4467,8 @@ No explanation, just JSON.`,
         if (_cnt === 10) trackServer(userId, "glucose_pattern_unlocked", { totalSnaps: _cnt }, _phcGpu3);
       } catch {}
       res.json({
-        advice: userAdvice,
+        advice: sanitizeEmoji(userAdvice),
+        structuredAdvice,
         focusPanelData,
         sources: userAdviceSources,
         adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),

@@ -919,6 +919,23 @@
     "meal_select_heading": "What meal is this?",
     "meal_select_continue": "Continue"
   },
+  "snap_popup": {
+    "impact_label": "Blood sugar impact",
+    "impact_low": "Low",
+    "impact_medium": "Medium",
+    "impact_high": "High",
+    "impact_unknown": "Blood sugar impact unknown",
+    "personal_response": "After this food, your glucose has averaged {{mmol}} mmol/L.",
+    "no_personal_record": "No personal glucose record for this food yet.",
+    "now_label": "What you can do now:",
+    "next_label": "Next time:",
+    "skip": "Skip",
+    "got_it": "Got it!",
+    "listen": "Listen",
+    "learn_more": "Learn more",
+    "swipe_hint": "Swipe left for more",
+    "card_of": "Card {{current}} of {{total}}"
+  },
   "slides": {
     "s1_headline": "Your blood sugar, your control",
     "s1_body": "Log every meal and gradually learn which foods suit you best.",
