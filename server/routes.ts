@@ -45,6 +45,7 @@ import {
 } from "./revenuecat";
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
 import { trackServer, captureException, getPosthogConsent } from "./posthog";
+import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -5087,18 +5088,54 @@ No explanation, just JSON.`,
   app.get("/api/snap/glucose-patterns", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { food } = req.query as { food?: string };
-      if (food) {
-        const drilldown = await storage.getGlucosePatternDrilldown(userId, food);
-        return res.json({ drilldown });
+      const { food, query } = req.query as { food?: string; query?: string };
+      const totalSnaps = await storage.getTotalSnaps(userId);
+      if (totalSnaps < 10) {
+        if (food || query != null) {
+          return res.status(403).json({ message: "Log more meals to unlock glucose patterns." });
+        }
+        return res.json({ totalPaired: 0, totalSnaps, topList: [], aiOnlyList: [] });
       }
-      const [totalPaired, totalSnaps, patterns, aiOnlyList] = await Promise.all([
+      if (query != null) {
+        const trimmed = query.trim();
+        if (!trimmed) return res.json({ suggestions: [] });
+        const suggestions = await storage.searchGlucosePatternFoods(userId, trimmed.slice(0, 100));
+        return res.json({ suggestions });
+      }
+      if (food) {
+        const [detail, profile, thresholds] = await Promise.all([
+          storage.getGlucosePatternFoodDetail(userId, food),
+          storage.getProfile(userId),
+          storage.getUserGlucoseThresholds(userId),
+        ]);
+        if (!detail) return res.status(404).json({ message: "Food not found." });
+        const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
+        return res.json({
+          detail: {
+            ...detail,
+            impactLevel: detail.avgPostMealMmol != null
+              ? classifyPostMealMmol(detail.avgPostMealMmol, glucoseGroup, thresholds ?? undefined)
+              : detail.aiImpactLevel,
+          },
+        });
+      }
+      const [totalPaired, patterns, aiOnlyList, profile, thresholds] = await Promise.all([
         storage.getTotalPairedEntries(userId),
-        storage.getTotalSnaps(userId),
         storage.getGlucosePatterns(userId),
         storage.getAiOnlyFoodRanking(userId),
+        storage.getProfile(userId),
+        storage.getUserGlucoseThresholds(userId),
       ]);
-      res.json({ totalPaired, totalSnaps, topList: patterns.topList, aiOnlyList });
+      const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
+      res.json({
+        totalPaired,
+        totalSnaps,
+        topList: patterns.topList.map(entry => ({
+          ...entry,
+          impactLevel: classifyPostMealMmol(entry.avgPostMealMmol, glucoseGroup, thresholds ?? undefined),
+        })),
+        aiOnlyList,
+      });
     } catch (error: any) {
       console.error("glucose-patterns error:", error);
       res.status(500).json({ message: "Failed to fetch glucose patterns." });

@@ -147,6 +147,8 @@ export interface IStorage {
   getTotalSnaps(userId: string): Promise<number>;
   getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
   getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
+  searchGlucosePatternFoods(userId: string, query: string): Promise<GlucosePatternFoodSuggestion[]>;
+  getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null>;
   expireStalePostMealWindows(): Promise<{ expired: number }>;
   getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number): Promise<number[]>;
   getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]>;
@@ -213,6 +215,18 @@ export interface GlucoseDrilldownEntry {
   extras: string | null;
   avgPostMealMmol: number;
   readingCount: number;
+}
+
+export interface GlucosePatternFoodSuggestion {
+  foodName: string;
+}
+
+export interface GlucosePatternFoodDetail {
+  foodName: string;
+  avgPostMealMmol: number | null;
+  readingCount: number;
+  aiImpactLevel: "low" | "medium" | "high" | null;
+  readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1433,39 +1447,16 @@ export class DatabaseStorage implements IStorage {
 
   async getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }> {
     const result = await db.execute(sql`
-      WITH paired AS (
-        SELECT
-          ms.food_name,
-          ms.portion,
-          ms.combo_key,
-          ms.post_meal_glucose_mmol AS post_meal
-        FROM meal_snaps ms
-        WHERE ms.user_id = ${userId}
-          AND ms.post_meal_glucose_mmol IS NOT NULL
-          AND ms.food_name IS NOT NULL
-      ),
-      portion_counts AS (
-        SELECT food_name, portion, COUNT(*) AS cnt
-        FROM paired
-        GROUP BY food_name, portion
-      ),
-      top_portions AS (
-        SELECT DISTINCT ON (food_name) food_name, portion
-        FROM portion_counts
-        ORDER BY food_name, cnt DESC
-      ),
-      food_stats AS (
-        SELECT
-          p.food_name,
-          AVG(p.post_meal) AS avg_post_meal,
-          COUNT(*) AS entry_count,
-          COUNT(DISTINCT p.combo_key) AS combo_count
-        FROM paired p
-        JOIN top_portions tp ON p.food_name = tp.food_name AND (p.portion = tp.portion OR (p.portion IS NULL AND tp.portion IS NULL))
-        GROUP BY p.food_name
-      )
-      SELECT food_name, avg_post_meal, entry_count::int, combo_count::int
-      FROM food_stats
+      SELECT
+        ms.food_name,
+        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
+        COUNT(*)::int AS entry_count,
+        COUNT(DISTINCT ms.combo_key)::int AS combo_count
+      FROM meal_snaps ms
+      WHERE ms.user_id = ${userId}
+        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND ms.food_name IS NOT NULL
+      GROUP BY ms.food_name
       ORDER BY avg_post_meal DESC
     `);
     return {
@@ -1502,6 +1493,59 @@ export class DatabaseStorage implements IStorage {
       avgPostMealMmol: parseFloat(row.avg_post_meal),
       readingCount: parseInt(row.entry_count, 10),
     }));
+  }
+
+  async searchGlucosePatternFoods(userId: string, query: string): Promise<GlucosePatternFoodSuggestion[]> {
+    const result = await db.execute(sql`
+      SELECT ms.food_name, MAX(ms.snap_time) AS latest_snap
+      FROM meal_snaps ms
+      WHERE ms.user_id = ${userId}
+        AND ms.food_name IS NOT NULL
+        AND ms.food_name ILIKE ${`%${query}%`}
+      GROUP BY ms.food_name
+      ORDER BY latest_snap DESC, ms.food_name ASC
+      LIMIT 8
+    `);
+    return (result.rows as any[]).map(row => ({ foodName: row.food_name }));
+  }
+
+  async getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null> {
+    const result = await db.execute(sql`
+      SELECT
+        ms.post_meal_glucose_mmol,
+        COALESCE(ms.post_meal_recorded_at, ms.snap_time) AS recorded_at,
+        ms.glucose_impact
+      FROM meal_snaps ms
+      WHERE ms.user_id = ${userId}
+        AND ms.food_name = ${foodName}
+      ORDER BY COALESCE(ms.post_meal_recorded_at, ms.snap_time) DESC
+    `);
+    const rows = result.rows as any[];
+    if (rows.length === 0) return null;
+
+    const readings = rows
+      .filter(row => row.post_meal_glucose_mmol != null)
+      .map(row => ({
+        recordedAt: new Date(row.recorded_at).toISOString(),
+        postMealGlucoseMmol: parseFloat(row.post_meal_glucose_mmol),
+      }));
+    const avgPostMealMmol = readings.length > 0
+      ? readings.reduce((sum, reading) => sum + reading.postMealGlucoseMmol, 0) / readings.length
+      : null;
+    const impactScores: number[] = rows
+      .map(row => row.glucose_impact === "low" ? 1 : row.glucose_impact === "medium" ? 2 : row.glucose_impact === "high" ? 3 : null)
+      .filter((score): score is 1 | 2 | 3 => score != null);
+    const avgImpact = impactScores.length > 0
+      ? impactScores.reduce((sum, score) => sum + score, 0) / impactScores.length
+      : null;
+
+    return {
+      foodName,
+      avgPostMealMmol,
+      readingCount: readings.length,
+      aiImpactLevel: avgImpact == null ? null : avgImpact >= 2.5 ? "high" : avgImpact >= 1.5 ? "medium" : "low",
+      readings,
+    };
   }
 
   async expireStalePostMealWindows(): Promise<{ expired: number }> {
@@ -1580,7 +1624,6 @@ export class DatabaseStorage implements IStorage {
         AND ms.snap_time >= NOW() - INTERVAL '30 days'
       GROUP BY ms.food_name
       ORDER BY avg_score DESC
-      LIMIT 20
     `);
     return (result.rows as any[]).map(row => {
       const score = parseFloat(row.avg_score);
