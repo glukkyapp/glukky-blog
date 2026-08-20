@@ -45,6 +45,7 @@ export default function MainFontToggle() {
   });
   const current = profile?.fontSizePreference === "small" ? "small" : "large";
   const next = current === "small" ? "large" : "small";
+  const glyph = current === "large" ? "AA" : "Aa";
   const labels: Record<string, string> = {
     en: "Change text size", "zh-Hant": "切換文字大小", yue: "轉換文字大小",
   };
@@ -79,7 +80,7 @@ export default function MainFontToggle() {
       disabled={mutation.isPending}
       className="fixed right-4 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[#28634F] bg-[#FDFBED]/95 text-[#174E43] shadow-sm backdrop-blur transition-transform active:scale-90 disabled:opacity-60"
     >
-      <span className="text-lg font-bold leading-none" aria-hidden="true">Aa</span>
+      <span className="font-toggle-glyph font-bold leading-none" aria-hidden="true">{glyph}</span>
     </button>
   );
 }

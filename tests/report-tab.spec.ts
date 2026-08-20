@@ -54,10 +54,11 @@ test.describe("Report tab", () => {
     await expect(page.getByText("定時進食有助穩定全日血糖。", { exact: true })).toBeVisible();
     await expect(page.getByTestId("strip-meal-timeline")).toHaveCount(0);
     await expect(page.getByTestId("button-daily-view-meal")).toHaveCount(0);
-    await expect(page.getByTestId("card-weekly-preview")).toBeVisible();
+    await expect(page.getByTestId("card-weekly-preview")).toHaveCount(0);
+    await expect(page.getByTestId("button-open-weekly-report")).toHaveCount(0);
     await expect(page.getByTestId("nav-tab-report")).toHaveAttribute("aria-current", "page");
 
-    await page.getByTestId("button-open-weekly-report").click();
+    await page.getByTestId("report-tab-weekly").click();
 
     await expect(page).toHaveURL(/\/report\?view=weekly$/);
     await expect(page.getByTestId("report-tab-weekly")).toHaveAttribute("aria-pressed", "true");
@@ -83,6 +84,11 @@ test.describe("Report tab", () => {
 
     const original = await toggle.getAttribute("data-font-size");
     const expectedNext = original === "small" ? "large" : "small";
+    const glyph = toggle.locator(".font-toggle-glyph");
+    const glyphSizeBefore = await glyph.evaluate(element => getComputedStyle(element).fontSize);
+    const heading = page.getByTestId("report-heading");
+    const headingSizeBefore = await heading.evaluate(element => getComputedStyle(element).fontSize);
+    await expect(glyph).toHaveText(original === "large" ? "AA" : "Aa");
     const saved = page.waitForResponse(response =>
       response.url().includes("/api/profile/font-size") &&
       response.request().method() === "PATCH"
@@ -90,6 +96,9 @@ test.describe("Report tab", () => {
     await toggle.click();
     expect((await saved).status()).toBe(200);
     await expect(toggle).toHaveAttribute("data-font-size", expectedNext);
+    await expect(glyph).toHaveText(expectedNext === "large" ? "AA" : "Aa");
+    expect(await glyph.evaluate(element => getComputedStyle(element).fontSize)).toBe(glyphSizeBefore);
+    expect(await heading.evaluate(element => getComputedStyle(element).fontSize)).not.toBe(headingSizeBefore);
 
     const profile = await context.request.get(`${BASE}/api/profile`);
     expect(profile.status()).toBe(200);

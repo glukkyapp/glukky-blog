@@ -198,6 +198,31 @@ html.font-small {
   --fs-4xl: 42px;
 }
 
+/*
+ * Most text uses Tailwind's semantic text-* utilities, which already read
+ * the --fs-* variables above. A few visual labels use exact pixel utilities
+ * instead; keep those in the user's selected scale too. The Aa control has
+ * an explicit fixed glyph class so its button label stays the same size.
+ */
+html.font-small .text-\[0\.8rem\] { font-size: calc(0.8rem * 2 / 3) !important; }
+html.font-small .text-\[9px\] { font-size: 6px !important; }
+html.font-small .text-\[10px\] { font-size: calc(10px * 2 / 3) !important; }
+html.font-small .text-\[11px\] { font-size: calc(11px * 2 / 3) !important; }
+html.font-small .text-\[12px\] { font-size: 8px !important; }
+html.font-small .text-\[14px\] { font-size: calc(14px * 2 / 3) !important; }
+html.font-small .text-\[16px\] { font-size: calc(16px * 2 / 3) !important; }
+html.font-small .text-\[17px\] { font-size: calc(17px * 2 / 3) !important; }
+html.font-small .text-\[18px\] { font-size: 12px !important; }
+html.font-small .text-\[21px\] { font-size: 14px !important; }
+html.font-small .text-\[22px\] { font-size: calc(22px * 2 / 3) !important; }
+html.font-small .text-\[26px\] { font-size: calc(26px * 2 / 3) !important; }
+html.font-small .text-\[29px\] { font-size: calc(29px * 2 / 3) !important; }
+html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
+
+.font-toggle-glyph {
+  font-size: 18px !important;
+}
+
 @layer base {
   * {
     @apply border-border;

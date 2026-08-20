@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ClipboardList, Leaf } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
 import { getReportPath, getReportView, type ReportView } from "@/lib/report-navigation";
@@ -19,10 +19,10 @@ export default function Report() {
     ? { daily: "昨日", weekly: "本週" }
     : { daily: "Yesterday", weekly: "This week" };
   const copy = language === "yue"
-    ? { title: "飲食報告", intro: "昨日重點同本週趨勢，一目了然。", finding: "昨日重點", meal: "了解這餐", preview: "本週摘要", openWeekly: "查看本週報告" }
+    ? { title: "飲食報告", intro: "每日同每週飲食重點，一目了然。", finding: "昨日重點", meal: "了解這餐" }
     : language.startsWith("zh")
-      ? { title: "飲食報告", intro: "昨日重點與本週趨勢，一目了然。", finding: "昨日重點", meal: "了解這餐", preview: "本週摘要", openWeekly: "查看本週報告" }
-      : { title: "Food report", intro: "Yesterday's highlights and this week's trends at a glance.", finding: "Yesterday's highlight", meal: "See this meal", preview: "This week", openWeekly: "View this week's report" };
+      ? { title: "飲食報告", intro: "每日與每週飲食重點，一目了然。", finding: "昨日重點", meal: "了解這餐" }
+      : { title: "Food report", intro: "Your daily and weekly food insights at a glance.", finding: "Yesterday's highlight", meal: "See this meal" };
 
   const selectTab = (nextTab: ReportView) => {
     setLocation(getReportPath(nextTab));
@@ -33,7 +33,7 @@ export default function Report() {
       <div className="mx-auto max-w-sm">
         <header className="mb-6 pr-10">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6E8477]">Glukky</p>
-          <h1 className="text-[29px] font-bold tracking-tight text-[#214B36]">{copy.title}</h1>
+          <h1 className="text-[29px] font-bold tracking-tight text-[#214B36]" data-testid="report-heading">{copy.title}</h1>
           <p className="mt-1 text-sm text-[#6E8477]">{copy.intro}</p>
         </header>
 
@@ -53,7 +53,7 @@ export default function Report() {
         </nav>
 
         {tab === "daily" ? (
-          <section className="space-y-4 animate-[slide-in-from-right_.28s_ease-out]" data-testid="report-panel-daily">
+          <section className="animate-[slide-in-from-right_.28s_ease-out]" data-testid="report-panel-daily">
             <div>
               <div className="mb-2 flex items-center gap-2 px-1 text-[#2F6B43]">
                 <Leaf size={17} />
@@ -63,15 +63,6 @@ export default function Report() {
                 tz={tz}
                 onViewMeal={() => setLocation("/food-log?from=report")}
                 viewMealLabel={copy.meal}
-              />
-            </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2 px-1 text-[#6E8477]"><ClipboardList size={15} /><span className="text-xs font-bold uppercase tracking-[.14em]">{copy.preview}</span></div>
-              <WeeklyCard
-                weekStart={getWeekStart(tz)}
-                variant="preview"
-                onOpenWeekly={() => selectTab("weekly")}
-                openWeeklyLabel={copy.openWeekly}
               />
             </div>
           </section>
