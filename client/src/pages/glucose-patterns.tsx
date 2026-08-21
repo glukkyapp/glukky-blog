@@ -73,6 +73,12 @@ function ImpactBadge({ impact }: { impact: GlucoseImpactLevel }) {
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${style}`}>{t(`glucose.impact_${impact}`)}</span>;
 }
 
+const IMPACT_BUTTON_COLORS: Record<string, { selected: string; unselected: string }> = {
+  low:    { selected: "border-emerald-500 bg-emerald-500 text-white", unselected: "border-emerald-200 text-emerald-700 hover:bg-emerald-50" },
+  medium: { selected: "border-amber-500 bg-amber-500 text-white",     unselected: "border-amber-200 text-amber-700 hover:bg-amber-50" },
+  high:   { selected: "border-red-500 bg-red-500 text-white",         unselected: "border-red-200 text-red-700 hover:bg-red-50" },
+};
+
 export default function GlucosePatterns() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
@@ -237,7 +243,7 @@ export default function GlucosePatterns() {
                   ? (data?.aiOnlyList ?? []).filter(food => food.impactLevel === level).length
                   : (data?.topList ?? []).filter(food => food.impactLevel === level).length;
                 return (
-                  <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(mode, level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`} data-testid={`glucose-impact-${level}`}>
+                  <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(mode, level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
                     <span className="block">{t(`glucose.impact_${level}`)}</span>
                     <span className="block text-[11px] opacity-80">{count}</span>
                   </button>
