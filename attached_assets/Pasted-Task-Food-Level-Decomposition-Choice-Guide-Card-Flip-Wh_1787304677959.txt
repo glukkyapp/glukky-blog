@@ -1,0 +1,114 @@
+Task: Food-Level Decomposition + Choice Guide Card Flip
+What & Why
+Two changes, both required together:
+
+Meal logging must decompose each logged meal into individual food items (not just a meal name string). "Char siu rice" must be stored as two food entries: char siu and rice, each independently trackable.
+
+Replace the current meal-level card-flip UI with a food-level card-flip UI, split into two independent groups:
+
+AI-generated advice group (no HStix on record for that meal): cards show individual foods, tiered into 多選 / 適量 / 少選 using a static population-level food ranking table. No lift, no regression, no personal-pattern language.
+
+HStix-recorded group (meal has an actual logged glucose reading): cards show individual foods with a lift-based personal-pattern sentence, using real HStix outcomes for that user.
+
+These two groups must never share logic, formulas, or wording. Group 1 is population-level reference only. Group 2 is the only group where lift is computed.
+
+Out of Scope
+No new features beyond what is specified here.
+
+Do not change the underlying photo-recognition/food-identification model.
+
+Do not add new advice types beyond the choice-guide tiers and the lift sentence.
+
+Do not touch the snap-advice-popup 3-card flow from task #802 — this is a separate surface (home/history food review), unless the agent confirms they are the same component, in which case ask before merging.
+
+Part 1 — Data Model: Food-Level Decomposition
+Requirement
+Every logged meal must persist a list of individual food items, not only a meal display name.
+
+Input: photo → AI food identification returns one or more food items per meal (this already happens upstream; confirm the raw per-item output is not being discarded before storage).
+
+Storage: each meal record must store an array of food items, e.g.:
+
+text
+meal.foods = [
+  { name: "char siu", nameZh: "叉燒" },
+  { name: "rice", nameZh: "飯" }
+]
+The meal's existing display name (e.g. "叉燒飯") may still be stored for history/list views, but it must not be the only record — the decomposed array is required for both Part 2 groups to function.
+
+If the AI identification step already returns items separately before being joined into a display string, do not re-parse the string — persist the original item-level output directly. Only fall back to string-splitting heuristics if item-level output is genuinely unavailable, and flag that fallback in code review since it will be unreliable for compound dish names.
+
+Acceptance Check
+Query any historical meal record and confirm it returns a food-item array, not just a name string, for meals logged after this change ships.
+
+Part 2A — AI-Generated Advice Group (No HStix Recorded)
+Requirement
+For meals with no HStix reading, render each individual food item as a swipeable card, not a meal-level card.
+
+Card content per food item: food name + tier assignment (多選 / 適量 / 少選) + colored dot (green / yellow / orange), per the fixed mapping already agreed:
+
+多選 (choose more often) — green — e.g. 蔬菜、清湯、蒸魚、豆腐
+
+適量 (in moderation) — yellow — e.g. 白飯、麵、水果
+
+少選 (choose less often) — orange — e.g. 拉麵、奶茶、油炸食物
+
+The tier mapping is a static, pre-defined population-level lookup table (to be provided/maintained separately — do not have the model infer tiers dynamically per request; this must be deterministic and auditable).
+
+Cards are generated only from foods actually present in the user's logged meal — do not show foods the user did not eat.
+
+If a logged food item is not found in the static tier table, do not guess a tier. Fall back to a neutral "not yet classified" state (exact wording TBD by product, but must not default to any color/tier silently).
+
+No lift, no percentage, no "X% of your meals" language anywhere in this group. This group is reference-only guidance, not personalized measurement.
+
+Required wording constraint: use category-level phrasing (e.g. "呢類食物一般對血糖影響較大"), never meal-causal phrasing (e.g. never "這餐令你血糖上升").
+
+Acceptance Check
+For a meal with no HStix reading containing char siu and rice, the card flip shows two cards — one for 叉燒 (tier per table), one for 飯 (tier per table) — not one card for "叉燒飯."
+
+Part 2B — HStix-Recorded Group (Real Glucose Reading Exists)
+Requirement
+For meals with an actual HStix reading on record, render each individual food item as a swipeable card, showing a lift-based personal pattern sentence instead of the static tier.
+
+Lift formula, applied per food item, per user, using only that user's own logged meals with real HStix outcomes:
+
+text
+lift(food → high impact) = P(high impact | food present) / P(high impact)
+where "high impact" is defined by the user's actual recorded HStix reading crossing the existing high-impact threshold, not by AI-generated labels.
+
+Card content per food item: food name + a plain-language sentence stating the observed count, e.g.:
+
+"在你記錄的10次含白飯的餐中，7次血糖讀數較高。" (In your 10 meals with white rice, 7 had a higher reading.)
+
+Minimum evidence thresholds before showing a lift-based card for a given food (do not display below these — fall back to the Part 2A static tier for that specific food instead):
+
+Food must appear in at least 5 of the user's logged HStix meals.
+
+User must have at least 25 total HStix-recorded meals overall.
+
+At least 5 high-impact and 5 non-high-impact HStix meals must exist in the user's history.
+
+Do not compute or display lift for the AI-generated advice group under any circumstance, including retroactively, including as a "preview" of what personalization might look like. That formula is reserved exclusively for meals with real HStix readings.
+
+Required wording constraint: state the count plainly ("7 of 10"), never say the food "caused," "raised," or "is responsible for" the reading.
+
+Acceptance Check
+For a user with 30+ HStix-recorded meals containing white rice in at least 5 of them, the card for 白飯 shows the count-based sentence, not a tier label. For a user with only 3 HStix-recorded meals total, no lift card appears anywhere — all their cards fall back to Part 2A static tiers, since the evidence threshold isn't met.
+
+UI Change Summary
+Remove: meal-level card flip (one card = one meal, showing meal name and impact label).
+
+Add: food-level card flip (one card = one food item from that meal).
+
+Both groups use the same card-flip mechanic; only the card content logic differs (static tier lookup vs. lift sentence), gated by whether the meal has a real HStix reading.
+
+Dot indicators, swipe behavior, and other card-flip mechanics inherited from existing implementation — do not redesign the interaction pattern, only the content source and grouping logic.
+
+Questions the Agent Must Resolve Before Coding (Do Not Guess)
+Where does the static population-level tier lookup table live today, if anywhere? If it does not exist yet, this task blocks on that table being created and reviewed — confirm scope of that separately, do not invent tier assignments inline in code.
+
+Does the current photo-recognition output already return separable food items, or only a joined dish name? Confirm before deciding whether string-splitting fallback is needed.
+
+Is the existing "high impact" HStix threshold already defined numerically somewhere in the codebase? Confirm and reuse it — do not define a new threshold for this task.
+
+Confirm whether the snap-advice-popup (task #802) and this food-review surface are the same UI component or two different screens, since task #802 already restructured a 3-card flow — avoid conflicting parallel changes to the same component.
