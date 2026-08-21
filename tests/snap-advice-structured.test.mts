@@ -165,6 +165,90 @@ console.log("\nbuildStructuredAdvice — healthy meal (no watch-out)");
   check("one right-now action", s.rightNow.length === 1 && s.rightNow[0] === RIGHT_NOW_ACTIONS.en[1]);
 }
 
+console.log("\nbuildStructuredAdvice — food-specific action-1 phrase via Food order line");
+{
+  // en: Food order line substitutes into the action-1 slot
+  const enPhrase = buildStructuredAdvice(
+    "Blood sugar impact: Medium\nWatch out: white rice --> fast glucose spike\nRight now: 1\nFood order: cabbage first, plain rice later",
+    "en",
+    "next",
+  );
+  check(
+    "en: food-specific phrase replaces static action-1 text",
+    enPhrase.rightNow.length === 1 && enPhrase.rightNow[0] === "cabbage first, plain rice later",
+  );
+
+  // yue: Food order content in yue, Right now still numeric
+  const yuePhrase = buildStructuredAdvice(
+    "血糖影響: 中\n依家：1\nFood order: 椰菜先，白飯最後",
+    "yue",
+    "next",
+  );
+  check(
+    "yue: food-specific phrase replaces static action-1 text",
+    yuePhrase.rightNow.length === 1 && yuePhrase.rightNow[0] === "椰菜先，白飯最後",
+  );
+
+  // zh-Hant locale
+  const zhPhrase = buildStructuredAdvice(
+    "血糖影響: 低\n現在：1\nFood order: 椰菜先食，白飯最後先食",
+    "zh-Hant",
+    "next",
+  );
+  check(
+    "zh-Hant: food-specific phrase replaces static action-1 text",
+    zhPhrase.rightNow.length === 1 && zhPhrase.rightNow[0] === "椰菜先食，白飯最後先食",
+  );
+
+  // High impact + action 1 + action 4: phrase replaces only the action-1 slot; action 4 preserved
+  const highWithPhrase = buildStructuredAdvice(
+    "Blood sugar impact: High\nWatch out: white rice --> fast spike\nRight now: 4,1\nFood order: cabbage first, plain rice later",
+    "en",
+    "next",
+  );
+  check(
+    "high impact: food-specific phrase replaces action-1 slot, action-4 preserved",
+    highWithPhrase.rightNow.length === 2 &&
+      highWithPhrase.rightNow.includes("cabbage first, plain rice later") &&
+      highWithPhrase.rightNow.includes(RIGHT_NOW_ACTIONS.en[4]),
+  );
+
+  // Food phrase containing digits (e.g. "2 eggs first, rice later") passes through correctly
+  const phraseWithDigit = buildStructuredAdvice(
+    "Blood sugar impact: Low\nRight now: 1\nFood order: 2 eggs first, rice later",
+    "en",
+    "next",
+  );
+  check(
+    "food phrase with digits passes through correctly",
+    phraseWithDigit.rightNow.length === 1 && phraseWithDigit.rightNow[0] === "2 eggs first, rice later",
+  );
+
+  // No Food order line → static copy used (meals without qualifying carb+veg/protein)
+  const noPhrase = buildStructuredAdvice("Blood sugar impact: Low\nRight now: 1", "en", "next");
+  check(
+    "no Food order line → static copy unchanged",
+    noPhrase.rightNow.length === 1 && noPhrase.rightNow[0] === RIGHT_NOW_ACTIONS.en[1],
+  );
+
+  // Food order line present but action 1 not selected → phrase ignored
+  const phraseIgnored = buildStructuredAdvice(
+    "Blood sugar impact: Low\nRight now: 3\nFood order: cabbage first, plain rice later",
+    "en",
+    "next",
+  );
+  check(
+    "Food order line ignored when action 1 not selected",
+    phraseIgnored.rightNow.length === 1 && phraseIgnored.rightNow[0] === RIGHT_NOW_ACTIONS.en[3],
+  );
+
+  // Food-specific phrase must not contain emoji
+  check(
+    "food-specific phrase has no emoji",
+    enPhrase.rightNow.every((t) => !/\p{Extended_Pictographic}/u.test(t)),
+  );
+}
+
 console.log("\nbuildStructuredAdvice — invalid selectors normalized");
 {
   const s = buildStructuredAdvice("Blood sugar impact: Low\nRight now: 2", "en", "next");

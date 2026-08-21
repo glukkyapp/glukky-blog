@@ -4313,6 +4313,7 @@ Always reply in this format (the optional cultural opener, if any, comes first o
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ${locale === "zh-Hant" || locale === "yue" ? "注意：" : "Watch out:"} [1–3 rows of "food --> risk", each risk UNDER SIX WORDS, rows separated by "；" — e.g. "milk tea --> condensed milk sugar；white rice --> fast glucose spike"]
 ${locale === "zh-Hant" ? "現在：" : locale === "yue" ? "依家：" : "Right now:"} [ONLY the selector number(s) from the action list below — e.g. "1" or "2,4". Output NO other words on this line.]
+Food order: [Only when action 1 is selected AND the meal has a carbohydrate alongside at least one vegetable or protein: the food-specific ordering phrase in ${langLabel[locale] ?? "English"} — e.g. "cabbage first, plain rice later", listing only foods present in the meal. Omit this line entirely otherwise.]
 
 If the food is genuinely healthy and low-risk, OMIT the ${locale === "en" ? "Watch out" : "注意"} line entirely; the good choice is affirmed automatically. In that case output only 2 lines (Blood sugar impact, ${locale === "zh-Hant" ? "現在" : locale === "yue" ? "依家" : "Right now"}).
 If there is a genuine concern, output all 3 lines.
@@ -4330,6 +4331,7 @@ Right-now action list (refer to them ONLY by number):
 Selection rules:
 - If Blood sugar impact is Low or Medium: select EXACTLY ONE action, and it must be 1, 3, or 5 (never 2 or 4).
 - If Blood sugar impact is High: select EXACTLY TWO actions, and at least one of them must be 2 or 4.
+- Select action 1 only if the meal clearly contains both a carbohydrate AND at least one vegetable or protein, e.g. rice with cabbage, fish with rice, beef noodles with choi sum etc. When selected, also output a Food order line with a short meal-specific phrase — e.g. "cabbage first, plain rice later" — listing only foods present in that meal.
 
 Hard constraints on your advice:
 - Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.

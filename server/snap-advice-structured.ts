@@ -274,6 +274,7 @@ export function parseImpact(adviceText: string): Impact | null {
 
 const WATCH_OUT_MARKERS = [/^watch out[:：]/i, /^注意[:：]/];
 const RIGHT_NOW_MARKERS = [/^right now[:：]/i, /^現在[:：]/, /^依家[:：]/];
+const FOOD_ORDER_MARKERS = [/^food order[:：]/i];
 const NEXT_TIME_MARKERS = [/^next time[:：]/i, /^下次(可試)?[:：]/];
 const IMPACT_MARKERS = [/^blood sugar impact/i, /^血糖影響/];
 
@@ -334,6 +335,7 @@ export function buildStructuredAdvice(
   let opener: string | null = null;
   const watchOut: WatchOutRow[] = [];
   let rightNow: string[] = [];
+  let foodOrderPhrase: string | null = null;
 
   let sawImpact = false;
   for (const rawLine of lines) {
@@ -342,6 +344,11 @@ export function buildStructuredAdvice(
     // Legacy cached advice used emoji prefixes; sanitizeEmoji already removed them.
     if (matchMarker(line, IMPACT_MARKERS)) { sawImpact = true; continue; }
     if (matchMarker(line, NEXT_TIME_MARKERS)) continue;
+    if (matchMarker(line, FOOD_ORDER_MARKERS)) {
+      const phrase = stripMarker(line, FOOD_ORDER_MARKERS);
+      if (phrase) foodOrderPhrase = phrase;
+      continue;
+    }
     if (matchMarker(line, WATCH_OUT_MARKERS)) {
       watchOut.push(...parseWatchOutRows(stripMarker(line, WATCH_OUT_MARKERS)));
       continue;
@@ -368,6 +375,18 @@ export function buildStructuredAdvice(
 
   if (rightNow.length === 0) {
     rightNow = mapRightNow(loc, impact, []);
+  }
+
+  // Substitute food-specific phrase (from "Food order:" line) for any
+  // action-1 static slot in rightNow. Works for both single-action (low/medium)
+  // and two-action (high) cases without changing normalisation logic.
+  if (foodOrderPhrase) {
+    const cleanPhrase = sanitizeEmoji(foodOrderPhrase);
+    if (cleanPhrase) {
+      rightNow = rightNow.map((action) =>
+        action === RIGHT_NOW_ACTIONS[loc][1] ? cleanPhrase : action,
+      );
+    }
   }
 
   const watchOutClamped = watchOut.slice(0, 3);
