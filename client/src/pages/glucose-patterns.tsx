@@ -16,6 +16,7 @@ import {
 import {
   IMPACT_LEVELS,
   rankActualFoods,
+  rankMeasuredFoods,
   sampleFoods,
   type GlucoseImpactLevel,
 } from "@/lib/glucose-pattern-ranking";
@@ -33,10 +34,30 @@ interface AiFoodEntry {
   snapCount: number;
 }
 
+interface HstixFoodEntry {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+  totalMeals: number;
+  highMeals: number;
+  mediumMeals: number;
+  lowMeals: number;
+  nonHighMeals: number;
+  highProbability: number;
+  overallHighProbability: number;
+  lift: number;
+  avgPostMealMmol: number;
+  impactLevel: GlucoseImpactLevel;
+}
+
+type ActualFood = GlucosePatternEntry | (HstixFoodEntry & { foodName: string; readingCount: number });
+
 interface PatternsData {
   totalPaired: number;
   totalSnaps: number;
   topList: GlucosePatternEntry[];
+  hstixList?: HstixFoodEntry[];
   aiOnlyList?: AiFoodEntry[];
 }
 
@@ -50,6 +71,9 @@ interface FoodDetail {
   readingCount: number;
   impactLevel: GlucoseImpactLevel | null;
   readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
+  lift?: number;
+  highMeals?: number;
+  nonHighMeals?: number;
 }
 
 interface GlucoseThresholdsData {
@@ -146,17 +170,31 @@ export default function GlucosePatterns() {
     ) as Record<GlucoseImpactLevel, AiFoodEntry[]>;
   }, [data?.aiOnlyList]);
 
+  const hasMeasuredList = data?.hstixList !== undefined;
+  const actualFoods = useMemo<ActualFood[]>(() => {
+    // Tests and older clients may return only the pre-HStix payload. A defined
+    // empty hstixList remains intentionally empty rather than falling back.
+    if (!hasMeasuredList) return data?.topList ?? [];
+    return (data?.hstixList ?? []).map(food => ({
+      ...food,
+      foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
+      readingCount: food.totalMeals,
+    }));
+  }, [data?.topList, data?.hstixList, hasMeasuredList, locale]);
+
   const actualByImpact = useMemo(() => Object.fromEntries(
-    IMPACT_LEVELS.map(level => [
-      level,
-      rankActualFoods((data?.topList ?? []).filter(food => food.impactLevel === level), level),
-    ]),
-  ) as Record<GlucoseImpactLevel, GlucosePatternEntry[]>, [data?.topList]);
+    IMPACT_LEVELS.map(level => {
+      const foods = actualFoods.filter(food => food.impactLevel === level);
+      return [level, hasMeasuredList
+        ? rankMeasuredFoods(foods.filter((food): food is HstixFoodEntry & { foodName: string; readingCount: number } => "lift" in food))
+        : rankActualFoods(foods.filter((food): food is GlucosePatternEntry => !("lift" in food)), level)];
+    }),
+  ) as Record<GlucoseImpactLevel, ActualFood[]>, [actualFoods, hasMeasuredList]);
 
   const activeFoods = mode === "ai" ? aiSamples[impact] : actualByImpact[impact];
   const matchingCount = mode === "ai"
     ? (data?.aiOnlyList ?? []).filter(food => food.impactLevel === impact).length
-    : (data?.topList ?? []).filter(food => food.impactLevel === impact).length;
+    : actualFoods.filter(food => food.impactLevel === impact).length;
   const activeIndex = Math.min(cardIndex, Math.max(0, activeFoods.length - 1));
   const activeFood = activeFoods[activeIndex];
   const totalSnaps = data?.totalSnaps ?? 0;
@@ -241,7 +279,7 @@ export default function GlucosePatterns() {
               {IMPACT_LEVELS.map(level => {
                 const count = mode === "ai"
                   ? (data?.aiOnlyList ?? []).filter(food => food.impactLevel === level).length
-                  : (data?.topList ?? []).filter(food => food.impactLevel === level).length;
+                  : actualFoods.filter(food => food.impactLevel === level).length;
                 return (
                   <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(mode, level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
                     <span className="block">{t(`glucose.impact_${level}`)}</span>
@@ -285,11 +323,19 @@ export default function GlucosePatterns() {
                       <div>
                         {mode === "actual" && <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t(`glucose.pattern_rank_${activeIndex + 1}`)}</p>}
                         <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">{mode === "ai" ? t("glucose.pattern_ai_estimate") : t("glucose.pattern_actual_reading")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{mode === "ai" ? t("glucose.pattern_ai_estimate") : ("lift" in activeFood ? t("glucose.pattern_hstix_reading") : t("glucose.pattern_actual_reading"))}</p>
                       </div>
                       <ImpactBadge impact={impact} />
                     </div>
-                    {mode === "actual" ? (
+                    {mode === "actual" && "lift" in activeFood ? (
+                      <div>
+                        <p className="mb-3 text-sm text-muted-foreground">{t("glucose.pattern_hstix_description", { food: activeFood.foodName })}</p>
+                        <div className="flex items-end justify-between">
+                          <div><p className="text-xs text-muted-foreground">{t("glucose.pattern_lift")}</p><p className="text-2xl font-bold text-foreground">{activeFood.lift.toFixed(2)}<span className="ml-0.5 text-sm font-medium">×</span></p></div>
+                          <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
+                        </div>
+                      </div>
+                    ) : mode === "actual" ? (
                       <div className="flex items-end justify-between">
                         <div><p className="text-xs text-muted-foreground">{t("glucose.pattern_average")}</p><p className="text-2xl font-bold text-foreground">{(activeFood as GlucosePatternEntry).avgPostMealMmol.toFixed(1)} <span className="text-sm font-medium">mmol/L</span></p></div>
                         <p className="text-sm text-muted-foreground">{t("glucose.patterns_count", { n: (activeFood as GlucosePatternEntry).readingCount })}</p>

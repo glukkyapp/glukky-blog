@@ -11,7 +11,7 @@ import {
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   type ScheduledNotification,
-  type MealSnap, type InsertMealSnap,
+  type MealSnap, type InsertMealSnap, type FoodItemMetadata,
   type UserGlucoseThresholds,
   type CorrectionRequest, type InsertCorrectionRequest,
   type DeletionRequest,
@@ -20,7 +20,7 @@ import {
   scheduledNotifications,
   mealSnaps,
   snapDailyGlucose, snapMonthlyArchive,
-  userGlucoseThresholds,
+  userGlucoseThresholds, userCarbSubtypePreferences,
   userProfileHealthHistory, mealSnapHealthHistory, userGlucoseThresholdsHistory,
   userDataActions, correctionRequests, deletionRequests,
   type SnapMonthlyArchive, type InsertSnapMonthlyArchive,
@@ -125,6 +125,13 @@ export interface IStorage {
   // or leave alone (tz still missing).
   listFutureScheduledForReconciliation(now: Date): Promise<Array<ScheduledNotification & { deviceTimezone: string | null }>>;
   insertMealSnap(snap: InsertMealSnap): Promise<MealSnap>;
+  getMealSnapsForHstixCards(userId: string): Promise<Array<{
+    postMealGlucoseMmol: number | null;
+    foodItems: FoodItemMetadata[] | null;
+    recordedAt: Date;
+  }>>;
+  getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>>;
+  saveCarbSubtypePreference(userId: string, foodKey: string, carbCategory: string, carbSubtype: string): Promise<void>;
   updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
   getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]>;
   getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
@@ -878,6 +885,8 @@ export class DatabaseStorage implements IStorage {
       const snaps = await tx.delete(mealSnaps).where(eq(mealSnaps.userId, userId)).returning({ id: mealSnaps.id });
       counts.meal_snaps = snaps.length;
 
+      await tx.delete(userCarbSubtypePreferences).where(eq(userCarbSubtypePreferences.userId, userId));
+
       const dailyGlucose = await tx.delete(snapDailyGlucose).where(eq(snapDailyGlucose.userId, userId)).returning({ id: snapDailyGlucose.id });
       counts.snap_daily_glucose = dailyGlucose.length;
 
@@ -1127,7 +1136,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async insertMealSnap(snap: InsertMealSnap): Promise<MealSnap> {
-    const [inserted] = await db.insert(mealSnaps).values(snap).returning();
+    const [inserted] = await db.insert(mealSnaps).values(snap as typeof mealSnaps.$inferInsert).returning();
     const daySnaps = await db.select({ mealType: mealSnaps.mealType })
       .from(mealSnaps)
       .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
@@ -1139,6 +1148,51 @@ export class DatabaseStorage implements IStorage {
       .set({ missedMealFlag: missed })
       .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
     return { ...inserted, missedMealFlag: missed };
+  }
+
+  async getMealSnapsForHstixCards(userId: string): Promise<Array<{
+    postMealGlucoseMmol: number | null;
+    foodItems: FoodItemMetadata[] | null;
+    recordedAt: Date;
+  }>> {
+    return db.select({
+      postMealGlucoseMmol: mealSnaps.postMealGlucoseMmol,
+      foodItems: mealSnaps.foodItems,
+      recordedAt: mealSnaps.postMealRecordedAt,
+    }).from(mealSnaps).where(and(
+      eq(mealSnaps.userId, userId),
+      eq(mealSnaps.isDeleted, false),
+    )).then(rows => rows.map(row => ({
+      postMealGlucoseMmol: row.postMealGlucoseMmol,
+      foodItems: row.foodItems,
+      recordedAt: row.recordedAt ?? new Date(0),
+    })));
+  }
+
+  async getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>> {
+    return db.select({
+      carbCategory: userCarbSubtypePreferences.carbCategory,
+      carbSubtype: userCarbSubtypePreferences.carbSubtype,
+    }).from(userCarbSubtypePreferences).where(and(
+      eq(userCarbSubtypePreferences.userId, userId),
+      eq(userCarbSubtypePreferences.foodKey, foodKey),
+    ));
+  }
+
+  async saveCarbSubtypePreference(userId: string, foodKey: string, carbCategory: string, carbSubtype: string): Promise<void> {
+    await db.insert(userCarbSubtypePreferences).values({
+      userId,
+      foodKey,
+      carbCategory,
+      carbSubtype,
+    }).onConflictDoUpdate({
+      target: [
+        userCarbSubtypePreferences.userId,
+        userCarbSubtypePreferences.foodKey,
+        userCarbSubtypePreferences.carbCategory,
+      ],
+      set: { carbSubtype },
+    });
   }
 
   async updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void> {

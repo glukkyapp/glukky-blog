@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import path from "path";
 import { existsSync } from "fs";
-import { timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { adminLimiter, aiSnapLimiter } from "./rate-limiters";
 import { createServer, type Server } from "http";
 import { z } from "zod";
@@ -46,10 +46,55 @@ import {
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
 import { trackServer, captureException, getPosthogConsent } from "./posthog";
 import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
+import {
+  addSuggestedCarbSubtype,
+  applyConfirmedCarbSubtypes,
+  foodItemKey,
+  prepareFoodItems,
+} from "./carb-subtypes";
+import { buildHstixFoodCards } from "./glucose-patterns";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
 interface FoodTags { isSugaryFood: boolean; isSugaryDrink: boolean; isOily: boolean; isSnack: boolean; }
+
+type FoodItemsTokenPayload = {
+  userId: string;
+  foodItems: unknown;
+  expiresAt: number;
+};
+
+function foodItemsSignature(payload: string): string {
+  return createHmac("sha256", process.env.SESSION_SECRET ?? "missing-session-secret")
+    .update(payload)
+    .digest("base64url");
+}
+
+function createFoodItemsToken(userId: string, foodItems: unknown): string {
+  const payload = Buffer.from(JSON.stringify({
+    userId,
+    foodItems,
+    expiresAt: Date.now() + 15 * 60 * 1000,
+  })).toString("base64url");
+  return `${payload}.${foodItemsSignature(payload)}`;
+}
+
+function verifyFoodItemsToken(token: unknown, userId: string): FoodItemsTokenPayload | null {
+  if (typeof token !== "string") return null;
+  const [payload, signature, ...extra] = token.split(".");
+  if (!payload || !signature || extra.length > 0) return null;
+  const expected = foodItemsSignature(payload);
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as FoodItemsTokenPayload;
+    if (decoded.userId !== userId || !Array.isArray(decoded.foodItems) || decoded.expiresAt < Date.now()) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
 
 function computeFocusPanel(
   struggle: string,
@@ -3674,8 +3719,18 @@ Meat
 ════════════════════════════════════
 OUTPUT RULES (strict)
 ════════════════════════════════════
+STEP 2B — STRUCTURED MAIN FOOD COMPONENTS
+Return a "foodItems" list with the real, meal-defining food components only.
+Each component MUST have its name in all three forms:
+{ "nameEn": "...", "nameZhHant": "...", "nameYue": "..." }.
+Keep fixed compounds whole: for example, 紅米飯 is one component (red rice),
+not "red" plus "rice". Split genuinely compositional dishes: 海南雞飯 becomes
+Hainanese chicken and rice. Never infer components by mechanically splitting
+with/配/加/和, and never include extras, sauces, drinks, toppings, or garnishes.
+
+OUTPUT RULES (strict)
 Return ONLY this JSON — no prose, no markdown fences, no explanation:
-{ "_reasoning": "<your full spatial analysis from Step 1>", "name": "<food name in ${responseLang}>" }
+{ "_reasoning": "<brief spatial analysis, under 90 words>", "name": "<food name in ${responseLang}>", "foodItems": [{ "nameEn": "...", "nameZhHant": "...", "nameYue": "..." }] }
 The "_reasoning" field will be stripped server-side and is never shown to users.
 The "name" value MUST be in ${responseLang}.
 Side-dish separator: comma only "," (EN) or "，" (ZH).
@@ -3780,7 +3835,7 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
       };
 
       // Step 1: name-only AI call.
-      const nameResponse = await callClaude(activeNameSystem, 1200, "Identify this food and return the JSON object.");
+      const nameResponse = await callClaude(activeNameSystem, 400, "Identify this food and return the JSON object.");
       const nameRaw = readText(nameResponse);
       const nameParsed = extractJsonObject(nameRaw);
 
@@ -3812,6 +3867,24 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
       }
 
       const locale = language || "en";
+      const parsedFoodItems = prepareFoodItems(nameParsed.foodItems);
+      const withFoodItemDefaults = async () => {
+        if (parsedFoodItems.length === 0) return [];
+        const preferenceRows = await Promise.all(parsedFoodItems
+          .filter(item => item.carbCategory)
+          .map(async item => ({
+            item,
+            preferences: await storage.getCarbSubtypePreferences(userId, foodItemKey(item)),
+          })));
+        const preferences = preferenceRows.flatMap(row => row.preferences.map(preference => ({
+          key: `${foodItemKey(row.item)}|${preference.carbCategory}`,
+          subtype: preference.carbSubtype,
+        })));
+        return addSuggestedCarbSubtype(
+          parsedFoodItems,
+          new Map(preferences.map(preference => [preference.key, preference.subtype])),
+        );
+      };
 
       const foodLabel = isFirstSnap ? null : await storage.getFoodLabelByName(foodName);
       if (foodLabel) {
@@ -3839,6 +3912,8 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
           extras: toppingOptions.map(t => t.label).join(", ") || null,
           toppingIds: toppingOptions.map(t => t.id),
           comboSource: "database",
+          foodItems: await withFoodItemDefaults(),
+          foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
           toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
           snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
@@ -3894,6 +3969,8 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
           extras: first.toppings.map(t => t.label).join(", ") || null,
           toppingIds: first.toppings.map(t => t.id),
           comboSource: "database",
+          foodItems: await withFoodItemDefaults(),
+          foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
           portionOptions: portionOptions.length > 1 ? portionOptions : undefined,
           portionIdMap: Object.keys(portionIdMap).length > 1 ? portionIdMap : undefined,
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
@@ -3943,6 +4020,8 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         sauces: claudeSauces,
         extras: claudeExtras,
         comboSource: "claude",
+        foodItems: await withFoodItemDefaults(),
+        foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
         snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
         snapsLimit: SNAP_LABEL_DAILY_LIMIT,
       });
@@ -4044,7 +4123,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         return res.status(403).json({ success: false, message: "AI processing consent not given", consentRequired: "claude" });
       }
 
-      const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
+      const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, foodItems: rawFoodItems, foodItemsToken, locale: requestLocale, mealType: clientMealType } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
       const stripAmbigToken = (s?: string | null): string | null =>
         s?.replace(/\{\{[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim() || null;
@@ -4096,6 +4175,20 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      const signedFoodItems = verifyFoodItemsToken(foodItemsToken, userId);
+      const structuredFoodItems = signedFoodItems
+        ? applyConfirmedCarbSubtypes(prepareFoodItems(signedFoodItems.foodItems), rawFoodItems)
+        : [];
+      await Promise.all(
+        structuredFoodItems
+          .filter(item => item.carbCategory && item.subtypeConfirmed && item.carbSubtype)
+          .map(item => storage.saveCarbSubtypePreference(
+            userId,
+            foodItemKey(item),
+            item.carbCategory!,
+            item.carbSubtype!,
+          )),
+      );
 
       const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
       const glucosePredictionBase = (() => {
@@ -4126,6 +4219,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             glucoseImpact: deriveGlucoseImpact(adviceText),
             missedMealFlag: false,
             comboKey: activeComboKey,
+            foodItems: structuredFoodItems,
           });
 
           // Fire-and-forget: award 1 coin for snap completion.
@@ -5101,17 +5195,55 @@ No explanation, just JSON.`,
       if (query != null) {
         const trimmed = query.trim();
         if (!trimmed) return res.json({ suggestions: [] });
-        const suggestions = await storage.searchGlucosePatternFoods(userId, trimmed.slice(0, 100));
-        return res.json({ suggestions });
-      }
-      if (food) {
-        const [detail, profile, thresholds] = await Promise.all([
-          storage.getGlucosePatternFoodDetail(userId, food),
+        const [suggestions, hstixSnaps, profile, thresholds] = await Promise.all([
+          storage.searchGlucosePatternFoods(userId, trimmed.slice(0, 100)),
+          storage.getMealSnapsForHstixCards(userId),
           storage.getProfile(userId),
           storage.getUserGlucoseThresholds(userId),
         ]);
-        if (!detail) return res.status(404).json({ message: "Food not found." });
         const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
+        const hstixSuggestions = buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined)
+          .filter(card => [card.foodNameEn, card.foodNameZhHant, card.foodNameYue]
+            .some(name => name.toLocaleLowerCase().includes(trimmed.toLocaleLowerCase())))
+          .map(card => ({ foodName: card.foodNameEn }));
+        const unique = new Map<string, { foodName: string }>();
+        [...hstixSuggestions, ...suggestions].forEach(suggestion => unique.set(suggestion.foodName, suggestion));
+        return res.json({ suggestions: Array.from(unique.values()).slice(0, 8) });
+      }
+      if (food) {
+        const [detail, hstixSnaps, profile, thresholds] = await Promise.all([
+          storage.getGlucosePatternFoodDetail(userId, food),
+          storage.getMealSnapsForHstixCards(userId),
+          storage.getProfile(userId),
+          storage.getUserGlucoseThresholds(userId),
+        ]);
+        const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
+        const hstixCard = buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined)
+          .find(card => food === card.foodKey || [card.foodNameEn, card.foodNameZhHant, card.foodNameYue].includes(food));
+        if (hstixCard) {
+          const readings = hstixSnaps
+            .filter(snap => typeof snap.postMealGlucoseMmol === "number" && (snap.foodItems ?? []).some(item =>
+              item.source !== "derived" && foodItemKey(item) === hstixCard.foodKey,
+            ))
+            .map(snap => ({
+              recordedAt: snap.recordedAt.toISOString(),
+              postMealGlucoseMmol: snap.postMealGlucoseMmol!,
+            }))
+            .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+          return res.json({
+            detail: {
+              foodName: hstixCard.foodNameEn,
+              avgPostMealMmol: hstixCard.avgPostMealMmol,
+              readingCount: hstixCard.totalMeals,
+              impactLevel: hstixCard.impactLevel,
+              lift: hstixCard.lift,
+              highMeals: hstixCard.highMeals,
+              nonHighMeals: hstixCard.nonHighMeals,
+              readings,
+            },
+          });
+        }
+        if (!detail) return res.status(404).json({ message: "Food not found." });
         return res.json({
           detail: {
             ...detail,
@@ -5121,12 +5253,13 @@ No explanation, just JSON.`,
           },
         });
       }
-      const [totalPaired, patterns, aiOnlyList, profile, thresholds] = await Promise.all([
+      const [totalPaired, patterns, aiOnlyList, profile, thresholds, hstixSnaps] = await Promise.all([
         storage.getTotalPairedEntries(userId),
         storage.getGlucosePatterns(userId),
         storage.getAiOnlyFoodRanking(userId),
         storage.getProfile(userId),
         storage.getUserGlucoseThresholds(userId),
+        storage.getMealSnapsForHstixCards(userId),
       ]);
       const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
       res.json({
@@ -5136,6 +5269,7 @@ No explanation, just JSON.`,
           ...entry,
           impactLevel: classifyPostMealMmol(entry.avgPostMealMmol, glucoseGroup, thresholds ?? undefined),
         })),
+        hstixList: buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined),
         aiOnlyList,
       });
     } catch (error: any) {

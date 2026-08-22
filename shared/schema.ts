@@ -322,6 +322,18 @@ export type InsertFoodLabel = z.infer<typeof insertFoodLabelSchema>;
 export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;
 export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
 
+export type FoodItemMetadata = {
+  nameEn: string;
+  nameZhHant: string;
+  nameYue: string;
+  isCarb: boolean;
+  carbCategory: string | null;
+  carbSubtype: string | null;
+  suggestedSubtype?: string | null;
+  subtypeConfirmed: boolean;
+  source: "claude" | "derived";
+};
+
 export const mealSnaps = pgTable("meal_snaps", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -335,6 +347,7 @@ export const mealSnaps = pgTable("meal_snaps", {
   glucoseImpact: text("glucose_impact"),
   missedMealFlag: boolean("missed_meal_flag").notNull().default(false),
   comboKey: text("combo_key"),
+  foodItems: jsonb("food_items").$type<FoodItemMetadata[] | null>(),
   postMealGlucoseMmol: real("post_meal_glucose_mmol"),
   postMealSymptom: text("post_meal_symptom"),
   postMealRecordedAt: timestamp("post_meal_recorded_at", { withTimezone: true }),
@@ -350,6 +363,25 @@ export const mealSnaps = pgTable("meal_snaps", {
 export const insertMealSnapSchema = createInsertSchema(mealSnaps).omit({ id: true, snapTime: true });
 export type MealSnap = typeof mealSnaps.$inferSelect;
 export type InsertMealSnap = z.infer<typeof insertMealSnapSchema>;
+
+export const userCarbSubtypePreferences = pgTable("user_carb_subtype_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  foodKey: text("food_key").notNull(),
+  carbCategory: varchar("carb_category").notNull(),
+  carbSubtype: varchar("carb_subtype").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userFoodCategoryUniq: uniqueIndex("user_carb_subtype_preferences_unique_idx").on(
+    table.userId,
+    table.foodKey,
+    table.carbCategory,
+  ),
+}));
+
+export const insertUserCarbSubtypePreferenceSchema = createInsertSchema(userCarbSubtypePreferences).omit({ id: true, createdAt: true });
+export type UserCarbSubtypePreference = typeof userCarbSubtypePreferences.$inferSelect;
+export type InsertUserCarbSubtypePreference = z.infer<typeof insertUserCarbSubtypePreferenceSchema>;
 
 export const snapDailyGlucose = pgTable("snap_daily_glucose", {
   id: serial("id").primaryKey(),
