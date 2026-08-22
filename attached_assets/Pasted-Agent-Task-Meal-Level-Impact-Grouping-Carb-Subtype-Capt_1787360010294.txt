@@ -1,0 +1,41 @@
+Agent Task: Meal-Level Impact Grouping + Carb Subtype Capture
+Context
+Current state: food is labeled by Claude or pulled from the existing food library, with no carb-subtype distinction. Meal combos are already stored to the food library. HStix values are already recorded and paired with meal name. This task adds carb-subtype capture at logging time and introduces two swipeable card views that group meals (not individual foods) by glucose impact.
+1. Add Carb Subtype Selection Step
+Where: In the food-labeling flow, immediately after Claude identifies the food items and before the user confirms/submits.
+Logic:
+•	After Claude returns identified food items, scan for carb-category items (rice, noodles, bread, etc. — use a fixed keyword/category list, not free-text matching).
+•	If a carb item is detected, render an optional subtype picker with a maximum of 3-4 chip options specific to that carb category (e.g. rice → 白飯 / 炒飯 / 糙米飯; noodles → 河粉 / 蛋麵 / 米線).
+•	Pre-select the most common subtype for that dish label as the default. Do not block form submission if the user ignores this step — it is a one-tap optional correction, not a required field.
+•	If the user previously corrected a subtype for a given dish label, use that as their personal default on future occurrences of the same dish (store per-user override).
+Do not add: any GI/GL database, lookup table, or external nutrition API. This subtype value is stored as metadata only — it is not used to compute a static glycemic score.
+2. Data Storage — What to Add/Amend
+Amend the existing meal-combo storage record (the one already written to the food library) to add the following fields. Do not change the existing meal-name/HStix pairing mechanism — extend it.
+Meal record — add these fields:
+•	 meal_id  (existing, keep as primary key/join key)
+•	 meal_name  (existing)
+•	 food_items : array of objects, each with:
+•	 food_label  (existing, from Claude or library)
+•	 is_carb : boolean (set true if item matched the carb-category list)
+•	 carb_subtype : string or null (populated only if user selected/confirmed one; null if left as unconfirmed default)
+•	 carb_subtype_confirmed : boolean (true if user actively tapped a chip; false if left on default/unset)
+•	 hstix_value : existing numeric field, keep as-is
+•	 hstix_impact_group : new field, string enum [ low ,  medium ,  high ], computed at write-time from  hstix_value  using a fixed threshold table you define separately (e.g. <7.8 / 7.8–11.0 / >11.0 mmol/L — confirm actual clinical cutoffs before implementing)
+•	 ai_impact_group : new field, string enum [ low ,  medium ,  high ], populated from Claude’s own glucose-impact judgment at logging time (this already exists as a per-meal output — just persist it as a stored field instead of only using it for the advice popup)
+Important constraint:  carb_subtype  is stored per food item, but  hstix_impact_group  and  ai_impact_group  are stored per meal, not per food. Do not attempt to attribute HStix or AI impact to individual food items — this is intentionally meal-level only.
+3. Swipeable Card Views — Two Groups
+Build two separate swipeable card sets, both grouping by meal, not by food:
+Card Set A — AI-Generated Impact Group
+•	Query meals where  ai_impact_group  is set.
+•	Group/filter meals into Low / Medium / High swipeable cards.
+•	Each card shows: meal name, thumbnail (if available), and the foods logged in that meal.
+Card Set B — HStix-Recorded Impact Group
+•	Query meals where  hstix_value  is present and  hstix_impact_group  is computed.
+•	Group/filter meals into Low / Medium / High swipeable cards, using the same UI pattern as Card Set A for consistency.
+•	Meals without a logged HStix value should not appear in this set at all (do not show a placeholder/empty state mixed in with real data).
+Do not merge these two card sets into one. They represent two different sources of truth (AI judgment vs. actual measured outcome) and must remain visually and functionally distinct so users don’t confuse a predicted impact with a measured one.
+4. Explicitly Out of Scope for This Task
+•	No static GI/GL table or external food-database integration.
+•	No per-food glucose attribution or regression modeling.
+•	No changes to how HStix is currently paired with meal name — only adding the derived  hstix_impact_group  field on top of the existing pairing.
+•	No changes to the existing food-library storage mechanism beyond the field additions specified in Section 2.
