@@ -82,6 +82,15 @@ const withDerivedRice = buildHstixFoodCards([
 ], "healthy");
 check("derived historical records are excluded from measured evidence", withDerivedRice.find(card => card.foodNameZhHant === "白飯")?.totalMeals === 5);
 check("the shared evidence gate requires 25 eligible meals", buildHstixFoodCards(measuredMeals.slice(0, 24), "healthy").length === 0);
+const mixedTimingMeals = [
+  ...measuredMeals.slice(0, 24),
+  { postMealGlucoseMmol: 8.2, foodItems: [rice], mealTimingConfidence: "delayed" as const },
+  { postMealGlucoseMmol: 5.5, foodItems: [chicken], mealTimingConfidence: "unrelated" as const },
+];
+check(
+  "delayed and unrelated readings cannot satisfy the on-time evidence gate",
+  buildHstixFoodCards(mixedTimingMeals, "healthy").length === 0,
+);
 
 console.log("\nUI and localization contracts");
 const snapPage = readFileSync("client/src/pages/snap.tsx", "utf8");

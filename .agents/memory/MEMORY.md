@@ -2,3 +2,4 @@
 - [drizzle-kit-push-blocked](drizzle-kit-push-blocked.md) — drizzle-kit push blocks on interactive prompt for pre-existing apple_id unique constraint; apply new columns via executeSql instead.
 - [Blog deployment pipeline](blog-deployment-pipeline.md) — blog-site/dist/ must be built + copied into dist/public/ during npm run build or it never reaches production.
 - [Browser test auth origin](browser-test-auth-origin.md) — Playwright API setup and page navigation must use the exact same hostname or session cookies will not carry over.
+- [Radix toast browser tests](radix-toast-browser-tests.md) — count visual toast list items, not live-region announcements, when asserting notification events.

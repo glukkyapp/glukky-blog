@@ -31,7 +31,11 @@ assert.match(home, /setSheetHstixReading\(correctableHstixReading\)/, "Home snap
 assert.match(home, /sheetHstixReading\?\.id === correctableHstixReading\.id/, "an open correction sheet closes rather than becoming a new reading at expiry");
 assert.match(home, /initialValue=\{sheetHstixReading\?\.glucoseMmol \?\? null\}/, "the correction wheel is prefilled from the stable target");
 assert.match(home, /hstix_home_change/, "Home exposes the five-minute Change action");
+assert.match(home, /hstixExpiryHandledReadingId/, "Home deduplicates expiry outcomes for one correction session");
+assert.match(home, /expiredReadingId !== sheetHstixReading\?\.id/, "late expiry responses cannot affect a different correction session");
 assert.match(postMealCard, /hstixReadingId \? "PATCH" : "POST"/, "a correction updates rather than creates a record");
+assert.match(postMealCard, /disabled=\{!canConfirmKeypad \|\| submitting\}/, "the correction confirm button blocks repeat submissions");
+assert.match(postMealCard, /onHstixCorrectionExpired\?\.\(hstixReadingId\)/, "late correction responses identify their original record");
 assert.match(postMealCard, /queryKey: \["\/api\/snap\/meal-log"\]/, "the Food Log-related cache refreshes after correction");
 
 for (const locale of [en, zhHant, yue]) {

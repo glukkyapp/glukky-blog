@@ -22,7 +22,7 @@ interface Props {
   initialValue?: number | null;
   initialNote?: string | null;
   hstixReadingId?: number;
-  onHstixCorrectionExpired?: () => void;
+  onHstixCorrectionExpired?: (readingId?: number) => void;
 }
 
 type Step = "ask" | "keypad" | "symptom" | "walked";
@@ -211,6 +211,7 @@ export default function PostMealCard({
 
   const handleConfirmKeypad = () => {
     hapticTap("LIGHT");
+    if (submitting) return;
     if (glucoseValue === null) return;
     if (standalone) {
       void submit(false);
@@ -291,7 +292,7 @@ export default function PostMealCard({
     } catch (e) {
       console.error("[PostMealCard] submit error:", e);
       if (standalone && hstixReadingId && String(e).includes("HSTIX_CORRECTION_EXPIRED")) {
-        onHstixCorrectionExpired?.();
+        onHstixCorrectionExpired?.(hstixReadingId);
         return;
       }
       setSubmitError(true);
@@ -507,7 +508,7 @@ export default function PostMealCard({
 
           <Button
             onClick={handleConfirmKeypad}
-            disabled={!canConfirmKeypad}
+            disabled={!canConfirmKeypad || submitting}
             data-testid="button-post-meal-confirm-keypad"
           >
             {t("glucose.keypad_confirm")}

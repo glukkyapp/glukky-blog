@@ -91,6 +91,7 @@ export default function Home() {
   });
   const [hstixSheetOpen, setHstixSheetOpen] = useState(false);
   const [sheetHstixReading, setSheetHstixReading] = useState<CorrectableHstixReading | null>(null);
+  const hstixExpiryHandledReadingId = useRef<number | null>(null);
   const correctableHstixReading = hstixReadings?.latestCorrectableReading ?? null;
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
@@ -1478,6 +1479,7 @@ export default function Home() {
     }
     const timer = window.setTimeout(() => {
       if (hstixSheetOpen && sheetHstixReading?.id === correctableHstixReading.id) {
+        hstixExpiryHandledReadingId.current = correctableHstixReading.id;
         setHstixSheetOpen(false);
         setSheetHstixReading(null);
         toast({
@@ -1502,6 +1504,7 @@ export default function Home() {
   const openHstixSheet = () => {
     // Keep the target stable for this sheet session. A refresh at expiry must
     // never turn an in-progress correction into a brand-new reading.
+    hstixExpiryHandledReadingId.current = null;
     setSheetHstixReading(correctableHstixReading);
     setHstixSheetOpen(true);
   };
@@ -2092,7 +2095,18 @@ export default function Home() {
             setSheetHstixReading(null);
             void refetchHstixReadings();
           }}
-          onHstixCorrectionExpired={() => {
+          onHstixCorrectionExpired={(expiredReadingId) => {
+            // The expiry timer may already have closed this exact sheet while
+            // the PATCH was in flight. Ignore that late response so one
+            // correction session produces one expiry outcome.
+            if (
+              expiredReadingId == null
+              || expiredReadingId !== sheetHstixReading?.id
+              || hstixExpiryHandledReadingId.current === expiredReadingId
+            ) {
+              return;
+            }
+            hstixExpiryHandledReadingId.current = expiredReadingId;
             setHstixSheetOpen(false);
             setSheetHstixReading(null);
             toast({
