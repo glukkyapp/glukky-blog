@@ -22,35 +22,6 @@ const SNAP_TIMEOUT_MS = 45000;
 
 type Step = "upload" | "meal-select" | "labeling" | "review" | "advising" | "advice";
 
-interface FoodItem {
-  nameEn: string;
-  nameZhHant: string;
-  nameYue: string;
-  isCarb: boolean;
-  carbCategory: string | null;
-  carbSubtype: string | null;
-  suggestedSubtype?: string | null;
-  subtypeConfirmed: boolean;
-  source: "claude" | "derived";
-}
-
-const CARB_SUBTYPE_OPTIONS: Record<string, string[]> = {
-  rice: ["white_rice", "brown_rice", "mixed_grain_rice", "sticky_rice"],
-  noodles: ["rice_noodles", "wheat_noodles", "egg_noodles", "other_noodles"],
-  bread: ["white_bread", "wholegrain_bread", "sourdough", "other_bread"],
-  potatoes: ["potato", "sweet_potato", "taro", "other_potato"],
-  other: [],
-};
-
-function initialFoodItems(items?: FoodItem[]): FoodItem[] {
-  return (items ?? []).map(item => ({
-    ...item,
-    carbSubtype: item.carbSubtype ?? item.suggestedSubtype ?? null,
-    // A suggested default is deliberately not a confirmed preference.
-    subtypeConfirmed: false,
-  }));
-}
-
 interface LabelResult {
   name: string | null;
   portion: string | null;
@@ -66,8 +37,6 @@ interface LabelResult {
   sauceOptions?: { id: string; label: string }[];
   toppingOptions?: { id: string; label: string }[];
   preferenceKey?: string;
-  foodItems?: FoodItem[];
-  foodItemsToken?: string;
   snapsUsedToday: number;
   snapsLimit: number;
 }
@@ -106,7 +75,6 @@ interface LabelForm {
   extras: string;
   toppingIds: string[];
   toppingResolutions: TokenResolution[];
-  foodItems: FoodItem[];
 }
 
 function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
@@ -189,7 +157,7 @@ export default function Snap() {
   const [error, setError] = useState<string | null>(null);
   const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [], foodItems: [] });
+  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
   const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
   const [advicePopupOpen, setAdvicePopupOpen] = useState(false);
   const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
@@ -240,7 +208,7 @@ export default function Snap() {
     setError(null);
     setLabelResult(null);
     setPreviewUrl(null);
-    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [], foodItems: [] });
+    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
     setAdviceResult(null);
     setAdvicePopupOpen(false);
     cancelSpeech();
@@ -360,7 +328,6 @@ export default function Snap() {
       extras: data.extras ?? "",
       toppingIds: tIds,
       toppingResolutions,
-      foodItems: initialFoodItems(data.foodItems),
     });
     originalLabelRef.current = {
       name: data.name ?? "",
@@ -700,8 +667,6 @@ export default function Snap() {
       sauces?: string | null;
       extras?: string | null;
       portionId?: string | null;
-      foodItems?: FoodItem[];
-      foodItemsToken?: string;
     },
   ) {
     if (originalLabelRef.current && !isRetryAfterUnlock) {
@@ -730,8 +695,6 @@ export default function Snap() {
     const reqSauces = overrides?.sauces ?? form.sauces;
     const reqExtras = overrides?.extras ?? form.extras;
     const reqPortionId = overrides?.portionId ?? form.portionId;
-    const reqFoodItems = overrides?.foodItems ?? form.foodItems;
-    const reqFoodItemsToken = overrides?.foodItemsToken ?? labelResult?.foodItemsToken;
     track("snap_advice_started", { foodName: reqName || null });
 
     const finalSauceResolutions = sauceRes || form.sauceResolutions;
@@ -751,8 +714,6 @@ export default function Snap() {
           portionId: reqPortionId || null,
           sauceResolutions: finalSauceResolutions.length > 0 ? finalSauceResolutions : undefined,
           toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
-          foodItems: reqFoodItems,
-          foodItemsToken: reqFoodItemsToken,
           locale: i18n.language,
           mealType,
         }),
@@ -903,7 +864,6 @@ export default function Snap() {
         extras: data.extras ?? "",
         toppingIds: tIds,
         toppingResolutions,
-        foodItems: initialFoodItems(data.foodItems),
       });
       track("snap_label_resumed_after_unlock", {
         comboSource: data.comboSource,
@@ -921,8 +881,6 @@ export default function Snap() {
         sauces: data.sauces ?? null,
         extras: data.extras ?? null,
         portionId: data.portionId ?? null,
-        foodItems: initialFoodItems(data.foodItems),
-        foodItemsToken: data.foodItemsToken,
       });
     } catch (err) {
       hapticNotify("ERROR");
@@ -1290,56 +1248,6 @@ export default function Snap() {
               </div>
             </div>
 
-            {form.foodItems
-              .map((item, index) => ({ item, index, options: item.carbCategory ? (CARB_SUBTYPE_OPTIONS[item.carbCategory] ?? []) : [] }))
-              .filter(({ item, options }) => item.isCarb && options.length > 0)
-              .map(({ item, index, options }) => {
-                const itemName = i18n.language === "zh-Hant"
-                  ? item.nameZhHant
-                  : i18n.language === "yue"
-                    ? item.nameYue
-                    : item.nameEn;
-                return (
-                  <div key={`${item.nameEn}-${index}`} className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3" data-testid={`carb-subtype-picker-${index}`}>
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <Label className="text-xs font-bold tracking-wide text-foreground">{t("snap.carbs")}</Label>
-                      <span className="text-xs text-muted-foreground">{itemName}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {options.map(subtype => {
-                        const selected = item.carbSubtype === subtype;
-                        return (
-                          <button
-                            key={subtype}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => {
-                              hapticTap("LIGHT");
-                              setForm(current => ({
-                                ...current,
-                                foodItems: current.foodItems.map((candidate, candidateIndex) => candidateIndex === index
-                                  ? { ...candidate, carbSubtype: subtype, subtypeConfirmed: true }
-                                  : candidate,
-                                ),
-                              }));
-                            }}
-                            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                              selected
-                                ? item.subtypeConfirmed
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-primary/50 bg-primary/10 text-primary"
-                                : "border-input bg-[#F4EBE4] text-muted-foreground hover:bg-muted"
-                            }`}
-                            data-testid={`chip-carb-subtype-${subtype}`}
-                          >
-                            {t(`snap.carb_subtype_${subtype}`)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
           </div>
 
           {labelResult && (

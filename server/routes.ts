@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import path from "path";
 import { existsSync } from "fs";
-import { createHmac, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { adminLimiter, aiSnapLimiter } from "./rate-limiters";
 import { createServer, type Server } from "http";
 import { z } from "zod";
@@ -46,12 +46,8 @@ import {
 import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from "./snap-parse";
 import { trackServer, captureException, getPosthogConsent } from "./posthog";
 import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
-import {
-  addSuggestedCarbSubtype,
-  applyConfirmedCarbSubtypes,
-  foodItemKey,
-  prepareFoodItems,
-} from "./carb-subtypes";
+import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
+import { extractAdviceFoodItems, stripAdviceFoodItems } from "./food-items";
 import { buildHstixFoodCards } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
@@ -59,44 +55,6 @@ import { hstixCorrectionExpiresAt } from "./hstix-correction";
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
 interface FoodTags { isSugaryFood: boolean; isSugaryDrink: boolean; isOily: boolean; isSnack: boolean; }
-
-type FoodItemsTokenPayload = {
-  userId: string;
-  foodItems: unknown;
-  expiresAt: number;
-};
-
-function foodItemsSignature(payload: string): string {
-  return createHmac("sha256", process.env.SESSION_SECRET ?? "missing-session-secret")
-    .update(payload)
-    .digest("base64url");
-}
-
-function createFoodItemsToken(userId: string, foodItems: unknown): string {
-  const payload = Buffer.from(JSON.stringify({
-    userId,
-    foodItems,
-    expiresAt: Date.now() + 15 * 60 * 1000,
-  })).toString("base64url");
-  return `${payload}.${foodItemsSignature(payload)}`;
-}
-
-function verifyFoodItemsToken(token: unknown, userId: string): FoodItemsTokenPayload | null {
-  if (typeof token !== "string") return null;
-  const [payload, signature, ...extra] = token.split(".");
-  if (!payload || !signature || extra.length > 0) return null;
-  const expected = foodItemsSignature(payload);
-  const actualBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) return null;
-  try {
-    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as FoodItemsTokenPayload;
-    if (decoded.userId !== userId || !Array.isArray(decoded.foodItems) || decoded.expiresAt < Date.now()) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
-}
 
 function computeFocusPanel(
   struggle: string,
@@ -3720,19 +3678,8 @@ Meat
 
 ════════════════════════════════════
 OUTPUT RULES (strict)
-════════════════════════════════════
-STEP 2B — STRUCTURED MAIN FOOD COMPONENTS
-Return a "foodItems" list with the real, meal-defining food components only.
-Each component MUST have its name in all three forms:
-{ "nameEn": "...", "nameZhHant": "...", "nameYue": "..." }.
-Keep fixed compounds whole: for example, 紅米飯 is one component (red rice),
-not "red" plus "rice". Split genuinely compositional dishes: 海南雞飯 becomes
-Hainanese chicken and rice. Never infer components by mechanically splitting
-with/配/加/和, and never include extras, sauces, drinks, toppings, or garnishes.
-
-OUTPUT RULES (strict)
 Return ONLY this JSON — no prose, no markdown fences, no explanation:
-{ "_reasoning": "<brief spatial analysis, under 90 words>", "name": "<food name in ${responseLang}>", "foodItems": [{ "nameEn": "...", "nameZhHant": "...", "nameYue": "..." }] }
+{ "_reasoning": "<brief spatial analysis, under 90 words>", "name": "<food name in ${responseLang}>" }
 The "_reasoning" field will be stripped server-side and is never shown to users.
 The "name" value MUST be in ${responseLang}.
 Side-dish separator: comma only "," (EN) or "，" (ZH).
@@ -3869,24 +3816,6 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
       }
 
       const locale = language || "en";
-      const parsedFoodItems = prepareFoodItems(nameParsed.foodItems);
-      const withFoodItemDefaults = async () => {
-        if (parsedFoodItems.length === 0) return [];
-        const preferenceRows = await Promise.all(parsedFoodItems
-          .filter(item => item.carbCategory)
-          .map(async item => ({
-            item,
-            preferences: await storage.getCarbSubtypePreferences(userId, foodItemKey(item)),
-          })));
-        const preferences = preferenceRows.flatMap(row => row.preferences.map(preference => ({
-          key: `${foodItemKey(row.item)}|${preference.carbCategory}`,
-          subtype: preference.carbSubtype,
-        })));
-        return addSuggestedCarbSubtype(
-          parsedFoodItems,
-          new Map(preferences.map(preference => [preference.key, preference.subtype])),
-        );
-      };
 
       const foodLabel = isFirstSnap ? null : await storage.getFoodLabelByName(foodName);
       if (foodLabel) {
@@ -3914,8 +3843,6 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
           extras: toppingOptions.map(t => t.label).join(", ") || null,
           toppingIds: toppingOptions.map(t => t.id),
           comboSource: "database",
-          foodItems: await withFoodItemDefaults(),
-          foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
           toppingOptions: toppingOptions.length > 0 ? toppingOptions : undefined,
           snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
@@ -3971,8 +3898,6 @@ Return ONLY the JSON object. No prose, no markdown fences, no explanation.`;
           extras: first.toppings.map(t => t.label).join(", ") || null,
           toppingIds: first.toppings.map(t => t.id),
           comboSource: "database",
-          foodItems: await withFoodItemDefaults(),
-          foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
           portionOptions: portionOptions.length > 1 ? portionOptions : undefined,
           portionIdMap: Object.keys(portionIdMap).length > 1 ? portionIdMap : undefined,
           sauceOptions: sauceOptions.length > 0 ? sauceOptions : undefined,
@@ -4022,8 +3947,6 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         sauces: claudeSauces,
         extras: claudeExtras,
         comboSource: "claude",
-        foodItems: await withFoodItemDefaults(),
-        foodItemsToken: createFoodItemsToken(userId, parsedFoodItems),
         snapsUsedToday: getDailyCount(snapLabelCount, labelQuotaKey.key),
         snapsLimit: SNAP_LABEL_DAILY_LIMIT,
       });
@@ -4125,7 +4048,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         return res.status(403).json({ success: false, message: "AI processing consent not given", consentRequired: "claude" });
       }
 
-      const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, foodItems: rawFoodItems, foodItemsToken, locale: requestLocale, mealType: clientMealType } = req.body;
+      const { name, portion, sauces: rawSauces, extras: rawExtras, portionId, sauceResolutions, toppingResolutions, locale: requestLocale, mealType: clientMealType } = req.body;
       if (!name) return res.status(400).json({ message: "name is required" });
       const stripAmbigToken = (s?: string | null): string | null =>
         s?.replace(/\{\{[^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim() || null;
@@ -4177,20 +4100,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
-      const signedFoodItems = verifyFoodItemsToken(foodItemsToken, userId);
-      const structuredFoodItems = signedFoodItems
-        ? applyConfirmedCarbSubtypes(prepareFoodItems(signedFoodItems.foodItems), rawFoodItems)
-        : [];
-      await Promise.all(
-        structuredFoodItems
-          .filter(item => item.carbCategory && item.subtypeConfirmed && item.carbSubtype)
-          .map(item => storage.saveCarbSubtypePreference(
-            userId,
-            foodItemKey(item),
-            item.carbCategory!,
-            item.carbSubtype!,
-          )),
-      );
+      // The exact combo's library items are the only cache-hit source. New
+      // items are generated below from the user-confirmed labels, never from
+      // a client-provided subtype selection.
+      let structuredFoodItems = prepareFoodItems(label?.foodItems);
+      const needsFoodItemsBackfill = !!label && structuredFoodItems.length === 0;
 
       const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
       const glucosePredictionBase = (() => {
@@ -4313,7 +4227,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         // (#578: previous parallel food_combos bump removed with the table).
         const focusPanelData = computeFocusPanel(struggle, tipIndexForPanel, label, resolvedPortionId);
         const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
-        if (cachedAdvice) {
+        if (cachedAdvice && !needsFoodItemsBackfill) {
           const snapId = await insertSnapRecord(cachedAdvice);
           try {
             const _phcGpu1 = await getPosthogConsent(userId);
@@ -4365,6 +4279,9 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       }
 
       const allLocales = ["en", "zh-Hant", "yue"] as const;
+      const backfillLocale = lang === "zh-Hant" || lang === "yue" || lang === "en"
+        ? lang
+        : "en";
       const langLabel: Record<string, string> = {
         en: "English",
         "zh-Hant": "Traditional Chinese (繁體中文)",
@@ -4380,7 +4297,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const needTags = !label;
 
-      const tagInstruction = `\n\nAfter your advice, on a NEW line output ONLY a JSON object with these keys (no other text on that line):\n{"is_sugary_food":true/false,"is_sugary_drink":true/false,"is_oily":true/false,"is_snack":true/false}`;
+      const tagInstruction = `\n\nImmediately after your advice, on a NEW line output ONLY this tag JSON object:\n{"is_sugary_food":true/false,"is_sugary_drink":true/false,"is_oily":true/false,"is_snack":true/false}`;
+      const foodItemsInstruction = `\n\nOn the FINAL new line, output ONLY this JSON object and no other keys:
+{"foodItems":[{"nameEn":"...","nameZhHant":"...","nameYue":"..."}]}
+
+Identify items only from the user-confirmed Food and Extras / toppings fields. Include substantive food and drink items. Exclude sauces, condiments, spices, seasoning, herbs, and decorative garnishes. Keep fixed food compounds whole, but split genuinely separate foods into individual items. Do not include a top-level meal name.`;
 
       // Server-side "Next time" selection — one item picked per request
       // (vegetable / carb swap / fixed tip) so advice varies even for the
@@ -4398,16 +4319,7 @@ Important rules:
 - If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings or unnecessary advice for healthy food.
 - Never use the word "diabetes" in any form.
 
-Cultural opener (optional first line, in ${langLabel[locale] ?? "English"}):
-- If the food items together suggest a recognizable cultural meal-type — Hong Kong 常餐 / 茶餐廳早餐 / 套餐, dim sum brunch, afternoon tea, English breakfast, Japanese bento, Korean BBQ set, mezze spread, charcuterie board, etc. — open the advice with ONE single-sentence cultural note in the user's locale, then continue with the normal health/dietary advice on the next line.
-- If the photo shows a single dish (e.g. just wonton noodles, just a pineapple bun) or the items don't clearly fit a known meal-type, SKIP this opening line entirely and start directly with the blood sugar impact line.
-- The cultural opener is plain prose (no emoji prefix, no label) and stays to ONE sentence.
-- Worked examples (use whichever locale matches your reply language):
-  - en → "This looks like a classic Hong Kong cha chaan teng breakfast set."
-  - zh-Hant → "這看起來是茶餐廳常餐。"
-  - yue → "呢個望落係茶餐廳常餐。"
-
-Always reply in this format (the optional cultural opener, if any, comes first on its own line, followed by a blank line, then the Blood sugar impact line). Use ONLY plain text markers — never any emoji characters anywhere in your reply:
+Always reply in this format. Use ONLY plain text markers — never any emoji characters anywhere in your reply:
 
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ${locale === "zh-Hant" || locale === "yue" ? "注意：" : "Watch out:"} [1–3 rows of "food --> risk", each risk UNDER SIX WORDS, rows separated by "；" — e.g. "milk tea --> condensed milk sugar；white rice --> fast glucose spike"]
@@ -4434,7 +4346,7 @@ Selection rules:
 
 Hard constraints on your advice:
 - Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.
-- Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).${includeTagLine ? tagInstruction : ""}`;
+- Do NOT give medical diagnoses, medication changes, or individual treatment targets (e.g. specific HbA1c, glucose, blood pressure or weight numbers to hit).${includeTagLine ? tagInstruction : ""}${foodItemsInstruction}`;
 
       // Pre-check cache for all locales BEFORE any Claude call so we
       // know whether this advice request would actually hit Claude.
@@ -4445,7 +4357,12 @@ Hard constraints on your advice:
       const cachedAdvicePerLocale = await Promise.all(
         allLocales.map(async (locale) => ({
           locale,
-          existing: await storage.getCachedAdvice(activeComboKey, locale),
+          // Legacy labels have cached prose but no canonical items. Bypass
+          // one cached locale once so Claude can regenerate and persist that
+          // combo's items before the meal record is created.
+          existing: needsFoodItemsBackfill && locale === backfillLocale
+            ? null
+            : await storage.getCachedAdvice(activeComboKey, locale),
         }))
       );
       const anyAdviceCacheMiss = cachedAdvicePerLocale.some(c => !c.existing);
@@ -4479,6 +4396,25 @@ Hard constraints on your advice:
         })
       );
 
+      const generatedFoodItemsResult = adviceResults.find(result =>
+        !result.fromCache && result.locale === lang,
+      ) ?? adviceResults.find(result => !result.fromCache);
+      if (generatedFoodItemsResult) {
+        const generatedFoodItems = extractAdviceFoodItems(generatedFoodItemsResult.advice);
+        if (!generatedFoodItems || generatedFoodItems.length === 0) {
+          return res.status(422).json({
+            code: "FOOD_ITEMS_PARSE_FAILED",
+            message: "Could not parse food items from advice response.",
+          });
+        }
+        structuredFoodItems = generatedFoodItems;
+      } else if (structuredFoodItems.length === 0) {
+        return res.status(422).json({
+          code: "FOOD_ITEMS_MISSING",
+          message: "Food items are unavailable for this saved combination.",
+        });
+      }
+
       let claudeTags: FoodTags | null = null;
       if (needTags) {
         const enResult = adviceResults.find(r => r.locale === "en" && !r.fromCache);
@@ -4494,7 +4430,9 @@ Hard constraints on your advice:
 
       const cleanedResults = adviceResults.map(r => ({
         ...r,
-        advice: r.advice.replace(/\{[^}]*"is_sugary_food"[^}]*\}/g, "").trim(),
+        advice: stripAdviceFoodItems(
+          r.advice.replace(/\{[^}]*"is_sugary_food"[^}]*\}/g, ""),
+        ),
       }));
 
       const foodName = name;
@@ -4533,12 +4471,20 @@ No explanation, just JSON.`,
             isSugaryDrink: claudeTags?.isSugaryDrink ?? false,
             isOily: claudeTags?.isOily ?? false,
             isSnack: claudeTags?.isSnack ?? false,
+            foodItems: structuredFoodItems,
             useCount: 0,
           });
           // #578: food_combos table dropped — saveFoodLabel above is the only
           // place during a snap where the food library is written.
         } catch (saveErr) {
           console.error("Food label save error (non-blocking):", saveErr);
+        }
+      } else if (label) {
+        try {
+          const { id: _id, ...labelValues } = label;
+          await storage.saveFoodLabel({ ...labelValues, foodItems: structuredFoodItems });
+        } catch (saveErr) {
+          console.error("Food label item save error (non-blocking):", saveErr);
         }
       }
 

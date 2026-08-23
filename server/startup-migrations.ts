@@ -214,6 +214,10 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       END IF;
     END $$`,
   },
+  {
+    name: "food_labels.food_items",
+    sql: "ALTER TABLE food_labels ADD COLUMN IF NOT EXISTS food_items jsonb",
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

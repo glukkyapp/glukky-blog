@@ -1058,7 +1058,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveFoodLabel(label: InsertFoodLabel): Promise<void> {
-    await db.insert(foodLabels).values(label).onConflictDoNothing();
+    const foodItems = Array.isArray(label.foodItems)
+      ? label.foodItems as FoodItemMetadata[]
+      : null;
+    await db.insert(foodLabels).values({
+      ...label,
+      foodItems,
+    } as typeof foodLabels.$inferInsert).onConflictDoUpdate({
+      target: foodLabels.internalId,
+      set: { foodItems },
+    });
   }
 
   async getScheduledNotification(

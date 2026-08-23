@@ -292,6 +292,7 @@ export const foodLabels = pgTable("food_labels", {
   defaultPortionId: varchar("default_portion_id").notNull().default("medium"),
   defaultSauces: text("default_sauces").array().notNull().default(sql`'{}'::text[]`),
   defaultToppings: text("default_toppings").array().notNull().default(sql`'{}'::text[]`),
+  foodItems: jsonb("food_items").$type<FoodItemMetadata[] | null>(),
   isSugaryFood: boolean("is_sugary_food").notNull().default(false),
   isSugaryDrink: boolean("is_sugary_drink").notNull().default(false),
   isOily: boolean("is_oily").notNull().default(false),
