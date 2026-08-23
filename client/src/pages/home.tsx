@@ -17,6 +17,8 @@ import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
+import PostMealCard from "@/components/PostMealCard";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -47,6 +49,18 @@ const MITIGATION_OPTION_KEYS = [
   { value: "split_dinner", labelKey: "mitigation.split_dinner_label", descKey: "mitigation.split_dinner_desc" },
 ] as const;
 
+type CorrectableHstixReading = {
+  id: number;
+  glucoseMmol: number;
+  note: string | null;
+  recordedAt: string;
+  correctionExpiresAt: string;
+};
+
+type HstixReadingsResponse = {
+  latestCorrectableReading: CorrectableHstixReading | null;
+};
+
 export default function Home() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
@@ -67,6 +81,17 @@ export default function Home() {
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const { data: piggy } = useQuery<PiggyBankData>({ queryKey: ["/api/piggybank"] });
   const { data: devCheck } = useQuery<{ isDev: boolean }>({ queryKey: ["/api/dev/check"] });
+  const { data: hstixReadings, refetch: refetchHstixReadings } = useQuery<HstixReadingsResponse>({
+    queryKey: ["/api/hstix/readings"],
+    queryFn: async () => {
+      const response = await fetch("/api/hstix/readings", { credentials: "include" });
+      if (!response.ok) throw new Error("Unable to fetch HStix readings");
+      return response.json();
+    },
+  });
+  const [hstixSheetOpen, setHstixSheetOpen] = useState(false);
+  const [sheetHstixReading, setSheetHstixReading] = useState<CorrectableHstixReading | null>(null);
+  const correctableHstixReading = hstixReadings?.latestCorrectableReading ?? null;
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
   const [recorded, setRecorded] = useState(false);
@@ -1442,6 +1467,45 @@ export default function Home() {
     return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
   }, [nextWeekPlanned, plan?.startDate]);
 
+  useEffect(() => {
+    if (!correctableHstixReading) return;
+    // The server issues this deadline. The client only uses it to refresh the
+    // Home state; the update endpoint remains the authoritative expiry check.
+    const delay = new Date(correctableHstixReading.correctionExpiresAt).getTime() - Date.now();
+    if (delay <= 0) {
+      void refetchHstixReadings();
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (hstixSheetOpen && sheetHstixReading?.id === correctableHstixReading.id) {
+        setHstixSheetOpen(false);
+        setSheetHstixReading(null);
+        toast({
+          title: t("common.error"),
+          description: t("glucose.hstix_correction_expired"),
+          variant: "destructive",
+        });
+      }
+      void refetchHstixReadings();
+    }, delay + 10);
+    return () => window.clearTimeout(timer);
+  }, [
+    correctableHstixReading?.correctionExpiresAt,
+    correctableHstixReading?.id,
+    refetchHstixReadings,
+    hstixSheetOpen,
+    sheetHstixReading?.id,
+    t,
+    toast,
+  ]);
+
+  const openHstixSheet = () => {
+    // Keep the target stable for this sheet session. A refresh at expiry must
+    // never turn an in-progress correction into a brand-new reading.
+    setSheetHstixReading(correctableHstixReading);
+    setHstixSheetOpen(true);
+  };
+
   const formatCatchUpDate = () => {
     if (!planSundayStr) return "";
     const d = new Date(planSundayStr + "T00:00:00");
@@ -1488,6 +1552,34 @@ export default function Home() {
       )}
 
       {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
+
+      <section aria-label={t("glucose.hstix_heading")} data-testid="section-home-hstix">
+        {correctableHstixReading ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
+            <p className="font-semibold tabular-nums text-emerald-950" data-testid="text-home-hstix-saved">
+              {t("glucose.hstix_home_saved", { value: correctableHstixReading.glucoseMmol.toFixed(1) })}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={openHstixSheet}
+              data-testid="button-home-hstix-change"
+            >
+              {t("glucose.hstix_home_change")}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            className="w-full"
+            onClick={openHstixSheet}
+            data-testid="button-home-hstix-record"
+          >
+            {t("glucose.hstix_home_record")}
+          </Button>
+        )}
+      </section>
 
       {mealWindow && (
         <div data-testid="section-meal-suggestion">
@@ -1982,6 +2074,37 @@ export default function Home() {
       {t("disclaimer.footer")}
     </p>
     </motion.div>
+    <Sheet
+      open={hstixSheetOpen}
+      onOpenChange={(open) => {
+        setHstixSheetOpen(open);
+        if (!open) setSheetHstixReading(null);
+      }}
+    >
+      <SheetContent side="bottom" className="mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl px-4 pb-7 pt-10">
+        <PostMealCard
+          standalone
+          initialValue={sheetHstixReading?.glucoseMmol ?? null}
+          initialNote={sheetHstixReading?.note ?? null}
+          hstixReadingId={sheetHstixReading?.id}
+          onDone={() => {
+            setHstixSheetOpen(false);
+            setSheetHstixReading(null);
+            void refetchHstixReadings();
+          }}
+          onHstixCorrectionExpired={() => {
+            setHstixSheetOpen(false);
+            setSheetHstixReading(null);
+            toast({
+              title: t("common.error"),
+              description: t("glucose.hstix_correction_expired"),
+              variant: "destructive",
+            });
+            void refetchHstixReadings();
+          }}
+        />
+      </SheetContent>
+    </Sheet>
     <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />

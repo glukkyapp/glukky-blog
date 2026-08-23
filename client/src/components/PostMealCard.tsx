@@ -16,10 +16,13 @@ import { track } from "@/lib/posthog";
 interface Props {
   snapId?: number;
   hasFastingBaseline?: boolean;
-  onDone: () => void;
+  onDone: (result?: { reading?: { id: number }; correctionExpiresAt?: string }) => void;
   initialStep?: "ask" | "keypad";
   standalone?: boolean;
   initialValue?: number | null;
+  initialNote?: string | null;
+  hstixReadingId?: number;
+  onHstixCorrectionExpired?: () => void;
 }
 
 type Step = "ask" | "keypad" | "symptom" | "walked";
@@ -162,6 +165,9 @@ export default function PostMealCard({
   initialStep,
   standalone = false,
   initialValue = null,
+  initialNote = null,
+  hstixReadingId,
+  onHstixCorrectionExpired,
 }: Props) {
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>(standalone ? "keypad" : (initialStep ?? "ask"));
@@ -177,11 +183,14 @@ export default function PostMealCard({
   const [submitError, setSubmitError] = useState(false);
 
   useEffect(() => {
-    if (!standalone || initialValue === null) return;
-    const tenths = Math.round(initialValue * 10);
-    setIntPart(Math.floor(tenths / 10));
-    setDecPart(Math.abs(tenths % 10));
-  }, [initialValue, standalone]);
+    if (!standalone) return;
+    if (initialValue !== null) {
+      const tenths = Math.round(initialValue * 10);
+      setIntPart(Math.floor(tenths / 10));
+      setDecPart(Math.abs(tenths % 10));
+    }
+    setNote(initialNote ?? "");
+  }, [initialNote, initialValue, standalone]);
 
   const glucoseValue =
     intPart !== null && decPart !== null
@@ -235,14 +244,16 @@ export default function PostMealCard({
     try {
       if (standalone) {
         if (glucoseValue === null) return;
-        await apiRequest("POST", "/api/hstix/readings", {
+        const response = await apiRequest(hstixReadingId ? "PATCH" : "POST", hstixReadingId ? `/api/hstix/readings/${hstixReadingId}` : "/api/hstix/readings", {
           glucoseMmol: glucoseValue,
           ...(note.trim() ? { note: note.trim() } : {}),
         });
+        const result = await response.json();
         queryClient.invalidateQueries({ queryKey: ["/api/hstix/readings"] });
         queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
         queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
-        onDone();
+        queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
+        onDone(result);
         return;
       }
       if (!snapId) {
@@ -279,6 +290,10 @@ export default function PostMealCard({
       onDone();
     } catch (e) {
       console.error("[PostMealCard] submit error:", e);
+      if (standalone && hstixReadingId && String(e).includes("HSTIX_CORRECTION_EXPIRED")) {
+        onHstixCorrectionExpired?.();
+        return;
+      }
       setSubmitError(true);
     } finally {
       setSubmitting(false);

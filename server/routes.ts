@@ -54,6 +54,7 @@ import {
 } from "./carb-subtypes";
 import { buildHstixFoodCards } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
+import { hstixCorrectionExpiresAt } from "./hstix-correction";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -5124,16 +5125,27 @@ No explanation, just JSON.`,
   app.get("/api/hstix/readings", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const readings = await storage.listHstixReadings(userId);
+      const now = new Date();
+      const [readings, latestCorrectableReading] = await Promise.all([
+        storage.listHstixReadings(userId),
+        storage.getLatestCorrectableHstixReading(userId, now),
+      ]);
+      const serializeReading = (reading: typeof readings[number]) => ({
+        id: reading.id,
+        glucoseMmol: reading.glucoseMmol,
+        note: reading.note,
+        minutesSinceLastMeal: reading.minutesSinceLastMeal,
+        mealTimingConfidence: reading.mealTimingConfidence,
+        recordedAt: reading.recordedAt.toISOString(),
+      });
       res.json({
-        readings: readings.map(reading => ({
-          id: reading.id,
-          glucoseMmol: reading.glucoseMmol,
-          note: reading.note,
-          minutesSinceLastMeal: reading.minutesSinceLastMeal,
-          mealTimingConfidence: reading.mealTimingConfidence,
-          recordedAt: reading.recordedAt.toISOString(),
-        })),
+        readings: readings.map(serializeReading),
+        latestCorrectableReading: latestCorrectableReading
+          ? {
+              ...serializeReading(latestCorrectableReading),
+              correctionExpiresAt: hstixCorrectionExpiresAt(latestCorrectableReading.recordedAt).toISOString(),
+            }
+          : null,
       });
     } catch (error: any) {
       console.error("[hstix/list] error:", error?.message);
@@ -5174,10 +5186,50 @@ No explanation, just JSON.`,
           mealTimingConfidence: reading.mealTimingConfidence,
           recordedAt: reading.recordedAt.toISOString(),
         },
+        correctionExpiresAt: hstixCorrectionExpiresAt(reading.recordedAt).toISOString(),
       });
     } catch (error: any) {
       console.error("[hstix/save] error:", error?.message);
       res.status(500).json({ message: "Failed to save HStix reading." });
+    }
+  });
+
+  app.patch("/api/hstix/readings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id, 10);
+      const glucoseMmol = Number(req.body?.glucoseMmol);
+      const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : null;
+      if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(glucoseMmol) || glucoseMmol < 2.0 || glucoseMmol > 30.0) {
+        return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
+      }
+
+      const reading = await storage.updateHstixReadingWithinCorrectionWindow(
+        id,
+        userId,
+        { glucoseMmol, note },
+        new Date(),
+      );
+      if (!reading) {
+        return res.status(409).json({
+          code: "HSTIX_CORRECTION_EXPIRED",
+          message: "This reading can no longer be changed.",
+        });
+      }
+      res.json({
+        reading: {
+          id: reading.id,
+          glucoseMmol: reading.glucoseMmol,
+          note: reading.note,
+          minutesSinceLastMeal: reading.minutesSinceLastMeal,
+          mealTimingConfidence: reading.mealTimingConfidence,
+          recordedAt: reading.recordedAt.toISOString(),
+        },
+        correctionExpiresAt: hstixCorrectionExpiresAt(reading.recordedAt).toISOString(),
+      });
+    } catch (error: any) {
+      console.error("[hstix/correct] error:", error?.message);
+      res.status(500).json({ message: "Failed to update HStix reading." });
     }
   });
 

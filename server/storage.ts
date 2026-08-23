@@ -135,6 +135,13 @@ export interface IStorage {
   getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null>;
   insertHstixReading(reading: InsertHstixReading): Promise<HstixReading>;
   listHstixReadings(userId: string, limit?: number): Promise<HstixReading[]>;
+  getLatestCorrectableHstixReading(userId: string, now: Date): Promise<HstixReading | null>;
+  updateHstixReadingWithinCorrectionWindow(
+    id: number,
+    userId: string,
+    data: { glucoseMmol: number; note: string | null },
+    now: Date,
+  ): Promise<HstixReading | null>;
   getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>>;
   saveCarbSubtypePreference(userId: string, foodKey: string, carbCategory: string, carbSubtype: string): Promise<void>;
   updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
@@ -1226,6 +1233,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(hstixReadings.userId, userId))
       .orderBy(desc(hstixReadings.recordedAt))
       .limit(limit);
+  }
+
+  async getLatestCorrectableHstixReading(userId: string, now: Date): Promise<HstixReading | null> {
+    const cutoff = new Date(now.getTime() - 5 * 60 * 1000);
+    const [reading] = await db.select().from(hstixReadings)
+      .where(and(
+        eq(hstixReadings.userId, userId),
+        gt(hstixReadings.recordedAt, cutoff),
+      ))
+      .orderBy(desc(hstixReadings.recordedAt))
+      .limit(1);
+    return reading ?? null;
+  }
+
+  async updateHstixReadingWithinCorrectionWindow(
+    id: number,
+    userId: string,
+    data: { glucoseMmol: number; note: string | null },
+    now: Date,
+  ): Promise<HstixReading | null> {
+    // Keep the expiry condition in the update itself so a request at the exact
+    // boundary cannot succeed after a separate eligibility read.
+    const cutoff = new Date(now.getTime() - 5 * 60 * 1000);
+    const [reading] = await db.update(hstixReadings)
+      .set({ glucoseMmol: data.glucoseMmol, note: data.note })
+      .where(and(
+        eq(hstixReadings.id, id),
+        eq(hstixReadings.userId, userId),
+        gt(hstixReadings.recordedAt, cutoff),
+      ))
+      .returning();
+    return reading ?? null;
   }
 
   async getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>> {
