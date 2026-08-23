@@ -1,0 +1,17 @@
+Prompt 1: HStix Logging Button — Always-On Access + Backend Confidence Tagging
+Objective: Replace the current conditional “tab appears 1-2 hours after meal” trigger with a persistent, always-enabled HStix logging entry point, and move all timing-based interpretation logic to the backend so the button itself never blocks or disables based on timing.
+Frontend changes:
+1.	Add a persistent icon/tab in the bottom navigation bar (same tier as home/food-snap/trends) that opens the HStix logging screen. This icon must always be enabled — never greyed out, never conditionally hidden, regardless of time since last meal or whether any meal was logged at all.
+2.	Remove the existing home-page card/tab that only appears 1-2 hours post-meal. Do not replace it with any other timing-gated UI element.
+3.	On the HStix logging screen, allow the user to log a value with zero required context — no forced selection of “which meal” or “how long ago.” Optionally allow an optional, non-blocking note field, but do not require it to submit.
+4.	Add a scheduled local/push notification approximately 1-2 hours after a logged meal, prompting the user to log HStix, with a single non-intrusive re-prompt if dismissed or ignored. This notification is a convenience nudge only — it must not be the only way to reach the logging screen.
+Backend changes:
+1.	On every HStix save, calculate  minutesSinceLastMeal  using the timestamp of the user’s most recently logged meal (if any exists).
+2.	Assign a  mealTimingConfidence  tag based on elapsed time:
+•	 on_time : 0-120 minutes since last meal
+•	 delayed : 121-240 minutes since last meal
+•	 unrelated : more than 240 minutes since last meal, or no meal logged in the prior 4 hours
+3.	Store  mealTimingConfidence  alongside the HStix record. This value is invisible to the user in the primary logging flow.
+4.	All food-attribution logic (lift/baseline comparison calculations, HStix food cards, per-food high/medium/low counting) must filter to  mealTimingConfidence === "on_time"  only.  delayed  and  unrelated  readings are still stored and still count toward general glucose history/trends/charts, but must be excluded from any food-specific personalization calculation.
+5.	Do not surface  mealTimingConfidence  as a technical/clinical label anywhere in the UI. If a plain-language note is shown for delayed readings, use: “這個記錄較遲，未能準確反映呢餐嘅影響” (zh-Hant) — do not use terms like “confidence tier,” “unreliable,” or numeric thresholds in user-facing text.
+Explicit non-goals: Do not disable, hide, or grey out the logging button under any timing condition. Do not require the user to select which meal a reading corresponds to. Do not delete or reject any submitted reading.
