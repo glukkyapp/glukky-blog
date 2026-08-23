@@ -32,6 +32,7 @@ import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt, isNull } from "drizz
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 import { revokeAppleRefreshToken } from "./apple-auth";
+import { HSTIX_CORRECTION_WINDOW_MS } from "./hstix-correction";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -1236,7 +1237,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLatestCorrectableHstixReading(userId: string, now: Date): Promise<HstixReading | null> {
-    const cutoff = new Date(now.getTime() - 5 * 60 * 1000);
+    const cutoff = new Date(now.getTime() - HSTIX_CORRECTION_WINDOW_MS);
     const [reading] = await db.select().from(hstixReadings)
       .where(and(
         eq(hstixReadings.userId, userId),
@@ -1255,7 +1256,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<HstixReading | null> {
     // Keep the expiry condition in the update itself so a request at the exact
     // boundary cannot succeed after a separate eligibility read.
-    const cutoff = new Date(now.getTime() - 5 * 60 * 1000);
+    const cutoff = new Date(now.getTime() - HSTIX_CORRECTION_WINDOW_MS);
     const [reading] = await db.update(hstixReadings)
       .set({ glucoseMmol: data.glucoseMmol, note: data.note })
       .where(and(
