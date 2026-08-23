@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,12 @@ import { hapticTap } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 
 interface Props {
-  snapId: number;
-  hasFastingBaseline: boolean;
+  snapId?: number;
+  hasFastingBaseline?: boolean;
   onDone: () => void;
   initialStep?: "ask" | "keypad";
+  standalone?: boolean;
+  initialValue?: number | null;
 }
 
 type Step = "ask" | "keypad" | "symptom" | "walked";
@@ -153,11 +155,19 @@ function IntegerWheel({
   );
 }
 
-export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initialStep }: Props) {
+export default function PostMealCard({
+  snapId,
+  hasFastingBaseline = false,
+  onDone,
+  initialStep,
+  standalone = false,
+  initialValue = null,
+}: Props) {
   const { t } = useTranslation();
-  const [step, setStep] = useState<Step>(initialStep ?? "ask");
+  const [step, setStep] = useState<Step>(standalone ? "keypad" : (initialStep ?? "ask"));
   const [intPart, setIntPart] = useState<number | null>(null);
   const [decPart, setDecPart] = useState<number | null>(null);
+  const [note, setNote] = useState("");
   const [symptom, setSymptom] = useState<string | null>(null);
   const [selectedFasting, setSelectedFasting] = useState<number | null>(null);
   const [fastingUnknown, setFastingUnknown] = useState(false);
@@ -166,13 +176,20 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
   const [walkedAnswer, setWalkedAnswer] = useState<boolean | null>(null);
   const [submitError, setSubmitError] = useState(false);
 
+  useEffect(() => {
+    if (!standalone || initialValue === null) return;
+    const tenths = Math.round(initialValue * 10);
+    setIntPart(Math.floor(tenths / 10));
+    setDecPart(Math.abs(tenths % 10));
+  }, [initialValue, standalone]);
+
   const glucoseValue =
     intPart !== null && decPart !== null
       ? parseFloat(`${intPart}.${decPart}`)
       : null;
 
   const fastingSelected = hasFastingBaseline || selectedFasting !== null || fastingUnknown;
-  const canConfirmKeypad = glucoseValue !== null && fastingSelected;
+  const canConfirmKeypad = glucoseValue !== null && (standalone || fastingSelected);
 
   const handleBackspace = () => {
     hapticTap("SOFT");
@@ -186,6 +203,10 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
   const handleConfirmKeypad = () => {
     hapticTap("LIGHT");
     if (glucoseValue === null) return;
+    if (standalone) {
+      void submit(false);
+      return;
+    }
     if (glucoseValue < 4.0) {
       setAlertType("low");
       return;
@@ -212,6 +233,22 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
     setSubmitting(true);
     setSubmitError(false);
     try {
+      if (standalone) {
+        if (glucoseValue === null) return;
+        await apiRequest("POST", "/api/hstix/readings", {
+          glucoseMmol: glucoseValue,
+          ...(note.trim() ? { note: note.trim() } : {}),
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/hstix/readings"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
+        onDone();
+        return;
+      }
+      if (!snapId) {
+        setSubmitError(true);
+        return;
+      }
       const isSymptomOnly = !skip && glucoseValue === null;
       await apiRequest("POST", "/api/snap/post-meal", {
         snapId,
@@ -393,7 +430,7 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
             ))}
           </div>
 
-          {!hasFastingBaseline && (
+          {!standalone && !hasFastingBaseline && (
             <div className="flex flex-col gap-2 pt-1 border-t border-border/40">
               <p className="text-xs text-muted-foreground">{t("glucose.fasting_question")}</p>
               <div className="flex gap-1.5 flex-wrap">
@@ -434,6 +471,23 @@ export default function PostMealCard({ snapId, hasFastingBaseline, onDone, initi
                 </button>
               </div>
             </div>
+          )}
+
+          {standalone && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {t("glucose.hstix_note_label", "Note (optional)")}
+              </span>
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={500}
+                rows={2}
+                className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder={t("glucose.hstix_note_placeholder", "Add a note")}
+                data-testid="input-hstix-note"
+              />
+            </label>
           )}
 
           <Button

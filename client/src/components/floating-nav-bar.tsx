@@ -1,6 +1,6 @@
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Home, ClipboardList, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp } from "lucide-react";
+import { Home, ClipboardList, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp, Droplet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
@@ -29,6 +29,7 @@ export default function FloatingNavBar() {
     { key: "report", label: t("nav.report", "Report"), path: "/report", icon: ClipboardList },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
     ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
+    { key: "hstix", label: t("nav.hstix", "HStix"), path: "/hstix", icon: Droplet },
     { key: "glucose", label: t("glucose.patterns_nav"), path: "/glucose-patterns", icon: TrendingUp },
     { key: "health_info", label: t("nav.health_info"), path: "/health-info", icon: Lightbulb },
     { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
@@ -44,7 +45,7 @@ export default function FloatingNavBar() {
     // Profile is always reachable so the user can access settings,
     // restore purchases, sign out, and (in hard lock B) see the
     // hosted no-close paywall presented by the lock-app effect.
-    if (key === "profile") return false;
+    if (key === "profile" || key === "hstix") return false;
     if (isLocked) return true;
     if (!gate) return false;
     if (gate.gateMode === "off") return false;

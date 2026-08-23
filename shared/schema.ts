@@ -364,6 +364,26 @@ export const insertMealSnapSchema = createInsertSchema(mealSnaps).omit({ id: tru
 export type MealSnap = typeof mealSnaps.$inferSelect;
 export type InsertMealSnap = z.infer<typeof insertMealSnapSchema>;
 
+export type MealTimingConfidence = "on_time" | "delayed" | "unrelated";
+
+export const hstixReadings = pgTable("hstix_readings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  mealSnapId: integer("meal_snap_id"),
+  glucoseMmol: real("glucose_mmol").notNull(),
+  note: text("note"),
+  minutesSinceLastMeal: integer("minutes_since_last_meal"),
+  mealTimingConfidence: varchar("meal_timing_confidence", { length: 16 }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userRecordedIdx: index("hstix_readings_user_recorded_idx").on(table.userId, table.recordedAt),
+  mealIdx: index("hstix_readings_meal_idx").on(table.mealSnapId),
+}));
+
+export const insertHstixReadingSchema = createInsertSchema(hstixReadings).omit({ id: true, recordedAt: true });
+export type HstixReading = typeof hstixReadings.$inferSelect;
+export type InsertHstixReading = z.infer<typeof insertHstixReadingSchema>;
+
 export const userCarbSubtypePreferences = pgTable("user_carb_subtype_preferences", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),

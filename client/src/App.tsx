@@ -62,6 +62,7 @@ const DevPanel = lazy(() => import("@/pages/dev-panel"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Report = lazy(() => import("@/pages/report"));
 const FoodLog = lazy(() => import("@/pages/food-log"));
+const Hstix = lazy(() => import("@/pages/hstix"));
 const GlucosePatterns = lazy(() => import("@/pages/glucose-patterns"));
 const Confidentiality = lazy(() => import("@/pages/confidentiality"));
 
@@ -616,7 +617,9 @@ function AuthenticatedApp() {
           raw.deepLink ??
           (raw.data as any)?.deepLink ??
           (raw.notification as any)?.additionalData?.deepLink ??
-          (raw.additionalData as any)?.deepLink;
+          (raw.additionalData as any)?.deepLink ??
+          raw.url ??
+          (raw.notification as any)?.url;
         if (typeof link === "string" && link.startsWith("/")) {
           pendingDeepLink.current = link;
           setLocation(link);
@@ -1744,6 +1747,7 @@ function AuthenticatedApp() {
                 <Route path="/report" component={Report} />
                 <Route path="/food-reports" component={Report} />
                 <Route path="/food-log" component={FoodLog} />
+                <Route path="/hstix" component={Hstix} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route path="/confidentiality" component={Confidentiality} />
                 <Route component={WeeklyPlanner} />
@@ -1798,6 +1802,7 @@ function AuthenticatedApp() {
                 <Route path="/report" component={Report} />
                 <Route path="/food-reports" component={Report} />
                 <Route path="/food-log" component={FoodLog} />
+                <Route path="/hstix" component={Hstix} />
                 <Route path="/glucose-patterns" component={GlucosePatterns} />
                 <Route path="/confidentiality" component={Confidentiality} />
                 <Route component={NotFound} />

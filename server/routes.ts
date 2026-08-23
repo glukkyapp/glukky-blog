@@ -53,6 +53,7 @@ import {
   prepareFoodItems,
 } from "./carb-subtypes";
 import { buildHstixFoodCards } from "./glucose-patterns";
+import { classifyHstixTiming } from "./hstix-timing";
 
 interface TipEntry { key: string; timing: "immediate" | "future"; }
 interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
@@ -4242,7 +4243,10 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
                 title:    { en: hstixContent.en.title,    "zh-Hant": hstixContent.zhHant.title },
                 subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
                 message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
-                deepLink: `/food-log?snap=${snap.id}`,
+                // The notification always lands on the context-free rolling
+                // wheel. The save route determines whether the latest meal
+                // can be safely associated with the reading.
+                deepLink: "/hstix",
                 send_after: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
                 externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
                 playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],
@@ -5114,6 +5118,66 @@ No explanation, just JSON.`,
     } catch (error: any) {
       console.error("post-meal error:", error);
       res.status(500).json({ message: "Failed to save post-meal record." });
+    }
+  });
+
+  app.get("/api/hstix/readings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const readings = await storage.listHstixReadings(userId);
+      res.json({
+        readings: readings.map(reading => ({
+          id: reading.id,
+          glucoseMmol: reading.glucoseMmol,
+          note: reading.note,
+          minutesSinceLastMeal: reading.minutesSinceLastMeal,
+          mealTimingConfidence: reading.mealTimingConfidence,
+          recordedAt: reading.recordedAt.toISOString(),
+        })),
+      });
+    } catch (error: any) {
+      console.error("[hstix/list] error:", error?.message);
+      res.status(500).json({ message: "Failed to fetch HStix readings." });
+    }
+  });
+
+  app.post("/api/hstix/readings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const glucoseMmol = Number(req.body?.glucoseMmol);
+      const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : null;
+      if (!Number.isFinite(glucoseMmol) || glucoseMmol < 2.0 || glucoseMmol > 30.0) {
+        return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
+      }
+
+      // Context is server-owned: no client meal selection is required or trusted.
+      // A reading remains valid even when no meal exists in the lookback window.
+      const recordedAt = new Date();
+      const latestMeal = await storage.getLatestMealSnap(userId, recordedAt);
+      const timing = classifyHstixTiming(recordedAt, latestMeal?.snapTime ?? null);
+      const mealSnapId = timing.shouldAssociateMeal ? latestMeal!.id : null;
+
+      const reading = await storage.insertHstixReading({
+        userId,
+        glucoseMmol,
+        note,
+        mealSnapId,
+        minutesSinceLastMeal: timing.minutesSinceLastMeal,
+        mealTimingConfidence: timing.mealTimingConfidence,
+      });
+      res.status(201).json({
+        reading: {
+          id: reading.id,
+          glucoseMmol: reading.glucoseMmol,
+          note: reading.note,
+          minutesSinceLastMeal: reading.minutesSinceLastMeal,
+          mealTimingConfidence: reading.mealTimingConfidence,
+          recordedAt: reading.recordedAt.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("[hstix/save] error:", error?.message);
+      res.status(500).json({ message: "Failed to save HStix reading." });
     }
   });
 

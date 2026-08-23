@@ -69,6 +69,7 @@ console.log("\nMeasured HStix lift");
 const measuredMeals = Array.from({ length: 25 }, (_, index) => ({
   postMealGlucoseMmol: index < 5 ? 8.2 : 5.5,
   foodItems: [index < 5 ? rice : chicken],
+  mealTimingConfidence: "on_time" as const,
 }));
 const cards = buildHstixFoodCards(measuredMeals, "healthy");
 const riceCard = cards.find(card => card.foodNameZhHant === "白飯");
@@ -77,7 +78,7 @@ check("lift uses P(high | food) divided by P(high overall)", riceCard?.lift === 
 check("component-free extras never appear as evidence cards", !cards.some(card => card.foodNameEn === "gravy"));
 const withDerivedRice = buildHstixFoodCards([
   ...measuredMeals,
-  { postMealGlucoseMmol: 8.4, foodItems: [{ ...rice, source: "derived" as const }] },
+  { postMealGlucoseMmol: 8.4, foodItems: [{ ...rice, source: "derived" as const }], mealTimingConfidence: "on_time" as const },
 ], "healthy");
 check("derived historical records are excluded from measured evidence", withDerivedRice.find(card => card.foodNameZhHant === "白飯")?.totalMeals === 5);
 check("the shared evidence gate requires 25 eligible meals", buildHstixFoodCards(measuredMeals.slice(0, 24), "healthy").length === 0);

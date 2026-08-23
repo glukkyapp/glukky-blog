@@ -24,7 +24,7 @@ const PASS_INTERVAL_MS = 60 * 60 * 1000;
 
 type NotificationType =
   | "foodsnap_reminder" // 7 PM local — conditional: no dinner snap today
-  | "hstix_reminder"    // event-triggered — 60 min after snap (not pre-scheduled)
+  | "hstix_reminder"    // event-triggered — 55 min after snap (not pre-scheduled)
   | "daily_report"      // retired — no longer scheduled
   | "weekly_report"     // retired — no longer scheduled
   | "monthly_report"    // retired — no longer scheduled
@@ -70,7 +70,7 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
   hstix_reminder: {
     en:     { title: t("Glukky"), subtitle: t(""), message: t("Ready to log your HStix reading?") },
     zhHant: { title: t("Glukky"), subtitle: t(""), message: t("準備好量度你的血糖了嗎？") },
-    deepLink: "/food-log",
+    deepLink: "/hstix",
   },
   daily_report: {
     en:     { title: t("Glukky"), subtitle: t(""), message: t("Your daily summary is ready.") },
@@ -135,8 +135,7 @@ const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
 // Web/webview redirect URL sent as the OneSignal `url` field for each
 // pre-scheduled type. Overrides deepLink for the tap destination while
 // deepLink continues as the in-app navigator path (data.deepLink).
-// hstix_reminder is absent — its URL is dynamic (includes snapId) and
-// is set at the send site in routes.ts.
+// hstix_reminder is event-triggered at the send site in routes.ts.
 const REDIRECT_URL: Partial<Record<NotificationType, string>> = {
   foodsnap_reminder: "/snap",
 };

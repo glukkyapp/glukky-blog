@@ -12,13 +12,14 @@ import {
   type FoodAdviceCache,
   type ScheduledNotification,
   type MealSnap, type InsertMealSnap, type FoodItemMetadata,
+  type HstixReading, type InsertHstixReading, type MealTimingConfidence,
   type UserGlucoseThresholds,
   type CorrectionRequest, type InsertCorrectionRequest,
   type DeletionRequest,
   userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
-  mealSnaps,
+  mealSnaps, hstixReadings,
   snapDailyGlucose, snapMonthlyArchive,
   userGlucoseThresholds, userCarbSubtypePreferences,
   userProfileHealthHistory, mealSnapHealthHistory, userGlucoseThresholdsHistory,
@@ -129,7 +130,11 @@ export interface IStorage {
     postMealGlucoseMmol: number | null;
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
+    mealTimingConfidence: MealTimingConfidence;
   }>>;
+  getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null>;
+  insertHstixReading(reading: InsertHstixReading): Promise<HstixReading>;
+  listHstixReadings(userId: string, limit?: number): Promise<HstixReading[]>;
   getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>>;
   saveCarbSubtypePreference(userId: string, foodKey: string, carbCategory: string, carbSubtype: string): Promise<void>;
   updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
@@ -1154,8 +1159,9 @@ export class DatabaseStorage implements IStorage {
     postMealGlucoseMmol: number | null;
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
+    mealTimingConfidence: MealTimingConfidence;
   }>> {
-    return db.select({
+    const legacyRows = await db.select({
       postMealGlucoseMmol: mealSnaps.postMealGlucoseMmol,
       foodItems: mealSnaps.foodItems,
       recordedAt: mealSnaps.postMealRecordedAt,
@@ -1166,7 +1172,60 @@ export class DatabaseStorage implements IStorage {
       postMealGlucoseMmol: row.postMealGlucoseMmol,
       foodItems: row.foodItems,
       recordedAt: row.recordedAt ?? new Date(0),
+      // Pre-existing post-meal values were only accepted through the
+      // recordable window, so they are safe legacy on-time evidence.
+      mealTimingConfidence: "on_time" as const,
     })));
+    const independentRows = await db.select({
+      postMealGlucoseMmol: hstixReadings.glucoseMmol,
+      foodItems: mealSnaps.foodItems,
+      recordedAt: hstixReadings.recordedAt,
+      mealTimingConfidence: hstixReadings.mealTimingConfidence,
+    }).from(hstixReadings)
+      .leftJoin(mealSnaps, and(
+        eq(hstixReadings.mealSnapId, mealSnaps.id),
+        eq(hstixReadings.userId, mealSnaps.userId),
+      ))
+      .where(and(
+        eq(hstixReadings.userId, userId),
+        eq(hstixReadings.mealTimingConfidence, "on_time"),
+      ));
+    return [
+      ...legacyRows,
+      ...independentRows.map(row => ({
+        postMealGlucoseMmol: row.postMealGlucoseMmol,
+        foodItems: row.foodItems ?? null,
+        recordedAt: row.recordedAt,
+        mealTimingConfidence: "on_time" as const,
+      })),
+    ];
+  }
+
+  async getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null> {
+    const [snap] = await db.select({ id: mealSnaps.id, snapTime: mealSnaps.snapTime })
+      .from(mealSnaps)
+      .where(and(
+        eq(mealSnaps.userId, userId),
+        eq(mealSnaps.isDeleted, false),
+        lte(mealSnaps.snapTime, before),
+      ))
+      .orderBy(desc(mealSnaps.snapTime))
+      .limit(1);
+    return snap ?? null;
+  }
+
+  async insertHstixReading(reading: InsertHstixReading): Promise<HstixReading> {
+    const [inserted] = await db.insert(hstixReadings)
+      .values(reading as typeof hstixReadings.$inferInsert)
+      .returning();
+    return inserted;
+  }
+
+  async listHstixReadings(userId: string, limit = 100): Promise<HstixReading[]> {
+    return db.select().from(hstixReadings)
+      .where(eq(hstixReadings.userId, userId))
+      .orderBy(desc(hstixReadings.recordedAt))
+      .limit(limit);
   }
 
   async getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>> {
@@ -1756,23 +1815,35 @@ export class DatabaseStorage implements IStorage {
 
   async getHStixReadingCount(userId: string): Promise<number> {
     const result = await db.execute(sql`
-      SELECT COUNT(*)::int AS cnt
-      FROM meal_snaps
-      WHERE user_id = ${userId}
-        AND post_meal_glucose_mmol IS NOT NULL
-        AND snap_time >= NOW() - INTERVAL '30 days'
+      SELECT (
+        (SELECT COUNT(*)::int FROM meal_snaps
+          WHERE user_id = ${userId}
+            AND post_meal_glucose_mmol IS NOT NULL
+            AND snap_time >= NOW() - INTERVAL '30 days')
+        +
+        (SELECT COUNT(*)::int FROM hstix_readings
+          WHERE user_id = ${userId}
+            AND recorded_at >= NOW() - INTERVAL '30 days')
+      )::int AS cnt
     `);
     return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
   }
 
   async getRecentHStixReadings(userId: string): Promise<number[]> {
     const result = await db.execute(sql`
-      SELECT post_meal_glucose_mmol AS mmol
-      FROM meal_snaps
-      WHERE user_id = ${userId}
-        AND post_meal_glucose_mmol IS NOT NULL
-        AND snap_time >= NOW() - INTERVAL '30 days'
-      ORDER BY snap_time ASC
+      SELECT mmol FROM (
+        SELECT post_meal_glucose_mmol AS mmol, COALESCE(post_meal_recorded_at, snap_time) AS recorded_at
+        FROM meal_snaps
+        WHERE user_id = ${userId}
+          AND post_meal_glucose_mmol IS NOT NULL
+          AND snap_time >= NOW() - INTERVAL '30 days'
+        UNION ALL
+        SELECT glucose_mmol AS mmol, recorded_at
+        FROM hstix_readings
+        WHERE user_id = ${userId}
+          AND recorded_at >= NOW() - INTERVAL '30 days'
+      ) all_readings
+      ORDER BY recorded_at ASC
     `);
     return (result.rows as any[]).map(row => parseFloat(row.mmol));
   }

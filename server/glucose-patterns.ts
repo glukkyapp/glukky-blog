@@ -13,6 +13,7 @@ import {
 export interface HstixMealForCards {
   postMealGlucoseMmol: number | null;
   foodItems: FoodItemMetadata[] | null;
+  mealTimingConfidence: "on_time" | "delayed" | "unrelated";
 }
 
 export interface HstixFoodCard {
@@ -56,6 +57,8 @@ export function buildHstixFoodCards(
   const numericSnaps = snaps.filter(s =>
     typeof s.postMealGlucoseMmol === "number" &&
     Number.isFinite(s.postMealGlucoseMmol) &&
+    // Food attribution is only valid for readings in the post-meal window.
+    s.mealTimingConfidence === "on_time" &&
     // A display-time-derived record must not contribute to either the
     // measured food evidence or its baseline.
     !(s.foodItems ?? []).some(item => item.source === "derived"),

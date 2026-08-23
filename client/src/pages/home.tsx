@@ -16,7 +16,6 @@ import giftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_prev
 import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
-import PostMealCard from "@/components/PostMealCard";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
@@ -64,15 +63,6 @@ export default function Home() {
   };
   const { data: plan, isLoading: planLoading } = useQuery({ queryKey: ["/api/plan/current"] });
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
-  const { data: pendingSnapData } = useQuery<{ snap: { id: number } | null }>({
-    queryKey: ["/api/snap/pending-post-meal"],
-    queryFn: async () => {
-      const res = await fetch("/api/snap/pending-post-meal", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    refetchInterval: 60000,
-  });
 
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const { data: piggy } = useQuery<PiggyBankData>({ queryKey: ["/api/piggybank"] });
@@ -1530,14 +1520,6 @@ export default function Home() {
             </motion.div>
           )}
         </div>
-      )}
-
-      {pendingSnapData?.snap && (
-        <PostMealCard
-          snapId={pendingSnapData.snap.id}
-          hasFastingBaseline={(profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined) || (profile?.fastingQuestionSeen === true)}
-          onDone={() => queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] })}
-        />
       )}
 
       {PLANNER_FEATURES_ENABLED && isCatchUp && !sundayCheckInDone && !recorded && (
