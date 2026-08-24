@@ -1,0 +1,127 @@
+Task 1: New Classification Method
+What changes: Instead of calculating lift only on the High band, the server now tallies all three band counts (Low, Medium, High) per food and for the overall baseline, then converts both into a single comparable number using the weighted formula:
+
+expectedRank
+baseline
+=
+0
+⋅
+𝑃
+(
+low
+)
+baseline
++
+1
+⋅
+𝑃
+(
+medium
+)
+baseline
++
+2
+⋅
+𝑃
+(
+high
+)
+baseline
+expectedRank 
+baseline
+​
+ =0⋅P(low) 
+baseline
+​
+ +1⋅P(medium) 
+baseline
+​
+ +2⋅P(high) 
+baseline
+​
+ 
+
+expectedRank
+food
+=
+0
+⋅
+𝑃
+(
+low
+∣
+food
+)
++
+1
+⋅
+𝑃
+(
+medium
+∣
+food
+)
++
+2
+⋅
+𝑃
+(
+high
+∣
+food
+)
+expectedRank 
+food
+​
+ =0⋅P(low∣food)+1⋅P(medium∣food)+2⋅P(high∣food)
+
+In plain terms: this produces one number per food (and one for the overall baseline), somewhere between 0 (all readings were Low) and 2 (all readings were High). A food whose readings skew toward High pulls this number up; a food whose readings skew toward Low pulls it down. This replaces the earlier three-separate-lifts approach with one clean composite score per food.
+
+Classification (reusing the existing 1.2 / 0.8 thresholds, unchanged as requested):
+
+text
+impactRatio = expectedRank_food / expectedRank_baseline
+
+if impactRatio > 1.2:
+    label = "Higher impact"   // food shifts readings toward worse outcomes
+elif impactRatio < 0.8:
+    label = "Lower impact"    // food shifts readings toward better outcomes
+else:
+    label = "No significant pattern"
+No ranking within a group, as agreed: two foods both landing in "Higher impact" are simply both flagged the same way — the app never claims one is worse than the other, since (as established) that specific comparison isn't reliably supported by this scoring method.
+
+Everything else stays the same: minimum sample size gating (25+ eligible readings per food), the source !== "derived" exclusion of unconfirmed historical items, and the on-time/eligible-reading filtering all carry over unchanged — only the underlying metric calculation is being replaced.
+
+Task 2: Zero-Denominator Verification
+Confirmed: this redesign eliminates most of the original risk, but one narrow edge case still needs a guard.
+
+The earlier three-lift approach divided 
+𝑃
+(
+band
+∣
+food
+)
+P(band∣food) by 
+𝑃
+(
+band
+∣
+baseline
+)
+P(band∣baseline) separately for each band — meaning three independent chances for a zero denominator (if baseline had zero Low readings, or zero Medium readings, or zero High readings, any one of those broke its own calculation). The new expectedRank method never does this. It only divides by the total eligible count when converting counts to probabilities, and then computes a weighted sum, not a per-band ratio — so the three-way division risk is gone.
+
+One residual risk remains: the final step, impactRatio = expectedRank_food / expectedRank_baseline, still divides by expectedRank_baseline. This equals zero only if 100% of the user's baseline readings have always been Low (weight 0), with zero Medium and zero High readings ever recorded. This is rare, but mathematically possible — for example, an extremely well-controlled user very early in tracking.
+
+Required guard:
+
+typescript
+function computeImpactRatio(expectedRankFood: number, expectedRankBaseline: number): number | null {
+  if (expectedRankBaseline === 0) {
+    // Every baseline reading has been Low. No variation exists to compare against.
+    // Cannot compute a ratio — return null, do not divide.
+    return null;
+  }
+  return expectedRankFood / expectedRankBaseline;
+}
+Any food where this returns null should be excluded from the impact list entirely for now, with the same "insufficient baseline variation" status used earlier — not treated as an error, just as "not enough data yet to compare."
