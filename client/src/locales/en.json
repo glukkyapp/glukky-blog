@@ -591,7 +591,10 @@
     "no": "No, proceed to Cycle 2"
   },
   "profile": {
-    "title": "Your Profile",
+    "title": "Your personal info",
+    "shortcut_glucose": "Glucose record",
+    "shortcut_food_log": "Food Log",
+    "shortcut_health_info": "Health Info",
     "your_name": "Your Name",
     "your_goal": "Your Goal",
     "tap_to_add_name": "Tap to add your name",
@@ -1195,6 +1198,7 @@
     "pattern_needs_more_readings_heading": "Needs more readings",
     "pattern_needs_more_readings_description": "Keep recording this food to see its measured impact.",
     "pattern_needs_more_readings_count": "{{total}} eligible readings · {{remaining}} more needed",
+    "pattern_needs_more_readings_placeholder": "Select a food",
     "pattern_ai_snap_count": "Based on {{count}} meal logs",
     "pattern_average": "Average",
     "pattern_previous": "Previous food",

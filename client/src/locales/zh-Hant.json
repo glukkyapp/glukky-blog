@@ -596,6 +596,9 @@
   },
   "profile": {
     "title": "你的個人資料",
+    "shortcut_glucose": "血糖記錄",
+    "shortcut_food_log": "飲食記錄",
+    "shortcut_health_info": "健康資訊",
     "your_name": "你的名字",
     "your_goal": "你的目標",
     "tap_to_add_name": "點擊新增名字",
@@ -1199,6 +1202,7 @@
     "pattern_needs_more_readings_heading": "需要更多讀數",
     "pattern_needs_more_readings_description": "繼續記錄這款食物，以了解它的實測影響。",
     "pattern_needs_more_readings_count": "{{total}} 次合資格讀數 · 還需要 {{remaining}} 次",
+    "pattern_needs_more_readings_placeholder": "選擇食物",
     "pattern_ai_snap_count": "根據 {{count}} 次飲食記錄",
     "pattern_average": "平均值",
     "pattern_previous": "上一款食物",

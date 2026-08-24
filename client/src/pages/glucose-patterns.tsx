@@ -19,6 +19,13 @@ import {
   sampleFoods,
   type GlucoseImpactLevel,
 } from "@/lib/glucose-pattern-ranking";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface GlucosePatternEntry {
   foodName: string;
@@ -120,6 +127,7 @@ export default function GlucosePatterns() {
   const [cardIndex, setCardIndex] = useState(0);
   const [search, setSearch] = useState("");
   const [selectedFood, setSelectedFood] = useState<string | null>(null);
+  const [selectedNeedsMoreFood, setSelectedNeedsMoreFood] = useState<string | null>(null);
   const swipeStartX = useRef<number | null>(null);
 
   const { data, isLoading } = useQuery<PatternsData>({
@@ -206,6 +214,7 @@ export default function GlucosePatterns() {
     ...food,
     foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
   })), [data?.hstixNeedsMoreReadings, locale]);
+  const selectedNeedsMoreReading = needsMoreReadings.find(food => food.foodKey === selectedNeedsMoreFood) ?? null;
 
   const activeFoods = mode === "ai" ? aiSamples[impact] : actualByImpact[impact];
   const matchingCount = mode === "ai"
@@ -227,6 +236,16 @@ export default function GlucosePatterns() {
       setCardIndex(0);
     }
   }, [mode, hasMeasuredList, firstMeasuredImpact]);
+
+  useEffect(() => {
+    if (needsMoreReadings.length === 0) {
+      setSelectedNeedsMoreFood(null);
+      return;
+    }
+    if (!selectedNeedsMoreFood || !needsMoreReadings.some(food => food.foodKey === selectedNeedsMoreFood)) {
+      setSelectedNeedsMoreFood(needsMoreReadings[0].foodKey);
+    }
+  }, [needsMoreReadings, selectedNeedsMoreFood]);
 
   const setSelection = (nextMode: "ai" | "actual", nextImpact: GlucoseImpactLevel) => {
     setMode(nextMode);
@@ -376,14 +395,29 @@ export default function GlucosePatterns() {
               <section className="mt-6" data-testid="glucose-needs-more-readings">
                 <h2 className="text-sm font-semibold text-foreground">{t("glucose.pattern_needs_more_readings_heading")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_needs_more_readings_description")}</p>
-                <ul className="mt-3 space-y-2">
-                  {needsMoreReadings.map(food => (
-                    <li key={food.foodKey} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
-                      <span className="text-sm font-medium text-foreground">{food.foodName}</span>
-                      <span className="text-xs text-muted-foreground">{t("glucose.pattern_needs_more_readings_count", { total: food.totalMeals, remaining: Math.max(0, 25 - food.totalMeals) })}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-3 space-y-3">
+                  <Select value={selectedNeedsMoreFood ?? undefined} onValueChange={setSelectedNeedsMoreFood}>
+                    <SelectTrigger id="glucose-needs-more-readings-select" data-testid="glucose-needs-more-readings-select">
+                      <SelectValue placeholder={t("glucose.pattern_needs_more_readings_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {needsMoreReadings.map(food => (
+                        <SelectItem key={food.foodKey} value={food.foodKey}>{food.foodName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedNeedsMoreReading && (
+                    <div className="rounded-xl border border-border bg-card px-3 py-2.5" data-testid="glucose-needs-more-readings-selected">
+                      <p className="text-sm font-medium text-foreground">{selectedNeedsMoreReading.foodName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("glucose.pattern_needs_more_readings_count", {
+                          total: selectedNeedsMoreReading.totalMeals,
+                          remaining: Math.max(0, 25 - selectedNeedsMoreReading.totalMeals),
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </section>
             )}
           </section>

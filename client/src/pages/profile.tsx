@@ -2,7 +2,7 @@ import { useState } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp, Droplet, Utensils, Lightbulb } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -506,6 +506,36 @@ function NameGoalCard({ profile }: { profile: ProfileData }) {
   );
 }
 
+function PersonalShortcuts() {
+  const { t } = useTranslation();
+  const [, setLocation] = useLocation();
+
+  const shortcuts = [
+    { key: "glucose", path: "/hstix", icon: Droplet, label: t("profile.shortcut_glucose") },
+    { key: "food", path: "/food-log", icon: Utensils, label: t("profile.shortcut_food_log") },
+    { key: "health", path: "/health-info", icon: Lightbulb, label: t("profile.shortcut_health_info") },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-3" data-testid="profile-personal-shortcuts">
+      <div className="grid grid-cols-3 gap-2">
+        {shortcuts.map(({ key, path, icon: Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setLocation(path)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 py-3 text-center text-[#0D5E4F] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-testid={`profile-shortcut-${key}`}
+          >
+            <Icon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            <span className="text-xs font-medium leading-tight">{label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 interface CorrectionRequest {
   id: number;
   recordType: string;
@@ -789,6 +819,8 @@ export default function ProfilePage() {
   return (
     <div className="app-page-v2 max-w-sm mx-auto px-4 pt-6 pb-24 space-y-2" data-testid="profile-page">
       <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-profile-heading">{t("profile.title")}</h1>
+
+      <PersonalShortcuts />
 
       {deletionStatus && (
         <div

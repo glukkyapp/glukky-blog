@@ -43,6 +43,8 @@ check("Small AI cohorts remain intact", sampleFoods(["a", "b", "c"]).length === 
 
 console.log("\nPage and API contracts");
 const page = readFileSync("client/src/pages/glucose-patterns.tsx", "utf8");
+const nav = readFileSync("client/src/components/floating-nav-bar.tsx", "utf8");
+const profile = readFileSync("client/src/pages/profile.tsx", "utf8");
 const routes = readFileSync("server/routes.ts", "utf8");
 const storage = readFileSync("server/storage.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
@@ -70,7 +72,10 @@ check("Measured impact terminology and reading-progress copy are localized", [en
   ["pattern_measured_impact_high", "pattern_measured_impact_medium", "pattern_measured_impact_low", "pattern_needs_more_readings_heading", "pattern_needs_more_readings_count"].every(key => locale.includes(`"${key}"`)),
 ));
 check("Measured-card messages do not interpolate a food name or foreground lift", page.includes("pattern_hstix_description_${impact}") && !page.includes('pattern_hstix_description", { food') && !page.includes('pattern_lift")'));
-check("HStix foods below the evidence threshold have their own section", page.includes("hstixNeedsMoreReadings") && page.includes("glucose-needs-more-readings") && page.includes("remaining: Math.max(0, 25 - food.totalMeals)"));
+check("HStix foods below the evidence threshold have their own section", page.includes("hstixNeedsMoreReadings") && page.includes("glucose-needs-more-readings") && page.includes("pattern_needs_more_readings_count") && page.includes("remaining: Math.max(0, 25 - selectedNeedsMoreReading.totalMeals)"));
+check("Needs-more foods use a dropdown while the top cards remain swipeable", page.includes("SelectTrigger") && page.includes("glucose-needs-more-readings-selected") && page.includes("onPointerDown") && page.includes("glucose-ranking-card-"));
 check("HStix flow does not show personalised UI", page.includes("!hasMeasuredList && isPersonalised"));
+check("Navigation keeps exactly the five requested destinations", !nav.includes('key: "hstix"') && !nav.includes('key: "health_info"') && nav.includes('key: "home"') && nav.includes('key: "report"') && nav.includes('key: "snap"') && nav.includes('key: "glucose"') && nav.includes('key: "profile"') && !nav.includes("overflowX") && nav.includes("flex-1"));
+check("Profile contains the three labeled personal shortcuts", profile.includes("profile-personal-shortcuts") && profile.includes('path: "/hstix"') && profile.includes('path: "/food-log"') && profile.includes('path: "/health-info"') && profile.includes("shortcut_glucose") && profile.includes("shortcut_food_log") && profile.includes("shortcut_health_info"));
 
 console.log(`\n${passed} passed`);

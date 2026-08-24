@@ -1,8 +1,7 @@
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Home, ClipboardList, CalendarDays, User, Camera, Lightbulb, Lock, TrendingUp, Droplet } from "lucide-react";
+import { Home, ClipboardList, CalendarDays, User, Camera, Lock, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
 import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
@@ -21,7 +20,6 @@ export default function FloatingNavBar() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
   const search = useSearch();
-  const isMobile = useIsMobile();
   const { gate, isLocked, showPaywall } = useGate();
 
   const navItems = [
@@ -29,9 +27,7 @@ export default function FloatingNavBar() {
     { key: "report", label: t("nav.report", "Report"), path: "/report", icon: ClipboardList },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
     ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
-    { key: "hstix", label: t("nav.hstix", "HStix"), path: "/hstix", icon: Droplet },
     { key: "glucose", label: t("glucose.patterns_nav"), path: "/glucose-patterns", icon: TrendingUp },
-    { key: "health_info", label: t("nav.health_info"), path: "/health-info", icon: Lightbulb },
     { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
   ];
 
@@ -112,16 +108,11 @@ export default function FloatingNavBar() {
       data-testid="nav-floating-bar"
     >
       <div
-        className={`flex items-center w-full h-full px-2${isMobile ? " scrollbar-hidden" : ""}`}
+        className="flex items-center w-full h-full px-2"
         style={{
           backgroundColor: "rgba(187,222,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
-          ...(isMobile ? {
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          } : {}),
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
@@ -133,9 +124,8 @@ export default function FloatingNavBar() {
               onClick={() => handleNavClick(path, key)}
               whileTap={NAV_TAP}
               transition={NAV_TAP_TRANSITION}
-              className={`relative z-10 flex flex-col items-center justify-center select-none${isMobile ? " flex-shrink-0" : " flex-1"}`}
+              className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none"
               style={{
-                ...(isMobile ? { width: "25%", minWidth: "25%" } : {}),
                 height: "100%",
                 color: locked ? "#9CA3AF" : "#0D5E4F",
                 opacity: locked ? 0.6 : 1,
