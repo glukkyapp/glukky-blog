@@ -15,8 +15,11 @@ export function classifyHstixTiming(recordedAt: Date, lastMealAt: Date | null): 
     };
   }
 
-  const minutesSinceLastMeal = Math.floor((recordedAt.getTime() - lastMealAt.getTime()) / 60_000);
-  if (minutesSinceLastMeal < 0 || minutesSinceLastMeal > 240) {
+  const elapsedMs = recordedAt.getTime() - lastMealAt.getTime();
+  const minutesSinceLastMeal = Math.floor(elapsedMs / 60_000);
+  // Classify against the actual elapsed timestamp, not the rounded display
+  // value: 240:00 is delayed, while 240:00.001 is unrelated.
+  if (elapsedMs < 0 || elapsedMs > 240 * 60_000) {
     return {
       minutesSinceLastMeal: minutesSinceLastMeal < 0 ? null : minutesSinceLastMeal,
       mealTimingConfidence: "unrelated",

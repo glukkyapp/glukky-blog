@@ -48,7 +48,7 @@ import { trackServer, captureException, getPosthogConsent } from "./posthog";
 import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
 import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "./food-items";
-import { buildHstixFoodCards } from "./glucose-patterns";
+import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
 
@@ -4961,25 +4961,34 @@ No explanation, just JSON.`,
         storage.getMealSnapsByDateRange(userId, startDate, endDate),
         storage.getProfile(userId),
       ]);
-      const baseline = profile?.fastingBaselineMmol ?? null;
+      const hstixByMeal = new Map<number, Awaited<ReturnType<typeof storage.getHstixReadingsForMealSnaps>>[number]>();
+      for (const reading of await storage.getHstixReadingsForMealSnaps(userId, snaps.map(snap => snap.id))) {
+        if (reading.mealSnapId != null && !hstixByMeal.has(reading.mealSnapId)) hstixByMeal.set(reading.mealSnapId, reading);
+      }
       const items = snaps
         .sort((a, b) => {
           if (b.localDate !== a.localDate) return b.localDate.localeCompare(a.localDate);
           return new Date(b.snapTime).getTime() - new Date(a.snapTime).getTime();
         })
-        .map(s => ({
+        .map(s => {
+          const hstix = hstixByMeal.get(s.id);
+          return {
           id: s.id,
           snapTime: s.snapTime,
           localDate: s.localDate,
           mealType: s.mealType,
           foodName: s.foodName,
           glucoseImpact: s.glucoseImpact,
-          postMealGlucoseMmol: s.postMealGlucoseMmol ?? null,
+          // Newly entered values live in HStix; the meal row remains a safe
+          // fallback for readings recorded before this migration.
+          postMealGlucoseMmol: hstix?.glucoseMmol ?? s.postMealGlucoseMmol ?? null,
+          hstixReadingId: hstix?.id ?? null,
           postMealSymptom: s.postMealSymptom ?? null,
           postMealSkipped: s.postMealSkipped,
           previousMealOverlap: s.previousMealOverlap,
           overlapDismissed: s.overlapDismissed,
-        }));
+          };
+        });
       res.json({ month, items });
     } catch (error: any) {
       console.error("Snap meal-log error:", error);
@@ -4999,34 +5008,39 @@ No explanation, just JSON.`,
       if (symptom !== undefined && !VALID_SYMPTOMS.includes(symptom)) {
         return res.status(400).json({ message: "invalid symptom value" });
       }
-      // Resolve glucoseImpact before the atomic write so both the snap update
-      // and the impact reclassification land in the same transaction.
-      let glucoseImpact: string | undefined;
       if (glucoseMmol !== undefined) {
-        try {
-          const { classifyPostMealMmol, PHASE1_THRESHOLDS, deriveGlucoseGroupFromCondition } = await import("./glucose-thresholds");
-          const profile2 = await storage.getProfile(userId);
-          const glucoseGroup = (profile2?.glucoseGroup ?? deriveGlucoseGroupFromCondition(profile2?.healthCondition ?? null)) as "healthy" | "t2dm" | undefined;
-          if (glucoseGroup && PHASE1_THRESHOLDS[glucoseGroup]) {
-            const thresholdRow = await storage.getUserGlucoseThresholds(userId);
-            glucoseImpact = classifyPostMealMmol(
-              glucoseMmol,
-              glucoseGroup,
-              thresholdRow?.isPersonalised ? { lowMedBoundary: thresholdRow.lowMedBoundary, medHighBoundary: thresholdRow.medHighBoundary } : undefined,
-            );
-          }
-        } catch (reclassErr: any) {
-          console.error("[post-meal/reclassify] Error resolving impact:", reclassErr?.message);
+        const meal = await storage.getMealSnapForHstix(userId, snapId);
+        if (!meal) return res.status(404).json({ message: "Snap not found" });
+        const recordedAt = new Date();
+        const timing = classifyHstixTiming(recordedAt, meal.snapTime);
+        const existing = await storage.getHstixReadingForMealSnap(userId, snapId);
+        if (existing) {
+          const corrected = await storage.updateHstixReadingWithinCorrectionWindow(
+            existing.id,
+            userId,
+            { glucoseMmol, note: existing.note },
+            recordedAt,
+          );
+          if (!corrected) return res.status(409).json({ code: "HSTIX_CORRECTION_EXPIRED", message: "This reading can no longer be changed." });
+        } else {
+          await storage.insertHstixReading({
+            userId,
+            mealSnapId: snapId,
+            glucoseMmol,
+            note: null,
+            minutesSinceLastMeal: timing.minutesSinceLastMeal,
+            mealTimingConfidence: timing.mealTimingConfidence,
+          });
         }
       }
 
-      const { updated, localDate } = await storage.updateMealSnapPostMealWithHistory(snapId, userId, {
-        glucoseMmol,
+      const hasLegacyMealUpdate = symptom !== undefined || skip === true;
+      const { updated, localDate } = hasLegacyMealUpdate
+        ? await storage.updateMealSnapPostMealWithHistory(snapId, userId, {
         symptom,
         skipped: skip === true,
-        recordedAt: new Date(),
-        glucoseImpact,
-      });
+        })
+        : { updated: true, localDate: (await storage.getMealSnapForHstix(userId, snapId))?.localDate ?? null };
       if (!updated) return res.status(404).json({ message: "Snap not found" });
 
       if (typeof postMealWalked === "boolean") {
@@ -5083,6 +5097,7 @@ No explanation, just JSON.`,
         minutesSinceLastMeal: reading.minutesSinceLastMeal,
         mealTimingConfidence: reading.mealTimingConfidence,
         recordedAt: reading.recordedAt.toISOString(),
+        correctionExpiresAt: hstixCorrectionExpiresAt(reading.recordedAt).toISOString(),
       });
       res.json({
         readings: readings.map(serializeReading),
@@ -5104,25 +5119,51 @@ No explanation, just JSON.`,
       const userId = req.user.claims.sub;
       const glucoseMmol = Number(req.body?.glucoseMmol);
       const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : null;
+      const requestedMealSnapId = req.body?.mealSnapId === undefined || req.body?.mealSnapId === null
+        ? null
+        : Number(req.body.mealSnapId);
       if (!Number.isFinite(glucoseMmol) || glucoseMmol < 2.0 || glucoseMmol > 30.0) {
         return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
       }
+      if (requestedMealSnapId !== null && (!Number.isInteger(requestedMealSnapId) || requestedMealSnapId <= 0)) {
+        return res.status(400).json({ message: "mealSnapId must be a positive integer" });
+      }
 
-      // Context is server-owned: no client meal selection is required or trusted.
-      // A reading remains valid even when no meal exists in the lookback window.
       const recordedAt = new Date();
-      const latestMeal = await storage.getLatestMealSnap(userId, recordedAt);
-      const timing = classifyHstixTiming(recordedAt, latestMeal?.snapTime ?? null);
-      const mealSnapId = timing.shouldAssociateMeal ? latestMeal!.id : null;
+      const selectedMeal = requestedMealSnapId === null
+        ? await storage.getLatestMealSnap(userId, recordedAt)
+        : await storage.getMealSnapForHstix(userId, requestedMealSnapId);
+      if (requestedMealSnapId !== null && !selectedMeal) {
+        return res.status(404).json({ message: "Meal not found" });
+      }
+      const timing = classifyHstixTiming(recordedAt, selectedMeal?.snapTime ?? null);
+      // An explicitly selected Food Log meal remains linked at every timing,
+      // while automatic direct-entry association only applies inside 0–240 min.
+      const mealSnapId = requestedMealSnapId ?? (timing.shouldAssociateMeal ? selectedMeal?.id ?? null : null);
+      if (mealSnapId !== null && await storage.getHstixReadingForMealSnap(userId, mealSnapId)) {
+        return res.status(409).json({ code: "HSTIX_READING_EXISTS", message: "This meal already has a HStix reading." });
+      }
 
-      const reading = await storage.insertHstixReading({
-        userId,
-        glucoseMmol,
-        note,
-        mealSnapId,
-        minutesSinceLastMeal: timing.minutesSinceLastMeal,
-        mealTimingConfidence: timing.mealTimingConfidence,
-      });
+      let reading;
+      try {
+        reading = await storage.insertHstixReading({
+          userId,
+          glucoseMmol,
+          note,
+          mealSnapId,
+          minutesSinceLastMeal: timing.minutesSinceLastMeal,
+          mealTimingConfidence: timing.mealTimingConfidence,
+        });
+      } catch (insertError: any) {
+        if (insertError?.code === "23505" && mealSnapId !== null) {
+          return res.status(409).json({ code: "HSTIX_READING_EXISTS", message: "This meal already has a HStix reading." });
+        }
+        throw insertError;
+      }
+      if (mealSnapId !== null) {
+        const meal = await storage.getMealSnapForHstix(userId, mealSnapId);
+        if (meal) await storage.reaggregateDailyGlucoseForDate(userId, meal.localDate);
+      }
       res.status(201).json({
         reading: {
           id: reading.id,
@@ -5161,6 +5202,10 @@ No explanation, just JSON.`,
           code: "HSTIX_CORRECTION_EXPIRED",
           message: "This reading can no longer be changed.",
         });
+      }
+      if (reading.mealSnapId !== null) {
+        const meal = await storage.getMealSnapForHstix(userId, reading.mealSnapId);
+        if (meal) await storage.reaggregateDailyGlucoseForDate(userId, meal.localDate);
       }
       res.json({
         reading: {
@@ -5331,7 +5376,8 @@ No explanation, just JSON.`,
           ...entry,
           impactLevel: classifyPostMealMmol(entry.avgPostMealMmol, glucoseGroup, thresholds ?? undefined),
         })),
-        hstixList: buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined),
+        hstixList: buildHstixFoodCards(hstixSnaps, glucoseGroup),
+        hstixNeedsMoreReadings: buildHstixFoodsNeedingMoreReadings(hstixSnaps),
         aiOnlyList,
       });
     } catch (error: any) {

@@ -17,8 +17,6 @@ import { InfoSheet, useInfoSheet } from "@/components/info-sheet";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
-import PostMealCard from "@/components/PostMealCard";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
   const i18nKey = DIET_TIP_I18N_KEYS[tip];
@@ -81,7 +79,7 @@ export default function Home() {
   const { data: devTime } = useQuery({ queryKey: ["/api/dev/time"] });
   const { data: piggy } = useQuery<PiggyBankData>({ queryKey: ["/api/piggybank"] });
   const { data: devCheck } = useQuery<{ isDev: boolean }>({ queryKey: ["/api/dev/check"] });
-  const { data: hstixReadings, refetch: refetchHstixReadings } = useQuery<HstixReadingsResponse>({
+  const { data: hstixReadings } = useQuery<HstixReadingsResponse>({
     queryKey: ["/api/hstix/readings"],
     queryFn: async () => {
       const response = await fetch("/api/hstix/readings", { credentials: "include" });
@@ -89,9 +87,6 @@ export default function Home() {
       return response.json();
     },
   });
-  const [hstixSheetOpen, setHstixSheetOpen] = useState(false);
-  const [sheetHstixReading, setSheetHstixReading] = useState<CorrectableHstixReading | null>(null);
-  const hstixExpiryHandledReadingId = useRef<number | null>(null);
   const correctableHstixReading = hstixReadings?.latestCorrectableReading ?? null;
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
@@ -1468,45 +1463,10 @@ export default function Home() {
     return () => { clearTimeout(fadeTimer); clearTimeout(innerTimer); };
   }, [nextWeekPlanned, plan?.startDate]);
 
-  useEffect(() => {
-    if (!correctableHstixReading) return;
-    // The server issues this deadline. The client only uses it to refresh the
-    // Home state; the update endpoint remains the authoritative expiry check.
-    const delay = new Date(correctableHstixReading.correctionExpiresAt).getTime() - Date.now();
-    if (delay <= 0) {
-      void refetchHstixReadings();
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (hstixSheetOpen && sheetHstixReading?.id === correctableHstixReading.id) {
-        hstixExpiryHandledReadingId.current = correctableHstixReading.id;
-        setHstixSheetOpen(false);
-        setSheetHstixReading(null);
-        toast({
-          title: t("common.error"),
-          description: t("glucose.hstix_correction_expired"),
-          variant: "destructive",
-        });
-      }
-      void refetchHstixReadings();
-    }, delay + 10);
-    return () => window.clearTimeout(timer);
-  }, [
-    correctableHstixReading?.correctionExpiresAt,
-    correctableHstixReading?.id,
-    refetchHstixReadings,
-    hstixSheetOpen,
-    sheetHstixReading?.id,
-    t,
-    toast,
-  ]);
-
   const openHstixSheet = () => {
-    // Keep the target stable for this sheet session. A refresh at expiry must
-    // never turn an in-progress correction into a brand-new reading.
-    hstixExpiryHandledReadingId.current = null;
-    setSheetHstixReading(correctableHstixReading);
-    setHstixSheetOpen(true);
+    const params = new URLSearchParams();
+    if (correctableHstixReading) params.set("readingId", String(correctableHstixReading.id));
+    setLocation(`/hstix${params.size ? `?${params.toString()}` : ""}`);
   };
 
   const formatCatchUpDate = () => {
@@ -2077,48 +2037,6 @@ export default function Home() {
       {t("disclaimer.footer")}
     </p>
     </motion.div>
-    <Sheet
-      open={hstixSheetOpen}
-      onOpenChange={(open) => {
-        setHstixSheetOpen(open);
-        if (!open) setSheetHstixReading(null);
-      }}
-    >
-      <SheetContent side="bottom" className="mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl px-4 pb-7 pt-10">
-        <PostMealCard
-          standalone
-          initialValue={sheetHstixReading?.glucoseMmol ?? null}
-          initialNote={sheetHstixReading?.note ?? null}
-          hstixReadingId={sheetHstixReading?.id}
-          onDone={() => {
-            setHstixSheetOpen(false);
-            setSheetHstixReading(null);
-            void refetchHstixReadings();
-          }}
-          onHstixCorrectionExpired={(expiredReadingId) => {
-            // The expiry timer may already have closed this exact sheet while
-            // the PATCH was in flight. Ignore that late response so one
-            // correction session produces one expiry outcome.
-            if (
-              expiredReadingId == null
-              || expiredReadingId !== sheetHstixReading?.id
-              || hstixExpiryHandledReadingId.current === expiredReadingId
-            ) {
-              return;
-            }
-            hstixExpiryHandledReadingId.current = expiredReadingId;
-            setHstixSheetOpen(false);
-            setSheetHstixReading(null);
-            toast({
-              title: t("common.error"),
-              description: t("glucose.hstix_correction_expired"),
-              variant: "destructive",
-            });
-            void refetchHstixReadings();
-          }}
-        />
-      </SheetContent>
-    </Sheet>
     <InfoCardPopup visible={cardFirstWalkDay.visible} onDismiss={cardFirstWalkDay.dismiss} icon={Footprints} titleKey="info_card.first_walk_day.title" panelKeys={["info_card.first_walk_day.p1","info_card.first_walk_day.p2","info_card.first_walk_day.p3"]} testId="dialog-card-first-walk-day" />
     <InfoCardPopup visible={cardStretchSwitch.visible} onDismiss={cardStretchSwitch.dismiss} icon={Footprints} titleKey="info_card.stretch_switch.title" panelKeys={["info_card.stretch_switch.p1","info_card.stretch_switch.p2","info_card.stretch_switch.p3"]} testId="dialog-card-stretch-switch" />
     <InfoCardPopup visible={cardDinnerTiming.visible} onDismiss={cardDinnerTiming.dismiss} icon={Clock} titleKey="info_card.dinner_timing.title" panelKeys={["info_card.dinner_timing.p1","info_card.dinner_timing.p2","info_card.dinner_timing.p3","info_card.dinner_timing.p4"]} testId="dialog-card-dinner-timing" />

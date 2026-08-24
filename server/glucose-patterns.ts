@@ -34,6 +34,14 @@ export interface HstixFoodCard {
   impactLevel: "low" | "medium" | "high";
 }
 
+export interface HstixFoodNeedsMoreReadings {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+  totalMeals: number;
+}
+
 type FoodStats = {
   item: FoodItemMetadata;
   totalMeals: number;
@@ -54,7 +62,7 @@ function validCarbCategory(value: string | null): CarbCategory {
 export function buildHstixFoodCards(
   snaps: HstixMealForCards[],
   glucoseGroup: GlucoseGroup,
-  thresholds?: PersonalisedThresholds,
+  _thresholds?: PersonalisedThresholds,
 ): HstixFoodCard[] {
   const numericSnaps = snaps.filter(s =>
     typeof s.postMealGlucoseMmol === "number" &&
@@ -68,15 +76,20 @@ export function buildHstixFoodCards(
 
   const classified = numericSnaps.map(snap => ({
     snap,
-    impact: classifyPostMealMmol(snap.postMealGlucoseMmol!, glucoseGroup, thresholds),
+    // Food evidence uses the fixed phase-one bands so its comparisons stay
+    // consistent as a user's personalised thresholds evolve.
+    impact: classifyPostMealMmol(snap.postMealGlucoseMmol!, glucoseGroup),
   }));
   const allHighMeals = classified.filter(row => row.impact === "high").length;
   const totalMeals = classified.length;
-  const nonHighMeals = totalMeals - allHighMeals;
+  const expectedBaselineRank = classified.reduce(
+    (sum, row) => sum + (row.impact === "high" ? 2 : row.impact === "medium" ? 1 : 0),
+    0,
+  ) / totalMeals;
 
-  // A lift is not meaningful until the shared evidence pool has both
-  // outcomes and enough total measured meals.
-  if (totalMeals < 25 || allHighMeals < 5 || nonHighMeals < 5) return [];
+  // There is no meaningful food-to-baseline comparison when all eligible
+  // baseline readings are low.
+  if (expectedBaselineRank === 0) return [];
 
   const stats = new Map<string, FoodStats>();
   for (const { snap, impact } of classified) {
@@ -105,12 +118,9 @@ export function buildHstixFoodCards(
     .filter(food => food.totalMeals >= MIN_HSTIX_FOOD_MEALS_FOR_CARD)
     .map(food => {
       const highProbability = food.highMeals / food.totalMeals;
-      const scoreCounts: Array<["low" | "medium" | "high", number]> = [
-        ["high", food.highMeals],
-        ["medium", food.mediumMeals],
-        ["low", food.lowMeals],
-      ];
-      const impactLevel = scoreCounts.sort((a, b) => b[1] - a[1])[0][0] as "low" | "medium" | "high";
+      const expectedFoodRank = (food.mediumMeals + 2 * food.highMeals) / food.totalMeals;
+      const lift = expectedFoodRank / expectedBaselineRank;
+      const impactLevel: HstixFoodCard["impactLevel"] = lift > 1.2 ? "high" : lift < 0.8 ? "low" : "medium";
       return {
         foodKey: foodItemKey(food.item),
         foodNameEn: food.item.nameEn,
@@ -124,10 +134,45 @@ export function buildHstixFoodCards(
         nonHighMeals: food.totalMeals - food.highMeals,
         highProbability,
         overallHighProbability,
-        lift: highProbability / overallHighProbability,
+        lift,
         avgPostMealMmol: food.sumMmol / food.totalMeals,
         impactLevel,
       };
     })
-    .sort((a, b) => b.lift - a.lift || b.totalMeals - a.totalMeals || a.foodNameEn.localeCompare(b.foodNameEn));
+    .sort((a, b) => a.foodKey.localeCompare(b.foodKey));
+}
+
+export function buildHstixFoodsNeedingMoreReadings(
+  snaps: HstixMealForCards[],
+): HstixFoodNeedsMoreReadings[] {
+  const foods = new Map<string, { item: FoodItemMetadata; totalMeals: number }>();
+  for (const snap of snaps) {
+    if (
+      typeof snap.postMealGlucoseMmol !== "number" ||
+      !Number.isFinite(snap.postMealGlucoseMmol) ||
+      snap.mealTimingConfidence !== "on_time" ||
+      (snap.foodItems ?? []).some(item => item.source === "derived")
+    ) continue;
+
+    const seenThisMeal = new Set<string>();
+    for (const item of (snap.foodItems ?? []).filter(item => item.source !== "derived")) {
+      const key = foodItemKey(item);
+      if (seenThisMeal.has(key)) continue;
+      seenThisMeal.add(key);
+      const current = foods.get(key) ?? { item, totalMeals: 0 };
+      current.totalMeals += 1;
+      foods.set(key, current);
+    }
+  }
+
+  return Array.from(foods.values())
+    .filter(food => food.totalMeals < MIN_HSTIX_FOOD_MEALS_FOR_CARD)
+    .map(food => ({
+      foodKey: foodItemKey(food.item),
+      foodNameEn: food.item.nameEn,
+      foodNameZhHant: food.item.nameZhHant,
+      foodNameYue: food.item.nameYue,
+      totalMeals: food.totalMeals,
+    }))
+    .sort((a, b) => a.foodKey.localeCompare(b.foodKey));
 }

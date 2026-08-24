@@ -383,6 +383,9 @@ export const hstixReadings = pgTable("hstix_readings", {
 }, (table) => ({
   userRecordedIdx: index("hstix_readings_user_recorded_idx").on(table.userId, table.recordedAt),
   mealIdx: index("hstix_readings_meal_idx").on(table.mealSnapId),
+  // PostgreSQL permits multiple NULLs in a unique index, so independent
+  // readings stay valid while a meal can own only one canonical reading.
+  mealUnique: uniqueIndex("hstix_readings_meal_unique_idx").on(table.mealSnapId),
 }));
 
 export const insertHstixReadingSchema = createInsertSchema(hstixReadings).omit({ id: true, recordedAt: true });

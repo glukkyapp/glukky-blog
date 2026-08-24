@@ -33,6 +33,7 @@ import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 import { revokeAppleRefreshToken } from "./apple-auth";
 import { HSTIX_CORRECTION_WINDOW_MS } from "./hstix-correction";
+import { PHASE1_THRESHOLDS } from "./glucose-thresholds";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -134,7 +135,11 @@ export interface IStorage {
     mealTimingConfidence: MealTimingConfidence;
   }>>;
   getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null>;
+  getMealSnapForHstix(userId: string, snapId: number): Promise<{ id: number; snapTime: Date; localDate: string } | null>;
   insertHstixReading(reading: InsertHstixReading): Promise<HstixReading>;
+  getHstixReadingForMealSnap(userId: string, snapId: number): Promise<HstixReading | null>;
+  getHstixReadingById(userId: string, readingId: number): Promise<HstixReading | null>;
+  getHstixReadingsForMealSnaps(userId: string, snapIds: number[]): Promise<HstixReading[]>;
   listHstixReadings(userId: string, limit?: number): Promise<HstixReading[]>;
   getLatestCorrectableHstixReading(userId: string, now: Date): Promise<HstixReading | null>;
   updateHstixReadingWithinCorrectionWindow(
@@ -1185,6 +1190,12 @@ export class DatabaseStorage implements IStorage {
     }).from(mealSnaps).where(and(
       eq(mealSnaps.userId, userId),
       eq(mealSnaps.isDeleted, false),
+      // A linked HStix reading is the canonical measurement for newly
+      // recorded data. Keep the meal-row value only as historical fallback.
+      sql`NOT EXISTS (
+        SELECT 1 FROM hstix_readings hr
+        WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ${mealSnaps.id}
+      )`,
     )).then(rows => rows.map(row => ({
       postMealGlucoseMmol: row.postMealGlucoseMmol,
       foodItems: row.foodItems,
@@ -1231,11 +1242,48 @@ export class DatabaseStorage implements IStorage {
     return snap ?? null;
   }
 
+  async getMealSnapForHstix(userId: string, snapId: number): Promise<{ id: number; snapTime: Date; localDate: string } | null> {
+    const [snap] = await db.select({
+      id: mealSnaps.id,
+      snapTime: mealSnaps.snapTime,
+      localDate: mealSnaps.localDate,
+    }).from(mealSnaps).where(and(
+      eq(mealSnaps.id, snapId),
+      eq(mealSnaps.userId, userId),
+      eq(mealSnaps.isDeleted, false),
+    ));
+    return snap ?? null;
+  }
+
   async insertHstixReading(reading: InsertHstixReading): Promise<HstixReading> {
     const [inserted] = await db.insert(hstixReadings)
       .values(reading as typeof hstixReadings.$inferInsert)
       .returning();
     return inserted;
+  }
+
+  async getHstixReadingForMealSnap(userId: string, snapId: number): Promise<HstixReading | null> {
+    const [reading] = await db.select().from(hstixReadings).where(and(
+      eq(hstixReadings.userId, userId),
+      eq(hstixReadings.mealSnapId, snapId),
+    )).orderBy(desc(hstixReadings.recordedAt)).limit(1);
+    return reading ?? null;
+  }
+
+  async getHstixReadingById(userId: string, readingId: number): Promise<HstixReading | null> {
+    const [reading] = await db.select().from(hstixReadings).where(and(
+      eq(hstixReadings.id, readingId),
+      eq(hstixReadings.userId, userId),
+    ));
+    return reading ?? null;
+  }
+
+  async getHstixReadingsForMealSnaps(userId: string, snapIds: number[]): Promise<HstixReading[]> {
+    if (snapIds.length === 0) return [];
+    return db.select().from(hstixReadings).where(and(
+      eq(hstixReadings.userId, userId),
+      inArray(hstixReadings.mealSnapId, snapIds),
+    )).orderBy(desc(hstixReadings.recordedAt));
   }
 
   async listHstixReadings(userId: string, limit = 100): Promise<HstixReading[]> {
@@ -1539,6 +1587,10 @@ export class DatabaseStorage implements IStorage {
         eq(mealSnaps.postMealSkipped, false),
         isNull(mealSnaps.postMealGlucoseMmol),
         isNull(mealSnaps.postMealSymptom),
+        sql`NOT EXISTS (
+          SELECT 1 FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ${mealSnaps.id}
+        )`,
         gte(mealSnaps.snapTime, cutoff),
       ))
       .orderBy(desc(mealSnaps.snapTime))
@@ -1574,12 +1626,20 @@ export class DatabaseStorage implements IStorage {
   async getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }> {
     const result = await db.execute(sql`
       SELECT
-        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
+        AVG(COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol)) AS avg_post_meal,
         COUNT(*)::int AS entry_count
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
         AND ms.combo_key = ${comboKey}
-        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) IS NOT NULL
     `);
     const row = result.rows[0] as any;
     return {
@@ -1591,9 +1651,16 @@ export class DatabaseStorage implements IStorage {
   async getTotalPairedEntries(userId: string): Promise<number> {
     const result = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt
-      FROM meal_snaps
-      WHERE user_id = ${userId}
-        AND (post_meal_glucose_mmol IS NOT NULL OR post_meal_symptom IS NOT NULL)
+      FROM meal_snaps ms
+      WHERE ms.user_id = ${userId}
+        AND (
+          EXISTS (
+            SELECT 1 FROM hstix_readings hr
+            WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          )
+          OR ms.post_meal_glucose_mmol IS NOT NULL
+          OR ms.post_meal_symptom IS NOT NULL
+        )
     `);
     return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
   }
@@ -1611,12 +1678,20 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT
         ms.food_name,
-        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
+        AVG(COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol)) AS avg_post_meal,
         COUNT(*)::int AS entry_count,
         COUNT(DISTINCT ms.combo_key)::int AS combo_count
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
-        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) IS NOT NULL
         AND ms.food_name IS NOT NULL
       GROUP BY ms.food_name
       ORDER BY avg_post_meal DESC
@@ -1638,12 +1713,20 @@ export class DatabaseStorage implements IStorage {
         ms.portion,
         ms.sauces,
         ms.extras,
-        AVG(ms.post_meal_glucose_mmol) AS avg_post_meal,
+        AVG(COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol)) AS avg_post_meal,
         COUNT(*)::int AS entry_count
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
         AND ms.food_name = ${foodName}
-        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) IS NOT NULL
       GROUP BY ms.combo_key, ms.portion, ms.sauces, ms.extras
       ORDER BY avg_post_meal DESC
     `);
@@ -1674,8 +1757,16 @@ export class DatabaseStorage implements IStorage {
   async getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null> {
     const result = await db.execute(sql`
       SELECT
-        ms.post_meal_glucose_mmol,
-        COALESCE(ms.post_meal_recorded_at, ms.snap_time) AS recorded_at,
+        COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) AS post_meal_glucose_mmol,
+        COALESCE((
+          SELECT hr.recorded_at FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_recorded_at, ms.snap_time) AS recorded_at,
         ms.glucose_impact
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
@@ -1719,6 +1810,10 @@ export class DatabaseStorage implements IStorage {
         eq(mealSnaps.missedMealFlag, false),
         isNull(mealSnaps.postMealGlucoseMmol),
         isNull(mealSnaps.postMealSymptom),
+        sql`NOT EXISTS (
+          SELECT 1 FROM hstix_readings hr
+          WHERE hr.user_id = ${mealSnaps.userId} AND hr.meal_snap_id = ${mealSnaps.id}
+        )`,
         lt(mealSnaps.snapTime, cutoff),
       ));
     if (staleSnaps.length === 0) return { expired: 0 };
@@ -1729,6 +1824,10 @@ export class DatabaseStorage implements IStorage {
         eq(mealSnaps.missedMealFlag, false),
         isNull(mealSnaps.postMealGlucoseMmol),
         isNull(mealSnaps.postMealSymptom),
+        sql`NOT EXISTS (
+          SELECT 1 FROM hstix_readings hr
+          WHERE hr.user_id = ${mealSnaps.userId} AND hr.meal_snap_id = ${mealSnaps.id}
+        )`,
         lt(mealSnaps.snapTime, cutoff),
       ));
     const userGroups = new Map<string, number>();
@@ -1747,11 +1846,19 @@ export class DatabaseStorage implements IStorage {
 
   async getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number = 6): Promise<number[]> {
     const result = await db.execute(sql`
-      SELECT ms.post_meal_glucose_mmol AS post_meal
+      SELECT COALESCE((
+        SELECT hr.glucose_mmol FROM hstix_readings hr
+        WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+        ORDER BY hr.recorded_at DESC LIMIT 1
+      ), ms.post_meal_glucose_mmol) AS post_meal
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
         AND ms.food_name = ${foodName}
-        AND ms.post_meal_glucose_mmol IS NOT NULL
+        AND COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) IS NOT NULL
         AND ms.snap_time >= NOW() - INTERVAL '30 days'
       ORDER BY ms.snap_time ASC
       LIMIT ${limit}
@@ -1764,9 +1871,21 @@ export class DatabaseStorage implements IStorage {
       WITH hstix_foods AS (
         SELECT DISTINCT ms2.food_name
         FROM meal_snaps ms2
+        INNER JOIN hstix_readings hr
+          ON hr.meal_snap_id = ms2.id
+          AND hr.user_id = ms2.user_id
+        WHERE ms2.user_id = ${userId}
+          AND ms2.food_name IS NOT NULL
+        UNION
+        SELECT DISTINCT ms2.food_name
+        FROM meal_snaps ms2
         WHERE ms2.user_id = ${userId}
           AND ms2.post_meal_glucose_mmol IS NOT NULL
           AND ms2.food_name IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM hstix_readings hr
+            WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms2.id
+          )
       )
       SELECT
         ms.food_name,
@@ -1868,6 +1987,10 @@ export class DatabaseStorage implements IStorage {
         (SELECT COUNT(*)::int FROM meal_snaps
           WHERE user_id = ${userId}
             AND post_meal_glucose_mmol IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM hstix_readings hr
+              WHERE hr.user_id = ${userId} AND hr.meal_snap_id = meal_snaps.id
+            )
             AND snap_time >= NOW() - INTERVAL '30 days')
         +
         (SELECT COUNT(*)::int FROM hstix_readings
@@ -1882,10 +2005,14 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT mmol FROM (
         SELECT post_meal_glucose_mmol AS mmol, COALESCE(post_meal_recorded_at, snap_time) AS recorded_at
-        FROM meal_snaps
-        WHERE user_id = ${userId}
-          AND post_meal_glucose_mmol IS NOT NULL
-          AND snap_time >= NOW() - INTERVAL '30 days'
+        FROM meal_snaps ms
+        WHERE ms.user_id = ${userId}
+          AND ms.post_meal_glucose_mmol IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM hstix_readings hr
+            WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          )
+          AND ms.snap_time >= NOW() - INTERVAL '30 days'
         UNION ALL
         SELECT glucose_mmol AS mmol, recorded_at
         FROM hstix_readings
@@ -1973,16 +2100,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async reaggregateDailyGlucoseForDate(userId: string, localDate: string): Promise<void> {
+    const profile = await this.getProfile(userId);
+    const thresholds = PHASE1_THRESHOLDS[profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy"];
     const result = await db.execute(sql`
       SELECT
         COUNT(*)::int AS meal_count,
-        SUM(CASE WHEN glucose_impact = 'low' THEN 1 ELSE 0 END)::int AS low_count,
-        SUM(CASE WHEN glucose_impact = 'medium' THEN 1 ELSE 0 END)::int AS medium_count,
-        SUM(CASE WHEN glucose_impact = 'high' THEN 1 ELSE 0 END)::int AS high_count
-      FROM meal_snaps
-      WHERE user_id = ${userId}
-        AND local_date = ${localDate}
-        AND missed_meal_flag = false
+        SUM(CASE WHEN effective_mmol <= ${thresholds.lowMedBoundary} THEN 1 ELSE 0 END)::int AS low_count,
+        SUM(CASE WHEN effective_mmol > ${thresholds.lowMedBoundary}
+                   AND effective_mmol < ${thresholds.medHighBoundary} THEN 1 ELSE 0 END)::int AS medium_count,
+        SUM(CASE WHEN effective_mmol >= ${thresholds.medHighBoundary} THEN 1 ELSE 0 END)::int AS high_count
+      FROM (
+        SELECT COALESCE((
+          SELECT hr.glucose_mmol FROM hstix_readings hr
+          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
+          ORDER BY hr.recorded_at DESC LIMIT 1
+        ), ms.post_meal_glucose_mmol) AS effective_mmol
+        FROM meal_snaps ms
+        WHERE ms.user_id = ${userId}
+          AND ms.local_date = ${localDate}
+          AND ms.missed_meal_flag = false
+      ) effective
+      WHERE effective_mmol IS NOT NULL
     `);
     const row = result.rows[0] as any;
     if (!row) return;

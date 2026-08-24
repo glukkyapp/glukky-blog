@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Pencil, AlertTriangle, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import PostMealCard from "@/components/PostMealCard";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface MealLogItem {
@@ -15,6 +13,7 @@ interface MealLogItem {
   foodName: string | null;
   glucoseImpact: string | null;
   postMealGlucoseMmol: number | null;
+  hstixReadingId: number | null;
   postMealSymptom: string | null;
   postMealSkipped: boolean | null;
   previousMealOverlap: boolean;
@@ -145,21 +144,20 @@ export default function FoodLog() {
 
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
-  const [glucoseSheetSnapId, setGlucoseSheetSnapId] = useState<number | null>(null);
   const [expandedOverlap, setExpandedOverlap] = useState<Set<number>>(new Set());
 
-  // Auto-open the glucose entry sheet when the user arrives via a push
-  // notification that included ?snap=<id> (hstix_reminder redirect URL).
   const search = useSearch();
+  const hstixPathFor = (item: MealLogItem) => {
+    const params = new URLSearchParams({ mealSnapId: String(item.id) });
+    if (item.hstixReadingId) params.set("readingId", String(item.hstixReadingId));
+    return `/hstix?${params.toString()}`;
+  };
   useEffect(() => {
-    const params = new URLSearchParams(search);
-    const snapParam = params.get("snap");
-    if (snapParam) {
-      const id = parseInt(snapParam, 10);
-      if (Number.isFinite(id) && id > 0) setGlucoseSheetSnapId(id);
+    const snapId = Number(new URLSearchParams(search).get("snap"));
+    if (Number.isInteger(snapId) && snapId > 0) {
+      setLocation(`/hstix?mealSnapId=${snapId}`);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [search, setLocation]);
 
   const { data: profile } = useQuery<ProfileData>({ queryKey: ["/api/profile"] });
 
@@ -378,7 +376,7 @@ export default function FoodLog() {
                             <button
                               type="button"
                               data-testid={`button-food-log-edit-glucose-${item.id}`}
-                              onClick={() => setGlucoseSheetSnapId(item.id)}
+                              onClick={() => setLocation(hstixPathFor(item))}
                               className="p-2 touch-manipulation text-muted-foreground hover:text-foreground transition-colors active:scale-95 -my-1.5"
                               aria-label="Edit glucose reading"
                             >
@@ -399,7 +397,7 @@ export default function FoodLog() {
                           <button
                             type="button"
                             data-testid={`button-food-log-record-glucose-${item.id}`}
-                            onClick={() => setGlucoseSheetSnapId(item.id)}
+                            onClick={() => setLocation(hstixPathFor(item))}
                             className="self-start text-xs font-medium text-primary hover:underline transition-colors"
                           >
                             {t("glucose.log_button")}
@@ -414,25 +412,6 @@ export default function FoodLog() {
           </div>
         )}
       </div>
-
-      <Sheet
-        open={glucoseSheetSnapId !== null}
-        onOpenChange={(open) => { if (!open) setGlucoseSheetSnapId(null); }}
-      >
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-4">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="text-base">{t("glucose.log_button")}</SheetTitle>
-          </SheetHeader>
-          {glucoseSheetSnapId !== null && (
-            <PostMealCard
-              snapId={glucoseSheetSnapId}
-              hasFastingBaseline={(profile?.fastingBaselineMmol !== null && profile?.fastingBaselineMmol !== undefined) || (profile?.fastingQuestionSeen === true)}
-              onDone={() => setGlucoseSheetSnapId(null)}
-              initialStep="keypad"
-            />
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

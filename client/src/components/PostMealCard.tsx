@@ -22,6 +22,7 @@ interface Props {
   initialValue?: number | null;
   initialNote?: string | null;
   hstixReadingId?: number;
+  mealSnapId?: number;
   onHstixCorrectionExpired?: (readingId?: number) => void;
 }
 
@@ -167,6 +168,7 @@ export default function PostMealCard({
   initialValue = null,
   initialNote = null,
   hstixReadingId,
+  mealSnapId,
   onHstixCorrectionExpired,
 }: Props) {
   const { t } = useTranslation();
@@ -247,6 +249,7 @@ export default function PostMealCard({
         if (glucoseValue === null) return;
         const response = await apiRequest(hstixReadingId ? "PATCH" : "POST", hstixReadingId ? `/api/hstix/readings/${hstixReadingId}` : "/api/hstix/readings", {
           glucoseMmol: glucoseValue,
+          ...(mealSnapId != null ? { mealSnapId } : {}),
           ...(note.trim() ? { note: note.trim() } : {}),
         });
         const result = await response.json();

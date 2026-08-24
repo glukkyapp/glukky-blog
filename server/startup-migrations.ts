@@ -230,6 +230,19 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
           ADD COLUMN IF NOT EXISTS source varchar,
           ADD COLUMN IF NOT EXISTS seed_batch_id varchar`,
   },
+  {
+    name: "hstix_readings.one_canonical_reading_per_meal",
+    sql: `DELETE FROM hstix_readings older
+          USING hstix_readings newer
+          WHERE older.meal_snap_id IS NOT NULL
+            AND older.meal_snap_id = newer.meal_snap_id
+            AND (
+              older.recorded_at < newer.recorded_at
+              OR (older.recorded_at = newer.recorded_at AND older.id < newer.id)
+            );
+          CREATE UNIQUE INDEX IF NOT EXISTS hstix_readings_meal_unique_idx
+          ON hstix_readings (meal_snap_id)`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

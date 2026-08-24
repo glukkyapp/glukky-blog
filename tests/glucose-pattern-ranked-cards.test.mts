@@ -52,7 +52,8 @@ const yue = readFileSync("client/src/locales/yue.json", "utf8");
 check("The established ten-snap lock remains in place", page.includes("const LOCKED_THRESHOLD = 10") && page.includes("totalSnaps < LOCKED_THRESHOLD"));
 check("The ten-snap lock also protects search and food-detail API data", routes.includes('if (totalSnaps < 10)') && routes.includes('return res.status(403)'));
 check("AI assessment is the initial tab", page.includes('useState<"ai" | "actual">("ai")'));
-check("Actual cards use a localized rank key", page.includes("pattern_rank_${activeIndex + 1}"));
+check("Measured cards keep their API grouping order instead of ranking by lift", !page.includes("rankMeasuredFoods"));
+check("Measured cards do not show ordinal ranks", page.includes('mode === "actual" && !hasMeasuredList') && !page.includes('mode === "actual" && <p'));
 check("Cards support pointer swipes", page.includes("onPointerDown") && page.includes("onPointerUp") && page.includes("SWIPE_MIN_PX"));
 check("Search uses a user-scoped live query", page.includes("?query=${encodeURIComponent(trimmedSearch)}") && routes.includes("storage.searchGlucosePatternFoods(userId"));
 check("Food detail endpoint returns dated reading details", routes.includes("storage.getGlucosePatternFoodDetail(userId") && storage.includes("post_meal_recorded_at") && storage.includes("recordedAt"));
@@ -65,5 +66,11 @@ check("All supported locales include the new tab, search, and five rank labels",
   locale.includes('"pattern_search_label"') &&
   [1, 2, 3, 4, 5].every(rank => locale.includes(`"pattern_rank_${rank}"`)),
 ));
+check("Measured impact terminology and reading-progress copy are localized", [en, zhHant, yue].every(locale =>
+  ["pattern_measured_impact_high", "pattern_measured_impact_medium", "pattern_measured_impact_low", "pattern_needs_more_readings_heading", "pattern_needs_more_readings_count"].every(key => locale.includes(`"${key}"`)),
+));
+check("Measured-card messages do not interpolate a food name or foreground lift", page.includes("pattern_hstix_description_${impact}") && !page.includes('pattern_hstix_description", { food') && !page.includes('pattern_lift")'));
+check("HStix foods below the evidence threshold have their own section", page.includes("hstixNeedsMoreReadings") && page.includes("glucose-needs-more-readings") && page.includes("remaining: Math.max(0, 25 - food.totalMeals)"));
+check("HStix flow does not show personalised UI", page.includes("!hasMeasuredList && isPersonalised"));
 
 console.log(`\n${passed} passed`);
