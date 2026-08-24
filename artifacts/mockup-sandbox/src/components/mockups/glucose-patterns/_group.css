@@ -1,0 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Karla:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+
+/*
+ * FoodSnap's page-level token set.  It is intentionally scoped to this
+ * mockup import rather than changing the sandbox's shared theme.
+ */
+:root {
+  --button-outline: rgba(0, 0, 0, .10);
+  --badge-outline: rgba(0, 0, 0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0, 0, 0, .03);
+  --elevate-2: rgba(0, 0, 0, .08);
+  --background: 53 80% 96%;
+  --foreground: 168 30% 12%;
+  --border: 160 15% 85%;
+  --card: 52 79% 96%;
+  --card-foreground: 168 45% 8%;
+  --card-border: 160 15% 88%;
+  --sidebar: 150 18% 94%;
+  --sidebar-foreground: 168 30% 15%;
+  --sidebar-border: 160 15% 85%;
+  --sidebar-primary: 166 48% 35%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 150 20% 90%;
+  --sidebar-accent-foreground: 168 30% 15%;
+  --sidebar-ring: 166 48% 35%;
+  --popover: 52 79% 96%;
+  --popover-foreground: 168 45% 8%;
+  --popover-border: 160 15% 85%;
+  --primary: 166 48% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 150 18% 90%;
+  --secondary-foreground: 168 30% 15%;
+  --muted: 150 15% 92%;
+  --muted-foreground: 168 10% 45%;
+  --accent: 38 78% 56%;
+  --accent-foreground: 30 60% 15%;
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 160 15% 82%;
+  --ring: 166 48% 35%;
+  --chart-1: 166 48% 35%;
+  --chart-2: 38 78% 56%;
+  --chart-3: 145 55% 42%;
+  --chart-4: 0 65% 55%;
+  --chart-5: 200 50% 50%;
+  --font-heading: "Inter", sans-serif;
+  --font-body: "Karla", "Inter", sans-serif;
+  --font-sans: var(--font-body);
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --fs-xs: 18px;
+  --fs-sm: 24px;
+  --fs-base: 30px;
+  --fs-lg: 36px;
+  --fs-xl: 42px;
+  --fs-2xl: 48px;
+  --fs-3xl: 54px;
+  --fs-4xl: 63px;
+  --radius: .5rem;
+  --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,.04);
+  --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,.06);
+  --shadow-sm: 0px 1px 3px 0px rgba(0,0,0,.06), 0px 1px 2px -1px rgba(0,0,0,.04);
+  --shadow: 0px 2px 4px 0px rgba(0,0,0,.06), 0px 1px 2px -1px rgba(0,0,0,.04);
+  --shadow-md: 0px 4px 6px -1px rgba(0,0,0,.07), 0px 2px 4px -1px rgba(0,0,0,.04);
+  --shadow-lg: 0px 10px 15px -3px rgba(0,0,0,.07), 0px 4px 6px -2px rgba(0,0,0,.04);
+  --shadow-xl: 0px 20px 25px -5px rgba(0,0,0,.07), 0px 10px 10px -5px rgba(0,0,0,.03);
+  --shadow-2xl: 0px 25px 50px -12px rgba(0,0,0,.15);
+  --tracking-normal: 0em;
+  --spacing: .25rem;
+}
+
+.dark {
+  --button-outline: rgba(255,255,255,.10);
+  --badge-outline: rgba(255,255,255,.05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255,.04);
+  --elevate-2: rgba(255,255,255,.09);
+  --background: 170 25% 8%;
+  --foreground: 150 15% 90%;
+  --border: 168 15% 18%;
+  --card: 170 20% 12%;
+  --card-foreground: 150 15% 90%;
+  --card-border: 168 15% 20%;
+  --sidebar: 170 22% 10%;
+  --sidebar-foreground: 150 15% 88%;
+  --sidebar-border: 168 15% 18%;
+  --sidebar-primary: 166 48% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 170 20% 16%;
+  --sidebar-accent-foreground: 150 15% 88%;
+  --sidebar-ring: 166 48% 42%;
+  --popover: 170 20% 12%;
+  --popover-foreground: 150 15% 90%;
+  --popover-border: 168 15% 20%;
+  --primary: 166 48% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 170 18% 18%;
+  --secondary-foreground: 150 15% 88%;
+  --muted: 170 15% 16%;
+  --muted-foreground: 160 10% 55%;
+  --accent: 38 70% 50%;
+  --accent-foreground: 38 10% 95%;
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 168 15% 25%;
+  --ring: 166 48% 42%;
+  --chart-1: 166 48% 42%;
+  --chart-2: 38 70% 50%;
+  --chart-3: 145 50% 45%;
+  --chart-4: 0 60% 50%;
+  --chart-5: 200 45% 55%;
+  --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,.2);
+  --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,.3);
+  --shadow-sm: 0px 1px 3px 0px rgba(0,0,0,.3), 0px 1px 2px -1px rgba(0,0,0,.2);
+  --shadow: 0px 2px 4px 0px rgba(0,0,0,.3), 0px 1px 2px -1px rgba(0,0,0,.2);
+  --shadow-md: 0px 4px 6px -1px rgba(0,0,0,.3), 0px 2px 4px -1px rgba(0,0,0,.2);
+  --shadow-lg: 0px 10px 15px -3px rgba(0,0,0,.3), 0px 4px 6px -2px rgba(0,0,0,.2);
+  --shadow-xl: 0px 20px 25px -5px rgba(0,0,0,.3), 0px 10px 10px -5px rgba(0,0,0,.2);
+  --shadow-2xl: 0px 25px 50px -12px rgba(0,0,0,.5);
+}
+
+.foodsnap-glucose-patterns { font-family: var(--font-body); }
+.foodsnap-glucose-patterns h1,
+.foodsnap-glucose-patterns h2 { font-family: var(--font-heading); }
