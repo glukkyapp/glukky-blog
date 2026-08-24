@@ -1,0 +1,47 @@
+Objective: Add realistic synthetic HStix and meal data to my account only, scoped for testing the glucose pattern / food-card feature.
+
+Scope and safety:
+
+Insert account-specific rows only into meal_snaps for my user ID. Confirm the target user explicitly before running.
+
+If a seeded meal's food-item combo doesn't already exist in food_labels, create it as needed.
+
+Mark all seeded meal_snaps rows with a source: "seed_test_data" tag so they can be bulk-deleted later.
+
+I will delete the seeded meal_snaps rows within about an hour of testing. Before deleting, check whether any newly-created food_labels combo picked up references from other users in that window — if not, delete both; if so, leave that food_labels row alone and only delete the meal_snaps rows.
+
+Do not modify any existing real records.
+
+Carb subtype metadata:
+
+Every seeded food item must use carbSubtype: null and subtypeConfirmed: false (picker is currently disabled).
+
+carbCategory should be server-derived, not hardcoded.
+
+suggestedSubtype may be populated as optional server-derived fallback metadata only.
+
+Generation order — this matters, follow it in sequence, not in parallel:
+
+First, generate 40-60 general "baseline noise" meals across common foods, targeting roughly a 50% high-glucose rate. This pool establishes the working baseline estimate for the next steps.
+
+Second, generate the "just below threshold" food (20-24 meals) and the "mixed timing" food (30 meals total, only 8 tagged on_time), both using the same ~50% high rate from step 1 — these should look statistically unremarkable, since their exclusion from cards is meant to come from count/timing rules, not an unusual ratio.
+
+Third, generate the "no real signal" food (30+ meals) targeting that same ~50% baseline rate.
+
+Fourth, generate the "clear signal" food (30+ meals), deliberately set well above that baseline — roughly 70-75% high, so its lift is clearly above 1.0 even accounting for some drift.
+
+Fifth — mandatory final verification step: after all data is seeded, recompute the TRUE overall baseline high-rate across every meal in the account combined (not just the step-1 noise pool). Then confirm:
+
+The "no signal" food's actual lift is close to 1.0 against this true final baseline.
+
+The "clear signal" food's actual lift is meaningfully above 1.0 against this true final baseline.
+
+If either has drifted because the combined dataset pulled the baseline differently than expected, adjust that food's ratio and re-seed before treating the test data as final.
+
+Glucose value realism:
+
+Plausible mmol/L values (roughly 4.0-6.0 low, 6.1-9.0 medium, 9.1-14.0 high).
+
+Varied meal times across breakfast/lunch/dinner, spread across many different days over the last 60 days.
+
+After seeding, confirm: total row counts per category, the true final computed baseline rate, the computed lift for each of the four scenario foods, and which (if any) new food_labels combos were created.
