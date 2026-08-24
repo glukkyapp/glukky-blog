@@ -43,6 +43,8 @@ type FoodStats = {
   sumMmol: number;
 };
 
+export const MIN_HSTIX_FOOD_MEALS_FOR_CARD = 25;
+
 function validCarbCategory(value: string | null): CarbCategory {
   return value === "rice" || value === "noodles" || value === "bread" || value === "potatoes" || value === "other"
     ? value
@@ -100,7 +102,7 @@ export function buildHstixFoodCards(
 
   const overallHighProbability = allHighMeals / totalMeals;
   return Array.from(stats.values())
-    .filter(food => food.totalMeals >= 5)
+    .filter(food => food.totalMeals >= MIN_HSTIX_FOOD_MEALS_FOR_CARD)
     .map(food => {
       const highProbability = food.highMeals / food.totalMeals;
       const scoreCounts: Array<["low" | "medium" | "high", number]> = [

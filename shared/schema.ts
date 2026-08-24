@@ -338,6 +338,8 @@ export type FoodItemMetadata = {
 export const mealSnaps = pgTable("meal_snaps", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
+  source: varchar("source"),
+  seedBatchId: varchar("seed_batch_id"),
   snapTime: timestamp("snap_time", { withTimezone: true }).defaultNow().notNull(),
   localDate: date("local_date", { mode: "string" }).notNull(),
   mealType: text("meal_type"),
@@ -370,6 +372,8 @@ export type MealTimingConfidence = "on_time" | "delayed" | "unrelated";
 export const hstixReadings = pgTable("hstix_readings", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
+  source: varchar("source"),
+  seedBatchId: varchar("seed_batch_id"),
   mealSnapId: integer("meal_snap_id"),
   glucoseMmol: real("glucose_mmol").notNull(),
   note: text("note"),

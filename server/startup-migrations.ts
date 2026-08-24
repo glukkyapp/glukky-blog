@@ -218,6 +218,18 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     name: "food_labels.food_items",
     sql: "ALTER TABLE food_labels ADD COLUMN IF NOT EXISTS food_items jsonb",
   },
+  {
+    name: "seed_data.meal_snaps_provenance",
+    sql: `ALTER TABLE meal_snaps
+          ADD COLUMN IF NOT EXISTS source varchar,
+          ADD COLUMN IF NOT EXISTS seed_batch_id varchar`,
+  },
+  {
+    name: "seed_data.hstix_readings_provenance",
+    sql: `ALTER TABLE hstix_readings
+          ADD COLUMN IF NOT EXISTS source varchar,
+          ADD COLUMN IF NOT EXISTS seed_batch_id varchar`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

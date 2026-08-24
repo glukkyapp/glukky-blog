@@ -65,19 +65,20 @@ check("machine-readable food items are removed before advice is stored or shown"
 console.log("\nMeasured HStix lift");
 const measuredMeals = Array.from({ length: 25 }, (_, index) => ({
   postMealGlucoseMmol: index < 5 ? 8.2 : 5.5,
-  foodItems: [index < 5 ? rice : chicken],
+  foodItems: index < 24 ? [rice, chicken] : [rice],
   mealTimingConfidence: "on_time" as const,
 }));
 const cards = buildHstixFoodCards(measuredMeals, "healthy");
 const riceCard = cards.find(card => card.foodNameZhHant === "白飯");
-check("each reading is classified before totals are calculated", riceCard?.highMeals === 5 && riceCard?.lowMeals === 0);
-check("lift uses P(high | food) divided by P(high overall)", riceCard?.lift === 5);
+check("each reading is classified before totals are calculated", riceCard?.highMeals === 5 && riceCard?.lowMeals === 20);
+check("lift uses P(high | food) divided by P(high overall)", riceCard?.lift === 1);
+check("foods below 25 eligible on-time meals do not produce cards", !cards.some(card => card.foodNameEn === "Hainanese chicken"));
 check("component-free extras never appear as evidence cards", !cards.some(card => card.foodNameEn === "gravy"));
 const withDerivedRice = buildHstixFoodCards([
   ...measuredMeals,
   { postMealGlucoseMmol: 8.4, foodItems: [{ ...rice, source: "derived" as const }], mealTimingConfidence: "on_time" as const },
 ], "healthy");
-check("derived historical records are excluded from measured evidence", withDerivedRice.find(card => card.foodNameZhHant === "白飯")?.totalMeals === 5);
+check("derived historical records are excluded from measured evidence", withDerivedRice.find(card => card.foodNameZhHant === "白飯")?.totalMeals === 25);
 check("the shared evidence gate requires 25 eligible meals", buildHstixFoodCards(measuredMeals.slice(0, 24), "healthy").length === 0);
 const mixedTimingMeals = [
   ...measuredMeals.slice(0, 24),
