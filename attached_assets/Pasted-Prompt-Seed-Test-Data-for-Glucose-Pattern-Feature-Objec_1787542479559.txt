@@ -1,0 +1,36 @@
+Prompt: Seed Test Data for Glucose Pattern Feature
+Objective: Add realistic synthetic HStix and meal data to my account only, scoped for testing the glucose pattern / food-card feature, without affecting production logic or other users.
+
+Scope and safety:
+
+Insert data only for my user ID — confirm the target user explicitly before running, do not seed any other account.
+
+Mark all seeded rows in a way that lets me bulk-delete them later (e.g., a shared source: "seed_test_data" tag or a dedicated batch ID), so this can be cleanly removed once testing is done.
+
+Do not modify any existing real records I've already logged.
+
+What to generate — meals and linked HStix readings spanning the last 60 days:
+
+A "clear signal" food — 白飯 (white rice), logged in at least 30 meals, with roughly 22 of them showing high post-meal glucose and 8 showing medium/low. Timestamps should be spread across many different days, not clustered on one day.
+
+A "no real signal" food — a food (e.g. 雞胸肉 chicken breast) logged in at least 30 meals, where the high/medium/low ratio closely matches my overall baseline ratio (i.e., it shouldn't look meaningfully different from my average — this is for testing that the app correctly does NOT flag it as noteworthy).
+
+A "just below threshold" food — a food logged in exactly 20-24 meals (deliberately under 25), so I can confirm the app correctly withholds a card for it.
+
+A "mixed timing" food — a food logged 30 times total, but only 8 of those tagged as on_time; the rest split between delayed and unrelated. This is specifically to test that the 25-meal threshold is being applied to on_time readings only, not the raw total.
+
+General baseline noise — an additional 40-60 miscellaneous meals across a variety of common foods (noodles, bread, vegetables, mixed dishes), with realistic glucose values, so my overall baseline rate is grounded in a believable pattern rather than looking artificial.
+
+Carb subtype variety — ensure some rice-containing meals have carbSubtypeConfirmed: true with different subtypes (white/fried/brown), and some left unconfirmed, so I can check both the picker behavior and the fallback logic for unconfirmed entries.
+
+Glucose value realism:
+
+Use plausible mmol/L values (roughly 4.0-6.0 for normal/low, 6.1-9.0 for medium, 9.1-14.0 for high) rather than extreme or repeated identical numbers.
+
+Vary meal times across breakfast/lunch/dinner rather than all at one time of day.
+
+After seeding, confirm:
+
+Total row counts per category above, so I can verify against what I asked for.
+
+That the food-card and lift-calculation endpoints, when queried for my account, return results consistent with the scenarios above (e.g., rice shows a card, chicken breast doesn't, the just-below-threshold food doesn't, the mixed-timing food's card — if any — is built from only its 8 on_time readings).
