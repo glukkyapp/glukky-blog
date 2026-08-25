@@ -14,7 +14,28 @@ export interface HstixMealForCards {
   postMealGlucoseMmol: number | null;
   foodItems: FoodItemMetadata[] | null;
   mealTimingConfidence: "on_time" | "delayed" | "unrelated";
+  // Historical meal-row values are deliberately marked false by storage and
+  // cannot become measured-food evidence.
+  isCanonicalHstix: boolean;
 }
+
+export interface HstixPartnerFood {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+}
+
+export type HstixFoodPartnerInsight =
+  | {
+      kind: "dominant";
+      partner: HstixPartnerFood;
+    }
+  | {
+      kind: "comparison";
+      higherPartner: HstixPartnerFood;
+      lowerPartner: HstixPartnerFood;
+    };
 
 export interface HstixFoodCard {
   foodKey: string;
@@ -32,6 +53,7 @@ export interface HstixFoodCard {
   lift: number;
   avgPostMealMmol: number;
   impactLevel: "low" | "medium" | "high";
+  partnerInsight?: HstixFoodPartnerInsight;
 }
 
 export interface HstixFoodNeedsMoreReadings {
@@ -53,6 +75,22 @@ type FoodStats = {
 
 export const MIN_HSTIX_FOOD_MEALS_FOR_CARD = 25;
 
+/**
+ * This is the single evidence gate for measured-food analysis. It deliberately
+ * excludes legacy meal-row values, delayed/unrelated readings, non-finite
+ * values, and any meal whose food list contains a display-time-derived
+ * component.
+ */
+export function filterEligibleHstixMeals(snaps: HstixMealForCards[]): HstixMealForCards[] {
+  return snaps.filter(s =>
+    typeof s.postMealGlucoseMmol === "number" &&
+    Number.isFinite(s.postMealGlucoseMmol) &&
+    s.isCanonicalHstix === true &&
+    s.mealTimingConfidence === "on_time" &&
+    !(s.foodItems ?? []).some(item => item.source === "derived"),
+  );
+}
+
 function validCarbCategory(value: string | null): CarbCategory {
   return value === "rice" || value === "noodles" || value === "bread" || value === "potatoes" || value === "other"
     ? value
@@ -64,15 +102,7 @@ export function buildHstixFoodCards(
   glucoseGroup: GlucoseGroup,
   _thresholds?: PersonalisedThresholds,
 ): HstixFoodCard[] {
-  const numericSnaps = snaps.filter(s =>
-    typeof s.postMealGlucoseMmol === "number" &&
-    Number.isFinite(s.postMealGlucoseMmol) &&
-    // Food attribution is only valid for readings in the post-meal window.
-    s.mealTimingConfidence === "on_time" &&
-    // A display-time-derived record must not contribute to either the
-    // measured food evidence or its baseline.
-    !(s.foodItems ?? []).some(item => item.source === "derived"),
-  );
+  const numericSnaps = filterEligibleHstixMeals(snaps);
 
   const classified = numericSnaps.map(snap => ({
     snap,
@@ -82,6 +112,7 @@ export function buildHstixFoodCards(
   }));
   const allHighMeals = classified.filter(row => row.impact === "high").length;
   const totalMeals = classified.length;
+  if (totalMeals === 0) return [];
   const expectedBaselineRank = classified.reduce(
     (sum, row) => sum + (row.impact === "high" ? 2 : row.impact === "medium" ? 1 : 0),
     0,
@@ -114,7 +145,7 @@ export function buildHstixFoodCards(
   }
 
   const overallHighProbability = allHighMeals / totalMeals;
-  return Array.from(stats.values())
+  const cards = Array.from(stats.values())
     .filter(food => food.totalMeals >= MIN_HSTIX_FOOD_MEALS_FOR_CARD)
     .map(food => {
       const highProbability = food.highMeals / food.totalMeals;
@@ -140,19 +171,131 @@ export function buildHstixFoodCards(
       };
     })
     .sort((a, b) => a.foodKey.localeCompare(b.foodKey));
+  const partnerInsights = buildHstixPartnerInsights(numericSnaps, cards);
+  return cards.map(card => {
+    const partnerInsight = partnerInsights.get(card.foodKey);
+    return partnerInsight ? { ...card, partnerInsight } : card;
+  });
+}
+
+function partnerFromItem(item: FoodItemMetadata): HstixPartnerFood {
+  return {
+    foodKey: foodItemKey(item),
+    foodNameEn: item.nameEn,
+    foodNameZhHant: item.nameZhHant,
+    foodNameYue: item.nameYue,
+  };
+}
+
+function comparePartnerFood(a: HstixPartnerFood, b: HstixPartnerFood): number {
+  return a.foodKey.localeCompare(b.foodKey);
+}
+
+/**
+ * Finds association-only insights for the at-most-ten strongest measured
+ * Higher/Lower cards. The random Medium display sample is intentionally not
+ * passed here.
+ */
+export function buildHstixPartnerInsights(
+  snaps: HstixMealForCards[],
+  cards: HstixFoodCard[],
+): Map<string, HstixFoodPartnerInsight> {
+  const eligibleMeals = filterEligibleHstixMeals(snaps);
+  const candidates = [
+    ...cards
+      .filter(card => card.impactLevel === "high")
+      .sort((a, b) => b.lift - a.lift || comparePartnerFood(a, b))
+      .slice(0, 5),
+    ...cards
+      .filter(card => card.impactLevel === "low")
+      .sort((a, b) => a.lift - b.lift || comparePartnerFood(a, b))
+      .slice(0, 5),
+  ];
+  const insights = new Map<string, HstixFoodPartnerInsight>();
+
+  for (const candidate of candidates) {
+    type PartnerStats = {
+      item: FoodItemMetadata;
+      count: number;
+      sumMmol: number;
+    };
+    const partnerStats = new Map<string, PartnerStats>();
+    let indexMealCount = 0;
+
+    for (const meal of eligibleMeals) {
+      const mealItems = (meal.foodItems ?? []).filter(item => item.source !== "derived");
+      const uniqueItems = new Map<string, FoodItemMetadata>();
+      for (const item of mealItems) uniqueItems.set(foodItemKey(item), item);
+      if (!uniqueItems.has(candidate.foodKey)) continue;
+      indexMealCount += 1;
+
+      for (const [partnerKey, item] of Array.from(uniqueItems.entries())) {
+        if (partnerKey === candidate.foodKey) continue;
+        const current = partnerStats.get(partnerKey) ?? {
+          item,
+          count: 0,
+          sumMmol: 0,
+        };
+        current.count += 1;
+        current.sumMmol += meal.postMealGlucoseMmol!;
+        partnerStats.set(partnerKey, current);
+      }
+    }
+
+    if (indexMealCount === 0) continue;
+    const partners = Array.from(partnerStats.entries()).map(([foodKey, stats]) => ({
+      foodKey,
+      ...stats,
+      share: stats.count / indexMealCount,
+      partner: partnerFromItem(stats.item),
+      meanMmol: stats.sumMmol / stats.count,
+    }));
+    const dominant = partners
+      .filter(partner => partner.share > 0.7)
+      .sort((a, b) => b.count - a.count || a.foodKey.localeCompare(b.foodKey))[0];
+    if (dominant) {
+      insights.set(candidate.foodKey, {
+        kind: "dominant",
+        partner: dominant.partner,
+      });
+      continue;
+    }
+
+    const selectedPartners = partners
+      .filter(partner => partner.share >= 0.16)
+      .sort((a, b) => b.count - a.count || a.foodKey.localeCompare(b.foodKey))
+      .slice(0, 3);
+    if (selectedPartners.length < 2) continue;
+
+    const highest = selectedPartners.reduce((best, partner) =>
+      partner.meanMmol > best.meanMmol ||
+      (partner.meanMmol === best.meanMmol && partner.foodKey.localeCompare(best.foodKey) < 0)
+        ? partner
+        : best,
+    );
+    const lowest = selectedPartners.reduce((best, partner) =>
+      partner.meanMmol < best.meanMmol ||
+      (partner.meanMmol === best.meanMmol && partner.foodKey.localeCompare(best.foodKey) < 0)
+        ? partner
+        : best,
+    );
+    if (highest.meanMmol - lowest.meanMmol <= 1.5) continue;
+
+    insights.set(candidate.foodKey, {
+      kind: "comparison",
+      higherPartner: highest.partner,
+      lowerPartner: lowest.partner,
+    });
+  }
+
+  return insights;
 }
 
 export function buildHstixFoodsNeedingMoreReadings(
   snaps: HstixMealForCards[],
 ): HstixFoodNeedsMoreReadings[] {
   const foods = new Map<string, { item: FoodItemMetadata; totalMeals: number }>();
-  for (const snap of snaps) {
-    if (
-      typeof snap.postMealGlucoseMmol !== "number" ||
-      !Number.isFinite(snap.postMealGlucoseMmol) ||
-      snap.mealTimingConfidence !== "on_time" ||
-      (snap.foodItems ?? []).some(item => item.source === "derived")
-    ) continue;
+  for (const snap of filterEligibleHstixMeals(snaps)) {
 
     const seenThisMeal = new Set<string>();
     for (const item of (snap.foodItems ?? []).filter(item => item.source !== "derived")) {

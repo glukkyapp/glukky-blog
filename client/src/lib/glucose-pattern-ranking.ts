@@ -21,6 +21,22 @@ export function rankActualFoods<T extends RankableGlucoseFood>(
     .slice(0, 5);
 }
 
+export interface RankableMeasuredFood {
+  foodKey: string;
+  lift: number;
+}
+
+export function rankMeasuredFoods<T extends RankableMeasuredFood>(
+  foods: T[],
+  impact: GlucoseImpactLevel,
+): T[] {
+  return [...foods]
+    .sort((a, b) => {
+      const liftOrder = impact === "high" ? b.lift - a.lift : a.lift - b.lift;
+      return liftOrder || a.foodKey.localeCompare(b.foodKey);
+    });
+}
+
 export function sampleFoods<T>(foods: T[], limit = 5): T[] {
   const shuffled = [...foods];
   for (let index = shuffled.length - 1; index > 0; index--) {

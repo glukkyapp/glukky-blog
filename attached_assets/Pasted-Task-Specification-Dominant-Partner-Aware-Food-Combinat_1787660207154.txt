@@ -1,0 +1,30 @@
+Task Specification: Dominant-Partner-Aware Food Combination Insight (HStix-Recorded Foods Only)
+Precondition: Run the existing, unchanged lift-ratio/expectedRank calculation to identify which foods have significant impact (Higher/Lower/No significant difference) against the population baseline. This applies only to HStix-recorded foods — meals with a linked, confirmed HStix reading, already restricted to on-time eligible readings by the existing pipeline. From that output, select only the top 5 Higher-impact and top 5 Lower-impact foods (fewer if fewer qualify) as candidates for this analysis. Do not run the following steps on every food — only these top candidates.
+Step 1 — Tally partner co-occurrence. For each candidate food, count, for every other food that appears alongside it, how many meals contain that pairing.
+Step 2 — Compute dominant partner share. For each partner,  share = (meals containing index food AND this partner) / (total eligible meals containing index food) .
+Step 3 — Dominant partner check. If any single partner’s share exceeds 0.7, stop here. Attach a soft warning to the food’s card (e.g., “此食物大部分時間都同{partner}一齊食，血糖反應可能受{partner}影響”). Do not proceed to Steps 4-6 for this food.
+Step 4 — Noise floor. If no partner exceeds 0.7, discard any partner whose share is below 0.16 — too infrequent to trust a mean calculated from it.
+Step 5 — Select comparison set. From the remaining partners, take the top 3 by occurrence count (use fewer if fewer than 3 remain; if fewer than 2 remain, skip the comparison entirely — nothing to compare).
+Step 6 — Compute each partner’s own mean HStix. For each of the up-to-3 selected partners, average the raw mmol/L values from only the meals containing that partner (not band-coded, not compared against “everything else” — each partner’s mean stands on its own).
+Step 7 — Compare highest vs. lowest. Find the partner with the highest mean and the partner with the lowest mean among the selected set. If  highest - lowest > 1.5 mmol/L , generate the advice sentence naming both. If the difference is 1.5 or below, skip the advice line entirely — do not show a weak or borderline claim.
+Worked Example
+Rice has 25 eligible on-time meals, paired with 4 different partners:
+
+Partner	Meals	Share
+叉燒 (roast pork)	10	0.40
+蒸魚 (steamed fish)	7	0.28
+牛肉 (beef)	5	0.20
+青菜 (vegetables)	3	0.12
+
+Step 3: Highest share is 0.40 — no partner exceeds 0.7, so no dominant-partner warning; proceed.
+Step 4: 青菜 has share 0.12, below the 0.16 noise floor — excluded. Remaining: 叉燒, 蒸魚, 牛肉.
+Step 5: All 3 remaining partners qualify — comparison set is 叉燒, 蒸魚, 牛肉.
+Step 6: Mean HStix per partner:
+•	叉燒: 9.85 mmol/L
+•	蒸魚: 7.71 mmol/L
+•	牛肉: 8.20 mmol/L
+Step 7: Highest = 叉燒 (9.85), Lowest = 蒸魚 (7.71), difference = 2.14 mmol/L — exceeds 1.5, so the advice line fires:
+“搭配叉燒時，你嘅血糖反應會偏高啲；搭配蒸魚時，反應會偏低啲。” (When paired with roast pork, your blood sugar tends to run higher; when paired with steamed fish, it tends to run lower.)
+If instead 叉燒’s mean had been 9.05 and 蒸魚’s 7.71 (difference 1.34), Step 7 would skip the advice line entirely, since 1.34 < 1.5 — the food would still show its core impact card, just without this extra sentence.
+
+i am running this with another ai model. identify bugs if any. this solves the dominant partner issue, but with the lift ratio calculation method , any other serious important confounding factors that may lead to false advice ?

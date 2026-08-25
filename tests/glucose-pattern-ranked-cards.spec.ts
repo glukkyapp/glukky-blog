@@ -172,6 +172,81 @@ test("Needs more readings is a selector and keeps the measured card visible", as
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("7 more needed");
 });
 
+test("Partner messages appear only on qualified measured cards", async ({ context, page }) => {
+  await setupUser(context, page);
+
+  await page.route("**/api/snap/glucose-patterns**", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      totalPaired: 50,
+      totalSnaps: 50,
+      topList: [],
+      hstixList: [
+        {
+          foodKey: "rice",
+          foodNameEn: "Rice",
+          foodNameZhHant: "白飯",
+          foodNameYue: "白飯",
+          totalMeals: 25,
+          highMeals: 19,
+          mediumMeals: 4,
+          lowMeals: 2,
+          nonHighMeals: 6,
+          highProbability: 0.76,
+          overallHighProbability: 0.5,
+          lift: 1.5,
+          avgPostMealMmol: 7.9,
+          impactLevel: "high",
+          partnerInsight: {
+            kind: "dominant",
+            partner: { foodKey: "pork", foodNameEn: "Roast pork", foodNameZhHant: "燒肉", foodNameYue: "燒肉" },
+          },
+        },
+        {
+          foodKey: "oats",
+          foodNameEn: "Oats",
+          foodNameZhHant: "燕麥",
+          foodNameYue: "燕麥",
+          totalMeals: 25,
+          highMeals: 2,
+          mediumMeals: 4,
+          lowMeals: 19,
+          nonHighMeals: 23,
+          highProbability: 0.08,
+          overallHighProbability: 0.5,
+          lift: 0.6,
+          avgPostMealMmol: 5.8,
+          impactLevel: "low",
+          partnerInsight: {
+            kind: "comparison",
+            higherPartner: { foodKey: "milk", foodNameEn: "Milk", foodNameZhHant: "牛奶", foodNameYue: "牛奶" },
+            lowerPartner: { foodKey: "berries", foodNameEn: "Berries", foodNameZhHant: "莓果", foodNameYue: "莓果" },
+          },
+        },
+      ],
+      hstixNeedsMoreReadings: [],
+      aiOnlyList: [{ foodName: "AI-only food", impactLevel: "low", snapCount: 3 }],
+    }),
+  }));
+  await page.route("**/api/user/glucose-thresholds", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ glucoseGroup: "healthy", readingCount: 50, isPersonalised: true, glucosePersonalisedSeen: true }),
+  }));
+
+  await page.goto("/glucose-patterns");
+  await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
+  await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
+
+  await page.getByTestId("glucose-mode-actual").click();
+  await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
+  await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
+  await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
+
+  await page.getByTestId("glucose-impact-high").click();
+  await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
+  await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
+});
+
 test.describe("desktop navigation layout", () => {
   test.use({ viewport: { width: 1280, height: 720 } });
 

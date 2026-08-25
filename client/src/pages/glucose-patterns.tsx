@@ -16,6 +16,7 @@ import {
 import {
   IMPACT_LEVELS,
   rankActualFoods,
+  rankMeasuredFoods,
   sampleFoods,
   type GlucoseImpactLevel,
 } from "@/lib/glucose-pattern-ranking";
@@ -55,7 +56,19 @@ interface HstixFoodEntry {
   lift: number;
   avgPostMealMmol: number;
   impactLevel: GlucoseImpactLevel;
+  partnerInsight?: HstixPartnerInsight;
 }
+
+interface HstixPartnerFood {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+}
+
+type HstixPartnerInsight =
+  | { kind: "dominant"; partner: HstixPartnerFood }
+  | { kind: "comparison"; higherPartner: HstixPartnerFood; lowerPartner: HstixPartnerFood };
 
 interface HstixNeedsMoreReadingsEntry {
   foodKey: string;
@@ -201,9 +214,15 @@ export default function GlucosePatterns() {
   const actualByImpact = useMemo(() => Object.fromEntries(
     IMPACT_LEVELS.map(level => {
       const foods = actualFoods.filter(food => food.impactLevel === level);
-      return [level, hasMeasuredList
-        ? foods
-        : rankActualFoods(foods.filter((food): food is GlucosePatternEntry => !("lift" in food)), level)];
+      if (hasMeasuredList) {
+        const measuredFoods = foods.filter((food): food is HstixFoodEntry & { foodName: string; readingCount: number } =>
+          "lift" in food,
+        );
+        return [level, level === "medium"
+          ? sampleFoods(measuredFoods)
+          : rankMeasuredFoods(measuredFoods, level)];
+      }
+      return [level, rankActualFoods(foods.filter((food): food is GlucosePatternEntry => !("lift" in food)), level)];
     }),
   ) as Record<GlucoseImpactLevel, ActualFood[]>, [actualFoods, hasMeasuredList]);
   const firstMeasuredImpact = useMemo(
@@ -271,6 +290,8 @@ export default function GlucosePatterns() {
   };
 
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(value));
+  const localizedPartnerName = (partner: HstixPartnerFood) =>
+    locale === "zh-Hant" ? partner.foodNameZhHant : locale === "yue" ? partner.foodNameYue : partner.foodNameEn;
 
   return (
     <main className="min-h-screen bg-background pb-28 pt-4" data-testid="page-glucose-patterns">
@@ -373,6 +394,28 @@ export default function GlucosePatterns() {
                       <div>
                         <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
                         <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
+                        {activeFood.partnerInsight?.kind === "dominant" && (
+                          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
+                            {t("glucose.pattern_partner_dominant", {
+                              indexFood: activeFood.foodName,
+                              partner: localizedPartnerName(activeFood.partnerInsight.partner),
+                            })}
+                          </p>
+                        )}
+                        {activeFood.partnerInsight?.kind === "comparison" && (
+                          <div className="mt-4 space-y-1.5" data-testid="glucose-partner-comparison">
+                            <p className="text-sm leading-5 text-muted-foreground">
+                              {t("glucose.pattern_partner_comparison", {
+                                indexFood: activeFood.foodName,
+                                higherPartner: localizedPartnerName(activeFood.partnerInsight.higherPartner),
+                                lowerPartner: localizedPartnerName(activeFood.partnerInsight.lowerPartner),
+                              })}
+                            </p>
+                            <p className="text-xs leading-5 text-muted-foreground" data-testid="glucose-partner-disclaimer">
+                              {t("glucose.pattern_partner_disclaimer")}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ) : mode === "actual" ? (
                       <div className="flex items-end justify-between">

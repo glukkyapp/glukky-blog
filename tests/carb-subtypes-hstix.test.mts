@@ -68,6 +68,7 @@ const measuredMeals = Array.from({ length: 25 }, (_, index) => ({
   postMealGlucoseMmol: index < 5 ? 8.2 : 5.5,
   foodItems: index < 24 ? [rice, chicken] : [rice],
   mealTimingConfidence: "on_time" as const,
+  isCanonicalHstix: true,
 }));
 const cards = buildHstixFoodCards(measuredMeals, "healthy");
 const riceCard = cards.find(card => card.foodNameZhHant === "白飯");
@@ -83,14 +84,14 @@ check("foods below 25 eligible on-time meals do not produce cards", !cards.some(
 check("component-free extras never appear as evidence cards", !cards.some(card => card.foodNameEn === "gravy"));
 const withDerivedRice = buildHstixFoodCards([
   ...measuredMeals,
-  { postMealGlucoseMmol: 8.4, foodItems: [{ ...rice, source: "derived" as const }], mealTimingConfidence: "on_time" as const },
+  { postMealGlucoseMmol: 8.4, foodItems: [{ ...rice, source: "derived" as const }], mealTimingConfidence: "on_time" as const, isCanonicalHstix: true },
 ], "healthy");
 check("derived historical records are excluded from measured evidence", withDerivedRice.find(card => card.foodNameZhHant === "白飯")?.totalMeals === 25);
 check("each food requires 25 eligible on-time meals", buildHstixFoodCards(measuredMeals.slice(0, 24), "healthy").length === 0);
 const mixedTimingMeals = [
   ...measuredMeals.slice(0, 24),
-  { postMealGlucoseMmol: 8.2, foodItems: [rice], mealTimingConfidence: "delayed" as const },
-  { postMealGlucoseMmol: 5.5, foodItems: [chicken], mealTimingConfidence: "unrelated" as const },
+  { postMealGlucoseMmol: 8.2, foodItems: [rice], mealTimingConfidence: "delayed" as const, isCanonicalHstix: true },
+  { postMealGlucoseMmol: 5.5, foodItems: [chicken], mealTimingConfidence: "unrelated" as const, isCanonicalHstix: true },
 ];
 check(
   "delayed and unrelated readings cannot satisfy the on-time evidence gate",
@@ -120,6 +121,7 @@ const onTimeMeal = (postMealGlucoseMmol: number, foodItems: FoodItemMetadata[]) 
   postMealGlucoseMmol,
   foodItems,
   mealTimingConfidence: "on_time" as const,
+  isCanonicalHstix: true,
 });
 const expectedRankCard = (extraMeals: ReturnType<typeof onTimeMeal>[]) =>
   buildHstixFoodCards([

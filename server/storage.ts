@@ -133,6 +133,7 @@ export interface IStorage {
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
     mealTimingConfidence: MealTimingConfidence;
+    isCanonicalHstix: true;
   }>>;
   getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null>;
   getMealSnapForHstix(userId: string, snapId: number): Promise<{ id: number; snapTime: Date; localDate: string } | null>;
@@ -1182,51 +1183,30 @@ export class DatabaseStorage implements IStorage {
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
     mealTimingConfidence: MealTimingConfidence;
+    isCanonicalHstix: true;
   }>> {
-    const legacyRows = await db.select({
-      postMealGlucoseMmol: mealSnaps.postMealGlucoseMmol,
-      foodItems: mealSnaps.foodItems,
-      recordedAt: mealSnaps.postMealRecordedAt,
-    }).from(mealSnaps).where(and(
-      eq(mealSnaps.userId, userId),
-      eq(mealSnaps.isDeleted, false),
-      // A linked HStix reading is the canonical measurement for newly
-      // recorded data. Keep the meal-row value only as historical fallback.
-      sql`NOT EXISTS (
-        SELECT 1 FROM hstix_readings hr
-        WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ${mealSnaps.id}
-      )`,
-    )).then(rows => rows.map(row => ({
-      postMealGlucoseMmol: row.postMealGlucoseMmol,
-      foodItems: row.foodItems,
-      recordedAt: row.recordedAt ?? new Date(0),
-      // Pre-existing post-meal values were only accepted through the
-      // recordable window, so they are safe legacy on-time evidence.
-      mealTimingConfidence: "on_time" as const,
-    })));
-    const independentRows = await db.select({
+    const canonicalRows = await db.select({
       postMealGlucoseMmol: hstixReadings.glucoseMmol,
       foodItems: mealSnaps.foodItems,
       recordedAt: hstixReadings.recordedAt,
       mealTimingConfidence: hstixReadings.mealTimingConfidence,
     }).from(hstixReadings)
-      .leftJoin(mealSnaps, and(
+      .innerJoin(mealSnaps, and(
         eq(hstixReadings.mealSnapId, mealSnaps.id),
         eq(hstixReadings.userId, mealSnaps.userId),
       ))
       .where(and(
         eq(hstixReadings.userId, userId),
         eq(hstixReadings.mealTimingConfidence, "on_time"),
+        eq(mealSnaps.isDeleted, false),
       ));
-    return [
-      ...legacyRows,
-      ...independentRows.map(row => ({
-        postMealGlucoseMmol: row.postMealGlucoseMmol,
-        foodItems: row.foodItems ?? null,
-        recordedAt: row.recordedAt,
-        mealTimingConfidence: "on_time" as const,
-      })),
-    ];
+    return canonicalRows.map(row => ({
+      postMealGlucoseMmol: row.postMealGlucoseMmol,
+      foodItems: row.foodItems ?? null,
+      recordedAt: row.recordedAt,
+      mealTimingConfidence: "on_time" as const,
+      isCanonicalHstix: true,
+    }));
   }
 
   async getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null> {
