@@ -7,7 +7,7 @@ import {
   prepareFoodItems,
 } from "../server/carb-subtypes";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "../server/food-items";
-import { buildHstixFoodCards } from "../server/glucose-patterns";
+import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "../server/glucose-patterns";
 import { classifyHstixTiming } from "../server/hstix-timing";
 
 let passed = 0;
@@ -66,7 +66,7 @@ check("machine-readable food items are removed before advice is stored or shown"
 console.log("\nMeasured HStix lift");
 const measuredMeals = Array.from({ length: 25 }, (_, index) => ({
   postMealGlucoseMmol: index < 5 ? 8.2 : 5.5,
-  foodItems: index < 24 ? [rice, chicken] : [rice],
+  foodItems: [rice, chicken],
   mealTimingConfidence: "on_time" as const,
   isCanonicalHstix: true,
 }));
@@ -80,7 +80,8 @@ const fixedBandCards = buildHstixFoodCards(measuredMeals, "healthy", {
 });
 check("food reading bands use fixed phase-one thresholds, not personalised thresholds",
   fixedBandCards.find(card => card.foodNameZhHant === "白飯")?.highMeals === 5);
-check("foods below 25 eligible on-time meals do not produce cards", !cards.some(card => card.foodNameEn === "Hainanese chicken"));
+check("non-carb foods do not produce measured index cards even with 25 eligible meals",
+  cards.some(card => card.foodNameEn === "white rice") && !cards.some(card => card.foodNameEn === "Hainanese chicken"));
 check("component-free extras never appear as evidence cards", !cards.some(card => card.foodNameEn === "gravy"));
 const withDerivedRice = buildHstixFoodCards([
   ...measuredMeals,
@@ -96,6 +97,15 @@ const mixedTimingMeals = [
 check(
   "delayed and unrelated readings cannot satisfy the on-time evidence gate",
   buildHstixFoodCards(mixedTimingMeals, "healthy").length === 0,
+);
+check(
+  "non-carb foods do not appear in the below-threshold index-food list",
+  !buildHstixFoodsNeedingMoreReadings([{
+    postMealGlucoseMmol: 7,
+    foodItems: [rice, chicken],
+    mealTimingConfidence: "on_time" as const,
+    isCanonicalHstix: true,
+  }]).some(food => food.foodNameEn === "Hainanese chicken"),
 );
 
 console.log("\nExpected-rank HStix impact");

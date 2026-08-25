@@ -30,6 +30,14 @@ function food(name: string): FoodItemMetadata {
   };
 }
 
+function carbFood(name: string): FoodItemMetadata {
+  return {
+    ...food(name),
+    isCarb: true,
+    carbCategory: "rice",
+  };
+}
+
 function meal(mmol: number, foodItems: FoodItemMetadata[], timing: HstixMealForCards["mealTimingConfidence"] = "on_time"): HstixMealForCards {
   return { postMealGlucoseMmol: mmol, foodItems, mealTimingConfidence: timing, isCanonicalHstix: true };
 }
@@ -40,7 +48,7 @@ function card(item: FoodItemMetadata, impactLevel: HstixFoodCard["impactLevel"] 
     foodNameEn: item.nameEn,
     foodNameZhHant: item.nameZhHant,
     foodNameYue: item.nameYue,
-    carbCategory: null,
+    carbCategory: item.carbCategory === "rice" ? "rice" : null,
     totalMeals: 25,
     highMeals: 15,
     mediumMeals: 5,
@@ -58,7 +66,7 @@ function insightFor(index: FoodItemMetadata, meals: HstixMealForCards[], impactL
   return buildHstixPartnerInsights(meals, [card(index, impactLevel)]).get(foodItemKey(index));
 }
 
-const rice = food("rice");
+const rice = carbFood("rice");
 const roastPork = food("roast pork");
 const chicken = food("chicken");
 const greens = food("greens");
@@ -198,8 +206,8 @@ check(
 );
 
 console.log("\nCandidate limits and returned-card contract");
-const highCandidates = Array.from({ length: 6 }, (_, index) => card(food(`high ${index}`), "high", 2 - index / 100));
-const sixthHigh = food("high 5");
+const highCandidates = Array.from({ length: 6 }, (_, index) => card(carbFood(`high ${index}`), "high", 2 - index / 100));
+const sixthHigh = carbFood("high 5");
 const sixthHighMeals = [
   ...Array.from({ length: 20 }, () => meal(8, [sixthHigh, alpha])),
   ...Array.from({ length: 5 }, () => meal(6, [sixthHigh])),
@@ -208,8 +216,8 @@ check(
   "only the five highest-lift Higher cards enter partner analysis",
   !buildHstixPartnerInsights(sixthHighMeals, highCandidates).has(foodItemKey(sixthHigh)),
 );
-const lowCandidates = Array.from({ length: 6 }, (_, index) => card(food(`low ${index}`), "low", 0.5 + index / 100));
-const sixthLow = food("low 5");
+const lowCandidates = Array.from({ length: 6 }, (_, index) => card(carbFood(`low ${index}`), "low", 0.5 + index / 100));
+const sixthLow = carbFood("low 5");
 const sixthLowMeals = [
   ...Array.from({ length: 20 }, () => meal(6, [sixthLow, alpha])),
   ...Array.from({ length: 5 }, () => meal(8, [sixthLow])),
@@ -217,6 +225,19 @@ const sixthLowMeals = [
 check(
   "only the five smallest-lift Lower cards enter partner analysis",
   !buildHstixPartnerInsights(sixthLowMeals, lowCandidates).has(foodItemKey(sixthLow)),
+);
+const nonCarbIndex = food("non-carb index");
+const nonCarbIndexCard = card(nonCarbIndex, "high", 3);
+const carbIndexCard = card(rice, "high", 1);
+const mixedIndexInsights = buildHstixPartnerInsights(
+  Array.from({ length: 25 }, () => meal(8, [rice, roastPork])),
+  [nonCarbIndexCard, carbIndexCard],
+);
+check(
+  "only carb cards enter index candidate analysis while non-carb partners remain eligible",
+  !mixedIndexInsights.has(foodItemKey(nonCarbIndex)) &&
+    mixedIndexInsights.get(foodItemKey(rice))?.kind === "dominant" &&
+    mixedIndexInsights.get(foodItemKey(rice))?.partner.foodKey === foodItemKey(roastPork),
 );
 const measuredCards = buildHstixFoodCards([
   ...Array.from({ length: 25 }, () => meal(8.2, [rice, roastPork])),

@@ -1,6 +1,5 @@
 import type { FoodItemMetadata } from "@shared/schema";
 import {
-  classifyCarbCategory,
   foodItemKey,
   type CarbCategory,
 } from "./carb-subtypes";
@@ -97,6 +96,17 @@ function validCarbCategory(value: string | null): CarbCategory {
     : null;
 }
 
+/**
+ * The label pipeline owns both carb fields. Require the positive carb flag and
+ * a supported category before a food can become a measured index card.
+ * Partners intentionally do not use this helper: any non-derived food may be
+ * paired with a carb index food.
+ */
+function validatedCarbCategory(item: FoodItemMetadata): CarbCategory {
+  if (item.isCarb !== true) return null;
+  return validCarbCategory(item.carbCategory);
+}
+
 export function buildHstixFoodCards(
   snaps: HstixMealForCards[],
   glucoseGroup: GlucoseGroup,
@@ -125,7 +135,9 @@ export function buildHstixFoodCards(
   const stats = new Map<string, FoodStats>();
   for (const { snap, impact } of classified) {
     const seenThisMeal = new Set<string>();
-    for (const item of (snap.foodItems ?? []).filter(candidate => candidate.source !== "derived")) {
+    for (const item of (snap.foodItems ?? []).filter(candidate =>
+      candidate.source !== "derived" && validatedCarbCategory(candidate) !== null,
+    )) {
       const key = foodItemKey(item);
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
@@ -157,7 +169,7 @@ export function buildHstixFoodCards(
         foodNameEn: food.item.nameEn,
         foodNameZhHant: food.item.nameZhHant,
         foodNameYue: food.item.nameYue,
-        carbCategory: validCarbCategory(food.item.carbCategory) ?? classifyCarbCategory(food.item),
+        carbCategory: validatedCarbCategory(food.item),
         totalMeals: food.totalMeals,
         highMeals: food.highMeals,
         mediumMeals: food.mediumMeals,
@@ -203,11 +215,11 @@ export function buildHstixPartnerInsights(
   const eligibleMeals = filterEligibleHstixMeals(snaps);
   const candidates = [
     ...cards
-      .filter(card => card.impactLevel === "high")
+      .filter(card => card.impactLevel === "high" && card.carbCategory !== null)
       .sort((a, b) => b.lift - a.lift || comparePartnerFood(a, b))
       .slice(0, 5),
     ...cards
-      .filter(card => card.impactLevel === "low")
+      .filter(card => card.impactLevel === "low" && card.carbCategory !== null)
       .sort((a, b) => a.lift - b.lift || comparePartnerFood(a, b))
       .slice(0, 5),
   ];
@@ -298,7 +310,9 @@ export function buildHstixFoodsNeedingMoreReadings(
   for (const snap of filterEligibleHstixMeals(snaps)) {
 
     const seenThisMeal = new Set<string>();
-    for (const item of (snap.foodItems ?? []).filter(item => item.source !== "derived")) {
+    for (const item of (snap.foodItems ?? []).filter(item =>
+      item.source !== "derived" && validatedCarbCategory(item) !== null,
+    )) {
       const key = foodItemKey(item);
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
