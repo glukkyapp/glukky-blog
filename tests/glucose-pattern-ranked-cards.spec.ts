@@ -13,12 +13,6 @@ async function setupUser(context: BrowserContext, page: Page) {
   expect(login.status()).toBe(200);
   expect((await api.post(`${BASE}/api/profile`, {
     data: {
-      walksPerWeek: 3,
-      walkDuration: 20,
-      dinnerTime: "before_9pm",
-      sleepPattern: "regular_10_6",
-      eatingOutFrequency: "1_2",
-      struggles: ["sugary_food_drink"],
     },
   })).status()).toBe(200);
   await api.patch(`${BASE}/api/profile/intro-seen`);

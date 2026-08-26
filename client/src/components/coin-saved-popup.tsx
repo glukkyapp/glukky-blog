@@ -1,85 +1,26 @@
 import { useEffect, useRef } from "react";
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
-import pigAnimationData from "@assets/wired-flat-453-savings-pig-hover-pinch_1773589181755.json";
 import { useTranslation } from "react-i18next";
 import { hapticNotify } from "@/lib/haptics";
 
-interface CoinSavedPopupProps {
-  coins: number;
-  visible: boolean;
-  onDismiss: () => void;
-}
-
-export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProps) {
+export function CoinSavedPopup({ coins, visible, onDismiss }: { coins: number; visible: boolean; onDismiss: () => void }) {
   const { t } = useTranslation();
-  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (visible) {
       hapticNotify("SUCCESS");
-      lottieRef.current?.goToAndPlay(0, true);
-      timerRef.current = setTimeout(() => {
-        onDismiss();
-      }, 2500);
+      timerRef.current = setTimeout(onDismiss, 2500);
     }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [visible, onDismiss]);
 
   if (!visible) return null;
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        zIndex: 9999,
-        pointerEvents: "none",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        animation: "coinPopupFadeIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-      }}
-      data-testid="popup-coin-saved"
-    >
-      <style>{`
-        @keyframes coinPopupFadeIn {
-          0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.4); }
-          65%  { opacity: 1; transform: translate(-50%, -52%) scale(1.08); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-      `}</style>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "4px",
-        }}
-      >
-        <div style={{ width: 110, height: 110 }}>
-          <Lottie
-            lottieRef={lottieRef}
-            animationData={pigAnimationData}
-            loop={false}
-            autoplay={true}
-          />
-        </div>
-        <p
-          style={{
-            margin: 0,
-            fontWeight: 700,
-            fontSize: "15px",
-            color: "#14A085",
-            letterSpacing: "0.01em",
-            textShadow: "0 1px 4px rgba(255,255,255,0.9)",
-          }}
-          data-testid="text-coin-saved-count"
-        >
+    <div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center" data-testid="popup-coin-saved">
+      <style>{`@keyframes coinPopupFadeIn { 0% { opacity: 0; transform: translateY(10%) scale(.4); } 65% { opacity: 1; transform: translateY(-2%) scale(1.08); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
+      <div className="flex flex-col items-center gap-1" style={{ animation: "coinPopupFadeIn .5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+        <div className="w-[96px] h-[96px] rounded-full bg-amber-100 border-4 border-amber-300 shadow-lg flex items-center justify-center text-5xl" aria-hidden="true">🐷</div>
+        <p className="m-0 font-bold text-[15px] text-[#14A085]" data-testid="text-coin-saved-count">
           {t("popup.coin_saved", { count: coins })}
         </p>
       </div>

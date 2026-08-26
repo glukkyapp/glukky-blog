@@ -25,14 +25,9 @@ const PASS_INTERVAL_MS = 60 * 60 * 1000;
 type NotificationType =
   | "foodsnap_reminder" // 7 PM local — conditional: no dinner snap today
   | "hstix_reminder"    // event-triggered — 55 min after snap (not pre-scheduled)
-  | "daily_report"      // retired — no longer scheduled
-  | "weekly_report"     // retired — no longer scheduled
-  | "monthly_report"    // retired — no longer scheduled
-  | "daily_checkin"     // retired — was manual test only, never pre-scheduled
   | "reengagement";     // 6 PM local — inactive ≥ 3 days, max once per 14 days
 
 // hstix_reminder is excluded — event-triggered from the snap route.
-// daily_report / weekly_report / monthly_report / daily_checkin are retired.
 const ALL_TYPES: NotificationType[] = [
   "foodsnap_reminder",
   "reengagement",
@@ -72,29 +67,9 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
     zhHant: { title: t("Glukky"), subtitle: t(""), message: t("準備好量度你的血糖了嗎？") },
     deepLink: "/hstix",
   },
-  daily_report: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your daily summary is ready.") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每日報告已準備好。") },
-    deepLink: "/",
-  },
-  weekly_report: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your weekly report is ready.") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每週報告已準備好。") },
-    deepLink: "/",
-  },
-  monthly_report: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your monthly report is ready.") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("你的每月報告已準備好。") },
-    deepLink: "/",
-  },
-  daily_checkin: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("Your daily check-in is open — tap to log your day!") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("每日打卡時間到了！") },
-    deepLink: "/",
-  },
   reengagement: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("We miss you — your plan is waiting.") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("我們想念你——你的計劃在等待。") },
+    en:     { title: t("Glukky"), subtitle: t(""), message: t("We miss you — come back when you are ready.") },
+    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("我們想念你——準備好時再回來吧。") },
     deepLink: "/",
   },
 };
@@ -102,31 +77,13 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
 // Dev-panel test notification templates — same TemplateString gate as CONTENTS.
 // Dev sends are English-only so zhHant mirrors en; the type guard still applies.
 export const DEV_TEST_TEMPLATES: Record<string, NotificationContent> = {
-  late_dinner: {
-    en:     { title: t("Glukky"), subtitle: t("Dinner reminder"), message: t("Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️") },
-    zhHant: { title: t("Glukky"), subtitle: t("Dinner reminder"), message: t("Dinner's planned late today — any chance you could move it to before 9 pm? 🍽️") },
-    deepLink: "/",
-  },
-  sunday_planning: {
-    en:     { title: t("Glukky"), subtitle: t("Weekly review"), message: t("Your weekly review is ready! Check your progress and plan next week.") },
-    zhHant: { title: t("Glukky"), subtitle: t("Weekly review"), message: t("Your weekly review is ready! Check your progress and plan next week.") },
-    deepLink: "/plan",
-  },
   reengagement: {
-    en:     { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Your plan is waiting — even a small step counts.") },
-    zhHant: { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Your plan is waiting — even a small step counts.") },
-    deepLink: "/",
-  },
-  daily_checkin: {
-    en:     { title: t("Glukky"), subtitle: t("Daily check-in"), message: t("Your daily check-in is open — tap to log your day!") },
-    zhHant: { title: t("Glukky"), subtitle: t("Daily check-in"), message: t("Your daily check-in is open — tap to log your day!") },
+    en:     { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Come back when you are ready.") },
+    zhHant: { title: t("Glukky"), subtitle: t("We miss you!"), message: t("Come back when you are ready.") },
     deepLink: "/",
   },
 };
 
-// Retired types are intentionally absent — the reconciler's
-// `if (triggerHour === undefined)` guard leaves their stale rows
-// alone; purgeRetiredTypes() cancels and deletes them on boot.
 const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
   foodsnap_reminder: 19, // 7 PM
   reengagement:      18, // 6 PM
@@ -241,8 +198,7 @@ interface NextTrigger {
   // UTC instant when OneSignal should deliver. Always strictly
   // in the future.
   sendAtUtc: Date;
-  // Local weekday (0=Sun..6=Sat) the trigger fires on, used by
-  // the "weekly_report only on Sunday" filter.
+  // Local weekday (0=Sun..6=Sat) the trigger fires on.
   weekday: number;
 }
 
@@ -282,17 +238,9 @@ function buildLocalTrigger(
 // by sendAtUtc and each carries a (date, weekday) consistent with
 // its sendAtUtc — see `buildLocalTrigger`.
 //
-// Why "every occurrence" and not just the next one: per-type
-// eligibility (e.g. weekly_report fires only on Sunday;
-// late_dinner fires only on weekdays where the user has
-// lateDinnerScheduled=true) means the FIRST candidate may be
-// ineligible while a LATER one inside the window is eligible.
-// The Saturday→Sunday weekly_report case is the canonical
-// example: on Saturday 12:00 local UTC+12, today's 22:00
-// candidate is non-Sunday and ineligible, but tomorrow's 22:00
-// is Sunday-eligible and inside the 36 h window, so it must be
-// queued by THIS pass — not deferred to a later pass that may
-// never fire (autoscale instance asleep).
+// Every occurrence in the lookahead window is considered so an
+// ineligible candidate cannot prevent a later eligible one from
+// being queued by this pass.
 function* enumerateLocalTriggers(
   now: Date,
   timeZone: string,
@@ -353,39 +301,6 @@ async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
       return { eligible: true };
     }
 
-    case "daily_report": {
-      // Skip if weekly_report or monthly_report already owns the same
-      // 8 AM slot for this user. Check in JS with two cheap reads so
-      // we don't need to import scheduledNotifications directly.
-      const weeklyConflict = await storage.getScheduledNotification(
-        ctx.user.userId, "weekly_report", ctx.next.localTriggerDate,
-      );
-      if (weeklyConflict) return { eligible: false, reason: "weekly_report_owns_this_morning" };
-      const monthlyConflict = await storage.getScheduledNotification(
-        ctx.user.userId, "monthly_report", ctx.next.localTriggerDate,
-      );
-      if (monthlyConflict) return { eligible: false, reason: "monthly_report_owns_this_morning" };
-      return { eligible: true };
-    }
-
-    case "weekly_report": {
-      // Only fires on Monday (weekday === 1, 0=Sun..6=Sat).
-      if (ctx.next.weekday !== 1) return { eligible: false, reason: "non_monday" };
-      // Skip if monthly_report already owns this Monday (1st of month).
-      const monthlyConflict = await storage.getScheduledNotification(
-        ctx.user.userId, "monthly_report", ctx.next.localTriggerDate,
-      );
-      if (monthlyConflict) return { eligible: false, reason: "monthly_report_owns_this_monday" };
-      return { eligible: true };
-    }
-
-    case "monthly_report": {
-      // Only fires on the 1st of the month.
-      const dd = ctx.next.localTriggerDate.slice(8, 10); // "YYYY-MM-DD" → "DD"
-      if (dd !== "01") return { eligible: false, reason: "not_first_of_month" };
-      return { eligible: true };
-    }
-
     case "reengagement": {
       // Only fire if the user hasn't snapped any meal in the last 3 days.
       const threeDaysAgo = new Date(ctx.now.getTime() - 3 * 24 * 60 * 60 * 1000);
@@ -417,8 +332,6 @@ async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
       // Never reaches isEligible — excluded from ALL_TYPES.
       return { eligible: false, reason: "event_triggered_only" };
 
-    default:
-      return { eligible: false, reason: "retired_type" };
   }
 }
 
@@ -548,14 +461,10 @@ async function preScheduleAll(): Promise<void> {
     for (const type of ALL_TYPES) {
       try {
         const triggerHour = TRIGGER_HOUR_LOCAL[type];
+        if (triggerHour === undefined) continue;
 
-        // Walk every (user × type) trigger occurrence that falls
-        // inside the 36 h window — not just the next one — so a
-        // first-day-ineligible/second-day-eligible type (e.g.
-        // weekly_report on Saturday→Sunday, or late_dinner on a
-        // day where lateDinnerScheduled flips between two
-        // adjacent days) gets queued by THIS pass instead of
-        // being deferred to a future pass that may never run.
+        // Walk every (user × type) trigger occurrence inside the
+        // lookahead window rather than only the next occurrence.
         const candidates: NextTrigger[] = [];
         for (const c of enumerateLocalTriggers(now, tz, triggerHour, LOOKAHEAD_MS)) {
           candidates.push(c);
@@ -590,9 +499,7 @@ async function preScheduleAll(): Promise<void> {
             continue;
           }
 
-          // Per-candidate eligibility — `late_dinner` and
-          // `weekly_report` both depend on the candidate's
-          // weekday, not on `now`'s weekday.
+          // Eligibility is evaluated per candidate, not against `now`.
           const elig = await isEligible({ user, type, next, now });
           if (!elig.eligible) {
             counters.ineligible++;
@@ -889,73 +796,6 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
   );
 }
 
-// Retired notification types — purged from scheduled_notifications
-// on every boot. Future rows are cancelled in OneSignal first;
-// past rows are deleted directly (already delivered, nothing to cancel).
-
-async function purgeRetiredTypes(): Promise<void> {
-  const start = Date.now();
-  const now = new Date();
-
-  // Fetch all rows whose type is one of the retired types.
-  let rows: Array<{
-    id: number;
-    notificationType: string;
-    sendAtUtc: Date;
-    onesignalNotificationId: string | null;
-  }>;
-  try {
-    rows = await db
-      .select({
-        id: scheduledNotifications.id,
-        notificationType: scheduledNotifications.notificationType,
-        sendAtUtc: scheduledNotifications.sendAtUtc,
-        onesignalNotificationId: scheduledNotifications.onesignalNotificationId,
-      })
-      .from(scheduledNotifications)
-      .where(
-        sql`${scheduledNotifications.notificationType} IN ('daily_report','weekly_report','monthly_report','daily_checkin')`,
-      );
-  } catch (e: any) {
-    log(`notif/purge-retired list-error=${e?.message ?? e}`, "notifications");
-    return;
-  }
-
-  let cancelledFuture = 0;
-  let cancelFailed = 0;
-  let deletedPast = 0;
-  let deletedFuture = 0;
-
-  for (const row of rows) {
-    const isFuture = row.sendAtUtc > now;
-    if (isFuture && row.onesignalNotificationId) {
-      // Cancel in OneSignal before deleting.
-      const result = await cancelOneSignalNotification(row.onesignalNotificationId);
-      if (!result.ok) {
-        cancelFailed++;
-        log(
-          `notif/purge-cancel-failed id=${row.id} type=${row.notificationType} onesignal_id=${row.onesignalNotificationId}`,
-          "notifications",
-        );
-        continue; // Keep DB row to retry next boot.
-      }
-      cancelledFuture++;
-    }
-    try {
-      await storage.deleteScheduledNotificationById(row.id);
-      if (isFuture) deletedFuture++; else deletedPast++;
-    } catch (e: any) {
-      log(`notif/purge-delete-failed id=${row.id} ${e?.message ?? e}`, "notifications");
-    }
-    if (isFuture) await new Promise((r) => setTimeout(r, 100)); // pace OneSignal calls
-  }
-
-  log(
-    `notif/purge-retired-complete rows=${rows.length} cancelled_future=${cancelledFuture} cancel_failed=${cancelFailed} deleted_past=${deletedPast} deleted_future=${deletedFuture} duration_ms=${Date.now() - start}`,
-    "notifications",
-  );
-}
-
 let passInFlight = false;
 
 async function runPassGuarded(): Promise<void> {
@@ -980,20 +820,10 @@ export function startNotificationScheduler() {
   );
 
   // Boot sequence:
-  // 1. purgeRetiredTypes  — cancel + delete daily_report / weekly_report /
-  //                         monthly_report / daily_checkin rows so they
-  //                         never schedule again.
-  // 2. reconcileBadlyScheduledRows — cancel rows whose send_at_utc drifted
+  // 1. reconcileBadlyScheduledRows — cancel rows whose send_at_utc drifted
   //                                  after timezone was captured.
-  // 3. runPassGuarded     — immediate first scheduling pass.
-  // Order matters: purge before reconcile so the reconciler doesn't
-  // waste time on rows that are about to be deleted anyway.
+  // 2. runPassGuarded     — immediate first scheduling pass.
   void (async () => {
-    try {
-      await purgeRetiredTypes();
-    } catch (e: any) {
-      log(`notif/purge-failed-uncaught ${e?.message ?? e}`, "notifications");
-    }
     try {
       await reconcileBadlyScheduledRows();
     } catch (e: any) {

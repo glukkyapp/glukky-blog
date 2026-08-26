@@ -15,16 +15,10 @@ import {
   Pizza,
   Salad,
   Drumstick,
-  GlassWater,
 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
 import mealTimeImg from "@assets/Untitled_design_(3)_1776590588282.png";
 import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
-import sugaryFoodImg from "@assets/generated-image_(8)_1776596120656.png";
-import oilyFriedImg from "@assets/generated-image_(9)_1776596120657.png";
-import eatOutImg from "@assets/generated-image_(10)_1776596120657.png";
-import snacksImg from "@assets/generated-image_(11)_1776596120658.png";
-import portionsImg from "@assets/generated-image_(12)_1776596420576.png";
 import prediabetesImg from "@assets/generated-image_(14)_1776598029735.png";
 import diabetesImg from "@assets/generated-image_(15)_1776598029736.png";
 import noButHealthImg from "@assets/generated-image_(16)_1776598029736.png";
@@ -284,22 +278,6 @@ export function TransitionIllustration() {
     </div>
   );
 }
-
-export const StruggleIcons = {
-  sugary_food_drink: <GlassWater size={20} style={{ color: "#5b9b5b" }} />,
-  oily_fried_food: <Drumstick size={20} style={{ color: "#c97c4a" }} />,
-  eat_out: <Pizza size={20} style={{ color: "#c97c4a" }} />,
-  portions: <Salad size={20} style={{ color: GREEN }} />,
-  snacks: <Cookie size={20} style={{ color: "#a06a3b" }} />,
-};
-
-export const StruggleImages: Record<string, string> = {
-  sugary_food_drink: sugaryFoodImg,
-  oily_fried_food: oilyFriedImg,
-  eat_out: eatOutImg,
-  snacks: snacksImg,
-  portions: portionsImg,
-};
 
 export const HealthIcons: Record<string, { image?: string }> = {
   diabetes: { image: diabetesImg },

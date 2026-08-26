@@ -2,7 +2,7 @@ import { useState } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { User, Target, LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp, Droplet, Utensils, Lightbulb } from "lucide-react";
+import { LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp, Droplet, Utensils, Lightbulb } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +24,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { DIET_TIP_I18N_KEYS } from "@shared/schema";
 import { hapticNotify } from "@/lib/haptics";
 import { syncOneSignalLanguage } from "@/lib/onesignal-language";
 import { isNativelyAvailable } from "@/lib/natively-purchases";
@@ -34,25 +33,11 @@ import { useConsent, type ConsentService } from "@/contexts/consent-context";
 interface ProfileData {
   name: string | null;
   goal: string | null;
-  walksPerWeek: number;
-  walkDuration: number;
-  dinnerTime: string;
-  sleepPattern: string;
-  eatingOutFrequency: string;
-  struggles: string[];
-  hasLateDinner: boolean;
-  dinnerMastered: boolean;
+  healthCondition: string | null;
   notificationEmail: string;
   hba1cLevel: number | null;
   bloodTestDate: string | null;
   preferredLanguage: string;
-}
-
-interface RoadmapData {
-  activeStruggle: string | null;
-  currentTip: string | null;
-  isDinnerFocus: boolean;
-  tipLadders: Record<string, unknown>;
 }
 
 function ProfileSkeleton() {
@@ -90,11 +75,6 @@ function ProfileSkeleton() {
       </Card>
     </div>
   );
-}
-
-function translateDietTip(tip: string, t: (key: string, opts?: any) => string): string {
-  const i18nKey = DIET_TIP_I18N_KEYS[tip];
-  return i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
 }
 
 function HealthMarkersCard({ profile }: { profile: ProfileData }) {
@@ -747,10 +727,6 @@ export default function ProfilePage() {
     queryKey: ["/api/profile"],
   });
 
-  const { data: roadmap, isLoading: roadmapLoading } = useQuery<RoadmapData>({
-    queryKey: ["/api/roadmap"],
-  });
-
   const { data: devCheck } = useQuery<{ isDev: boolean }>({
     queryKey: ["/api/dev/check"],
   });
@@ -796,24 +772,12 @@ export default function ProfilePage() {
     },
   });
 
-  const isLoading = profileLoading || roadmapLoading;
+  const isLoading = profileLoading;
 
   if (isLoading) {
     return <ProfileSkeleton />;
   }
 
-  const STRUGGLE_NAMES: Record<string, string> = {
-    sugary_food_drink: t("struggle.sugary_food_drink"),
-    oily_fried_food: t("struggle.oily_fried_food"),
-    eat_out: t("struggle.eat_out"),
-    portions: t("struggle.portions"),
-    snacks: t("struggle.snacks"),
-  };
-
-  const dinnerLabel = profile?.hasLateDinner ? t("profile.dinner_after_9pm") : t("profile.dinner_before_9pm");
-  const walkDuration = profile?.walkDuration ?? 0;
-  const walkDurationDisplay = walkDuration < 5 ? t("profile.walk_not_set") : t("profile.walk_min_each", { duration: walkDuration });
-  const walksPerWeek = profile?.walksPerWeek ?? 0;
   const currentLang = profile?.preferredLanguage || "en";
 
   return (
@@ -886,37 +850,6 @@ export default function ProfilePage() {
 
       {profile && <NameGoalCard profile={profile} />}
 
-      <Card data-testid="card-diabetes-profile" className="hidden">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-          <User className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">{t("profile.diabetes_profile")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p data-testid="text-walks">
-            <span className="text-muted-foreground">{t("profile.post_meal_walks")}</span>{" "}
-            {walksPerWeek > 0
-              ? t("profile.walks_per_week", { count: walksPerWeek, duration: walkDurationDisplay })
-              : t("profile.no_walks")}
-          </p>
-          <p data-testid="text-dinner-time">
-            <span className="text-muted-foreground">{t("profile.dinner_time")}</span> {dinnerLabel}
-          </p>
-          <p data-testid="text-sleep-pattern">
-            <span className="text-muted-foreground">{t("profile.sleep_pattern")}</span>{" "}
-            {t(`profile.sleep_${profile?.sleepPattern ?? ""}`, { defaultValue: profile?.sleepPattern ?? "N/A" })}
-          </p>
-          <p data-testid="text-eating-out">
-            <span className="text-muted-foreground">{t("profile.eating_out")}</span>{" "}
-            {(() => {
-              const num = parseInt(profile?.eatingOutFrequency ?? "0", 10);
-              if (isNaN(num) || num === 0) return t("profile.eating_out_rarely");
-              if (num === 1) return t("profile.eating_out_once");
-              return t("profile.eating_out_times", { count: num });
-            })()}
-          </p>
-        </CardContent>
-      </Card>
-
       {profile && <HealthMarkersCard profile={profile} />}
 
       <LanguageCard currentLang={currentLang} />
@@ -924,20 +857,6 @@ export default function ProfilePage() {
       <FontSizeCard currentSize={(profile as any)?.fontSizePreference || "large"} />
 
       <PrivacyCard />
-
-      <Card data-testid="card-current-focus">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-          <Target className="w-5 h-5 text-muted-foreground" />
-          <CardTitle className="text-base">{t("profile.current_focus")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p data-testid="text-focus-area" className="font-medium">
-            {roadmap?.isDinnerFocus
-              ? t("profile.late_dinner_timing")
-              : STRUGGLE_NAMES[roadmap?.activeStruggle ?? ""] ?? roadmap?.activeStruggle ?? "N/A"}
-          </p>
-        </CardContent>
-      </Card>
 
       <div className="flex flex-col items-center gap-1 py-5">
         <img src={glukkyLogo} alt="Glukky" className="w-1/3 object-contain" />

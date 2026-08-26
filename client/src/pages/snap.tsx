@@ -41,9 +41,6 @@ interface LabelResult {
   snapsLimit: number;
 }
 
-interface TipEntry { key: string; timing: "immediate" | "future"; }
-interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
-
 interface AdviceSource {
   label: string;
   url: string;
@@ -52,7 +49,6 @@ interface AdviceSource {
 interface AdviceResult {
   advice: string;
   structuredAdvice?: StructuredAdvice | null;
-  focusPanelData?: FocusPanelData | null;
   sources?: AdviceSource[];
   adviceUsedToday: number;
   adviceLimit: number;

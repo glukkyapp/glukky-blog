@@ -1,8 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DIET_TIP_I18N_KEYS, DIET_TIP_LADDERS } from "@shared/schema";
-import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { track } from "@/lib/posthog";
 import { motion, AnimatePresence } from "framer-motion";
 import { preloadStage4DietTipThumbnails, getStage4Promise } from "@/lib/preload-assets";
@@ -22,6 +19,33 @@ import imgFoodSwap from "@assets/cropped_circle_image_(10)_1775374584626.png";
 
 const PLATE_METHOD_TIP_KEY = "Use the plate method (½ veggies, ¼ protein, ¼ carbs)";
 const FOOD_SWITCH_TIP_KEY = "Food Switch";
+const HEALTH_INFO_TIPS = [
+  "Choose sugar-free drink / Dilute juice 1:1 with water",
+  "Swap dessert for plain yogurt + berries",
+  "Steam your food first, then sear briefly",
+  "Choose grilled over fried",
+  "Decouple (eat at home first, socialize out)",
+  "Share main dishes",
+  "Swap sides for vegetables",
+  PLATE_METHOD_TIP_KEY,
+  "Kitchen Closure after dinner",
+  "Switch to edamame or nuts",
+  FOOD_SWITCH_TIP_KEY,
+] as const;
+
+const HEALTH_INFO_TIP_I18N_KEYS: Record<string, string> = {
+  "Choose sugar-free drink / Dilute juice 1:1 with water": "diet_tip.dilute_juice",
+  "Swap dessert for plain yogurt + berries": "diet_tip.swap_dessert",
+  "Steam your food first, then sear briefly": "diet_tip.steam_then_sear",
+  "Choose grilled over fried": "diet_tip.grilled_over_fried",
+  "Decouple (eat at home first, socialize out)": "diet_tip.decouple",
+  "Share main dishes": "diet_tip.share_mains",
+  "Swap sides for vegetables": "diet_tip.swap_sides_veggies",
+  [PLATE_METHOD_TIP_KEY]: "diet_tip.plate_method",
+  "Kitchen Closure after dinner": "diet_tip.kitchen_closure",
+  "Switch to edamame or nuts": "diet_tip.switch_edamame_nuts",
+  [FOOD_SWITCH_TIP_KEY]: "diet_tip.food_switch",
+};
 
 const TIP_DETAIL_KEY_MAP: Record<string, string | null> = {
   "Choose sugar-free drink / Dilute juice 1:1 with water": "diet_tip.dilute_juice_desc",
@@ -209,51 +233,20 @@ export default function HealthInfo() {
   // automatically once caching finishes.
   usePromiseLoading(getStage4Promise);
 
-  const DIET_TIPS_CACHE_KEY = "cached_diet_tips";
-
-  const [cachedTips] = useState<{ activeTips: string[] } | undefined>(() => {
-    try {
-      const cached = localStorage.getItem(DIET_TIPS_CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && Array.isArray(parsed.activeTips)) return parsed;
-      }
-    } catch {}
-    return undefined;
-  });
-
-  const { data, isLoading, isPlaceholderData } = useQuery<{ activeTips: string[] }>({
-    queryKey: ["/api/health-info/diet-tips"],
-    placeholderData: cachedTips,
-  });
-
-  useEffect(() => {
-    if (data?.activeTips && !isPlaceholderData) {
-      try {
-        localStorage.setItem(DIET_TIPS_CACHE_KEY, JSON.stringify(data));
-      } catch {}
-    }
-  }, [data, isPlaceholderData]);
-
-  const allKnownTips = Object.values(DIET_TIP_LADDERS).flat();
-  const activeTips = PLANNER_FEATURES_ENABLED
-    ? (data?.activeTips ?? cachedTips?.activeTips ?? [])
-    : allKnownTips;
-  const hasCachedData = !!cachedTips;
+  const activeTips = HEALTH_INFO_TIPS;
 
   function handleSelect(tip: string) {
     setSelectedTip(prev => {
       const isOpening = prev !== tip;
       if (isOpening) {
-        const tipCategory = Object.keys(DIET_TIP_LADDERS).find(cat => DIET_TIP_LADDERS[cat]?.includes(tip)) ?? null;
-        track("diet_tip_viewed", { tip_text: tip, tip_category: tipCategory, source: "health_info" });
+        track("diet_tip_viewed", { tip_text: tip, source: "health_info" });
       }
       return isOpening ? tip : null;
     });
   }
 
   function renderDetail(tipKey: string) {
-    const i18nKey = DIET_TIP_I18N_KEYS[tipKey];
+    const i18nKey = HEALTH_INFO_TIP_I18N_KEYS[tipKey];
     const tipLabel = i18nKey ? t(i18nKey, { defaultValue: tipKey }) : tipKey;
     const titleEl = <p className="font-bold text-base mb-2" data-testid="text-tip-detail-title">{tipLabel}</p>;
 
@@ -303,16 +296,7 @@ export default function HealthInfo() {
           {t("health_info.diet_advice_heading")}
         </h2>
 
-        {isLoading && !hasCachedData ? (
-          <div className="flex gap-[18px] overflow-hidden py-4 px-6">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse" style={{ width: "100px" }}>
-                <div className="w-[100px] h-[100px] rounded-full bg-muted" />
-                <div className="h-3 w-16 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        ) : activeTips.length === 0 ? (
+        {activeTips.length === 0 ? (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -337,7 +321,7 @@ export default function HealthInfo() {
               }}
             >
               {activeTips.map(tip => {
-                const i18nKey = DIET_TIP_I18N_KEYS[tip];
+                const i18nKey = HEALTH_INFO_TIP_I18N_KEYS[tip];
                 const label = i18nKey ? t(i18nKey, { defaultValue: tip }) : tip;
                 return (
                   <TipCircle

@@ -63,13 +63,13 @@ check("Detailed Weekly retains score breakdown and disclaimer", weekly.includes(
 check("Home no longer duplicates Daily and Weekly reports", !homeSource.includes("DailyFoodSummaryBanner") && !homeSource.includes("<WeeklyCard"));
 
 console.log("\nGlobal font-size shortcut");
-check("Authenticated layouts mount the Aa shortcut", app.split("<MainFontToggle />").length - 1 === 2);
+check("Authenticated layout mounts the Aa shortcut", app.includes("<MainFontToggle />"));
 const fontToggle = readFileSync("client/src/components/main-font-toggle.tsx", "utf8");
 const styles = readFileSync("client/src/index.css", "utf8");
 check("Aa shortcut persists through the existing profile endpoint", fontToggle.includes('"/api/profile/font-size"'));
 check("Failed Aa save always restores the prior visual size", fontToggle.includes("previousSize") && fontToggle.includes("applyFontSize(context.previousSize)"));
 check("Font shortcut shows the current size without resizing its glyph", fontToggle.includes('current === "large" ? "AA" : "Aa"') && fontToggle.includes("font-toggle-glyph"));
-check("Dinner check-in prompt uses the responsive text size token", /text-sm font-medium">\{t\("home\.dinner_tonight_question"\)\}/.test(homeSource));
+check("Home does not retain the planner dinner check-in", !homeSource.includes("dinner_tonight_question"));
 check("Fixed pixel text utilities scale in small-text mode", styles.includes("html.font-small .text-\\[29px\\]") && styles.includes("html.font-small .text-\\[18px\\]"));
 
 console.log(`\n${passed} passed`);

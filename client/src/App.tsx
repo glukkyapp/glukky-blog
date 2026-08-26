@@ -10,7 +10,6 @@ import { lazy, Suspense, useEffect, useState, useRef, createContext, useContext,
 import { createPortal } from "react-dom";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
-import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,6 @@ import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
 import GlucometerNudge from "@/components/glucometer-nudge";
 import { identifyUser, resetUser, track, initPostHog, optOut, optIn } from "@/lib/posthog";
-import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 import MainFontToggle from "@/components/main-font-toggle";
 
@@ -50,11 +48,8 @@ declare global {
 // Routes are React.lazy so the cold-launch bundle stays small; the cube overlay or #FDFBED background covers the Suspense fallback.
 const Landing = lazy(() => import("@/pages/landing"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
-const WeeklyPlanner = lazy(() => import("@/pages/weekly-planner"));
 const Home = lazy(() => import("@/pages/home"));
-const Roadmap = lazy(() => import("@/pages/roadmap"));
 const Profile = lazy(() => import("@/pages/profile"));
-const MonthlyReport = lazy(() => import("@/pages/monthly-report"));
 const Snap = lazy(() => import("@/pages/snap"));
 const HealthInfo = lazy(() => import("@/pages/health-info"));
 const AppIntro = lazy(() => import("@/pages/app-intro"));
@@ -309,16 +304,9 @@ function GlobalPiggyBankPopup() {
   );
 }
 
-// Single source of truth for the planner route — used by the lock-app
-// effect, the dismiss-routing helper, and any other call site that
-// needs to redirect the user back to onboarding. Reusing this constant
-// means a future route rename can't silently 404 the dismiss redirect.
-const PLANNER_ROUTE = "/plan";
-
 interface GateStatus {
   gateMode: string;
   isPremium: boolean;
-  hasCreatedFirstWeeklyPlan: boolean;
   hasTriedFirstFoodSnap: boolean;
   hardLockedAfterAdviceDismiss: boolean;
   features: Record<string, { allowed: boolean; showPaywall?: boolean; lockApp?: boolean; isFreeAction?: boolean }>;
@@ -360,11 +348,6 @@ function AuthenticatedApp() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ["/api/profile"], refetchOnMount: false });
-  const { data: currentPlan, isLoading: planLoading } = useQuery({
-    queryKey: ["/api/plan/current"],
-    enabled: !!profile,
-  });
-
   const { data: gateStatus, refetch: refetchGate } = useQuery<GateStatus>({
     queryKey: ["/api/gate-status"],
     enabled: !!(profile as any)?.onboardingComplete,
@@ -411,14 +394,14 @@ function AuthenticatedApp() {
   // will route the user to Onboarding if the profile isn't ready.
   const [loadingStuck, setLoadingStuck] = useState(false);
   useEffect(() => {
-    if (!profileLoading && !(profile && planLoading)) return;
+    if (!profileLoading) return;
     const timer = setTimeout(() => {
       if (pendingDeepLink.current) return;
       setLoadingStuck(true);
       setLocation("/onboarding");
     }, 5000);
     return () => clearTimeout(timer);
-  }, [profileLoading, profile, planLoading]);
+  }, [profileLoading, profile]);
 
   // Exit-warning popup state — shown after the snap-advice paywall is
   // dismissed by a user with both activation milestones already done.
@@ -484,12 +467,9 @@ function AuthenticatedApp() {
 
     // Always refetch local caches even when verified=false (gate/profile may have changed for other reasons).
     // Awaited so the overlay stays up through full cache propagation, not just the verify call.
-    // currentPlan is refetched so the gated tree has fresh plan data
-    // the instant `isLocked` flips false.
     await Promise.all([
       refetchGate(),
       queryClient.refetchQueries({ queryKey: ["/api/profile"] }),
-      queryClient.refetchQueries({ queryKey: ["/api/plan/current"] }),
     ]);
     return verified;
   }, [refetchGate]);
@@ -733,7 +713,6 @@ function AuthenticatedApp() {
   // the user should land based on activation milestones:
   //   • premium                       → no-op
   //   • hardLockedAfterAdviceDismiss  → /profile (lock-app re-presents)
-  //   • !hasCreatedFirstWeeklyPlan    → /plan (so they finish onboarding)
   //   • !hasTriedFirstFoodSnap        → /snap (so they finish activation)
   //   • both done                     → POST hard-lock {optedOut:true}
   //                                     and surface our exit-warning
@@ -774,7 +753,6 @@ function AuthenticatedApp() {
         destination: "/profile",
         reason: "hard_lock",
         gateStatusSource,
-        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
         hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
         hardLockedAfterAdviceDismiss: true,
         isPremium: g.isPremium,
@@ -786,25 +764,10 @@ function AuthenticatedApp() {
 
     if (!g) return;
 
-    if (PLANNER_FEATURES_ENABLED && !g.hasCreatedFirstWeeklyPlan) {
-      track("paywall_dismiss_route", {
-        destination: PLANNER_ROUTE,
-        gateStatusSource,
-        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
-        hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
-        hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
-        isPremium: g.isPremium,
-      });
-      pendingActionRef.current = null;
-      if (location !== PLANNER_ROUTE) setLocation(PLANNER_ROUTE);
-      return;
-    }
-
     if (!g.hasTriedFirstFoodSnap) {
       track("paywall_dismiss_route", {
         destination: "/snap",
         gateStatusSource,
-        hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
         hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
         hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
         isPremium: g.isPremium,
@@ -817,7 +780,6 @@ function AuthenticatedApp() {
     track("paywall_dismiss_route", {
       destination: "exit_warning",
       gateStatusSource,
-      hasCreatedFirstWeeklyPlan: g.hasCreatedFirstWeeklyPlan,
       hasTriedFirstFoodSnap: g.hasTriedFirstFoodSnap,
       hardLockedAfterAdviceDismiss: g.hardLockedAfterAdviceDismiss,
       isPremium: g.isPremium,
@@ -1686,7 +1648,7 @@ function AuthenticatedApp() {
     return () => { cancelled = true; window.removeEventListener("message", onMessage); };
   }, [profile && (profile as any).onboardingComplete, (profile as any)?.userId]);
 
-  if ((profileLoading || (profile && planLoading)) && !loadingStuck) {
+  if (profileLoading && !loadingStuck) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-20 flex items-center justify-center">
         <div className="animate-pulse space-y-4 w-full">
@@ -1719,7 +1681,6 @@ function AuthenticatedApp() {
   }
 
   // HIDDEN: AppIntro disabled — re-enable by uncommenting this block
-  // if (!(profile as any).introSeen && (profile as any).currentWeek <= 1) {
   //   return (
   //     <Suspense fallback={<RouteFallback />}>
   //       <AppIntro />
@@ -1735,55 +1696,6 @@ function AuthenticatedApp() {
     isPaywallInFlight: () => paywallInFlightRef.current,
   };
 
-  if (!currentPlan && gateStatus?.gateMode !== "off") {
-    return (
-      <GateContext.Provider value={gateCtx}>
-        <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
-          <div id={BOUNCE_WRAPPER_ID}>
-            <Suspense fallback={<RouteFallback />}>
-              <Switch>
-                <Route path="/profile" component={Profile} />
-                <Route path="/health-info" component={HealthInfo} />
-                <Route path="/report" component={Report} />
-                <Route path="/food-reports" component={Report} />
-                <Route path="/food-log" component={FoodLog} />
-                <Route path="/hstix" component={Hstix} />
-                <Route path="/glucose-patterns" component={GlucosePatterns} />
-                <Route path="/confidentiality" component={Confidentiality} />
-                <Route component={WeeklyPlanner} />
-              </Switch>
-            </Suspense>
-          </div>
-          <FloatingNavBar />
-          <MainFontToggle />
-          <GlobalPiggyBankPopup />
-          <GlucometerNudge />
-          {unlockingOverlay && <UnlockingOverlay />}
-          {exitWarningBackdropOpen && createPortal(
-            <div
-              data-testid="overlay-paywall-exit-warning-backdrop"
-              aria-hidden="true"
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 40,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                backdropFilter: "blur(4px)",
-                WebkitBackdropFilter: "blur(4px)",
-              }}
-            />,
-            document.body,
-          )}
-          <PaywallExitWarning
-            open={exitWarningOpen}
-            onStay={handleExitWarningStay}
-            onLeave={handleExitWarningLeave}
-          />
-        </div>
-      </GateContext.Provider>
-    );
-  }
-
   return (
     <GateContext.Provider value={gateCtx}>
       <div className="max-w-sm sm:max-w-none mx-auto bg-background sm:min-h-screen relative">
@@ -1792,12 +1704,9 @@ function AuthenticatedApp() {
             <Suspense fallback={<RouteFallback />}>
               <Switch>
                 <Route path="/" component={Home} />
-                <Route path="/roadmap" component={Roadmap} />
-                <Route path="/plan" component={WeeklyPlanner} />
                 <Route path="/snap" component={Snap} />
                 <Route path="/health-info" component={HealthInfo} />
                 <Route path="/profile" component={Profile} />
-                <Route path="/monthly" component={MonthlyReport} />
                 <Route path="/dev" component={DevPanel} />
                 <Route path="/report" component={Report} />
                 <Route path="/food-reports" component={Report} />
@@ -1812,8 +1721,8 @@ function AuthenticatedApp() {
         </div>
         <FloatingNavBar />
         <MainFontToggle />
-        <GlobalPiggyBankPopup />
         <GlucometerNudge />
+        <GlobalPiggyBankPopup />
         {unlockingOverlay && <UnlockingOverlay />}
         {exitWarningBackdropOpen && createPortal(
           <div
@@ -1854,7 +1763,7 @@ function Router() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (user && TEXT_SELECTABLE_EMAILS.includes(user.email)) {
+    if (user?.email && TEXT_SELECTABLE_EMAILS.includes(user.email)) {
       document.documentElement.classList.add("text-selectable");
     } else {
       document.documentElement.classList.remove("text-selectable");
@@ -1978,7 +1887,6 @@ function App() {
     <TooltipProvider>
       <Toaster />
       <Router />
-      <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
         <CubeLoadingScreen
           authReady={!authLoading}

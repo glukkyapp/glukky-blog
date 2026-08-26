@@ -257,6 +257,9 @@ export default function PostMealCard({
         queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
         queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
         queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
+        if (!hstixReadingId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+        }
         onDone(result);
         return;
       }

@@ -1,10 +1,9 @@
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Home, ClipboardList, CalendarDays, User, Camera, Lock, TrendingUp } from "lucide-react";
+import { Home, ClipboardList, User, Camera, Lock, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGate } from "@/App";
-import { PLANNER_FEATURES_ENABLED } from "@/lib/featureFlags";
 import { isReportLocation } from "@/lib/report-navigation";
 
 const NAV_TAP = { scale: 0.82 };
@@ -12,7 +11,6 @@ const NAV_TAP_TRANSITION = { type: "spring" as const, stiffness: 600, damping: 2
 
 const NAV_FEATURE_MAP: Record<string, string> = {
   snap: "food_snap_capture",
-  planner: "weekly_plan_create",
   health_info: "insights",
 };
 
@@ -26,7 +24,6 @@ export default function FloatingNavBar() {
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
     { key: "report", label: t("nav.report", "Report"), path: "/report", icon: ClipboardList },
     { key: "snap", label: t("nav.snap"), path: "/snap", icon: Camera },
-    ...(PLANNER_FEATURES_ENABLED ? [{ key: "planner", label: t("nav.planner"), path: "/plan", icon: CalendarDays }] : []),
     { key: "glucose", label: t("glucose.patterns_nav"), path: "/glucose-patterns", icon: TrendingUp },
     { key: "profile", label: t("nav.profile"), path: "/profile", icon: User },
   ];
@@ -60,23 +57,13 @@ export default function FloatingNavBar() {
     // except profile until they subscribe.
     if (gate.hardLockedAfterAdviceDismiss) return true;
 
-    if (PLANNER_FEATURES_ENABLED) {
-      // Soft lock A, funnel step 1 — no first plan yet. Only the
-      // planner tab is reachable so the user finishes their first plan
-      // before being handed off to the snap funnel.
-      if (!gate.hasCreatedFirstWeeklyPlan) {
-        return key !== "planner";
-      }
-    }
-
-    // Soft lock A, funnel step 2 — first plan done (or planner
-    // bypassed), no first snap yet. Only the snap tab is reachable
+    // Soft lock — no first snap yet. Only the snap tab is reachable
     // so the user takes their first snap and sees the conversion moment.
     if (!gate.hasTriedFirstFoodSnap) {
       return key !== "snap";
     }
 
-    // Both activation milestones done, not premium, not hard-locked.
+    // First snap done, not premium, not hard-locked.
     // Nav is fully unlocked — paywalls now fire from API actions
     // (snap-advice on the second snap, etc.), not from nav taps.
     const featureKey = NAV_FEATURE_MAP[key];

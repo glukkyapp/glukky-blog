@@ -35,12 +35,6 @@ async function setupUser(request: any) {
 
   const profile = await request.post(`${BASE}/api/profile`, {
     data: {
-      walksPerWeek: 3,
-      walkDuration: 20,
-      dinnerTime: "before_9pm",
-      sleepPattern: "regular_10_6",
-      eatingOutFrequency: "1_2",
-      struggles: ["sugary_food_drink"],
     },
   });
   expect(profile.status()).toBe(200);

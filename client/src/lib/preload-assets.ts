@@ -28,11 +28,6 @@ import irregularImg from "@assets/generated-image_(4)_1776591773408.png";
 import bedImg from "@assets/generated-image_(5)_1776592900103.png";
 import sleepBgImg from "@assets/generated-image_(6)_1776594011160.png";
 import eatingOutImg from "@assets/generated-image_(7)_1776594785348.png";
-import sugaryFoodImg from "@assets/generated-image_(8)_1776596120656.png";
-import oilyFriedImg from "@assets/generated-image_(9)_1776596120657.png";
-import eatOutImg from "@assets/generated-image_(10)_1776596120657.png";
-import snacksImg from "@assets/generated-image_(11)_1776596120658.png";
-import portionsImg from "@assets/generated-image_(12)_1776596420576.png";
 import welcomeImg from "@assets/generated-image_(13)_1776599161992.png";
 import prediabetesImg from "@assets/generated-image_(14)_1776598029735.png";
 import diabetesImg from "@assets/generated-image_(15)_1776598029736.png";
@@ -77,7 +72,6 @@ const STAGE_1: string[] = [glukkyLogo, slide1Img, slide2Img, slide3Img, cubeGif]
 
 const STAGE_2: string[] = [
   nightShiftImg, irregularImg, bedImg, sleepBgImg, eatingOutImg,
-  sugaryFoodImg, oilyFriedImg, eatOutImg, snacksImg, portionsImg,
   welcomeImg, prediabetesImg, diabetesImg, noButHealthImg, whyImg,
   couchImg, walkImg, mealTimeImg,
 ];

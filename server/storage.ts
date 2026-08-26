@@ -1,12 +1,6 @@
 import {
   type UserProfile, type InsertUserProfile,
-  type WeeklyPlan, type InsertWeeklyPlan,
-  type WeeklyPlanDay, type InsertWeeklyPlanDay,
-  type DailyLog, type InsertDailyLog,
-  type WeeklyReport, type InsertWeeklyReport,
-  type MonthlyReport, type InsertMonthlyReport,
   type PiggyBankEvent, type InsertPiggyBankEvent,
-  type CycleHistoryRow, type InsertCycleHistory,
   type IngredientVocabulary, type InsertIngredientVocabulary,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
@@ -16,7 +10,8 @@ import {
   type UserGlucoseThresholds,
   type CorrectionRequest, type InsertCorrectionRequest,
   type DeletionRequest,
-  userProfiles, weeklyPlans, weeklyPlanDays, dailyLogs, weeklyReports, monthlyReports, piggyBankEvents, cycleHistory,
+  userProfiles,
+  piggyBankEvents,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
   mealSnaps, hstixReadings,
@@ -40,51 +35,14 @@ export interface IStorage {
   createProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
   setRcCustomerId(userId: string, rcCustomerId: string): Promise<void>;
-
-  getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined>;
-  getWeeklyPlanById(planId: number): Promise<WeeklyPlan | undefined>;
-  getWeeklyPlanForDate(userId: string, date: string): Promise<WeeklyPlan | undefined>;
-  getCurrentWeeklyPlan(userId: string): Promise<WeeklyPlan | undefined>;
-  createWeeklyPlan(plan: InsertWeeklyPlan): Promise<WeeklyPlan>;
-  updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined>;
-
-  getWeeklyPlanDay(planDayId: number): Promise<WeeklyPlanDay | undefined>;
-  getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]>;
-  createWeeklyPlanDay(day: InsertWeeklyPlanDay): Promise<WeeklyPlanDay>;
-  createWeeklyPlanDays(days: InsertWeeklyPlanDay[]): Promise<WeeklyPlanDay[]>;
-  updateWeeklyPlanDay(id: number, data: Partial<InsertWeeklyPlanDay>): Promise<WeeklyPlanDay | undefined>;
-
-  getDailyLog(userId: string, date: string): Promise<DailyLog | undefined>;
-  getDailyLogsByWeek(userId: string, weekNumber: number, startDate: string): Promise<DailyLog[]>;
-  getDailyLogsByDateRange(userId: string, startDate: string, endDate: string): Promise<DailyLog[]>;
-  createDailyLog(log: InsertDailyLog): Promise<DailyLog>;
-  updateDailyLog(id: number, data: Partial<InsertDailyLog>): Promise<DailyLog | undefined>;
-
-  getWeeklyReport(userId: string, weekNumber: number): Promise<WeeklyReport | undefined>;
-  createWeeklyReport(report: InsertWeeklyReport): Promise<WeeklyReport>;
-
-  getMonthlyReport(userId: string, month: number): Promise<MonthlyReport | undefined>;
-  createMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport>;
-
-  getRecentWeeklyPlans(userId: string, limit: number): Promise<WeeklyPlan[]>;
-  getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]>;
-  hasAnyEatOutScheduled(userId: string): Promise<boolean>;
-  countEatOutFocusWeeks(userId: string): Promise<number>;
-  hasAnyLateDinnerScheduled(userId: string): Promise<boolean>;
-  hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
-  hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean>;
-  countHistoricalEatOutDays(userId: string): Promise<number>;
-
-  getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined>;
+  getPiggyBankEvent(userId: string, achievementType: string): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
   addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
+
   resetUser(userId: string): Promise<void>;
   deleteUserCompletely(userId: string): Promise<Record<string, number>>;
-
-  saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow>;
-  getCycleHistory(userId: string): Promise<CycleHistoryRow[]>;
 
   getFoodLabelsByName(foodName: string): Promise<FoodLabel[]>;
   getIngredientsByAlias(text: string, category: string): Promise<IngredientVocabulary[]>;
@@ -362,246 +320,20 @@ export class DatabaseStorage implements IStorage {
     await db.update(userProfiles).set({ rcCustomerId: trimmed }).where(eq(userProfiles.userId, userId));
   }
 
-  async getWeeklyPlan(userId: string, weekNumber: number): Promise<WeeklyPlan | undefined> {
-    const [plan] = await db.select().from(weeklyPlans)
-      .where(and(eq(weeklyPlans.userId, userId), eq(weeklyPlans.weekNumber, weekNumber)));
-    return plan;
-  }
-
-  async getWeeklyPlanById(planId: number): Promise<WeeklyPlan | undefined> {
-    const [plan] = await db.select().from(weeklyPlans).where(eq(weeklyPlans.id, planId));
-    return plan;
-  }
-
-  async getWeeklyPlanForDate(userId: string, date: string): Promise<WeeklyPlan | undefined> {
-    const [plan] = await db.select().from(weeklyPlans)
+  async getPiggyBankEvent(userId: string, achievementType: string): Promise<PiggyBankEvent | undefined> {
+    const [event] = await db.select().from(piggyBankEvents)
       .where(and(
-        eq(weeklyPlans.userId, userId),
-        lte(weeklyPlans.startDate, date),
-      ))
-      .orderBy(desc(weeklyPlans.startDate))
-      .limit(1);
-    return plan;
-  }
-
-  async getCurrentWeeklyPlan(userId: string): Promise<WeeklyPlan | undefined> {
-    const [plan] = await db.select().from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId))
-      .orderBy(desc(weeklyPlans.weekNumber))
-      .limit(1);
-    return plan;
-  }
-
-  async createWeeklyPlan(plan: InsertWeeklyPlan): Promise<WeeklyPlan> {
-    const [created] = await db.insert(weeklyPlans).values(plan).returning();
-    return created;
-  }
-
-  async updateWeeklyPlan(planId: number, data: Partial<InsertWeeklyPlan>): Promise<WeeklyPlan | undefined> {
-    const [updated] = await db.update(weeklyPlans).set(data).where(eq(weeklyPlans.id, planId)).returning();
-    return updated;
-  }
-
-  async getWeeklyPlanDay(planDayId: number): Promise<WeeklyPlanDay | undefined> {
-    const [day] = await db.select().from(weeklyPlanDays).where(eq(weeklyPlanDays.id, planDayId));
-    return day;
-  }
-
-  async getWeeklyPlanDays(weeklyPlanId: number): Promise<WeeklyPlanDay[]> {
-    return db.select().from(weeklyPlanDays).where(eq(weeklyPlanDays.weeklyPlanId, weeklyPlanId)).orderBy(weeklyPlanDays.dayOfWeek);
-  }
-
-  async createWeeklyPlanDay(day: InsertWeeklyPlanDay): Promise<WeeklyPlanDay> {
-    const [created] = await db.insert(weeklyPlanDays).values(day).returning();
-    return created;
-  }
-
-  async createWeeklyPlanDays(days: InsertWeeklyPlanDay[]): Promise<WeeklyPlanDay[]> {
-    if (days.length === 0) return [];
-    return db.insert(weeklyPlanDays).values(days).returning();
-  }
-
-  async updateWeeklyPlanDay(id: number, data: Partial<InsertWeeklyPlanDay>): Promise<WeeklyPlanDay | undefined> {
-    const [updated] = await db.update(weeklyPlanDays).set(data).where(eq(weeklyPlanDays.id, id)).returning();
-    return updated;
-  }
-
-  async getDailyLog(userId: string, date: string): Promise<DailyLog | undefined> {
-    const [log] = await db.select().from(dailyLogs)
-      .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, date)));
-    return log;
-  }
-
-  async getDailyLogsByWeek(userId: string, weekNumber: number, startDate: string): Promise<DailyLog[]> {
-    const start = new Date(startDate);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    return this.getDailyLogsByDateRange(userId, startDate, end.toISOString().split("T")[0]);
-  }
-
-  async getDailyLogsByDateRange(userId: string, startDate: string, endDate: string): Promise<DailyLog[]> {
-    return db.select().from(dailyLogs)
-      .where(and(
-        eq(dailyLogs.userId, userId),
-        gte(dailyLogs.date, startDate),
-        lte(dailyLogs.date, endDate),
-      ));
-  }
-
-  async createDailyLog(log: InsertDailyLog): Promise<DailyLog> {
-    const [created] = await db.insert(dailyLogs).values(log).returning();
-    return created;
-  }
-
-  async updateDailyLog(id: number, data: Partial<InsertDailyLog>): Promise<DailyLog | undefined> {
-    const [updated] = await db.update(dailyLogs).set(data).where(eq(dailyLogs.id, id)).returning();
-    return updated;
-  }
-
-  async getWeeklyReport(userId: string, weekNumber: number): Promise<WeeklyReport | undefined> {
-    const [report] = await db.select().from(weeklyReports)
-      .where(and(eq(weeklyReports.userId, userId), eq(weeklyReports.weekNumber, weekNumber)));
-    return report;
-  }
-
-  async createWeeklyReport(report: InsertWeeklyReport): Promise<WeeklyReport> {
-    const [created] = await db.insert(weeklyReports).values(report).returning();
-    return created;
-  }
-
-  async getMonthlyReport(userId: string, month: number): Promise<MonthlyReport | undefined> {
-    const [report] = await db.select().from(monthlyReports)
-      .where(and(eq(monthlyReports.userId, userId), eq(monthlyReports.month, month)));
-    return report;
-  }
-
-  async createMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport> {
-    const [created] = await db.insert(monthlyReports).values(report).returning();
-    return created;
-  }
-
-  async getRecentWeeklyPlans(userId: string, limit: number): Promise<WeeklyPlan[]> {
-    return db.select().from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId))
-      .orderBy(desc(weeklyPlans.weekNumber))
-      .limit(limit);
-  }
-
-  async getAllWeeklyPlans(userId: string): Promise<WeeklyPlan[]> {
-    return db.select().from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId))
-      .orderBy(weeklyPlans.weekNumber);
-  }
-
-  async hasAnyEatOutScheduled(userId: string): Promise<boolean> {
-    const allPlans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId));
-    if (allPlans.length === 0) return false;
-    const planIds = allPlans.map(p => p.id);
-    const [row] = await db.select({ id: weeklyPlanDays.id })
-      .from(weeklyPlanDays)
-      .where(and(
-        inArray(weeklyPlanDays.weeklyPlanId, planIds),
-        eq(weeklyPlanDays.eatOutScheduled, true),
+        eq(piggyBankEvents.userId, userId),
+        eq(piggyBankEvents.achievementType, achievementType),
       ))
       .limit(1);
-    return !!row;
-  }
-
-  async countEatOutFocusWeeks(userId: string): Promise<number> {
-    const plans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(and(eq(weeklyPlans.userId, userId), eq(weeklyPlans.dietStruggle, "eat_out"), eq(weeklyPlans.planStruggleCycle, 1)));
-    return plans.length;
-  }
-
-  async hasAnyLateDinnerScheduled(userId: string): Promise<boolean> {
-    const allPlans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId));
-    if (allPlans.length === 0) return false;
-    const planIds = allPlans.map(p => p.id);
-    const [row] = await db.select({ id: weeklyPlanDays.id })
-      .from(weeklyPlanDays)
-      .where(and(
-        inArray(weeklyPlanDays.weeklyPlanId, planIds),
-        eq(weeklyPlanDays.lateDinnerScheduled, true),
-      ))
-      .limit(1);
-    return !!row;
-  }
-
-  async hasEatOutScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean> {
-    const plans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(and(
-        eq(weeklyPlans.userId, userId),
-        gt(weeklyPlans.weekNumber, afterWeekNumber),
-      ));
-    if (plans.length === 0) return false;
-    const planIds = plans.map(p => p.id);
-    const [row] = await db.select({ id: weeklyPlanDays.id })
-      .from(weeklyPlanDays)
-      .where(and(
-        inArray(weeklyPlanDays.weeklyPlanId, planIds),
-        eq(weeklyPlanDays.eatOutScheduled, true),
-      ))
-      .limit(1);
-    return !!row;
-  }
-
-  async countHistoricalEatOutDays(userId: string): Promise<number> {
-    const allPlans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(eq(weeklyPlans.userId, userId));
-    if (allPlans.length === 0) return 0;
-    const planIds = allPlans.map(p => p.id);
-    const rows = await db.select({ count: sql<number>`count(*)` })
-      .from(weeklyPlanDays)
-      .where(and(
-        inArray(weeklyPlanDays.weeklyPlanId, planIds),
-        eq(weeklyPlanDays.eatOutScheduled, true),
-      ));
-    return Number(rows[0]?.count ?? 0);
-  }
-
-  async hasLateDinnerScheduledSince(userId: string, afterWeekNumber: number): Promise<boolean> {
-    const plans = await db.select({ id: weeklyPlans.id })
-      .from(weeklyPlans)
-      .where(and(
-        eq(weeklyPlans.userId, userId),
-        gt(weeklyPlans.weekNumber, afterWeekNumber),
-      ));
-    if (plans.length === 0) return false;
-    const planIds = plans.map(p => p.id);
-    const [row] = await db.select({ id: weeklyPlanDays.id })
-      .from(weeklyPlanDays)
-      .where(and(
-        inArray(weeklyPlanDays.weeklyPlanId, planIds),
-        eq(weeklyPlanDays.lateDinnerScheduled, true),
-      ))
-      .limit(1);
-    return !!row;
-  }
-
-  async getPiggyBankEvent(userId: string, achievementType: string, weekNumber?: number | null, eventDate?: string | null): Promise<PiggyBankEvent | undefined> {
-    const conditions = [
-      eq(piggyBankEvents.userId, userId),
-      eq(piggyBankEvents.achievementType, achievementType),
-    ];
-    if (weekNumber != null) {
-      conditions.push(eq(piggyBankEvents.weekNumber, weekNumber));
-    }
-    if (eventDate != null) {
-      conditions.push(eq(piggyBankEvents.eventDate, eventDate));
-    }
-    const [event] = await db.select().from(piggyBankEvents).where(and(...conditions)).limit(1);
     return event;
   }
 
   async createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent> {
-    const [created] = await db.insert(piggyBankEvents).values(event).returning();
+    const [created] = await db.insert(piggyBankEvents)
+      .values(event as typeof piggyBankEvents.$inferInsert)
+      .returning();
     return created;
   }
 
@@ -629,24 +361,6 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async saveCycleHistory(entry: InsertCycleHistory): Promise<CycleHistoryRow> {
-    const [created] = await db.insert(cycleHistory)
-      .values(entry)
-      .onConflictDoNothing()
-      .returning();
-    if (created) return created;
-    const [existing] = await db.select().from(cycleHistory)
-      .where(and(eq(cycleHistory.userId, entry.userId), eq(cycleHistory.cycleNumber, entry.cycleNumber)))
-      .limit(1);
-    return existing;
-  }
-
-  async getCycleHistory(userId: string): Promise<CycleHistoryRow[]> {
-    return db.select().from(cycleHistory)
-      .where(eq(cycleHistory.userId, userId))
-      .orderBy(cycleHistory.cycleNumber);
-  }
-
   async resetUser(userId: string): Promise<void> {
     // Write history for ALL health fields being reset before the update.
     // Not wrapped in try/catch — history write failures propagate so the caller
@@ -666,64 +380,21 @@ export class DatabaseStorage implements IStorage {
       }));
       await this.writeHealthHistory("profile", entries);
     }
-    const plans = await db.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
-    if (plans.length > 0) {
-      const planIds = plans.map(p => p.id);
-      await db.delete(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds));
-    }
-    await db.delete(dailyLogs).where(eq(dailyLogs.userId, userId));
-    await db.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId));
-    await db.delete(weeklyReports).where(eq(weeklyReports.userId, userId));
-    await db.delete(monthlyReports).where(eq(monthlyReports.userId, userId));
-    await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
-    await db.delete(cycleHistory).where(eq(cycleHistory.userId, userId));
     await db.update(userProfiles).set({
       name: null,
       goal: null,
       hba1cLevel: null,
       bloodTestDate: null,
-      walksPerWeek: 0,
-      walkDuration: 10,
-      dinnerTime: "before_9pm",
-      sleepPattern: "regular_10_6",
-      eatingOutFrequency: "0",
-      struggles: [],
-      hasLateDinner: false,
-      restDay: null,
       onboardingComplete: false,
-      currentWeek: 1,
-      isStretchMode: false,
-      stretchSuccessWeeks: 0,
-      dinnerMastered: false,
-      dinnerExitType: null,
-      tipCycleStartWeek: 0,
-      tipStayCycles: 0,
-      masteredStruggles: [],
-      triedBeforeStruggles: [],
-      skippedStruggles: [],
-      difficultStruggles: [],
-      piggyBankCoins: 0,
-      piggyBankReward: null,
-      piggyBankNeedsRewardSetup: true,
-      repickPending: false,
-      eatOutExtendedCommitment: false,
-      currentStruggleCycle: 1,
-      struggles2: [],
-      masteredStruggles2: [],
-      skippedStruggles2: [],
-      difficultStruggles2: [],
-      cycle2Active: null,
-      struggles3: [],
-      masteredStruggles3: [],
-      skippedStruggles3: [],
-      difficultStruggles3: [],
-      cycle3Active: null,
-      hasCreatedFirstWeeklyPlan: false,
       hasTriedFirstFoodSnap: false,
       hasReachedPaywall: false,
       hardLockedAfterAdviceDismiss: false,
       isPremium: false,
+      piggyBankCoins: 0,
+      piggyBankReward: null,
+      piggyBankNeedsRewardSetup: true,
     }).where(eq(userProfiles.userId, userId));
+    await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
   }
 
   async deleteUserCompletely(userId: string): Promise<Record<string, number>> {
@@ -866,20 +537,17 @@ export class DatabaseStorage implements IStorage {
       await tx.execute(sql`UPDATE meal_snaps SET is_deleted = TRUE WHERE user_id = ${userId}`);
       await tx.execute(sql`UPDATE user_glucose_thresholds SET is_deleted = TRUE WHERE user_id = ${userId}`);
 
-      const piggy = await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId)).returning({ id: piggyBankEvents.id });
-      counts.piggy_bank_events = piggy.length;
-
-      const monthly = await tx.delete(monthlyReports).where(eq(monthlyReports.userId, userId)).returning({ id: monthlyReports.id });
-      counts.monthly_reports = monthly.length;
-
-      const weekly = await tx.delete(weeklyReports).where(eq(weeklyReports.userId, userId)).returning({ id: weeklyReports.id });
-      counts.weekly_reports = weekly.length;
-
-      const logs = await tx.delete(dailyLogs).where(eq(dailyLogs.userId, userId)).returning({ id: dailyLogs.id });
-      counts.daily_logs = logs.length;
-
-      const cycles = await tx.delete(cycleHistory).where(eq(cycleHistory.userId, userId)).returning({ id: cycleHistory.id });
-      counts.cycle_history = cycles.length;
+      // These retired planner tables intentionally remain physical database
+      // tables until a separately approved migration. They are not part of
+      // the runtime schema or exports, but account deletion must still erase
+      // a user's legacy planner data.
+      await tx.execute(sql`DELETE FROM weekly_plan_days WHERE weekly_plan_id IN (SELECT id FROM weekly_plans WHERE user_id = ${userId})`);
+      await tx.execute(sql`DELETE FROM weekly_plans WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM daily_logs WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM weekly_reports WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM monthly_reports WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM cycle_history WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM piggy_bank_events WHERE user_id = ${userId}`);
 
       // Cancel any pre-scheduled push notifications. Without this,
       // ghost notifications keep firing after the user is gone.
@@ -888,18 +556,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(scheduledNotifications.userId, userId))
         .returning({ id: scheduledNotifications.id });
       counts.scheduled_notifications = scheduled.length;
-
-      const planRows = await tx.select({ id: weeklyPlans.id }).from(weeklyPlans).where(eq(weeklyPlans.userId, userId));
-      const planIds = planRows.map(p => p.id);
-      if (planIds.length > 0) {
-        const days = await tx.delete(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds)).returning({ id: weeklyPlanDays.id });
-        counts.weekly_plan_days = days.length;
-      } else {
-        counts.weekly_plan_days = 0;
-      }
-
-      const plans = await tx.delete(weeklyPlans).where(eq(weeklyPlans.userId, userId)).returning({ id: weeklyPlans.id });
-      counts.weekly_plans = plans.length;
 
       const snaps = await tx.delete(mealSnaps).where(eq(mealSnaps.userId, userId)).returning({ id: mealSnaps.id });
       counts.meal_snaps = snaps.length;
@@ -2180,38 +1836,20 @@ export class DatabaseStorage implements IStorage {
   async exportUserData(userId: string): Promise<Record<string, unknown[]>> {
     const [
       userRows, profileRows, mealSnapRows, glucoseThreshRows, dailyGlucoseRows,
-      dailyLogRows, weeklyPlanRows, weeklyReportRows, monthlyReportRows, cycleHistoryRows,
     ] = await Promise.all([
       db.select().from(users).where(eq(users.id, userId)),
       db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
       db.select().from(mealSnaps).where(eq(mealSnaps.userId, userId)),
       db.select().from(userGlucoseThresholds).where(eq(userGlucoseThresholds.userId, userId)),
       db.select().from(snapDailyGlucose).where(eq(snapDailyGlucose.userId, userId)),
-      db.select().from(dailyLogs).where(eq(dailyLogs.userId, userId)),
-      db.select().from(weeklyPlans).where(eq(weeklyPlans.userId, userId)),
-      db.select().from(weeklyReports).where(eq(weeklyReports.userId, userId)),
-      db.select().from(monthlyReports).where(eq(monthlyReports.userId, userId)),
-      db.select().from(cycleHistory).where(eq(cycleHistory.userId, userId)),
     ]);
-    const planIds = weeklyPlanRows.map(p => p.id);
-    const [weeklyPlanDayRows, sessionRows] = await Promise.all([
-      planIds.length > 0
-        ? db.select().from(weeklyPlanDays).where(inArray(weeklyPlanDays.weeklyPlanId, planIds))
-        : Promise.resolve([]),
-      db.execute(sql`SELECT sid, expire FROM sessions WHERE sess::text LIKE ${'%' + userId + '%'}`).then(r => r.rows),
-    ]);
+    const sessionRows = await db.execute(sql`SELECT sid, expire FROM sessions WHERE sess::text LIKE ${'%' + userId + '%'}`).then(r => r.rows);
     return {
       users: userRows,
       user_profiles: profileRows,
       meal_snaps: mealSnapRows,
       user_glucose_thresholds: glucoseThreshRows,
       snap_daily_glucose: dailyGlucoseRows,
-      daily_logs: dailyLogRows,
-      weekly_plans: weeklyPlanRows,
-      weekly_plan_days: weeklyPlanDayRows,
-      weekly_reports: weeklyReportRows,
-      monthly_reports: monthlyReportRows,
-      cycle_history: cycleHistoryRows,
       sessions: sessionRows,
     };
   }

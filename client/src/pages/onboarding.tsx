@@ -84,6 +84,10 @@ export default function Onboarding() {
 
   const [userName, setUserName] = useState("");
   const [userGoal, setUserGoal] = useState("");
+  // Retained only to render unreachable legacy preview cases; planner values
+  // are no longer collected or submitted.
+  const [walkOption, setWalkOption] = useState<string>("");
+  const [dinnerTime, setDinnerTime] = useState<string>("");
 
   // Fetch the profile to detect whether Apple already wrote a name during sign-in.
   // This replaces the old sessionStorage bridge, which only worked on Apple's very
@@ -98,11 +102,6 @@ export default function Onboarding() {
       setUserName(existingProfile.name.trim());
     }
   }, [existingProfile?.name]);
-  const [walkOption, setWalkOption] = useState<string>("");
-  const [dinnerTime, setDinnerTime] = useState<string>("");
-  const [sleepPattern, setSleepPattern] = useState<string>("");
-  const [eatingOutFrequency, setEatingOutFrequency] = useState<string>("");
-  const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
   const [healthCondition, setHealthCondition] = useState<string>("");
   const [diabetesMedication, setDiabetesMedication] = useState<string>("");
   const [onMedicationStep, setOnMedicationStep] = useState(false);
@@ -111,13 +110,6 @@ export default function Onboarding() {
   const [referralSource, setReferralSource] = useState<string>("");
   const [referralOther, setReferralOther] = useState<string>("");
   const [notificationEmail, setNotificationEmail] = useState("");
-
-  const getWalkData = () => {
-    if (walkOption === "sit_rest") return { walksPerWeek: 0, walkDuration: 0 };
-    if (walkOption === "walk_10") return { walksPerWeek: 3, walkDuration: 10 };
-    if (walkOption === "walk_longer") return { walksPerWeek: 3, walkDuration: 15 };
-    return { walksPerWeek: 0, walkDuration: 0 };
-  };
 
   const handleNext = () => {
     hapticTap("SOFT");
@@ -156,16 +148,9 @@ export default function Onboarding() {
       return;
     }
     setSubmitting(true);
-    const { walksPerWeek, walkDuration } = getWalkData();
     try {
       await bulkUpdateConsent(consentChoices);
       await apiRequest("POST", "/api/profile", {
-        walksPerWeek,
-        walkDuration,
-        dinnerTime,
-        sleepPattern,
-        eatingOutFrequency,
-        struggles: selectedStruggles,
         notificationEmail,
         preferredLanguage: i18n.language || "en",
         name: userName.trim() || null,
@@ -178,11 +163,6 @@ export default function Onboarding() {
       syncOneSignalLanguage(i18n.language || "en");
       hapticNotify("SUCCESS");
       const onboardingProperties = {
-        struggles: selectedStruggles,
-        sleepPattern,
-        eatingOutFrequency,
-        walkOption,
-        dinnerTime: dinnerTime || null,
         healthCondition: healthCondition || null,
         preferredLanguage: i18n.language || "en",
         hasName: !!userName.trim(),
@@ -211,8 +191,6 @@ export default function Onboarding() {
     const actualStep = step <= TOTAL_STEPS ? VISIBLE_STEPS[step - 1] : step;
     if (actualStep === 1) return !userName.trim();
     if (actualStep === 3) return !userGoal.trim();
-    if (actualStep === 5) return !walkOption;
-    if (actualStep === 6) return !dinnerTime;
     if (actualStep === 7) return !healthCondition;
     return false;
   };

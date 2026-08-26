@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Clock, Calendar, Database, ChevronLeft, Trash2, Eye } from "lucide-react";
+import { Settings, Clock, Calendar, ChevronLeft, Trash2, Eye } from "lucide-react";
 import { useLocation } from "wouter";
 import { presentPaywall } from "@/lib/natively-purchases";
 
@@ -34,19 +34,8 @@ export default function DevPanel() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: devCheck, isLoading: devCheckLoading } = useQuery({ queryKey: ["/api/dev/check"] });
-  const { data: devState, isLoading } = useQuery({ queryKey: ["/api/dev/state"], enabled: devCheck?.isDev === true });
-
-  const setWeekMutation = useMutation({
-    mutationFn: async (weekNumber: number) => {
-      const res = await apiRequest("POST", "/api/dev/set-week", { weekNumber });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-      toast({ title: "Week updated" });
-    },
-  });
+  const { data: devCheck, isLoading: devCheckLoading } = useQuery<{ isDev: boolean }>({ queryKey: ["/api/dev/check"] });
+  const { data: devState, isLoading } = useQuery<any>({ queryKey: ["/api/dev/state"], enabled: devCheck?.isDev === true });
 
   const setTimeMutation = useMutation({
     mutationFn: async (params: { hour?: number | null; date?: string | null }) => {
@@ -56,36 +45,6 @@ export default function DevPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries();
       toast({ title: "Override updated" });
-    },
-  });
-
-  const generateHistoryMutation = useMutation({
-    mutationFn: async (params: { weeks: number; walkSuccessRate: number; dietSuccessRate: number }) => {
-      const res = await apiRequest("POST", "/api/dev/generate-history", params);
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries();
-      toast({ title: `Generated ${data.generatedWeeks?.length} weeks`, description: `Now at week ${data.currentWeek}` });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const setupRepickMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/dev/setup-repick-scenario", {});
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.clear();
-      localStorage.clear();
-      toast({ title: "Repick scenario ready", description: data.message });
-      window.location.href = "/plan";
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -129,10 +88,6 @@ export default function DevPanel() {
     },
   });
 
-  const [historyWeeks, setHistoryWeeks] = useState(2);
-  const [walkRate, setWalkRate] = useState(70);
-  const [dietRate, setDietRate] = useState(60);
-
   if (devCheckLoading || isLoading) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 pb-24">
@@ -153,8 +108,6 @@ export default function DevPanel() {
   }
 
   const profile = devState?.profile;
-  const plan = devState?.plan;
-  const currentWeek = profile?.currentWeek || 1;
 
   const currentDateOverride = devState?.dateOverride || null;
   const dateInfo = currentDateOverride ? (() => {
@@ -232,126 +185,6 @@ export default function DevPanel() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-green-500" />
-            <p className="text-sm font-semibold">Week Control</p>
-          </div>
-          <p className="text-xs text-muted-foreground">Current week: {currentWeek}</p>
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5, 6, 8, 10, 12].map(w => (
-              <Button
-                key={w}
-                size="sm"
-                variant={currentWeek === w ? "default" : "outline"}
-                onClick={() => setWeekMutation.mutate(w)}
-                disabled={setWeekMutation.isPending}
-                data-testid={`button-week-${w}`}
-              >
-                W{w}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-orange-500" />
-            <p className="text-sm font-semibold">Generate History</p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {currentDateOverride
-              ? `Generates ${historyWeeks} weeks of history before ${dateInfo?.monday} (Monday of selected week)`
-              : "Set a date override first to anchor history generation"}
-          </p>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs">Weeks to generate</p>
-              <div className="flex gap-1">
-                {[2, 3, 4].map(w => (
-                  <Button
-                    key={w}
-                    size="sm"
-                    variant={historyWeeks === w ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setHistoryWeeks(w)}
-                    data-testid={`button-hist-weeks-${w}`}
-                  >
-                    {w}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">Walk success %</p>
-              <div className="flex gap-1">
-                {[0, 30, 50, 70, 100].map(r => (
-                  <Button
-                    key={r}
-                    size="sm"
-                    variant={walkRate === r ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setWalkRate(r)}
-                    data-testid={`button-walk-rate-${r}`}
-                  >
-                    {r}%
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs">Diet success %</p>
-              <div className="flex gap-1">
-                {[0, 30, 50, 70, 100].map(r => (
-                  <Button
-                    key={r}
-                    size="sm"
-                    variant={dietRate === r ? "default" : "outline"}
-                    className="h-7 text-xs px-2"
-                    onClick={() => setDietRate(r)}
-                    data-testid={`button-diet-rate-${r}`}
-                  >
-                    {r}%
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              className="w-full"
-              onClick={() => generateHistoryMutation.mutate({ weeks: historyWeeks, walkSuccessRate: walkRate, dietSuccessRate: dietRate })}
-              disabled={generateHistoryMutation.isPending || !currentDateOverride}
-              data-testid="button-generate-history"
-            >
-              {generateHistoryMutation.isPending ? "Generating..." : `Generate ${historyWeeks} weeks`}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-amber-200 dark:border-amber-900">
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Repick Scenario (6-week seed)</p>
-          </div>
-          <p className="text-xs text-muted-foreground">Resets account then seeds 6 weeks: sugary×3 (mastered) + portions×3 (skipped). Sets date to Sun 2026-03-22 22:00 and opens the weekly planner.</p>
-          <Button
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-            onClick={() => { if (confirm("Reset account and seed repick scenario?")) setupRepickMutation.mutate(); }}
-            disabled={setupRepickMutation.isPending}
-            data-testid="button-setup-repick-scenario"
-          >
-            {setupRepickMutation.isPending ? "Setting up..." : "Setup Repick Scenario"}
-          </Button>
-        </CardContent>
-      </Card>
-
       <PushRegistrationCard />
 
       <OneSignalDebugCard />
@@ -371,35 +204,11 @@ export default function DevPanel() {
           <div className="flex flex-col gap-2">
             <Button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => testNotificationMutation.mutate("late_dinner")}
-              disabled={testNotificationMutation.isPending}
-              data-testid="button-test-notif-late-dinner"
-            >
-              {testNotificationMutation.isPending ? "Sending..." : "Test Late Dinner"}
-            </Button>
-            <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => testNotificationMutation.mutate("sunday_planning")}
-              disabled={testNotificationMutation.isPending}
-              data-testid="button-test-notif-sunday-planning"
-            >
-              {testNotificationMutation.isPending ? "Sending..." : "Test Sunday Planning"}
-            </Button>
-            <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => testNotificationMutation.mutate("reengagement")}
               disabled={testNotificationMutation.isPending}
               data-testid="button-test-notif-reengagement"
             >
               {testNotificationMutation.isPending ? "Sending..." : "Test Re-engagement"}
-            </Button>
-            <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => testNotificationMutation.mutate("daily_checkin")}
-              disabled={testNotificationMutation.isPending}
-              data-testid="button-test-notif-daily-checkin"
-            >
-              {testNotificationMutation.isPending ? "Sending..." : "Test Daily Check-in"}
             </Button>
           </div>
         </CardContent>
@@ -444,7 +253,7 @@ export default function DevPanel() {
         <CardContent className="pt-4 space-y-2">
           <p className="text-sm font-semibold">Current State (JSON)</p>
           <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-60 select-text" style={{ userSelect: "text", WebkitUserSelect: "text" }} data-testid="text-dev-state">
-            {JSON.stringify({ profile, plan: plan ? { id: plan.id, weekNumber: plan.weekNumber, walkDurationGoal: plan.walkDurationGoal, dietStruggle: plan.dietStruggle, dietTip: plan.dietTip, isDinnerFocus: plan.isDinnerFocus } : null }, null, 2)}
+            {JSON.stringify({ profile }, null, 2)}
           </pre>
         </CardContent>
       </Card>

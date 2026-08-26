@@ -92,7 +92,7 @@ let lastLoginResult: LoginResult | null = null;
 let loggedInUserId: string | null = null;
 
 // Single-paywall mutex. The lock-app effect, the floating nav bar,
-// snap, weekly-planner, profile, and dev panel can all dispatch
+// snap, profile, and dev panel can all dispatch
 // `presentPaywall` / `presentPaywallIfNeeded` independently. Without
 // a mutex, two unrelated callers in the same second can stack two
 // hosted paywall sheets on top of each other (the BN bridge does not

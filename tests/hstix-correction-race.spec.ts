@@ -18,12 +18,6 @@ async function setupUser(context: BrowserContext, page: Page) {
   expect(login.status()).toBe(200);
   expect((await api.post(`${BASE}/api/profile`, {
     data: {
-      walksPerWeek: 3,
-      walkDuration: 20,
-      dinnerTime: "before_9pm",
-      sleepPattern: "regular_10_6",
-      eatingOutFrequency: "1_2",
-      struggles: ["sugary_food_drink"],
     },
   })).status()).toBe(200);
   await api.patch(`${BASE}/api/profile/intro-seen`);
@@ -63,6 +57,7 @@ test("an in-flight expired correction closes once and never falls back to POST",
 
   let hstixListCalls = 0;
   const hstixRequests: Array<{ method: string; pathname: string }> = [];
+  const correctionExpiresAt = new Date(Date.now() + 3000).toISOString();
   await page.route("**/api/hstix/readings**", async route => {
     const request = route.request();
     const { pathname } = new URL(request.url());
@@ -86,7 +81,10 @@ test("an in-flight expired correction closes once and never falls back to POST",
     hstixListCalls += 1;
     return route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify(hstixListCalls === 1 ? {
+      // Home and the HStix sheet both read the correction window. Keep the
+      // same reading available across those two legitimate GETs so the sheet
+      // submits its update as a PATCH instead of treating the reading as new.
+      body: JSON.stringify(hstixListCalls <= 2 ? {
         readings: [{
           id: READING_ID,
           glucoseMmol: 6.1,
@@ -94,13 +92,14 @@ test("an in-flight expired correction closes once and never falls back to POST",
           recordedAt: new Date().toISOString(),
           mealSnapId: null,
           mealTimingConfidence: "unrelated",
+          correctionExpiresAt,
         }],
         latestCorrectableReading: {
           id: READING_ID,
           glucoseMmol: 6.1,
           note: null,
           recordedAt: new Date().toISOString(),
-          correctionExpiresAt: new Date(Date.now() + 2500).toISOString(),
+          correctionExpiresAt,
         },
       } : { readings: [], latestCorrectableReading: null }),
     });
@@ -115,7 +114,7 @@ test("an in-flight expired correction closes once and never falls back to POST",
   )).toBe(true);
   const expiryNotice = page.getByText("This reading can no longer be changed.");
   await expect(expiryNotice).toHaveCount(1, { timeout: 4000 });
-  await expect(page.getByTestId("card-post-meal-keypad")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/hstix$/);
   await page.waitForTimeout(1000);
   await expect.poll(() => page.evaluate(() => window.hstixExpiryToastCount)).toBe(1);
   expect(hstixRequests.filter(request => request.pathname === `/api/hstix/readings/${READING_ID}`))

@@ -159,10 +159,6 @@ async function seedOneFile(label: string, xlsxPath: string) {
         defaultPortionId: portionId,
         defaultSauces: sauceIds,
         defaultToppings: toppingIds,
-        isSugaryFood: row.is_sugary_food === "✔",
-        isSugaryDrink: row.is_sugary_drink === "✔",
-        isOily: row.is_oily === "✔",
-        isSnack: row.is_snack === "✔",
         useCount: 0,
       });
       console.log(`  + ${internalId}`);

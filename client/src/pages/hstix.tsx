@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock3, Droplet } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +42,21 @@ export default function Hstix() {
   });
   const editingReading = validReadingId ? data?.readings.find(reading => reading.id === validReadingId) ?? null : null;
   const [correctionExpired, setCorrectionExpired] = useState(false);
+  const handledExpiredReadingId = useRef<number | null>(null);
+  const closeExpiredCorrection = useCallback((expiredReadingId?: number) => {
+    const id = expiredReadingId ?? validReadingId;
+    if (id !== undefined && handledExpiredReadingId.current === id) return;
+    if (id !== undefined) handledExpiredReadingId.current = id;
+
+    setCorrectionExpired(true);
+    setLocation("/hstix");
+    toast({
+      title: t("common.error"),
+      description: t("glucose.hstix_correction_expired"),
+      variant: "destructive",
+    });
+    void refetch();
+  }, [refetch, setLocation, t, toast, validReadingId]);
   // The URL is the correction-session boundary. Once expiry redirects to
   // /hstix, keep the same mounted page ready for a brand-new reading.
   const showEntryForm = !correctionExpired || !validReadingId;
@@ -49,14 +64,7 @@ export default function Hstix() {
     if (!editingReading) return;
     const expiresAt = new Date(editingReading.correctionExpiresAt).getTime();
     const expire = () => {
-      setCorrectionExpired(true);
-      setLocation("/hstix");
-      toast({
-        title: t("common.error"),
-        description: t("glucose.hstix_correction_expired"),
-        variant: "destructive",
-      });
-      void refetch();
+      closeExpiredCorrection(editingReading.id);
     };
     const delay = expiresAt - Date.now();
     if (delay <= 0) {
@@ -65,7 +73,7 @@ export default function Hstix() {
     }
     const timer = window.setTimeout(expire, delay + 10);
     return () => window.clearTimeout(timer);
-  }, [editingReading?.id, editingReading?.correctionExpiresAt, refetch, setLocation, t, toast]);
+  }, [closeExpiredCorrection, editingReading?.id, editingReading?.correctionExpiresAt]);
   const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
 
   return (
@@ -93,16 +101,7 @@ export default function Hstix() {
             void refetch();
             if (validMealSnapId) setLocation("/food-log");
           }}
-          onHstixCorrectionExpired={() => {
-            setCorrectionExpired(true);
-            setLocation("/hstix");
-            toast({
-              title: t("common.error"),
-              description: t("glucose.hstix_correction_expired"),
-              variant: "destructive",
-            });
-            void refetch();
-          }}
+          onHstixCorrectionExpired={closeExpiredCorrection}
         />
       )}
 
