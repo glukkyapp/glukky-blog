@@ -796,6 +796,72 @@ async function reconcileBadlyScheduledRows(): Promise<void> {
   );
 }
 
+// Retired notification types — purge any rows created before the planner
+// removal. Future OneSignal messages must be cancelled before their DB rows
+// are deleted; past rows are already delivered and can be removed directly.
+async function purgeRetiredTypes(): Promise<void> {
+  const start = Date.now();
+  const now = new Date();
+  let rows: Array<{
+    id: number;
+    notificationType: string;
+    sendAtUtc: Date;
+    onesignalNotificationId: string | null;
+  }>;
+
+  try {
+    rows = await db
+      .select({
+        id: scheduledNotifications.id,
+        notificationType: scheduledNotifications.notificationType,
+        sendAtUtc: scheduledNotifications.sendAtUtc,
+        onesignalNotificationId: scheduledNotifications.onesignalNotificationId,
+      })
+      .from(scheduledNotifications)
+      .where(
+        sql`${scheduledNotifications.notificationType} IN ('daily_report','weekly_report','monthly_report','daily_checkin')`,
+      );
+  } catch (e: any) {
+    log(`notif/purge-retired list-error=${e?.message ?? e}`, "notifications");
+    return;
+  }
+
+  let cancelledFuture = 0;
+  let cancelFailed = 0;
+  let deletedPast = 0;
+  let deletedFuture = 0;
+
+  for (const row of rows) {
+    const isFuture = row.sendAtUtc > now;
+    if (isFuture && row.onesignalNotificationId) {
+      const result = await cancelOneSignalNotification(row.onesignalNotificationId);
+      if (!result.ok) {
+        cancelFailed++;
+        log(
+          `notif/purge-cancel-failed id=${row.id} type=${row.notificationType} onesignal_id=${row.onesignalNotificationId}`,
+          "notifications",
+        );
+        continue;
+      }
+      cancelledFuture++;
+    }
+
+    try {
+      await storage.deleteScheduledNotificationById(row.id);
+      if (isFuture) deletedFuture++;
+      else deletedPast++;
+    } catch (e: any) {
+      log(`notif/purge-delete-failed id=${row.id} ${e?.message ?? e}`, "notifications");
+    }
+    if (isFuture) await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  log(
+    `notif/purge-retired-complete rows=${rows.length} cancelled_future=${cancelledFuture} cancel_failed=${cancelFailed} deleted_past=${deletedPast} deleted_future=${deletedFuture} duration_ms=${Date.now() - start}`,
+    "notifications",
+  );
+}
+
 let passInFlight = false;
 
 async function runPassGuarded(): Promise<void> {
@@ -820,11 +886,13 @@ export function startNotificationScheduler() {
   );
 
   // Boot sequence:
-  // 1. reconcileBadlyScheduledRows — cancel rows whose send_at_utc drifted
+  // 1. purgeRetiredTypes — cancel + delete old planner notification rows.
+  // 2. reconcileBadlyScheduledRows — cancel rows whose send_at_utc drifted
   //                                  after timezone was captured.
-  // 2. runPassGuarded     — immediate first scheduling pass.
+  // 3. runPassGuarded     — immediate first scheduling pass.
   void (async () => {
     try {
+      await purgeRetiredTypes();
       await reconcileBadlyScheduledRows();
     } catch (e: any) {
       log(`notif/reconcile-failed-uncaught ${e?.message ?? e}`, "notifications");

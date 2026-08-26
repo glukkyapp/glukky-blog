@@ -28,6 +28,7 @@ import { LoadingOverlayProvider } from "@/components/global-loading-overlay";
 import { OfflineProvider } from "@/contexts/offline-context";
 import { ConsentProvider, useConsent } from "@/contexts/consent-context";
 import { getStage1Promise } from "@/lib/preload-assets";
+import { PiggyBankPreloader } from "@/components/piggy-bank-svg";
 import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-data";
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
@@ -1887,6 +1888,7 @@ function App() {
     <TooltipProvider>
       <Toaster />
       <Router />
+      <PiggyBankPreloader />
       {showCube && !cubeDismissed && (
         <CubeLoadingScreen
           authReady={!authLoading}
