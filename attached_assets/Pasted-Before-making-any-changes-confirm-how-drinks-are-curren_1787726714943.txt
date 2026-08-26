@@ -1,0 +1,101 @@
+Before making any changes, confirm how drinks are currently handled in the food-identification step — specifically, paste the current prompt wording that decides whether a drink goes into foodItems or into extras, and confirm whether a sugary drink like 奶茶 or 汽水 is currently captured as a component at all. Do this check first, before touching any code, because if sugary drinks are currently excluded from foodItems, the sugary classifier below will never see them no matter how correctly it's written.
+
+Add a sugary-food classification that sits next to the existing carb classification, not inside it. It should work the same way classifyCarbCategory already works: a fixed list of known sugary-food names and their common variants, matched against the same component names Claude already returns, with no involvement from Claude in deciding the category and no involvement from you or me either — the classification is a plain server-side lookup, nothing more.
+
+ts
+export type SugaryCategory =
+  | "sweet_drink"
+  | "sweet_soup"
+  | "baked_dessert"
+  | "iced_dessert"
+  | "confectionery"
+  | null;
+
+export interface MealFoodItem {
+  isCarb: boolean;
+  carbCategory: CarbCategory;
+  carbSubtype: string | null;
+  carbSubtypeConfirmed: boolean;
+  isSugary: boolean;
+  sugaryCategory: SugaryCategory;
+}
+A component can be sugary without being a carb-category item at all — 汽水 should end up isSugary: true, carbCategory: null, since it was never rice, noodles, bread, or potato to begin with.
+
+ts
+const SUGARY_CATEGORY_ALIASES: Record<Exclude<SugaryCategory, null>, string[]> = {
+  sweet_drink: ["奶茶", "珍珠奶茶", "凍奶茶", "檸茶", "汽水", "可樂", "果汁", "sweet drink", "soda", "milk tea"],
+  sweet_soup: ["糖水", "紅豆沙", "芝麻糊", "西米露", "sweet soup", "sago dessert"],
+  baked_dessert: ["蛋撻", "蛋糕", "曲奇", "egg tart", "cake", "cookie"],
+  iced_dessert: ["雪糕", "刨冰", "ice cream", "shaved ice"],
+  confectionery: ["糖果", "朱古力", "candy", "chocolate"],
+};
+
+function classifySugaryCategory(item: {
+  nameEn: string;
+  nameZhHant: string;
+  nameYue: string;
+}): SugaryCategory {
+  const names = [item.nameEn, item.nameZhHant, item.nameYue].map(v => v.trim());
+  for (const [category, aliases] of Object.entries(SUGARY_CATEGORY_ALIASES)) {
+    if (aliases.some(alias => names.some(name => name === alias))) {
+      return category as Exclude<SugaryCategory, null>;
+    }
+  }
+  return null;
+}
+Anything that doesn't match either list — carb or sugary — should be logged rather than silently discarded, the same way unmatched carb items are already logged, so the alias lists can be expanded over time from real gaps rather than guessed at in advance.
+
+Once components are classified, count across a user's meals how many distinct meals contain each carb or sugary subtype. A meal counts once per subtype even if that subtype appears twice in the same meal. Meals whose food data came from a historical guess rather than a confirmed Claude read should be excluded from this count entirely, the same exclusion already used for the HStix cards.
+
+ts
+type ReminderFoodStat = {
+  foodKey: string;
+  group: "starchy_carb" | "sugary_food";
+  displayName: string;
+  mealCount: number;
+};
+
+function buildCarbSugarReminder(
+  snaps: MealSnapWithFoodItems[],
+  locale: Locale,
+): ReminderFoodStat[] {
+  const totalsByKey = new Map<string, ReminderFoodStat>();
+
+  for (const snap of snaps) {
+    if (!snap.foodItems || snap.foodItems.source === "derived") continue;
+    const seenInThisMeal = new Set<string>();
+
+    for (const item of snap.foodItems.items) {
+      if (!item.isCarb && !item.isSugary) continue;
+      const foodKey = item.carbSubtype ?? item.sugaryCategory ?? item.carbCategory ?? "unclassified";
+      if (foodKey === "unclassified") continue;
+      if (seenInThisMeal.has(foodKey)) continue;
+      seenInThisMeal.add(foodKey);
+
+      const existing = totalsByKey.get(foodKey) ?? {
+        foodKey,
+        group: item.isCarb ? "starchy_carb" : "sugary_food",
+        displayName: item[localeNameKey(locale)],
+        mealCount: 0,
+      };
+      existing.mealCount += 1;
+      totalsByKey.set(foodKey, existing);
+    }
+  }
+
+  return [...totalsByKey.values()].sort((a, b) => b.mealCount - a.mealCount);
+}
+What gets shown to the user is a plain count, nothing more — no GI number, no high/medium/low label, no wording implying impact or risk, since this whole feature is a description of what was eaten, not a judgment on what it did.
+
+ts
+function buildReminderSentence(
+  locale: Locale,
+  stat: ReminderFoodStat,
+  totalMeals: number,
+): string {
+  if (locale === "zh-Hant") {
+    return `在你嘅 ${totalMeals} 餐記錄中，${stat.displayName} 出現咗 ${stat.mealCount} 次。`;
+  }
+  return `${stat.displayName} appeared in ${stat.mealCount} of your last ${totalMeals} logged meals.`;
+}
+This task does not touch the existing carb classifier or its category list, does not add any GI or GL value anywhere, does not add any high/medium/low labeling for this feature, does not run any statistical comparison of any kind, and does not change anything about the HStix-based cards, which stay exactly as they are today. It also does not weight anything by portion size — a food either appeared in a meal or it didn't, and that's all that's being counted.
