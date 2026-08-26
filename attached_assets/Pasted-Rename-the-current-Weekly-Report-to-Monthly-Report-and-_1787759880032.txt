@@ -1,0 +1,103 @@
+Rename the current Weekly Report to Monthly Report and replace the current weekly insights with three monthly meal-pattern comparisons. Remove the incomplete-record card and stop generating advice from a single week’s weekday result.
+
+Monthly report changes
+1. Rename and time window
+Rename all user-facing references from Weekly Report / 本週 to Monthly Report / 上個月.
+
+Use the previous completed calendar month as the reporting window.
+
+A meal can be included whether its impact label comes from AI or HStix.
+
+Every meal must contribute only one impact label:
+
+Use the recorded HStix result when an eligible HStix reading exists.
+
+Otherwise use the existing AI meal-impact label.
+
+Do not double-count a meal when both AI and HStix data exist.
+
+2. Use one shared calculation
+For every eligible bucket:
+
+Higher-impact rate
+=
+number of higher-impact meals in the bucket
+total logged meals in the bucket
+Higher-impact rate= 
+total logged meals in the bucket
+number of higher-impact meals in the bucket
+​
+ 
+Use the rate, never only the raw number of higher-impact meals.
+
+A meal may contribute to more than one comparison:
+
+A Monday lunch contributes to the Monday bucket.
+
+The same meal contributes to the lunch bucket.
+
+The same meal contributes to the weekday bucket.
+
+This is expected because each card answers a different question.
+
+3. Add three comparison cards
+Monthly card	Buckets compared	Eligibility rule
+Highest-impact mealtime	Breakfast, lunch, dinner, snack	Each included mealtime requires at least 8 logged meals. At least two mealtimes must qualify.
+Highest-impact weekday	Monday through Sunday	Each included weekday requires at least 3 logged meals. At least two weekdays must qualify.
+Weekday vs weekend	Monday–Friday vs Saturday–Sunday	Weekdays require at least 10 logged meals; weekends require at least 4 logged meals. Both must qualify.
+For mealtime, do not require snack to qualify. If breakfast, lunch, and dinner each have 8+ meals but snack has only 2, compare breakfast/lunch/dinner and exclude snack.
+
+For weekday, do not require all seven weekdays to qualify. Compare only the weekdays with at least three logged meals. If fewer than two qualify, do not show a highest-weekday result.
+
+4. Ranking and no-pattern states
+Rank qualified buckets by higher-impact rate.
+
+If two buckets have the same rate:
+
+Prefer the bucket with more logged meals.
+
+If still tied, use a fixed order so the result never changes randomly:
+
+Mealtime: breakfast → lunch → dinner → snack.
+
+Weekday: Monday → Tuesday → Wednesday → Thursday → Friday → Saturday → Sunday.
+
+Weekday/weekend: weekday → weekend.
+
+If a card has insufficient eligible buckets, show no comparison card rather than a weak conclusion.
+
+If qualified buckets do not show a meaningful difference under the existing product rule, show a neutral “no clear difference this month” state rather than forcing a worst meal/day.
+
+5. Elderly-readable copy
+Do not write “best diet,” “worst diet,” or “you must pay more attention.” Use observed, time-bounded wording.
+
+Suggested Chinese copy:
+
+Highest-impact mealtime
+上個月，午餐較常出現較高血糖影響。
+在已記錄嘅午餐中，較高影響嘅餐次比例最高。
+呢個反映你上個月嘅記錄規律。
+
+Highest-impact weekday
+上個月，星期一較常出現較高血糖影響。
+在已記錄嘅星期一餐次中，較高影響嘅餐次比例最高。
+呢個反映你上個月嘅記錄規律。
+
+Weekday vs weekend
+上個月，週末較常出現較高血糖影響。
+在已記錄嘅週末餐次中，較高影響嘅餐次比例高過平日。
+呢個反映你上個月嘅記錄規律。
+
+Use the neutral fallback:
+
+上個月未見明顯分別。
+你喺唔同用餐時間／日子嘅記錄，大致相近。
+
+Avoid adding a food recommendation to these cards unless it is supported by the separate food-frequency or HStix food-pattern feature. A day-of-week or mealtime observation alone does not establish that a specific food caused the difference.
+
+6. Remove or relocate old cards
+Remove 「1日的飲食記錄不完整」 from the report.
+
+Do not show a card saying one weekday was “best” and another must be watched based on one week.
+
+Do not display separate lunch-timing and lunch-impact cards as if they explain one another. The monthly mealtime card replaces the glucose-impact part; timing can remain a separate descriptive feature only if it has its own evidence and does not imply causation.
