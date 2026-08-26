@@ -1115,6 +1115,15 @@
   "offline_title": "No internet connection",
   "offline_body": "Please check your connection and try again.",
   "offline_button": "Reload",
+  "food_frequency": {
+    "title": "Foods you record repeatedly",
+    "based_on": "Based on your {{count}} recorded meals",
+    "meals": "{{count}} meals",
+    "no_repeats": "No food has appeared more than once yet.",
+    "subtypes_heading": "Recorded categories",
+    "sweet_drink": "Sweet drinks: {{count}} meals",
+    "sweet_food": "Sweet foods: {{count}} meals"
+  },
   "glucose": {
     "post_meal_question": "Will you check your blood glucose after this meal?",
     "post_meal_yes": "Yes",

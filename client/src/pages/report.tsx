@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Leaf } from "lucide-react";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
+import { RecurringFoodInsights } from "@/components/RecurringFoodInsights";
 import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
 import { getReportPath, getReportView, type ReportView } from "@/lib/report-navigation";
 
@@ -51,6 +52,8 @@ export default function Report() {
             >{labels[key]}</button>
           ))}
         </nav>
+
+        <RecurringFoodInsights />
 
         {tab === "daily" ? (
           <section className="animate-[slide-in-from-right_.28s_ease-out]" data-testid="report-panel-daily">

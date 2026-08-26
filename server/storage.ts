@@ -112,6 +112,7 @@ export interface IStorage {
   updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
   getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]>;
   getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
+  getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]>;
   upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void>;
   upsertMonthlyArchive(record: InsertSnapMonthlyArchive): Promise<void>;
   getMonthlyArchive(userId: string, month: string): Promise<SnapMonthlyArchive | null>;
@@ -1023,6 +1024,12 @@ export class DatabaseStorage implements IStorage {
         lte(mealSnaps.localDate, endDate),
       ))
       .orderBy(mealSnaps.snapTime);
+  }
+
+  async getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]> {
+    return db.select().from(mealSnaps)
+      .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.isDeleted, false)))
+      .orderBy(desc(mealSnaps.snapTime));
   }
 
   async upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void> {

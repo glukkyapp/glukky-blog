@@ -159,10 +159,16 @@ export type FoodItemMetadata = {
   isCarb: boolean;
   carbCategory: string | null;
   carbSubtype: string | null;
+  // Optional so rows written before sweet classification remain readable.
+  // Missing values mean unknown; they must not be treated as "not sweet".
+  sweetCategory?: SweetCategory;
+  isSweet?: boolean;
   suggestedSubtype?: string | null;
   subtypeConfirmed: boolean;
   source: "claude" | "derived";
 };
+
+export type SweetCategory = "sweet_drink" | "sweet_food" | null;
 
 export const mealSnaps = pgTable("meal_snaps", {
   id: serial("id").primaryKey(),

@@ -34,6 +34,7 @@ import { sanitizeFoodName, extractJsonObject, stripExtrasContainedInName } from 
 import { trackServer, captureException, getPosthogConsent } from "./posthog";
 import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
 import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
+import { buildFoodFrequencySummary } from "./food-frequency";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "./food-items";
 import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
@@ -2598,6 +2599,17 @@ No explanation, just JSON.`,
     } catch (error: any) {
       console.error("Snap daily-summary error:", error);
       res.status(500).json({ message: "Failed to fetch daily summary." });
+    }
+  });
+
+  app.get("/api/snap/food-frequency", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const snaps = await storage.getMealSnapsForFoodFrequency(userId);
+      return res.json(buildFoodFrequencySummary(snaps));
+    } catch (error: any) {
+      console.error("Snap food-frequency error:", error);
+      return res.status(500).json({ message: "Failed to fetch recurring food summary." });
     }
   });
 

@@ -1,7 +1,77 @@
 import type { FoodItemMetadata } from "@shared/schema";
+import type { SweetCategory } from "@shared/schema";
 
 export type CarbCategory = "rice" | "noodles" | "bread" | "potatoes" | "other" | null;
 export type CarbMatchType = "exact" | "substring_fallback" | "no_match";
+
+export const SWEET_CATEGORY_ALIASES: Record<Exclude<SweetCategory, null>, string[]> = {
+  sweet_drink: [
+    "milk tea", "hong kong milk tea", "bubble tea", "boba", "soda", "soft drink",
+    "cola", "lemonade", "sweetened tea", "sweetened coffee",
+    "奶茶", "珍珠奶茶", "波霸奶茶", "汽水", "可樂", "可乐", "檸檬茶", "柠檬茶",
+  ],
+  sweet_food: [
+    "cake", "dessert", "cookie", "biscuit", "ice cream", "chocolate", "candy",
+    "egg tart", "pineapple bun", "sweet bun",
+    "蛋糕", "甜品", "曲奇", "餅乾", "饼干", "雪糕", "朱古力", "巧克力", "糖果",
+    "蛋撻", "蛋挞", "菠蘿包", "菠萝包",
+  ],
+};
+
+const NO_SUGAR_MARKERS = [
+  "無糖", "无糖", "走糖", "走甜", "no sugar", "sugar-free", "sugar free",
+  "unsweetened", "without sugar", "zero sugar", "zero-sugar", "0 sugar",
+  "零糖",
+];
+
+function normalizeSweet(text: string): string {
+  return text
+    .trim()
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[‐‑‒–—-]/g, "")
+    .replace(/\s+/g, "");
+}
+
+function isExplicitlyNoSugar(names: string[]): boolean {
+  return names.some(name => {
+    const normalized = normalizeSweet(name);
+    return NO_SUGAR_MARKERS.some(marker => normalized.includes(normalizeSweet(marker)));
+  });
+}
+
+/**
+ * Classifies only deterministic, name-based sweet categories. This is
+ * intentionally not a quantity, GI/GL, or glucose-impact judgement.
+ */
+export function classifySweetCategory(item: {
+  nameEn: string;
+  nameZhHant: string;
+  nameYue: string;
+}): SweetCategory {
+  const names = [item.nameEn, item.nameZhHant, item.nameYue].filter(Boolean);
+  if (isExplicitlyNoSugar(names)) return null;
+
+  for (const [category, aliases] of Object.entries(SWEET_CATEGORY_ALIASES)) {
+    const normalizedAliases = aliases.map(normalizeSweet);
+    if (names.some(name => normalizedAliases.includes(normalizeSweet(name)))) {
+      return category as Exclude<SweetCategory, null>;
+    }
+  }
+
+  let best: { category: Exclude<SweetCategory, null>; aliasLength: number } | null = null;
+  for (const [category, aliases] of Object.entries(SWEET_CATEGORY_ALIASES)) {
+    for (const alias of aliases.map(normalizeSweet)) {
+      if (!alias) continue;
+      if (names.some(name => normalizeSweet(name).includes(alias))) {
+        if (!best || alias.length > best.aliasLength) {
+          best = { category: category as Exclude<SweetCategory, null>, aliasLength: alias.length };
+        }
+      }
+    }
+  }
+  return best?.category ?? null;
+}
 
 export const CARB_CATEGORY_ALIASES: Record<Exclude<CarbCategory, null>, string[]> = {
   rice: [
@@ -138,12 +208,15 @@ export function prepareFoodItems(
       const carbCategory = classifyCarbCategory(names);
       const requestedSubtype = candidate.carbSubtype;
       const carbSubtype = isValidCarbSubtype(carbCategory, requestedSubtype) ? requestedSubtype : null;
+      const sweetCategory = classifySweetCategory(names);
 
       return {
         ...names,
         isCarb: carbCategory !== null,
         carbCategory,
         carbSubtype,
+        sweetCategory,
+        isSweet: sweetCategory !== null,
         suggestedSubtype: isValidCarbSubtype(carbCategory, candidate.suggestedSubtype)
           ? candidate.suggestedSubtype
           : getDefaultCarbSubtype(carbCategory),

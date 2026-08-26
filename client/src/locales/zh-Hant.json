@@ -1119,6 +1119,15 @@
   "offline_title": "沒有網絡連線",
   "offline_body": "請檢查您的網絡連線，然後再試一次。",
   "offline_button": "重新載入",
+  "food_frequency": {
+    "title": "你反覆記錄的食物",
+    "based_on": "根據你記錄的 {{count}} 餐",
+    "meals": "{{count}} 餐",
+    "no_repeats": "目前還沒有食物出現多於一次。",
+    "subtypes_heading": "記錄到的類別",
+    "sweet_drink": "甜飲品：{{count}} 餐",
+    "sweet_food": "甜食：{{count}} 餐"
+  },
   "glucose": {
     "post_meal_question": "你這餐飯後會量血糖嗎？",
     "post_meal_yes": "會",
