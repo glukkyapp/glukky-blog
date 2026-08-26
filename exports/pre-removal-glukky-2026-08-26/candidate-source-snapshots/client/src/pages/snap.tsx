@@ -1,0 +1,1364 @@
+import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
+import { Camera, Images, Loader2, RotateCcw, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
+import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { compressImage } from "@/lib/compress-image";
+import glucoseLowImg    from "@assets/glucose_low.png";
+import glucoseMediumImg from "@assets/glucose_medium.png";
+import glucoseHighImg   from "@assets/glucose_high.png";
+import phoneBg from "@assets/cyucyu_a_smartphone_next_to_a_plate_of_food_as_if_it_is_takin__1775312483622.png";
+import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { useGate } from "@/App";
+import { useGlobalLoading } from "@/components/global-loading-overlay";
+import { track, trackException } from "@/lib/posthog";
+import { timedFetch, queryClient } from "@/lib/queryClient";
+import { cancelSpeech } from "@/lib/tts";
+import { SnapAdvicePopup, type StructuredAdvice } from "@/components/snap-advice-popup";
+
+const SNAP_TIMEOUT_MS = 45000;
+
+type Step = "upload" | "meal-select" | "labeling" | "review" | "advising" | "advice";
+
+interface LabelResult {
+  name: string | null;
+  portion: string | null;
+  portionId?: string | null;
+  sauces: string | null;
+  sauceIds?: string[];
+  extras: string | null;
+  toppingIds?: string[];
+  canonicalName?: string;
+  comboSource?: "database" | "claude";
+  portionOptions?: string[];
+  portionIdMap?: Record<string, string>;
+  sauceOptions?: { id: string; label: string }[];
+  toppingOptions?: { id: string; label: string }[];
+  preferenceKey?: string;
+  snapsUsedToday: number;
+  snapsLimit: number;
+}
+
+interface TipEntry { key: string; timing: "immediate" | "future"; }
+interface FocusPanelData { struggleKey: string; tips: TipEntry[]; }
+
+interface AdviceSource {
+  label: string;
+  url: string;
+}
+
+interface AdviceResult {
+  advice: string;
+  structuredAdvice?: StructuredAdvice | null;
+  focusPanelData?: FocusPanelData | null;
+  sources?: AdviceSource[];
+  adviceUsedToday: number;
+  adviceLimit: number;
+  snapId?: number | null;
+  glucosePrediction?: { avgPostMealMmol: number | null; pairedCount: number; state: "A" | "B" | "C"; spikeHistory?: number[]; glucoseGroup?: string | null } | null;
+}
+
+interface TokenResolution {
+  text: string;
+  resolvedId: string | null;
+}
+
+interface LabelForm {
+  name: string;
+  portion: string;
+  portionId: string | null;
+  sauces: string;
+  sauceIds: string[];
+  sauceResolutions: TokenResolution[];
+  extras: string;
+  toppingIds: string[];
+  toppingResolutions: TokenResolution[];
+}
+
+function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
+  const isTop = position.startsWith("top");
+  const isLeft = position === "top-left" || position === "bottom-left";
+  const r = 3.5;
+
+  const w = 48;
+  const gap = 28;
+  const bendInset = 8;
+  const totalH = gap + bendInset;
+  const svgW = w + r * 2;
+  const svgH = totalH + r * 2;
+
+  const style: React.CSSProperties = {
+    position: "absolute",
+    width: svgW,
+    height: svgH,
+    pointerEvents: "none",
+    zIndex: 10,
+    ...(isTop ? { top: -(gap + r) } : { bottom: -(gap + r) }),
+    ...(isLeft ? { left: -w + 20 } : { right: -w + 20 }),
+  };
+
+  const fieldX = isLeft ? r : svgW - r;
+  const fieldY = isTop ? r : svgH - r;
+
+  const bendX = fieldX;
+  const bendY = isTop ? totalH + r : r;
+
+  const circleX = isLeft ? svgW - r : r;
+  const circleY = bendY;
+
+  return (
+    <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
+      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke="hsl(30 25% 75%)" strokeWidth="1" fill="none" strokeLinejoin="round" />
+      <circle cx={circleX} cy={circleY} r={r} fill="hsl(30 25% 75%)" />
+      <circle cx={fieldX} cy={fieldY} r={r} fill="hsl(30 25% 75%)" />
+    </svg>
+  );
+}
+
+function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
+  used: number;
+  limit: number;
+  exhaustedKey: string;
+  remainingKey: string;
+}) {
+  const { t } = useTranslation();
+  const remaining = limit - used;
+  const exhausted = remaining <= 0;
+  return (
+    <p
+      className={`text-xs text-center ${exhausted ? "text-destructive" : "text-muted-foreground"}`}
+      data-testid="text-snap-counter"
+    >
+      {exhausted
+        ? t(exhaustedKey, { limit })
+        : t(remainingKey, { remaining, limit })}
+    </p>
+  );
+}
+
+interface DisambigItem {
+  field: "sauce" | "topping" | "name-choice";
+  text: string;
+  matches: { internalId: string | null; label: string }[];
+  fieldTarget?: "sauces" | "extras";
+}
+
+export default function Snap() {
+  const { t, i18n } = useTranslation();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
+  const { showPaywall, refetchGate, gate } = useGate();
+  const [, setLocation] = useLocation();
+
+
+  const [step, setStep] = useState<Step>("upload");
+  const [error, setError] = useState<string | null>(null);
+  const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [form, setForm] = useState<LabelForm>({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
+  const [adviceResult, setAdviceResult] = useState<AdviceResult | null>(null);
+  const [advicePopupOpen, setAdvicePopupOpen] = useState(false);
+  const [disambigQueue, setDisambigQueue] = useState<DisambigItem[]>([]);
+  const [disambigIndex, setDisambigIndex] = useState(0);
+  // "review"  → queue was seeded at label-result time; on exhaust just clean up
+  // "advice"  → queue was seeded by handleGetAdvice; on exhaust proceed to callAdviceApi
+  const disambigOriginRef = useRef<"review" | "advice">("review");
+  const [sauceManual, setSauceManual] = useState(false);
+  const [toppingManual, setToppingManual] = useState(false);
+  const originalLabelRef = useRef<{ name: string; sauces: string; extras: string } | null>(null);
+  const fieldMethodRef = useRef<{ name: "typed" | "voice"; sauces: "typed" | "voice"; extras: "typed" | "voice" }>(
+    { name: "typed", sauces: "typed", extras: "typed" }
+  );
+  const hasTypedRef = useRef({ sauces: false, extras: false });
+  const [snapTooltipDismissed, setSnapTooltipDismissed] = useState(
+    () => localStorage.getItem("glukky_snap_tooltip_dismissed") === "1"
+  );
+
+  function inferClientMealType(): string {
+    const hour = new Date().getHours();
+    if (hour >= 7 && hour < 11) return "breakfast";
+    if (hour >= 12 && hour < 14) return "lunch";
+    if (hour >= 18 && hour < 21) return "dinner";
+    return "snack";
+  }
+
+  const [snapId, setSnapId] = useState<number | null>(null);
+  const [mealType, setMealType] = useState<string>(() => inferClientMealType());
+
+  function dismissSnapTooltip() {
+    localStorage.setItem("glukky_snap_tooltip_dismissed", "1");
+    setSnapTooltipDismissed(true);
+  }
+
+  useGlobalLoading(step === "labeling" || step === "advising");
+
+  const pendingLabelRef = useRef<Promise<LabelResult | null> | null>(null);
+  const pendingLabelDoneRef = useRef<{ result: LabelResult | null } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function reset() {
+    setStep("upload");
+    setError(null);
+    setLabelResult(null);
+    setPreviewUrl(null);
+    setForm({ name: "", portion: "", portionId: null, sauces: "", sauceIds: [], sauceResolutions: [], extras: "", toppingIds: [], toppingResolutions: [] });
+    setAdviceResult(null);
+    setAdvicePopupOpen(false);
+    cancelSpeech();
+    setDisambigQueue([]);
+    setDisambigIndex(0);
+    setSauceManual(false);
+    setToppingManual(false);
+    setSnapId(null);
+    setMealType(inferClientMealType());
+    pendingLabelRef.current = null;
+    pendingLabelDoneRef.current = null;
+    originalLabelRef.current = null;
+    fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
+    hasTypedRef.current = { sauces: false, extras: false };
+  }
+
+  async function fetchLabel(base64: string, mimeType: string, isFirstLabel: boolean): Promise<LabelResult | null> {
+    try {
+      const res = await timedFetch("/api/snap/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ imageBase64: base64, mimeType, language: i18n.language }),
+        timeoutMs: SNAP_TIMEOUT_MS,
+      });
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        const limit = data.snapsLimit ?? 3;
+        hapticNotify("ERROR");
+        setError(t("snap.error_limit_label", { limit }));
+        setStep("upload");
+        track("snap_label_failed", { reason: "rate_limited", limit });
+        return null;
+      }
+
+      if (res.status === 422) {
+        const data = await res.json().catch(() => ({}));
+        hapticNotify("ERROR");
+        const code = (data as { code?: string }).code;
+        if (code === "PARSE_FAILED") {
+          setError(t("snap.error_parse_failed"));
+        } else if (code === "NO_FOOD") {
+          setError(t("snap.error_no_food"));
+        } else {
+          setError((data as { message?: string }).message ?? t("snap.error_no_food"));
+        }
+        setStep("upload");
+        track("snap_label_failed", { reason: code || "unprocessable" });
+        return null;
+      }
+
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        hapticNotify("ERROR");
+        if ((data as { consentRequired?: string }).consentRequired === "claude") {
+          setError(t("snap.error_consent_disabled"));
+        } else {
+          setError(t("snap.error_generic"));
+        }
+        setStep("upload");
+        track("snap_label_failed", { reason: "consent_blocked" });
+        return null;
+      }
+
+      if (!res.ok) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("upload");
+        track("snap_label_failed", { reason: "http_error", status: res.status });
+        return null;
+      }
+
+      const rawData = await res.json();
+      if (rawData.showPaywall) {
+        setStep("upload");
+        refetchGate();
+        track("snap_label_blocked", { feature: rawData.feature });
+        showPaywall(() => {
+          resumeFoodSnapAfterUnlock();
+        });
+        return null;
+      }
+
+      hapticNotify("SUCCESS");
+      track("snap_label_succeeded", {
+        comboSource: rawData.comboSource,
+        hasName: !!rawData.name,
+      });
+      if (isFirstLabel) track("onboarding_first_snap_completed");
+      return rawData as LabelResult;
+    } catch (err) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      track("snap_label_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_label" });
+      return null;
+    }
+  }
+
+  function applyLabelResult(data: LabelResult) {
+    setLabelResult(data);
+    const sIds = data.sauceIds ?? [];
+    const tIds = data.toppingIds ?? [];
+    const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const sauceResolutions = sauceParts.map((text, i) => ({ text, resolvedId: sIds[i] ?? null }));
+    const toppingResolutions = extraParts.map((text, i) => ({ text, resolvedId: tIds[i] ?? null }));
+    setForm({
+      name: data.name ?? "",
+      portion: data.portion ?? "",
+      portionId: data.portionId ?? null,
+      sauces: data.sauces ?? "",
+      sauceIds: sIds,
+      sauceResolutions,
+      extras: data.extras ?? "",
+      toppingIds: tIds,
+      toppingResolutions,
+    });
+    originalLabelRef.current = {
+      name: data.name ?? "",
+      sauces: data.sauces ?? "",
+      extras: data.extras ?? "",
+    };
+    fieldMethodRef.current = { name: "typed", sauces: "typed", extras: "typed" };
+    hasTypedRef.current = { sauces: false, extras: false };
+
+    // Detect {{A|B}} / {{A/B}} ambiguity tokens immediately so the choice
+    // popup fires on the review screen rather than waiting for "Get Advice".
+    const earlyTokenRe = /\{\{([^|/]+)[|/]([^}]+)\}\}/gu;
+    const tokenQueue: DisambigItem[] = [];
+    for (const [fieldTarget, src] of [["sauces", data.sauces ?? ""], ["extras", data.extras ?? ""]] as const) {
+      earlyTokenRe.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = earlyTokenRe.exec(src)) !== null) {
+        tokenQueue.push({
+          field: "name-choice",
+          text: m[0],
+          matches: [
+            { internalId: m[1], label: m[1] },
+            { internalId: m[2], label: m[2] },
+            { internalId: null, label: t("snap.name_choice_none") },
+          ],
+          fieldTarget: fieldTarget as "sauces" | "extras",
+        });
+      }
+    }
+    if (tokenQueue.length > 0) {
+      // Strip tokens from form display so the textarea never shows raw {{…}} syntax.
+      // Store the original tokenized strings in pendingResolutionsRef so that
+      // handleDisambigSelect can still replace each token with the chosen name.
+      const stripTokensFromDisplay = (text: string) =>
+        text.replace(/\{\{[^}]+\}\}/gu, "")
+          .replace(/，\s*，/gu, "，").replace(/^，|，$/g, "").trim();
+      pendingResolutionsRef.current = {
+        sauceResolutions,
+        toppingResolutions,
+        resolvedSaucesText: data.sauces ?? undefined,
+        resolvedExtrasText: data.extras ?? undefined,
+      };
+      setForm(f => ({
+        ...f,
+        sauces: data.sauces ? stripTokensFromDisplay(data.sauces) : f.sauces,
+        extras: data.extras ? stripTokensFromDisplay(data.extras) : f.extras,
+      }));
+      disambigOriginRef.current = "review";
+      setDisambigQueue(tokenQueue);
+      setDisambigIndex(0);
+    }
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    dismissSnapTooltip();
+    setPreviewUrl(URL.createObjectURL(file));
+    setError(null);
+    setStep("meal-select");
+    track("snap_started", { language: i18n.language });
+    const isFirstLabel = !gate?.hasTriedFirstFoodSnap;
+
+    let base64: string;
+    let mimeType: string;
+    try {
+      ({ base64, mimeType } = await compressImage(file));
+    } catch {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      return;
+    }
+
+    // Reset stale state from any prior failed/cancelled attempt.
+    pendingLabelRef.current = null;
+    pendingLabelDoneRef.current = null;
+    // Stash the compressed payload for paywall-resume flow.
+    pendingLabelImageRef.current = { base64, mimeType };
+    const promise = fetchLabel(base64, mimeType, isFirstLabel);
+    pendingLabelRef.current = promise;
+    promise.then(result => { pendingLabelDoneRef.current = { result }; });
+  }
+
+  async function handleMealSelectContinue() {
+    hapticTap("SOFT");
+    const done = pendingLabelDoneRef.current;
+    if (done !== null) {
+      if (!done.result) return;
+      applyLabelResult(done.result);
+      setStep("review");
+      return;
+    }
+    // Guard: compression not yet finished (< 100ms window) — stay on meal-select
+    const promise = pendingLabelRef.current;
+    if (!promise) return;
+    setStep("labeling");
+    const result = await promise;
+    if (!result) return;
+    applyLabelResult(result);
+    setStep("review");
+  }
+
+  interface DisambigResult {
+    resolved: TokenResolution[];
+    ambiguous: DisambigItem[];
+  }
+
+  async function disambiguateField(text: string, field: "sauce" | "topping"): Promise<DisambigResult> {
+    if (!text.trim()) return { resolved: [], ambiguous: [] };
+    const parts = text.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+    const resolved: TokenResolution[] = [];
+    const ambiguous: DisambigItem[] = [];
+    for (const part of parts) {
+      try {
+        const res = await timedFetch("/api/snap/disambiguate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ text: part, field, locale: i18n.language }),
+          timeoutMs: SNAP_TIMEOUT_MS,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.exact && data.matches.length > 0) {
+            ambiguous.push({ field, text: part, matches: data.matches });
+          } else if (data.exact && data.matches.length === 1) {
+            resolved.push({ text: part, resolvedId: data.matches[0].internalId });
+          } else {
+            resolved.push({ text: part, resolvedId: null });
+          }
+        } else {
+          resolved.push({ text: part, resolvedId: null });
+        }
+      } catch {
+        resolved.push({ text: part, resolvedId: null });
+      }
+    }
+    return { resolved, ambiguous };
+  }
+
+  const pendingResolutionsRef = useRef<{
+    sauceResolutions: TokenResolution[];
+    toppingResolutions: TokenResolution[];
+    resolvedSaucesText?: string;
+    resolvedExtrasText?: string;
+  }>({ sauceResolutions: [], toppingResolutions: [] });
+
+  // Stashed image payload for the label-step paywall auto-resume.
+  // Populated just before the /api/snap/label POST in handleFileSelect.
+  // Cleared (single-shot) at the start of resumeFoodSnapAfterUnlock.
+  const pendingLabelImageRef = useRef<{ base64: string; mimeType: string } | null>(null);
+
+  async function handleGetAdvice() {
+    if (!form.name.trim()) return;
+    setError(null);
+
+    // Strip {{A|B}} tokens from the text passed to disambiguateField so they
+    // never enter sauceResolutions/toppingResolutions as unresolved pseudo-IDs.
+    // Tokens are handled separately below by the name-choice flow.
+    const stripTokensFromText = (s: string) =>
+      s.replace(/\{\{[^|/]+[|/][^}]+\}\}/g, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
+    const saucesForDisambig = stripTokensFromText(form.sauces);
+    const extrasForDisambig = stripTokensFromText(form.extras);
+    const saucesHaveTokens = saucesForDisambig !== form.sauces.trim();
+    const extrasHaveTokens = extrasForDisambig !== form.extras.trim();
+
+    const hasUnresolvedSauces = saucesForDisambig && (
+      form.sauceResolutions.length === 0 ||
+      form.sauceResolutions.some(r => r.resolvedId === null)
+    );
+    const hasUnresolvedToppings = extrasForDisambig && (
+      form.toppingResolutions.length === 0 ||
+      form.toppingResolutions.some(r => r.resolvedId === null)
+    );
+
+    // When tokens exist but stripped text is empty, applyLabelResult left stale
+    // token-text entries in form.sauceResolutions/toppingResolutions with
+    // resolvedId: null. Clear them now so they never reach the server as pseudo-IDs.
+    // (When stripped text is non-empty, disambiguateField returns fresh resolutions.)
+    let finalSauceResolutions = (saucesHaveTokens && !saucesForDisambig) ? [] : form.sauceResolutions;
+    let finalToppingResolutions = (extrasHaveTokens && !extrasForDisambig) ? [] : form.toppingResolutions;
+    const queue: DisambigItem[] = [];
+
+    if (hasUnresolvedSauces) {
+      const result = await disambiguateField(saucesForDisambig, "sauce");
+      finalSauceResolutions = result.resolved;
+      queue.push(...result.ambiguous);
+    }
+    if (hasUnresolvedToppings) {
+      const result = await disambiguateField(extrasForDisambig, "topping");
+      finalToppingResolutions = result.resolved;
+      queue.push(...result.ambiguous);
+    }
+
+    // Detect {{A|B}} / {{A/B}} ambiguity tokens in the original form text (not the stripped version)
+    const tokenRe = /\{\{([^|/]+)[|/]([^}]+)\}\}/g;
+    let tokenMatch: RegExpExecArray | null;
+    tokenRe.lastIndex = 0;
+    while ((tokenMatch = tokenRe.exec(form.sauces)) !== null) {
+      queue.push({
+        field: "name-choice",
+        text: tokenMatch[0],
+        matches: [
+          { internalId: tokenMatch[1], label: tokenMatch[1] },
+          { internalId: tokenMatch[2], label: tokenMatch[2] },
+          { internalId: null, label: t("snap.name_choice_none") },
+        ],
+        fieldTarget: "sauces",
+      });
+    }
+    tokenRe.lastIndex = 0;
+    while ((tokenMatch = tokenRe.exec(form.extras)) !== null) {
+      queue.push({
+        field: "name-choice",
+        text: tokenMatch[0],
+        matches: [
+          { internalId: tokenMatch[1], label: tokenMatch[1] },
+          { internalId: tokenMatch[2], label: tokenMatch[2] },
+          { internalId: null, label: t("snap.name_choice_none") },
+        ],
+        fieldTarget: "extras",
+      });
+    }
+
+    setForm(f => ({
+      ...f,
+      sauceResolutions: finalSauceResolutions,
+      sauceIds: finalSauceResolutions.filter(r => r.resolvedId).map(r => r.resolvedId!),
+      toppingResolutions: finalToppingResolutions,
+      toppingIds: finalToppingResolutions.filter(r => r.resolvedId).map(r => r.resolvedId!),
+    }));
+
+    if (queue.length > 0) {
+      pendingResolutionsRef.current = {
+        sauceResolutions: finalSauceResolutions,
+        toppingResolutions: finalToppingResolutions,
+      };
+      disambigOriginRef.current = "advice";
+      setDisambigQueue(queue);
+      setDisambigIndex(0);
+      return;
+    }
+
+    await callAdviceApi(finalSauceResolutions, finalToppingResolutions);
+  }
+
+  function handleDisambigSelect(internalId: string | null) {
+    const current = disambigQueue[disambigIndex];
+    if (current) {
+      if (current.field === "name-choice") {
+        const targetField = current.fieldTarget!;
+        const token = current.text;
+        const resolveInText = (src: string) => {
+          if (internalId !== null) return src.replace(token, internalId);
+          return src.replace(token, "").replace(/，\s*，/g, "，").replace(/^，|，$/g, "").trim();
+        };
+        if (targetField === "sauces") {
+          // Remove any stale resolution entry whose text is the {{A|B}} token
+          pendingResolutionsRef.current.sauceResolutions =
+            pendingResolutionsRef.current.sauceResolutions.filter(r => r.text !== token);
+          // For review-origin the token was already stripped from the form; resolve
+          // from the stored tokenized text so the chosen name gets inserted correctly.
+          const srcSauce = disambigOriginRef.current === "review"
+            ? (pendingResolutionsRef.current.resolvedSaucesText ?? form.sauces)
+            : form.sauces;
+          const resolvedSauceText = resolveInText(srcSauce);
+          pendingResolutionsRef.current.resolvedSaucesText = resolvedSauceText;
+          setForm(f => ({ ...f, sauces: resolvedSauceText }));
+        } else {
+          pendingResolutionsRef.current.toppingResolutions =
+            pendingResolutionsRef.current.toppingResolutions.filter(r => r.text !== token);
+          // Same review-origin fallback for extras
+          const srcExtras = disambigOriginRef.current === "review"
+            ? (pendingResolutionsRef.current.resolvedExtrasText ?? form.extras)
+            : form.extras;
+          const resolvedExtrasText = resolveInText(srcExtras);
+          pendingResolutionsRef.current.resolvedExtrasText = resolvedExtrasText;
+          setForm(f => ({ ...f, extras: resolvedExtrasText }));
+        }
+      } else {
+        const resolution: TokenResolution = { text: current.text, resolvedId: internalId };
+        if (current.field === "sauce") {
+          pendingResolutionsRef.current.sauceResolutions = [
+            ...pendingResolutionsRef.current.sauceResolutions,
+            resolution,
+          ];
+        } else {
+          pendingResolutionsRef.current.toppingResolutions = [
+            ...pendingResolutionsRef.current.toppingResolutions,
+            resolution,
+          ];
+        }
+      }
+    }
+    hapticTap("LIGHT");
+    if (disambigIndex < disambigQueue.length - 1) {
+      setDisambigIndex(i => i + 1);
+    } else {
+      const finalSauce = pendingResolutionsRef.current.sauceResolutions;
+      const finalTopping = pendingResolutionsRef.current.toppingResolutions;
+      const resolvedSaucesText = pendingResolutionsRef.current.resolvedSaucesText;
+      const resolvedExtrasText = pendingResolutionsRef.current.resolvedExtrasText;
+      setForm(f => ({
+        ...f,
+        sauceResolutions: finalSauce,
+        sauceIds: finalSauce.filter(r => r.resolvedId).map(r => r.resolvedId!),
+        toppingResolutions: finalTopping,
+        toppingIds: finalTopping.filter(r => r.resolvedId).map(r => r.resolvedId!),
+      }));
+      setDisambigQueue([]);
+      setDisambigIndex(0);
+      // Only proceed to advice when the queue was started from handleGetAdvice.
+      // Review-time token queues just resolve the display text and leave the user on the review screen.
+      if (disambigOriginRef.current === "advice") {
+        callAdviceApi(finalSauce, finalTopping, false, {
+          ...(resolvedSaucesText !== undefined ? { sauces: resolvedSaucesText || null } : {}),
+          ...(resolvedExtrasText !== undefined ? { extras: resolvedExtrasText || null } : {}),
+        });
+      }
+    }
+  }
+
+  async function callAdviceApi(
+    sauceRes?: TokenResolution[],
+    toppingRes?: TokenResolution[],
+    isRetryAfterUnlock = false,
+    // Optional snapshot of just-fetched values, used by the label-step
+    // paywall auto-resume (see resumeFoodSnapAfterUnlock). Existing
+    // callers omit this and continue to read from React state.
+    overrides?: {
+      name?: string;
+      canonicalName?: string | null;
+      portion?: string | null;
+      sauces?: string | null;
+      extras?: string | null;
+      portionId?: string | null;
+    },
+  ) {
+    if (originalLabelRef.current && !isRetryAfterUnlock) {
+      const orig = originalLabelRef.current;
+      const sauceInChipMode = !!labelResult?.sauceOptions?.length && !sauceManual;
+      const extrasInChipMode = !!labelResult?.toppingOptions?.length && !toppingManual;
+      const changed: Array<{ field: "name" | "sauces" | "extras"; method: "typed" | "voice" }> = [];
+      if (form.name.trim() !== orig.name.trim())
+        changed.push({ field: "name", method: fieldMethodRef.current.name });
+      if (!sauceInChipMode && hasTypedRef.current.sauces && form.sauces.trim() !== orig.sauces.trim())
+        changed.push({ field: "sauces", method: fieldMethodRef.current.sauces });
+      if (!extrasInChipMode && hasTypedRef.current.extras && form.extras.trim() !== orig.extras.trim())
+        changed.push({ field: "extras", method: fieldMethodRef.current.extras });
+      if (changed.length === 0) {
+        track("food_label_accepted");
+      } else {
+        for (const { field, method } of changed) {
+          track("food_label_amended", { field, method });
+        }
+      }
+    }
+    setStep("advising");
+    const reqName = overrides?.name ?? form.name;
+    const reqCanonical = overrides?.canonicalName ?? labelResult?.canonicalName ?? null;
+    const reqPortion = overrides?.portion ?? form.portion;
+    const reqSauces = overrides?.sauces ?? form.sauces;
+    const reqExtras = overrides?.extras ?? form.extras;
+    const reqPortionId = overrides?.portionId ?? form.portionId;
+    track("snap_advice_started", { foodName: reqName || null });
+
+    const finalSauceResolutions = sauceRes || form.sauceResolutions;
+    const finalToppingResolutions = toppingRes || form.toppingResolutions;
+
+    try {
+      const res = await timedFetch("/api/snap/advice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: reqName,
+          canonicalName: reqCanonical || undefined,
+          portion: reqPortion || null,
+          sauces: reqSauces || null,
+          extras: reqExtras || null,
+          portionId: reqPortionId || null,
+          sauceResolutions: finalSauceResolutions.length > 0 ? finalSauceResolutions : undefined,
+          toppingResolutions: finalToppingResolutions.length > 0 ? finalToppingResolutions : undefined,
+          locale: i18n.language,
+          mealType,
+        }),
+        timeoutMs: SNAP_TIMEOUT_MS,
+      });
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        const limit = data.adviceLimit ?? 6;
+        hapticNotify("ERROR");
+        setError(t("snap.error_limit_advice", { limit }));
+        setStep("review");
+        track("snap_advice_failed", { reason: "rate_limited", limit });
+        return;
+      }
+
+      if (!res.ok) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("review");
+        track("snap_advice_failed", { reason: "http_error", status: res.status });
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.showPaywall) {
+        if (isRetryAfterUnlock) {
+          // Post-unlock auto-retry came back still gated (rare server
+          // gate lag). Don't re-open the paywall — that would loop.
+          // Surface the standard error/retry surface on the review
+          // screen and emit an event so we can see how often this
+          // edge case actually happens.
+          hapticNotify("ERROR");
+          setError(t("snap.error_generic"));
+          setStep("review");
+          track("snap_advice_resume_still_blocked", { feature: data.feature });
+          return;
+        }
+        setStep("review");
+        refetchGate();
+        track("snap_advice_blocked", { feature: data.feature });
+        showPaywall(() => {
+          callAdviceApi(sauceRes, toppingRes, true, overrides);
+        });
+        return;
+      }
+
+      hapticNotify("SUCCESS");
+      setAdviceResult(data as AdviceResult);
+      setSnapId(data.snapId ?? null);
+      setStep("advice");
+      setAdvicePopupOpen(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+      track("snap_advice_succeeded", { adviceSource: data.adviceSource });
+    } catch (err) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("review");
+      track("snap_advice_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_advice" });
+    }
+  }
+
+  // Auto-resume Foodsnap after the user subscribes via the label-step
+  // paywall. Re-POSTs /api/snap/label with the stashed image, populates
+  // labelResult + form, then calls callAdviceApi directly so the user
+  // lands on the advice screen without seeing the review step again
+  // (they already saw and confirmed it before the paywall fired).
+  // Loop guard: if the resumed label call still returns showPaywall,
+  // surface a generic error and do NOT re-open the paywall.
+  async function resumeFoodSnapAfterUnlock() {
+    const stashed = pendingLabelImageRef.current;
+    pendingLabelImageRef.current = null;
+    if (!stashed) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      track("snap_label_resume_failed", { reason: "no_stashed_image" });
+      return;
+    }
+
+    setError(null);
+    setStep("labeling");
+    track("snap_label_resume_started", { language: i18n.language });
+
+    try {
+      const res = await timedFetch("/api/snap/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          imageBase64: stashed.base64,
+          mimeType: stashed.mimeType,
+          language: i18n.language,
+        }),
+        timeoutMs: SNAP_TIMEOUT_MS,
+      });
+
+      if (!res.ok) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("upload");
+        track("snap_label_resume_failed", {
+          reason: "http_error",
+          status: res.status,
+        });
+        return;
+      }
+
+      const rawData = await res.json();
+
+      // Loop guard: server still gating us. Surface a friendly error
+      // instead of re-opening the paywall — that would loop.
+      if (rawData.showPaywall) {
+        hapticNotify("ERROR");
+        setError(t("snap.error_generic"));
+        setStep("upload");
+        refetchGate();
+        track("snap_label_resume_still_blocked", { feature: rawData.feature });
+        return;
+      }
+
+      hapticNotify("SUCCESS");
+      const data: LabelResult = rawData;
+      setLabelResult(data);
+      const sIds = data.sauceIds ?? [];
+      const tIds = data.toppingIds ?? [];
+      const sauceParts = (data.sauces ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+      const extraParts = (data.extras ?? "").split(/[,、，]/).map(s => s.trim()).filter(Boolean);
+      const sauceResolutions: TokenResolution[] = sauceParts.map((text, i) => ({
+        text,
+        resolvedId: sIds[i] ?? null,
+      }));
+      const toppingResolutions: TokenResolution[] = extraParts.map((text, i) => ({
+        text,
+        resolvedId: tIds[i] ?? null,
+      }));
+      setForm({
+        name: data.name ?? "",
+        portion: data.portion ?? "",
+        portionId: data.portionId ?? null,
+        sauces: data.sauces ?? "",
+        sauceIds: sIds,
+        sauceResolutions,
+        extras: data.extras ?? "",
+        toppingIds: tIds,
+        toppingResolutions,
+      });
+      track("snap_label_resumed_after_unlock", {
+        comboSource: data.comboSource,
+        hasName: !!data.name,
+      });
+      // Skip the review screen — the user already confirmed it before
+      // the paywall fired. Hand the just-fetched resolutions AND the
+      // just-fetched fields directly to callAdviceApi (overrides) since
+      // the setForm/setLabelResult above haven't flushed to the closure
+      // yet within this same event tick.
+      await callAdviceApi(sauceResolutions, toppingResolutions, false, {
+        name: data.name ?? "",
+        canonicalName: data.canonicalName ?? null,
+        portion: data.portion ?? null,
+        sauces: data.sauces ?? null,
+        extras: data.extras ?? null,
+        portionId: data.portionId ?? null,
+      });
+    } catch (err) {
+      hapticNotify("ERROR");
+      setError(t("snap.error_generic"));
+      setStep("upload");
+      track("snap_label_resume_failed", { reason: "exception" });
+      trackException(err, { phase: "snap_label_resume" });
+    }
+  }
+
+  useEffect(() => {
+    [glucoseLowImg, glucoseMediumImg, glucoseHighImg].forEach(src => {
+      const img = new window.Image();
+      img.src = src;
+    });
+  }, []);
+
+  return (
+    <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
+      <div className="flex items-center gap-3">
+        <img src={cameraHeadingIcon} alt="" className="w-14 h-14 shrink-0" data-testid="img-snap-heading-icon" />
+        <h1
+          className="text-[26px] font-bold uppercase tracking-wide text-left"
+          data-testid="text-snap-heading"
+        >
+          {t("snap.heading")}
+        </h1>
+      </div>
+      <p className="text-sm text-muted-foreground text-center">
+        {t("snap.subtitle")}
+      </p>
+
+      {step === "upload" && (
+        <div className="flex flex-col items-center gap-5 pt-6">
+          {!snapTooltipDismissed && (
+            <div
+              className="w-full rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 space-y-2"
+              data-testid="banner-snap-first-use"
+            >
+              <p className="text-sm text-muted-foreground leading-snug">
+                {t("snap.first_use_tooltip")}
+              </p>
+              <button
+                className="text-xs font-medium text-primary"
+                onClick={dismissSnapTooltip}
+                data-testid="button-snap-tooltip-dismiss"
+              >
+                {t("snap.first_use_tooltip_dismiss")}
+              </button>
+            </div>
+          )}
+          {error && (
+            <div
+              className="w-full rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive text-center"
+              data-testid="text-snap-error"
+            >
+              {error}
+            </div>
+          )}
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            data-testid="input-snap-camera"
+            onChange={handleFileSelect}
+          />
+          <input
+            ref={albumInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            data-testid="input-snap-album"
+            onChange={handleFileSelect}
+          />
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => { hapticTap("MEDIUM"); cameraInputRef.current?.click(); }}
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
+              data-testid="button-snap-camera"
+            >
+              <Camera className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
+              <span className="text-xs font-medium text-primary/80 text-center leading-tight px-2">
+                {t("snap.take_photo_camera")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { hapticTap("MEDIUM"); albumInputRef.current?.click(); }}
+              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
+              data-testid="button-snap-album"
+            >
+              <Images className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
+              <span className="text-xs font-medium text-primary/80 text-center leading-tight px-2">
+                {t("snap.upload_from_album")}
+              </span>
+            </button>
+          </div>
+
+          {labelResult && (
+            <CounterBadge
+              used={labelResult.snapsUsedToday}
+              limit={labelResult.snapsLimit}
+              exhaustedKey="snap.photos_exhausted"
+              remainingKey="snap.photos_remaining"
+            />
+          )}
+        </div>
+      )}
+
+      {step === "labeling" && (
+        <div className="flex flex-col items-center justify-center gap-3 py-16" data-testid="status-snap-labeling">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">{t("snap.analysing")}</p>
+        </div>
+      )}
+
+      {step === "meal-select" && (
+        <div className="flex flex-col gap-5">
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt="Food photo"
+              className="w-full rounded-2xl object-cover max-h-56"
+              data-testid="img-meal-select-preview"
+            />
+          )}
+          <p className="text-xs text-muted-foreground text-center" data-testid="text-meal-select-time">
+            {t("snap.meal_select_time_prefix")} {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </p>
+          <p className="text-sm font-semibold text-center">{t("snap.meal_select_heading")}</p>
+          <div className="flex gap-2 flex-wrap justify-center" data-testid="div-meal-select-chips">
+            {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => { hapticTap("SOFT"); setMealType(type); }}
+                data-testid={`chip-meal-select-${type}`}
+                className={`px-4 py-2 rounded-full text-sm border transition-colors ${
+                  mealType === type
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                }`}
+              >
+                {t(`snap.meal_type_${type}`)}
+              </button>
+            ))}
+          </div>
+          <Button
+            className="w-full"
+            onClick={handleMealSelectContinue}
+            data-testid="button-meal-select-continue"
+          >
+            {t("snap.meal_select_continue")}
+          </Button>
+        </div>
+      )}
+
+      {step === "review" && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="text-sm font-semibold">{t("snap.label_title")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
+          </div>
+
+          {error && (
+            <div
+              className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive text-center"
+              data-testid="text-snap-error"
+            >
+              {error}
+            </div>
+          )}
+
+          <div className="relative px-1">
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-name" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
+                  <UtensilsCrossed className="w-3 h-3" strokeWidth={2.5} />
+                  {t("snap.field_name")}
+                </Label>
+                <textarea
+                  id="snap-name"
+                  value={form.name}
+                  onChange={(e) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name: e.target.value })); }}
+                  placeholder={t("snap.field_placeholder_name")}
+                  rows={2}
+                  style={{ backgroundColor: "#fbfbf3" }}
+                  className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
+                  data-testid="input-snap-name"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-portion" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
+                  {t("snap.field_portion")}
+                  <Scale className="w-3 h-3" strokeWidth={2.5} />
+                </Label>
+                <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1" data-testid="input-snap-portion">
+                  {[
+                    { key: "small", label: t("snap.portion_small") },
+                    { key: "medium", label: t("snap.portion_medium") },
+                    { key: "large", label: t("snap.portion_large") },
+                  ].map((opt) => {
+                    const isActive = form.portion.toLowerCase() === opt.key || form.portion === opt.label;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          hapticTap("LIGHT");
+                          setForm((f) => ({
+                            ...f,
+                            portion: opt.label,
+                            portionId: opt.key,
+                          }));
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                        }`}
+                        data-testid={`chip-portion-${opt.key}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {previewUrl && (
+              <div className="relative mx-4 my-1" style={{ overflow: "visible" }}>
+                <PointerLine position="top-left" />
+                <PointerLine position="top-right" />
+                <PointerLine position="bottom-left" />
+                <PointerLine position="bottom-right" />
+                <img
+                  src={previewUrl}
+                  alt="Food photo"
+                  className="w-full rounded-2xl object-cover max-h-56"
+                  data-testid="img-snap-preview"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-sauces" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
+                  <Droplets className="w-3 h-3" strokeWidth={2.5} />
+                  {t("snap.field_sauces")}
+                </Label>
+                {labelResult?.comboSource === "database" && labelResult?.sauceOptions?.length && !sauceManual ? (
+                  <div className="flex flex-wrap gap-1.5 h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-sauces">
+                    {labelResult.sauceOptions.map((opt) => {
+                      const selected = form.sauceIds.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            hapticTap("LIGHT");
+                            setForm((f) => {
+                              const ids = selected ? f.sauceIds.filter(id => id !== opt.id) : [...f.sauceIds, opt.id];
+                              const labels = ids.map(id => labelResult.sauceOptions!.find(o => o.id === id)?.label).filter(Boolean);
+                              return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map(id => ({ text: labelResult.sauceOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
+                            });
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                          }`}
+                          data-testid={`chip-sauce-${opt.id}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hapticTap("LIGHT");
+                        setSauceManual(true);
+                        setForm((f) => ({ ...f, sauces: "", sauceIds: [], sauceResolutions: [] }));
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
+                      data-testid="chip-sauce-other"
+                    >
+                      {t("snap.something_else")}
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    id="snap-sauces"
+                    value={form.sauces}
+                    onChange={(e) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
+                    placeholder={t("snap.field_placeholder_sauces")}
+                    rows={2}
+                    style={{ backgroundColor: "#fbfbf3" }}
+                    className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
+                    data-testid="input-snap-sauces"
+                  />
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="snap-extras" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
+                  {t("snap.field_extras")}
+                  <Cherry className="w-3 h-3" strokeWidth={2.5} />
+                </Label>
+                {labelResult?.comboSource === "database" && labelResult?.toppingOptions?.length && !toppingManual ? (
+                  <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-extras">
+                    {labelResult.toppingOptions.map((opt) => {
+                      const selected = form.toppingIds.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            hapticTap("LIGHT");
+                            setForm((f) => {
+                              const ids = selected ? f.toppingIds.filter(id => id !== opt.id) : [...f.toppingIds, opt.id];
+                              const labels = ids.map(id => labelResult.toppingOptions!.find(o => o.id === id)?.label).filter(Boolean);
+                              return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map(id => ({ text: labelResult.toppingOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
+                            });
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                          }`}
+                          data-testid={`chip-topping-${opt.id}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hapticTap("LIGHT");
+                        setToppingManual(true);
+                        setForm((f) => ({ ...f, extras: "", toppingIds: [], toppingResolutions: [] }));
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
+                      data-testid="chip-topping-other"
+                    >
+                      {t("snap.something_else")}
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    id="snap-extras"
+                    value={form.extras}
+                    onChange={(e) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
+                    placeholder={t("snap.field_placeholder_extras")}
+                    rows={2}
+                    style={{ backgroundColor: "#fbfbf3" }}
+                    className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
+                    data-testid="input-snap-extras"
+                  />
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {labelResult && (
+            <CounterBadge
+              used={labelResult.snapsUsedToday}
+              limit={labelResult.snapsLimit}
+              exhaustedKey="snap.photos_exhausted"
+              remainingKey="snap.photos_remaining"
+            />
+          )}
+
+          {disambigQueue.length > 0 && disambigQueue[disambigIndex] && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3" data-testid="dialog-disambiguate">
+              <p className="text-sm font-medium text-center">
+                {disambigQueue[disambigIndex].field === "name-choice"
+                  ? t("snap.name_choice_prompt")
+                  : t("snap.did_you_mean", { text: disambigQueue[disambigIndex].text })}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {disambigQueue[disambigIndex].matches.map((m, i) => (
+                  <button
+                    key={m.internalId ?? `none-${i}`}
+                    onClick={() => handleDisambigSelect(m.internalId)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#F4EBE4] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
+                    data-testid={`chip-disambig-${m.internalId ?? "none"}`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+                {disambigQueue[disambigIndex].field !== "name-choice" && (
+                  <button
+                    onClick={() => handleDisambigSelect(null)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-input hover:bg-muted/80 transition-colors"
+                    data-testid="button-disambig-keep"
+                  >
+                    {t("snap.keep_as_typed")}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 pt-1">
+            <Button
+              onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
+              disabled={!form.name.trim() || disambigQueue.length > 0}
+              className="w-full btn-pop h-14 text-base font-semibold rounded-2xl shadow-md text-white hover:brightness-105"
+              style={{ backgroundColor: "#F08A3E" }}
+              data-testid="button-snap-get-advice"
+            >
+              {t("snap.get_advice")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => { hapticTap("SOFT"); reset(); }}
+              className="w-full text-muted-foreground gap-1.5"
+              data-testid="button-snap-try-again"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("snap.try_again")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === "advising" && (
+        <div className="flex flex-col items-center justify-center gap-3 py-16" data-testid="status-snap-advising">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">{t("snap.getting_advice")}</p>
+        </div>
+      )}
+
+      {step === "advice" && adviceResult && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm font-semibold">{t("snap.advice_title")}</p>
+
+          {adviceResult.structuredAdvice && (
+            <SnapAdvicePopup
+              open={advicePopupOpen}
+              advice={adviceResult.structuredAdvice}
+              avgPostMealMmol={adviceResult.glucosePrediction?.avgPostMealMmol ?? null}
+              onDismiss={() => {
+                setAdvicePopupOpen(false);
+              }}
+              onCloseOnly={() => {
+                // 了解更多 path: close only the popup, no snap reset.
+                setAdvicePopupOpen(false);
+              }}
+            />
+          )}
+
+          {adviceResult && (
+            <CounterBadge
+              used={adviceResult.adviceUsedToday}
+              limit={adviceResult.adviceLimit}
+              exhaustedKey="snap.advice_exhausted"
+              remainingKey="snap.advice_remaining"
+            />
+          )}
+
+          <Button
+            variant="ghost"
+            onClick={() => { hapticTap("SOFT"); reset(); }}
+            className="w-full text-muted-foreground gap-1.5"
+            data-testid="button-snap-new-photo"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            {t("snap.try_again")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

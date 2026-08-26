@@ -35,3 +35,10 @@ id = "hwGTU9xgHkErepioQeqDJ"
 uri = "file://downloads/glukky-source-20260428-043446.zip"
 type = "unspecified"
 title = "Glukky full source (April 28, 2026)"
+
+[[outputs]]
+id = "7u0GjijaYJ5XCok2ZJoA3"
+uri = "file://exports/pre-removal-glukky-2026-08-26.zip"
+type = "unspecified"
+title = "Glukky pre-removal source archive"
+description = "Verified pre-removal source snapshots and removal manifest. Application source was not deleted or edited; removal will wait for your confirmation that this ZIP opens correctly. SHA-256 checksum is included beside the archive."
