@@ -4,26 +4,26 @@ import { useTranslation } from "react-i18next";
 import { Leaf } from "lucide-react";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
 import { RecurringFoodInsights } from "@/components/RecurringFoodInsights";
-import { WeeklyCard, getWeekStart } from "@/pages/food-reports";
+import { LastTwoMonthsCard } from "@/pages/food-reports";
 import { getReportPath, getReportView, type ReportView } from "@/lib/report-navigation";
 
 export default function Report() {
-  const { i18n } = useTranslation();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const tab = getReportView(search);
   const { data: profile } = useQuery<{ deviceTimezone?: string | null }>({ queryKey: ["/api/profile"] });
   const tz = profile?.deviceTimezone ?? undefined;
-  const language = i18n.language;
-  const isChinese = language === "yue" || language.startsWith("zh");
-  const labels = isChinese
-    ? { daily: "昨日", weekly: "本週" }
-    : { daily: "Yesterday", weekly: "This week" };
-  const copy = language === "yue"
-    ? { title: "飲食報告", intro: "每日同每週飲食重點，一目了然。", finding: "昨日重點", meal: "了解這餐" }
-    : language.startsWith("zh")
-      ? { title: "飲食報告", intro: "每日與每週飲食重點，一目了然。", finding: "昨日重點", meal: "了解這餐" }
-      : { title: "Food report", intro: "Your daily and weekly food insights at a glance.", finding: "Yesterday's highlight", meal: "See this meal" };
+  const labels: Record<ReportView, string> = {
+    daily: t("two_month_report.daily_tab"),
+    "two-month": t("two_month_report.tab"),
+  };
+  const copy = {
+    title: t("two_month_report.page_title"),
+    intro: t("two_month_report.page_intro"),
+    finding: t("two_month_report.daily_finding"),
+    meal: t("two_month_report.see_meal"),
+  };
 
   const selectTab = (nextTab: ReportView) => {
     setLocation(getReportPath(nextTab));
@@ -70,8 +70,8 @@ export default function Report() {
             </div>
           </section>
         ) : (
-          <section className="animate-[slide-in-from-left_.28s_ease-out]" data-testid="report-panel-weekly">
-            <WeeklyCard weekStart={getWeekStart(tz)} variant="reports" />
+          <section className="animate-[slide-in-from-left_.28s_ease-out]" data-testid="report-panel-two-month">
+            <LastTwoMonthsCard />
           </section>
         )}
       </div>

@@ -62,6 +62,45 @@ interface SymptomData {
   snackCount: number;
 }
 
+type PatternBucketKey =
+  | "breakfast" | "lunch" | "dinner" | "snack"
+  | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"
+  | "weekday" | "weekend";
+
+type TwoMonthPatternCard =
+  | {
+      cardType: "mealtime" | "weekday" | "weekday-weekend";
+      state: "named";
+      leadingBucket: PatternBucketKey;
+      runnerUpBucket: PatternBucketKey;
+      leadingRate: number;
+      runnerUpRate: number;
+      zScore: number;
+    }
+  | {
+      cardType: "mealtime" | "weekday" | "weekday-weekend";
+      state: "neutral";
+      neutralReason: "equal-rate" | "below-z-threshold";
+      leadingBucket: PatternBucketKey;
+      runnerUpBucket: PatternBucketKey;
+      leadingRate: number;
+      runnerUpRate: number;
+      zScore: number | null;
+    }
+  | {
+      cardType: "mealtime" | "weekday" | "weekday-weekend";
+      state: "unavailable";
+      minimumMealsPerBucket: number;
+    };
+
+interface TwoMonthReportSummary {
+  status: "progress" | "insufficient" | "ready";
+  progressState?: "first-incomplete-month" | "one-completed-month";
+  window: { months: [string, string]; startDate: string; endDate: string };
+  totalMeals: number;
+  cards: TwoMonthPatternCard[];
+}
+
 const IMPACT_COLOR: Record<string, string> = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 const DOW_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DOW_ZH = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
@@ -681,6 +720,98 @@ function MonthlyCard() {
         <p className="text-[9px] text-muted-foreground/40 leading-relaxed px-1" data-testid="text-monthly-disclaimer">
           {t("snap.advice_disclaimer")}
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+const PATTERN_CARD_TITLES: Record<TwoMonthPatternCard["cardType"], string> = {
+  mealtime: "two_month_report.cards.mealtime",
+  weekday: "two_month_report.cards.weekday",
+  "weekday-weekend": "two_month_report.cards.weekday_weekend",
+};
+
+export function LastTwoMonthsCard() {
+  const { t } = useTranslation();
+  const { data, isLoading } = useQuery<TwoMonthReportSummary>({
+    queryKey: ["/api/snap/two-month-summary"],
+    queryFn: async () => {
+      const res = await fetch("/api/snap/two-month-summary", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load two-month summary");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-two-month-report">
+        <CardContent className="py-5">
+          <p className="text-sm text-center text-muted-foreground">{t("two_month_report.loading")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data) return null;
+  if (data.status === "progress") {
+    return (
+      <Card data-testid="card-two-month-report">
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-base">{t("two_month_report.heading")}</CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <p className="text-sm text-muted-foreground" data-testid={`two-month-progress-${data.progressState}`}>
+            {t(`two_month_report.progress.${data.progressState}`)}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const visibleCards = data.cards.filter(card => card.state !== "unavailable");
+  if (data.status === "insufficient" || visibleCards.length === 0) {
+    return (
+      <Card data-testid="card-two-month-report">
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-base">{t("two_month_report.heading")}</CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <p className="text-sm text-muted-foreground" data-testid="two-month-insufficient">
+            {t("two_month_report.not_enough_records")}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-two-month-report">
+      <CardHeader className="pb-2 pt-4">
+        <CardTitle className="text-base">{t("two_month_report.heading")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{data.window.startDate} – {data.window.endDate}</p>
+      </CardHeader>
+      <CardContent className="pb-4 flex flex-col gap-3">
+        {visibleCards.map(card => (
+          <div
+            key={card.cardType}
+            className="rounded-xl bg-muted/40 px-3 py-3"
+            data-testid={`two-month-card-${card.cardType}`}
+          >
+            <p className="mb-1 text-xs font-semibold text-foreground">{t(PATTERN_CARD_TITLES[card.cardType])}</p>
+            {card.state === "named" ? (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("two_month_report.named_observation", {
+                  bucket: t(`two_month_report.buckets.${card.leadingBucket}`),
+                })}
+              </p>
+            ) : (
+              <p className="text-sm leading-relaxed text-muted-foreground" data-testid={`two-month-neutral-${card.cardType}`}>
+                {t("two_month_report.no_clear_difference")}
+              </p>
+            )}
+          </div>
+        ))}
+        <p className="text-[9px] text-muted-foreground/50 leading-relaxed px-1">{t("snap.advice_disclaimer")}</p>
       </CardContent>
     </Card>
   );

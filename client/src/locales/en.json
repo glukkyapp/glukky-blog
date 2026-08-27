@@ -966,6 +966,43 @@
     "s3_headline": "The app adapts to you",
     "s3_body": "Based on how you're doing each week, Glukky quietly adjusts your plan."
   },
+  "two_month_report": {
+    "page_title": "Food report",
+    "page_intro": "Your daily and two-month food insights at a glance.",
+    "daily_tab": "Yesterday",
+    "tab": "Last 2 months",
+    "daily_finding": "Yesterday's highlight",
+    "see_meal": "See this meal",
+    "heading": "Last 2 months",
+    "loading": "Loading your report…",
+    "not_enough_records": "Keep logging meals. There are not enough records yet to compare the last two months.",
+    "no_clear_difference": "No clear difference in the last two months.",
+    "named_observation": "In the last two months, higher-impact meals were more often recorded at {{bucket}}.",
+    "progress": {
+      "first-incomplete-month": "Keep logging this month. Your first two-month report will be ready after two completed months.",
+      "one-completed-month": "One completed month is ready. Keep logging through one more completed month to compare patterns."
+    },
+    "cards": {
+      "mealtime": "Mealtime",
+      "weekday": "Day of week",
+      "weekday_weekend": "Weekday and weekend"
+    },
+    "buckets": {
+      "breakfast": "breakfast",
+      "lunch": "lunch",
+      "dinner": "dinner",
+      "snack": "snack time",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday",
+      "weekday": "weekdays",
+      "weekend": "weekends"
+    }
+  },
   "health_info": {
     "heading": "Health Info",
     "title": "Health Info",

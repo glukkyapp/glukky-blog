@@ -14,7 +14,7 @@ import {
   piggyBankEvents,
   ingredientVocabulary, foodLabels, foodAdviceCache,
   scheduledNotifications,
-  mealSnaps, hstixReadings,
+  mealSnaps, hstixReadings, snapReportMealFacts, snapReportUserMetadata,
   snapDailyGlucose, snapMonthlyArchive,
   userGlucoseThresholds, userCarbSubtypePreferences,
   userProfileHealthHistory, mealSnapHealthHistory, userGlucoseThresholdsHistory,
@@ -29,6 +29,7 @@ import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
 import { revokeAppleRefreshToken } from "./apple-auth";
 import { HSTIX_CORRECTION_WINDOW_MS } from "./hstix-correction";
 import { PHASE1_THRESHOLDS } from "./glucose-thresholds";
+import { getMonthlyReportFinalLabel } from "./two-month-report";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -112,6 +113,12 @@ export interface IStorage {
   updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
   getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]>;
   getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
+  getActiveMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
+  getEarliestActiveMealLocalDate(userId: string): Promise<string | null>;
+  upsertReportMealFactForSnap(userId: string, snapId: number): Promise<void>;
+  backfillReportMealFacts(userId: string): Promise<void>;
+  getReportMealFacts(userId: string, startDate: string, endDate: string): Promise<Array<{ localDate: string; mealType: string | null; finalImpact: string | null }>>;
+  getReportFirstMealLocalDate(userId: string): Promise<string | null>;
   getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]>;
   upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void>;
   upsertMonthlyArchive(record: InsertSnapMonthlyArchive): Promise<void>;
@@ -562,6 +569,8 @@ export class DatabaseStorage implements IStorage {
       counts.meal_snaps = snaps.length;
 
       await tx.delete(userCarbSubtypePreferences).where(eq(userCarbSubtypePreferences.userId, userId));
+      await tx.delete(snapReportMealFacts).where(eq(snapReportMealFacts.userId, userId));
+      await tx.delete(snapReportUserMetadata).where(eq(snapReportUserMetadata.userId, userId));
 
       const dailyGlucose = await tx.delete(snapDailyGlucose).where(eq(snapDailyGlucose.userId, userId)).returning({ id: snapDailyGlucose.id });
       counts.snap_daily_glucose = dailyGlucose.length;
@@ -832,6 +841,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(mealSnaps)
       .set({ missedMealFlag: missed })
       .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
+    await this.upsertReportMealFactForSnap(snap.userId, inserted.id);
     return { ...inserted, missedMealFlag: missed };
   }
 
@@ -896,6 +906,9 @@ export class DatabaseStorage implements IStorage {
     const [inserted] = await db.insert(hstixReadings)
       .values(reading as typeof hstixReadings.$inferInsert)
       .returning();
+    if (inserted.mealSnapId != null) {
+      await this.upsertReportMealFactForSnap(inserted.userId, inserted.mealSnapId);
+    }
     return inserted;
   }
 
@@ -959,6 +972,9 @@ export class DatabaseStorage implements IStorage {
         gt(hstixReadings.recordedAt, cutoff),
       ))
       .returning();
+    if (reading?.mealSnapId != null) {
+      await this.upsertReportMealFactForSnap(reading.userId, reading.mealSnapId);
+    }
     return reading ?? null;
   }
 
@@ -1008,6 +1024,7 @@ export class DatabaseStorage implements IStorage {
         .set({ missedMealFlag: missed })
         .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.localDate, snap.localDate)));
     }
+    await this.upsertReportMealFactForSnap(userId, snapId);
   }
 
   async getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]> {
@@ -1024,6 +1041,100 @@ export class DatabaseStorage implements IStorage {
         lte(mealSnaps.localDate, endDate),
       ))
       .orderBy(mealSnaps.snapTime);
+  }
+
+  async getActiveMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]> {
+    return db.select().from(mealSnaps)
+      .where(and(
+        eq(mealSnaps.userId, userId),
+        eq(mealSnaps.isDeleted, false),
+        gte(mealSnaps.localDate, startDate),
+        lte(mealSnaps.localDate, endDate),
+      ))
+      .orderBy(mealSnaps.snapTime);
+  }
+
+  async getEarliestActiveMealLocalDate(userId: string): Promise<string | null> {
+    const [row] = await db.select({
+      localDate: sql<string | null>`MIN(${mealSnaps.localDate})`,
+    }).from(mealSnaps).where(and(
+      eq(mealSnaps.userId, userId),
+      eq(mealSnaps.isDeleted, false),
+    ));
+    return row?.localDate ?? null;
+  }
+
+  async upsertReportMealFactForSnap(userId: string, snapId: number): Promise<void> {
+    const [snap] = await db.select().from(mealSnaps).where(and(
+      eq(mealSnaps.id, snapId),
+      eq(mealSnaps.userId, userId),
+      eq(mealSnaps.isDeleted, false),
+    )).limit(1);
+    if (!snap) return;
+    const [profile, thresholds, reading] = await Promise.all([
+      this.getProfile(userId),
+      this.getUserGlucoseThresholds(userId),
+      this.getHstixReadingForMealSnap(userId, snapId),
+    ]);
+    const finalImpact = getMonthlyReportFinalLabel({
+      id: snap.id,
+      localDate: snap.localDate,
+      mealType: snap.mealType,
+      glucoseImpact: snap.glucoseImpact,
+      hstix: reading ? {
+        glucoseMmol: reading.glucoseMmol,
+        mealTimingConfidence: reading.mealTimingConfidence,
+      } : null,
+    }, profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy", thresholds
+      ? { lowMedBoundary: thresholds.lowMedBoundary, medHighBoundary: thresholds.medHighBoundary }
+      : undefined);
+    await db.execute(sql`
+      INSERT INTO snap_report_meal_facts (snap_id, user_id, local_date, meal_type, final_impact)
+      VALUES (${snap.id}, ${userId}, ${snap.localDate}, ${snap.mealType}, ${finalImpact})
+      ON CONFLICT (snap_id) DO UPDATE SET
+        local_date = EXCLUDED.local_date,
+        meal_type = EXCLUDED.meal_type,
+        final_impact = EXCLUDED.final_impact
+    `);
+    await db.execute(sql`
+      INSERT INTO snap_report_user_metadata (user_id, first_meal_local_date)
+      VALUES (${userId}, ${snap.localDate})
+      ON CONFLICT (user_id) DO UPDATE SET
+        first_meal_local_date = LEAST(
+          snap_report_user_metadata.first_meal_local_date,
+          EXCLUDED.first_meal_local_date
+        )
+    `);
+  }
+
+  async backfillReportMealFacts(userId: string): Promise<void> {
+    const snaps = await db.select({ id: mealSnaps.id }).from(mealSnaps).where(and(
+      eq(mealSnaps.userId, userId),
+      eq(mealSnaps.isDeleted, false),
+    ));
+    for (const snap of snaps) {
+      await this.upsertReportMealFactForSnap(userId, snap.id);
+    }
+  }
+
+  async getReportMealFacts(userId: string, startDate: string, endDate: string): Promise<Array<{ localDate: string; mealType: string | null; finalImpact: string | null }>> {
+    return db.select({
+      localDate: snapReportMealFacts.localDate,
+      mealType: snapReportMealFacts.mealType,
+      finalImpact: snapReportMealFacts.finalImpact,
+    }).from(snapReportMealFacts).where(and(
+      eq(snapReportMealFacts.userId, userId),
+      gte(snapReportMealFacts.localDate, startDate),
+      lte(snapReportMealFacts.localDate, endDate),
+    ));
+  }
+
+  async getReportFirstMealLocalDate(userId: string): Promise<string | null> {
+    const [row] = await db.select({ localDate: snapReportUserMetadata.firstMealLocalDate })
+      .from(snapReportUserMetadata)
+      .where(eq(snapReportUserMetadata.userId, userId))
+      .limit(1);
+    return row?.localDate ?? null;
   }
 
   async getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]> {
@@ -1180,7 +1291,7 @@ export class DatabaseStorage implements IStorage {
     if (glucoseImpact !== undefined) updateData.glucoseImpact = glucoseImpact;
     if (Object.keys(updateData).length === 0) return { updated: false, localDate: null };
 
-    return await db.transaction(async (tx) => {
+    const outcome = await db.transaction(async (tx) => {
       // Read current state for history.
       const [current] = await tx.select().from(mealSnaps)
         .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
@@ -1217,6 +1328,10 @@ export class DatabaseStorage implements IStorage {
       }
       return { updated: true, localDate: result.localDate };
     });
+    if (outcome.updated && glucoseImpact !== undefined) {
+      await this.upsertReportMealFactForSnap(userId, snapId);
+    }
+    return outcome;
   }
 
   async getPendingPostMealSnap(userId: string): Promise<MealSnap | null> {
@@ -1692,6 +1807,9 @@ export class DatabaseStorage implements IStorage {
         newValue: glucoseImpact,
         changedBy: currentSnap.userId,
       }]).catch(e => console.warn("[health-history] reclassify write failed:", e?.message ?? e));
+    }
+    if (rows[0] && currentSnap) {
+      await this.upsertReportMealFactForSnap(currentSnap.userId, snapId);
     }
     return rows[0]?.localDate ?? null;
   }

@@ -27,6 +27,17 @@ export function classifyPostMealMmol(
   return "medium";
 }
 
+/**
+ * The product-wide higher-impact meaning is the persisted "high" impact
+ * label. Consumers with a final HStix-over-AI label use this predicate rather
+ * than creating a report-specific threshold or category.
+ */
+export function isHigherImpactGlucoseImpact(
+  impact: "low" | "medium" | "high" | string | null | undefined,
+): boolean {
+  return impact === "high";
+}
+
 export function deriveGlucoseGroupFromCondition(
   healthCondition: string | null | undefined,
 ): GlucoseGroup | null {

@@ -1,11 +1,11 @@
-export type ReportView = "daily" | "weekly";
+export type ReportView = "daily" | "two-month";
 
 export function getReportView(search: string): ReportView {
-  return new URLSearchParams(search).get("view") === "weekly" ? "weekly" : "daily";
+  return new URLSearchParams(search).get("view") === "two-month" ? "two-month" : "daily";
 }
 
 export function getReportPath(view: ReportView): string {
-  return view === "weekly" ? "/report?view=weekly" : "/report";
+  return view === "two-month" ? "/report?view=two-month" : "/report";
 }
 
 export function isReportLocation(location: string): boolean {

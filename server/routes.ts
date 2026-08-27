@@ -40,6 +40,7 @@ import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "./gluco
 import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
 import { awardHstixCoin, awardSnapCoin } from "./achievements";
+import { buildTwoMonthReport, getLatestTwoCompletedMonths } from "./two-month-report";
 
 type SnapRow = {
   mealType: string | null;
@@ -2613,6 +2614,41 @@ No explanation, just JSON.`,
     }
   });
 
+  app.get("/api/snap/two-month-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const now = new Date();
+      const profile = await storage.getProfile(userId);
+      const timezone = profile?.deviceTimezone ?? "UTC";
+      const window = getLatestTwoCompletedMonths(now, timezone);
+      // This also upgrades active rows written before report-fact retention
+      // was introduced. Once a snap is purged, its minimal fact stays.
+      await storage.backfillReportMealFacts(userId);
+      const [facts, firstMealLocalDate] = await Promise.all([
+        storage.getReportMealFacts(userId, window.startDate, window.endDate),
+        storage.getReportFirstMealLocalDate(userId),
+      ]);
+      return res.json(buildTwoMonthReport({
+        now,
+        timezone,
+        firstMealLocalDate,
+        glucoseGroup: "healthy",
+        meals: facts.map((fact, index) => {
+          return {
+            id: index + 1,
+            localDate: fact.localDate,
+            mealType: fact.mealType,
+            glucoseImpact: fact.finalImpact,
+            hstix: null,
+          };
+        }),
+      }));
+    } catch (error: any) {
+      console.error("Snap two-month-summary error:", error);
+      return res.status(500).json({ message: "Failed to fetch two-month summary." });
+    }
+  });
+
   app.get("/api/snap/weekly-summary", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -3842,6 +3878,11 @@ No explanation, just JSON.`,
         for (const [localDate, counts] of dayMap) {
           await storage.upsertDailyGlucose(userId, localDate, counts);
         }
+      }
+      // Preserve the final HStix-over-AI result and only the dimensions used
+      // for reporting before deleting the raw meal/photo record.
+      for (const snap of batch) {
+        await storage.upsertReportMealFactForSnap(snap.userId, snap.id);
       }
       // snap_daily_glucose is PERMANENT — only meal_snaps rows are purged here,
       // after their glucose counts have been aggregated into snap_daily_glucose.

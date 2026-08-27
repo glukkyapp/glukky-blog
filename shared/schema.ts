@@ -287,6 +287,23 @@ export const snapMonthlyArchive = pgTable("snap_monthly_archive", {
 export type SnapMonthlyArchive = typeof snapMonthlyArchive.$inferSelect;
 export type InsertSnapMonthlyArchive = typeof snapMonthlyArchive.$inferInsert;
 
+// Retains only the dimensions needed for the rolling report after the
+// corresponding meal_snap (and its food/photo data) reaches its 30-day purge.
+export const snapReportMealFacts = pgTable("snap_report_meal_facts", {
+  snapId: integer("snap_id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  localDate: date("local_date", { mode: "string" }).notNull(),
+  mealType: text("meal_type"),
+  finalImpact: text("final_impact"),
+}, (table) => ({
+  userDateIdx: index("snap_report_meal_facts_user_date_idx").on(table.userId, table.localDate),
+}));
+
+export const snapReportUserMetadata = pgTable("snap_report_user_metadata", {
+  userId: varchar("user_id").primaryKey(),
+  firstMealLocalDate: date("first_meal_local_date", { mode: "string" }).notNull(),
+});
+
 export const userGlucoseThresholds = pgTable("user_glucose_thresholds", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: varchar("user_id").notNull().unique(),

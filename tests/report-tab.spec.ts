@@ -38,7 +38,7 @@ test.describe("Report tab", () => {
     await setupUser(context, page);
   });
 
-  test("defaults to Daily, handles no yesterday data, and opens Weekly", async ({ page }) => {
+  test("defaults to Daily, handles no yesterday data, and opens Last 2 months", async ({ page }) => {
     await page.goto("/report");
 
     await expect(page).toHaveURL(/\/report$/);
@@ -48,16 +48,15 @@ test.describe("Report tab", () => {
     await expect(page.getByText("定時進食有助穩定全日血糖。", { exact: true })).toBeVisible();
     await expect(page.getByTestId("strip-meal-timeline")).toHaveCount(0);
     await expect(page.getByTestId("button-daily-view-meal")).toHaveCount(0);
-    await expect(page.getByTestId("card-weekly-preview")).toHaveCount(0);
-    await expect(page.getByTestId("button-open-weekly-report")).toHaveCount(0);
+    await expect(page.getByTestId("card-two-month-report")).toHaveCount(0);
     await expect(page.getByTestId("nav-tab-report")).toHaveAttribute("aria-current", "page");
 
-    await page.getByTestId("report-tab-weekly").click();
+    await page.getByTestId("report-tab-two-month").click();
 
-    await expect(page).toHaveURL(/\/report\?view=weekly$/);
-    await expect(page.getByTestId("report-tab-weekly")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("report-panel-weekly")).toBeVisible();
-    await expect(page.getByTestId("card-weekly-report")).toBeVisible();
+    await expect(page).toHaveURL(/\/report\?view=two-month$/);
+    await expect(page.getByTestId("report-tab-two-month")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("report-panel-two-month")).toBeVisible();
+    await expect(page.getByTestId("card-two-month-report")).toBeVisible();
   });
 
   test("keeps Report ownership only for food history entered from Report", async ({ page }) => {

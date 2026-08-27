@@ -243,6 +243,22 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
           CREATE UNIQUE INDEX IF NOT EXISTS hstix_readings_meal_unique_idx
           ON hstix_readings (meal_snap_id)`,
   },
+  {
+    name: "snap_report.create_retained_meal_facts",
+    sql: `CREATE TABLE IF NOT EXISTS snap_report_meal_facts (
+      snap_id INTEGER PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      local_date DATE NOT NULL,
+      meal_type TEXT,
+      final_impact TEXT
+    );
+    CREATE INDEX IF NOT EXISTS snap_report_meal_facts_user_date_idx
+      ON snap_report_meal_facts (user_id, local_date);
+    CREATE TABLE IF NOT EXISTS snap_report_user_metadata (
+      user_id VARCHAR PRIMARY KEY,
+      first_meal_local_date DATE NOT NULL
+    )`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {

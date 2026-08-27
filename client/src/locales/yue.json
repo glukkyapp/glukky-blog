@@ -970,6 +970,43 @@
     "s3_headline": "Glukky 貼身配合你",
     "s3_body": "根據你每週嘅狀況，Glukky 會貼心調整你嘅計劃。"
   },
+  "two_month_report": {
+    "page_title": "飲食報告",
+    "page_intro": "每日同最近兩個月嘅飲食重點，一目了然。",
+    "daily_tab": "噚日",
+    "tab": "最近兩個月",
+    "daily_finding": "噚日重點",
+    "see_meal": "了解呢餐",
+    "heading": "最近兩個月",
+    "loading": "載入緊報告…",
+    "not_enough_records": "繼續記錄餐點，而家記錄未夠，未可以比較最近兩個月。",
+    "no_clear_difference": "最近兩個月未見明顯差異。",
+    "named_observation": "最近兩個月，較高影響嘅餐點較常出現喺{{bucket}}。",
+    "progress": {
+      "first-incomplete-month": "繼續記錄今個月嘅餐點。完成兩個完整曆月之後，就可以睇你第一份兩個月報告。",
+      "one-completed-month": "已經有一個完整曆月嘅記錄。再完成一個完整曆月之後，就可以比較飲食規律。"
+    },
+    "cards": {
+      "mealtime": "食飯時間",
+      "weekday": "星期幾",
+      "weekday_weekend": "平日同週末"
+    },
+    "buckets": {
+      "breakfast": "早餐時段",
+      "lunch": "午餐時段",
+      "dinner": "晚餐時段",
+      "snack": "小食時段",
+      "monday": "星期一",
+      "tuesday": "星期二",
+      "wednesday": "星期三",
+      "thursday": "星期四",
+      "friday": "星期五",
+      "saturday": "星期六",
+      "sunday": "星期日",
+      "weekday": "平日",
+      "weekend": "週末"
+    }
+  },
   "health_info": {
     "heading": "健康資訊",
     "title": "健康資訊",

@@ -1,0 +1,39 @@
+Small API improvement
+Include the neutral reason in the API payload so the frontend can distinguish equal rates from a denominator-adjusted gap that simply did not clear 
+𝑧
+=
+1.4
+z=1.4, even if both initially render the same copy:
+
+ts
+type MonthlyComparisonCard = {
+  cardType: "mealtime" | "weekday" | "weekday-weekend";
+  state: "named" | "neutral" | "unavailable";
+  neutralReason?: "equal-rate" | "below-z-threshold";
+  leadingBucket?: string;
+  runnerUpBucket?: string;
+  leadingRate?: number;
+  runnerUpRate?: number;
+  zScore?: number;
+};
+That makes analytics, debugging, and future UI changes safer without asking the client to recompute any statistical logic.
+
+Timezone note
+The rolling-month function is correct only if localToday is already a user-local calendar date such as "2026-08-27".
+
+The key contract should be:
+
+The server converts the current instant into the user’s saved IANA device timezone first, derives the local year and month from that timezone, and passes that local calendar date into getRollingCompletedMonths.
+
+Avoid deriving the month from the server timezone or browser timezone. For a user in Hong Kong at 00:15 on March 1, the report window should be January–February; a server still on February 28 must not cause it to return December–January.
+
+Recommended final additions
+Add these as acceptance criteria:
+
+A final label of null does not count in either totalMeals or higherImpactMeals, unless the existing product explicitly treats unlabeled meals as valid logged meals. The denominator must be consistent across every card.
+
+The API returns cards in a fixed order: mealtime, weekday, then weekday-weekend; unavailable cards may remain in the response for diagnostics but must not render as cards.
+
+For weekday versus weekend, do not rank buckets or select a runner-up: compare the fixed weekday bucket against the fixed weekend bucket after independently applying their 10- and 4-meal minima.
+
+Use a small numeric tolerance for rate equality if rates can be derived from non-integer or transformed values. With integer counts divided by integer totals, direct equality is generally deterministic, but a tolerance makes intent clearer:
