@@ -42,3 +42,10 @@ uri = "file://exports/pre-removal-glukky-2026-08-26.zip"
 type = "unspecified"
 title = "Glukky pre-removal source archive"
 description = "Verified pre-removal source snapshots and removal manifest. Application source was not deleted or edited; removal will wait for your confirmation that this ZIP opens correctly. SHA-256 checksum is included beside the archive."
+
+[[outputs]]
+id = "QpmvdmZhMV9k6RjK5YRZf"
+uri = "file://exports/glukky-project-source-2026-08-27.zip"
+type = "unspecified"
+title = "Glukky Project Source — 2026-08-27"
+description = "Verified, restorable ZIP of the current Glukky source tree. It includes all current tracked application code, tests, migrations, configuration, documentation, canvas assets, screenshots, and source assets, plus an embedded file manifest. A secret-bearing attachment and prior historical export/archive material are intentionally excluded."
