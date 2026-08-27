@@ -104,6 +104,7 @@ export function initPostHog(consented = true): void {
     capture_pageview: "history_change",
     capture_pageleave: true,
     autocapture: false,
+    disable_session_recording: true,
     session_recording: { maskAllInputs: true },
     persistence: "localStorage+cookie",
     loaded: () => {
