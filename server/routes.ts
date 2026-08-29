@@ -3363,7 +3363,7 @@ No explanation, just JSON.`,
         if (food || query != null) {
           return res.status(403).json({ message: "Log more meals to unlock glucose patterns." });
         }
-        return res.json({ totalPaired: 0, totalSnaps, topList: [], aiOnlyList: [] });
+        return res.json({ totalPaired: 0, totalSnaps, topList: [] });
       }
       if (query != null) {
         const trimmed = query.trim();
@@ -3422,14 +3422,13 @@ No explanation, just JSON.`,
             ...detail,
             impactLevel: detail.avgPostMealMmol != null
               ? classifyPostMealMmol(detail.avgPostMealMmol, glucoseGroup, thresholds ?? undefined)
-              : detail.aiImpactLevel,
+              : null,
           },
         });
       }
-      const [totalPaired, patterns, aiOnlyList, profile, thresholds, hstixSnaps] = await Promise.all([
+      const [totalPaired, patterns, profile, thresholds, hstixSnaps] = await Promise.all([
         storage.getTotalPairedEntries(userId),
         storage.getGlucosePatterns(userId),
-        storage.getAiOnlyFoodRanking(userId),
         storage.getProfile(userId),
         storage.getUserGlucoseThresholds(userId),
         storage.getMealSnapsForHstixCards(userId),
@@ -3444,7 +3443,6 @@ No explanation, just JSON.`,
         })),
         hstixList: buildHstixFoodCards(hstixSnaps, glucoseGroup),
         hstixNeedsMoreReadings: buildHstixFoodsNeedingMoreReadings(hstixSnaps),
-        aiOnlyList,
       });
     } catch (error: any) {
       console.error("glucose-patterns error:", error);

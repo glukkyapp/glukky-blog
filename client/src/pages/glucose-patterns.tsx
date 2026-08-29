@@ -35,12 +35,6 @@ interface GlucosePatternEntry {
   impactLevel: GlucoseImpactLevel;
 }
 
-interface AiFoodEntry {
-  foodName: string;
-  impactLevel: GlucoseImpactLevel;
-  snapCount: number;
-}
-
 interface HstixFoodEntry {
   foodKey: string;
   foodNameEn: string;
@@ -86,7 +80,6 @@ interface PatternsData {
   topList: GlucosePatternEntry[];
   hstixList?: HstixFoodEntry[];
   hstixNeedsMoreReadings?: HstixNeedsMoreReadingsEntry[];
-  aiOnlyList?: AiFoodEntry[];
 }
 
 interface FoodSuggestion {
@@ -135,7 +128,6 @@ export default function GlucosePatterns() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const locale = i18n.language || "en";
-  const [mode, setMode] = useState<"ai" | "actual">("ai");
   const [impact, setImpact] = useState<GlucoseImpactLevel>("low");
   const [cardIndex, setCardIndex] = useState(0);
   const [search, setSearch] = useState("");
@@ -192,13 +184,6 @@ export default function GlucosePatterns() {
     },
   });
 
-  const aiSamples = useMemo(() => {
-    const foods = data?.aiOnlyList ?? [];
-    return Object.fromEntries(
-      IMPACT_LEVELS.map(level => [level, sampleFoods(foods.filter(food => food.impactLevel === level))]),
-    ) as Record<GlucoseImpactLevel, AiFoodEntry[]>;
-  }, [data?.aiOnlyList]);
-
   const hasMeasuredList = data?.hstixList !== undefined;
   const actualFoods = useMemo<ActualFood[]>(() => {
     // Tests and older clients may return only the pre-HStix payload. A defined
@@ -235,10 +220,8 @@ export default function GlucosePatterns() {
   })), [data?.hstixNeedsMoreReadings, locale]);
   const selectedNeedsMoreReading = needsMoreReadings.find(food => food.foodKey === selectedNeedsMoreFood) ?? null;
 
-  const activeFoods = mode === "ai" ? aiSamples[impact] : actualByImpact[impact];
-  const matchingCount = mode === "ai"
-    ? (data?.aiOnlyList ?? []).filter(food => food.impactLevel === impact).length
-    : actualFoods.filter(food => food.impactLevel === impact).length;
+  const activeFoods = actualByImpact[impact];
+  const matchingCount = actualFoods.filter(food => food.impactLevel === impact).length;
   const activeIndex = Math.min(cardIndex, Math.max(0, activeFoods.length - 1));
   const activeFood = activeFoods[activeIndex];
   const totalSnaps = data?.totalSnaps ?? 0;
@@ -250,11 +233,11 @@ export default function GlucosePatterns() {
   const showPersonalisedProgress = !hasMeasuredList && !isPersonalised && readingCount < PERSONALISED_THRESHOLD;
 
   useEffect(() => {
-    if (mode === "actual" && hasMeasuredList && firstMeasuredImpact) {
+    if (hasMeasuredList && firstMeasuredImpact) {
       setImpact(firstMeasuredImpact);
       setCardIndex(0);
     }
-  }, [mode, hasMeasuredList, firstMeasuredImpact]);
+  }, [hasMeasuredList, firstMeasuredImpact]);
 
   useEffect(() => {
     if (needsMoreReadings.length === 0) {
@@ -266,8 +249,7 @@ export default function GlucosePatterns() {
     }
   }, [needsMoreReadings, selectedNeedsMoreFood]);
 
-  const setSelection = (nextMode: "ai" | "actual", nextImpact: GlucoseImpactLevel) => {
-    setMode(nextMode);
+  const setSelection = (nextImpact: GlucoseImpactLevel) => {
     setImpact(nextImpact);
     setCardIndex(0);
   };
@@ -330,22 +312,12 @@ export default function GlucosePatterns() {
 
         {!isLoading && !isLocked && (
           <section data-testid="glucose-patterns-list">
-            <div className="mb-4 grid grid-cols-2 rounded-2xl bg-muted p-1" aria-label={t("glucose.pattern_mode_label")}>
-              {(["ai", "actual"] as const).map(item => (
-                <button key={item} type="button" aria-pressed={mode === item} onClick={() => setSelection(item, impact)} className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${mode === item ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`} data-testid={`glucose-mode-${item}`}>
-                  {t(`glucose.pattern_mode_${item}`)}
-                </button>
-              ))}
-            </div>
-
             <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
               {IMPACT_LEVELS.map(level => {
-                const count = mode === "ai"
-                  ? (data?.aiOnlyList ?? []).filter(food => food.impactLevel === level).length
-                  : actualFoods.filter(food => food.impactLevel === level).length;
+                const count = actualFoods.filter(food => food.impactLevel === level).length;
                 return (
-                  <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(mode, level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
-                    <span className="block">{t(mode === "actual" && hasMeasuredList ? `glucose.pattern_measured_impact_${level}` : `glucose.impact_${level}`)}</span>
+                  <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
+                    <span className="block">{t(hasMeasuredList ? `glucose.pattern_measured_impact_${level}` : `glucose.impact_${level}`)}</span>
                     <span className="block text-[11px] opacity-80">{count}</span>
                   </button>
                 );
@@ -376,7 +348,7 @@ export default function GlucosePatterns() {
 
             <div aria-live="polite" data-testid="glucose-ranking-panel">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">{mode === "ai" ? t("glucose.pattern_ai_heading") : t("glucose.pattern_actual_heading")}</p>
+                <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_actual_heading")}</p>
                 <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
               </div>
               {activeFood ? (
@@ -384,13 +356,13 @@ export default function GlucosePatterns() {
                   <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
                     <div className="mb-5 flex items-start justify-between gap-3">
                       <div>
-                        {mode === "actual" && !hasMeasuredList && <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t(`glucose.pattern_rank_${activeIndex + 1}`)}</p>}
+                        {!hasMeasuredList && <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t(`glucose.pattern_rank_${activeIndex + 1}`)}</p>}
                         <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">{mode === "ai" ? t("glucose.pattern_ai_estimate") : ("lift" in activeFood ? t("glucose.pattern_hstix_reading") : t("glucose.pattern_actual_reading"))}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{"lift" in activeFood ? t("glucose.pattern_hstix_reading") : t("glucose.pattern_actual_reading")}</p>
                       </div>
-                      <ImpactBadge impact={impact} measured={mode === "actual" && hasMeasuredList} />
+                      <ImpactBadge impact={impact} measured={hasMeasuredList} />
                     </div>
-                    {mode === "actual" && "lift" in activeFood ? (
+                    {hasMeasuredList && "lift" in activeFood ? (
                       <div>
                         <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
                         <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
@@ -417,12 +389,12 @@ export default function GlucosePatterns() {
                           </div>
                         )}
                       </div>
-                    ) : mode === "actual" ? (
+                    ) : (
                       <div className="flex items-end justify-between">
                         <div><p className="text-xs text-muted-foreground">{t("glucose.pattern_average")}</p><p className="text-2xl font-bold text-foreground">{(activeFood as GlucosePatternEntry).avgPostMealMmol.toFixed(1)} <span className="text-sm font-medium">mmol/L</span></p></div>
                         <p className="text-sm text-muted-foreground">{t("glucose.patterns_count", { n: (activeFood as GlucosePatternEntry).readingCount })}</p>
                       </div>
-                    ) : <p className="text-sm text-muted-foreground">{t("glucose.pattern_ai_snap_count", { count: (activeFood as AiFoodEntry).snapCount })}</p>}
+                    )}
                   </article>
                   {activeFoods.length > 1 && (
                     <div className="mt-3 flex items-center justify-between">
@@ -432,9 +404,9 @@ export default function GlucosePatterns() {
                     </div>
                   )}
                 </div>
-              ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{mode === "ai" ? t("glucose.pattern_ai_empty") : t("glucose.pattern_actual_empty")}</div>}
+              ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
             </div>
-            {mode === "actual" && hasMeasuredList && needsMoreReadings.length > 0 && (
+            {hasMeasuredList && needsMoreReadings.length > 0 && (
               <section className="mt-6" data-testid="glucose-needs-more-readings">
                 <h2 className="text-sm font-semibold text-foreground">{t("glucose.pattern_needs_more_readings_heading")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_needs_more_readings_description")}</p>

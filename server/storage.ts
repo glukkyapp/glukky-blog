@@ -143,7 +143,6 @@ export interface IStorage {
   getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null>;
   expireStalePostMealWindows(): Promise<{ expired: number }>;
   getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number): Promise<number[]>;
-  getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]>;
   getDailyGlucoseForMonth(userId: string, month: string): Promise<Array<{ localDate: string; lowCount: number; mediumCount: number; highCount: number }>>;
   getMonthlySymptomCounts(userId: string, month: string): Promise<{ symptoms: Record<string, number>; totalWithSymptom: number; snackCount: number }>;
 
@@ -187,12 +186,6 @@ export interface HealthHistoryEntry {
   changedBy: string;
 }
 
-export interface AiFoodEntry {
-  foodName: string;
-  impactLevel: "low" | "medium" | "high";
-  snapCount: number;
-}
-
 export interface GlucosePatternEntry {
   foodName: string;
   avgPostMealMmol: number;
@@ -217,7 +210,6 @@ export interface GlucosePatternFoodDetail {
   foodName: string;
   avgPostMealMmol: number | null;
   readingCount: number;
-  aiImpactLevel: "low" | "medium" | "high" | null;
   readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
 }
 
@@ -1524,8 +1516,7 @@ export class DatabaseStorage implements IStorage {
           SELECT hr.recorded_at FROM hstix_readings hr
           WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
           ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_recorded_at, ms.snap_time) AS recorded_at,
-        ms.glucose_impact
+        ), ms.post_meal_recorded_at, ms.snap_time) AS recorded_at
       FROM meal_snaps ms
       WHERE ms.user_id = ${userId}
         AND ms.food_name = ${foodName}
@@ -1543,18 +1534,11 @@ export class DatabaseStorage implements IStorage {
     const avgPostMealMmol = readings.length > 0
       ? readings.reduce((sum, reading) => sum + reading.postMealGlucoseMmol, 0) / readings.length
       : null;
-    const impactScores: number[] = rows
-      .map(row => row.glucose_impact === "low" ? 1 : row.glucose_impact === "medium" ? 2 : row.glucose_impact === "high" ? 3 : null)
-      .filter((score): score is 1 | 2 | 3 => score != null);
-    const avgImpact = impactScores.length > 0
-      ? impactScores.reduce((sum, score) => sum + score, 0) / impactScores.length
-      : null;
 
     return {
       foodName,
       avgPostMealMmol,
       readingCount: readings.length,
-      aiImpactLevel: avgImpact == null ? null : avgImpact >= 2.5 ? "high" : avgImpact >= 1.5 ? "medium" : "low",
       readings,
     };
   }
@@ -1622,56 +1606,6 @@ export class DatabaseStorage implements IStorage {
       LIMIT ${limit}
     `);
     return (result.rows as any[]).map(row => parseFloat(row.post_meal));
-  }
-
-  async getAiOnlyFoodRanking(userId: string): Promise<AiFoodEntry[]> {
-    const result = await db.execute(sql`
-      WITH hstix_foods AS (
-        SELECT DISTINCT ms2.food_name
-        FROM meal_snaps ms2
-        INNER JOIN hstix_readings hr
-          ON hr.meal_snap_id = ms2.id
-          AND hr.user_id = ms2.user_id
-        WHERE ms2.user_id = ${userId}
-          AND ms2.food_name IS NOT NULL
-        UNION
-        SELECT DISTINCT ms2.food_name
-        FROM meal_snaps ms2
-        WHERE ms2.user_id = ${userId}
-          AND ms2.post_meal_glucose_mmol IS NOT NULL
-          AND ms2.food_name IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM hstix_readings hr
-            WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms2.id
-          )
-      )
-      SELECT
-        ms.food_name,
-        AVG(CASE
-          WHEN ms.glucose_impact = 'low'    THEN 1
-          WHEN ms.glucose_impact = 'medium' THEN 2
-          WHEN ms.glucose_impact = 'high'   THEN 3
-          ELSE 2
-        END)::float AS avg_score,
-        COUNT(*)::int AS snap_count
-      FROM meal_snaps ms
-      LEFT JOIN hstix_foods hf ON ms.food_name = hf.food_name
-      WHERE ms.user_id = ${userId}
-        AND ms.food_name IS NOT NULL
-        AND ms.glucose_impact IS NOT NULL
-        AND hf.food_name IS NULL
-        AND ms.snap_time >= NOW() - INTERVAL '30 days'
-      GROUP BY ms.food_name
-      ORDER BY avg_score DESC
-    `);
-    return (result.rows as any[]).map(row => {
-      const score = parseFloat(row.avg_score);
-      return {
-        foodName: row.food_name,
-        snapCount: parseInt(row.snap_count, 10),
-        impactLevel: score >= 2.5 ? "high" : score >= 1.5 ? "medium" : "low",
-      } as AiFoodEntry;
-    });
   }
 
   async getUserGlucoseThresholds(userId: string): Promise<UserGlucoseThresholds | null> {

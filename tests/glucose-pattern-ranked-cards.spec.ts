@@ -21,7 +21,7 @@ async function setupUser(context: BrowserContext, page: Page) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test("Glucose Patterns opens on AI and lets users browse actual cards and food details", async ({ context, page }) => {
+test("Glucose Patterns opens on recorded cards and lets users browse food details", async ({ context, page }) => {
   await setupUser(context, page);
 
   await page.route("**/api/snap/glucose-patterns**", async route => {
@@ -55,10 +55,6 @@ test("Glucose Patterns opens on AI and lets users browse actual cards and food d
           { foodName: "Apple", avgPostMealMmol: 5.4, readingCount: 2, impactLevel: "low" },
           { foodName: "Yogurt", avgPostMealMmol: 5.7, readingCount: 4, impactLevel: "low" },
         ],
-        aiOnlyList: [
-          { foodName: "Tofu", impactLevel: "low", snapCount: 2 },
-          { foodName: "Berries", impactLevel: "low", snapCount: 1 },
-        ],
       }),
     });
   });
@@ -68,12 +64,11 @@ test("Glucose Patterns opens on AI and lets users browse actual cards and food d
   }));
 
   await page.goto("/glucose-patterns");
-  await expect(page.getByTestId("glucose-mode-ai")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("glucose-mode-ai")).toHaveCount(0);
+  await expect(page.getByTestId("glucose-mode-actual")).toHaveCount(0);
   await expect(page.getByTestId("glucose-impact-low")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
 
-  await page.getByTestId("glucose-mode-actual").click();
-  await expect(page.getByTestId("glucose-mode-actual")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("Apple");
   await expect(page.getByTestId("glucose-ranking-card-0")).toContainText(/1st place|第一名/);
   await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("5.4");
@@ -146,7 +141,6 @@ test("Needs more readings is a selector and keeps the measured card visible", as
         { foodKey: "chicken", foodNameEn: "Chicken", foodNameZhHant: "雞肉", foodNameYue: "雞肉", totalMeals: 12 },
         { foodKey: "tofu", foodNameEn: "Tofu", foodNameZhHant: "豆腐", foodNameYue: "豆腐", totalMeals: 18 },
       ],
-      aiOnlyList: [],
     }),
   }));
   await page.route("**/api/user/glucose-thresholds", route => route.fulfill({
@@ -155,7 +149,6 @@ test("Needs more readings is a selector and keeps the measured card visible", as
   }));
 
   await page.goto("/glucose-patterns");
-  await page.getByTestId("glucose-mode-actual").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
   await expect(page.getByTestId("glucose-needs-more-readings-select")).toBeVisible();
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("12 eligible readings");
@@ -219,7 +212,6 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
         },
       ],
       hstixNeedsMoreReadings: [],
-      aiOnlyList: [{ foodName: "AI-only food", impactLevel: "low", snapCount: 3 }],
     }),
   }));
   await page.route("**/api/user/glucose-thresholds", route => route.fulfill({
@@ -228,10 +220,6 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   }));
 
   await page.goto("/glucose-patterns");
-  await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
-  await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
-
-  await page.getByTestId("glucose-mode-actual").click();
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
   await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
