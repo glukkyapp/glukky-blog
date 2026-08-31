@@ -1,0 +1,11 @@
+Clarify: Which Categories Count as "Most Frequent"
+The example "你最喜歡的類別：飯類" uses a carb category, and the new title says "碳水化合物" (carbohydrates specifically). This implies the single-sentence summary should rank only carbCategories (rice, noodles, bread, potatoes, other) and exclude sweetSubtypes (sweet_drink, sweet_food) from the "most frequent" comparison — otherwise a card titled "carbohydrates you like" could end up naming a sugary drink as the top result, which reads oddly. This should be stated explicitly in the ticket rather than left implicit, since it changes which backend field drives the sentence.
+
+Clarify: Should Retained-History Search Stay Mode-Scoped
+Your fix correctly identifies that buildGeneralGlucosePatternComponents and buildHstixFoodCards both apply ranking-eligibility filters (minimum meal count, lift/reliability gates) on top of basic validity, which wrongly excludes valid-but-infrequent foods like chicken breast. The fix should remove that eligibility filter for search purposes — but it's ambiguous whether search should still be scoped per mode (General mode searches generalMeals, HStix mode searches hstixSnaps) or become one merged pool across both modes.
+
+I'd recommend keeping it mode-scoped: General mode searches all retained non-deleted meal history (via buildRetainedFoodHistory(generalMeals)), and HStix mode searches only HStix-linked history (buildRetainedFoodHistory(hstixSnaps)), each now skipping the card-eligibility filter within its own source. This preserves the meaning of "HStix recorded food" mode — showing only foods actually tracked with glucose readings — while fixing the General-mode gap that misses chicken breast. Merging both pools into one universal search would blur that distinction and let HStix mode surface foods with no HStix history at all.
+
+Verify: New Fallback Copy Needs Locale Entries
+The proposed fallback state — "Recorded in 2 meals" / "No glucose pattern data is available for this food yet." — is new user-facing copy not currently in any locale file. This needs explicit English, Traditional Chinese, and Cantonese strings added to the "Update... locale strings" step, since the ticket's done-criteria says "clear... insufficient-data states" but doesn't list the actual keys.
+
