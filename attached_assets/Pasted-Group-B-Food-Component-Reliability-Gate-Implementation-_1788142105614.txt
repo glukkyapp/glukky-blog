@@ -1,0 +1,149 @@
+Group B Food-Component Reliability Gate — Implementation Spec
+Scope
+This task modifies Group B only: the measured HStix individual food-component impact cards.
+
+Do not touch:
+
+Group A — the AI-estimated/general food ranking. Group A is not "users without HStix"; a user may have both Group A and Group B cards simultaneously.
+
+Monthly Report — its existing two-proportion z-test comparisons already use mutually exclusive samples and require no change.
+
+Carb-only filtering — a separate, already-agreed task. Do not bundle it in here unless explicitly confirmed in scope.
+
+Existing Displayed Ranking (DO NOT CHANGE)
+text
+lift_score(food)  = mean of {High=2, Medium=1, Low=0} over qualifying
+                     meals that contain the food
+lift_ratio(food)  = lift_score(food) / baseline_lift_score(all qualifying
+                     HStix meals)
+
+lift_ratio < 0.8         → Lower impact
+lift_ratio > 1.2         → Higher impact
+0.8 – 1.2                → no Higher/Lower card
+food needs ≥ 25 qualifying measured meals (existing floor, unchanged)
+baseline_lift_score(all_meals) keeps its current meaning — all qualifying meals — for this displayed ratio only. Nothing above changes.
+
+Preconditions (report back before implementing)
+Locate the existing two-proportion z-test used by the Monthly Report. Confirm whether it is callable as a pure function without modifying its existing call sites. It will only be used as a documented fallback (see below), not as the primary method.
+
+Confirm the 25-reading minimum and 0.8/1.2 bands are understood to stay unchanged — this task only adds an additional internal gate.
+
+Step 1 — Build the Two Comparison Groups
+For each tested food, from qualifying HStix meals only:
+
+Group 1: meals containing the tested food
+
+Group 2: meals not containing the tested food
+
+These two groups must be mutually exclusive. This grouping is internal only — it is never used for the displayed lift_ratio, which continues to use the all-meals baseline as-is.
+
+Deduplication rule: before building Group 1 or Group 2, de-duplicate the tested food's canonical foodKey within each meal. One qualifying meal contributes at most one 0/1/2 score to either group for a given tested food, even if the food appears twice in that meal's component list.
+
+Step 2 — Assign Scores
+For every meal in both groups, use the same mapping that produces the displayed lift_score:
+
+text
+Low = 0, Medium = 1, High = 2
+Group 2 meals get this same 0/1/2 treatment based on their own HStix classification — "not containing the food" does not mean the score is forced to 0. It reflects that meal's own actual Low/Medium/High outcome.
+
+Step 3 — Preferred Reliability Calculation (0/1/2 score test)
+Do not substitute a High-rate-only proportion test unless Step 3 cannot be implemented (see Fallback below). A proportion-only test can miss real differences — two foods can share the same High-rate while having very different Medium/Low distributions and therefore different lift_score values; the reliability test must reflect the same signal the card displays.
+
+text
+n1, mean1, variance1 = count, mean, sample variance of Group 1's 0/1/2 scores
+n2, mean2, variance2 = count, mean, sample variance of Group 2's 0/1/2 scores
+
+SE = sqrt((variance1 / n1) + (variance2 / n2))
+Use sample variance with denominator (n − 1) in each group. Do not pool the two group variances — the two groups may have different spread.
+
+If SE > 0:
+
+text
+reliabilityScore = (mean1 - mean2) / SE
+If SE == 0 (e.g., every meal in a group has an identical score):
+
+text
+if mean1 == mean2 → suppress the card (no observed difference)
+if mean1 > mean2  → directional evidence passes only for Higher
+if mean1 < mean2  → directional evidence passes only for Lower
+This is an internal reliability statistic. Do not expose reliabilityScore, SE, variance, or any test terminology in the UI.
+
+Fallback (only if Step 3 cannot be implemented without a new stats path)
+Reuse the Monthly Report's two-proportion z-test on P(High):
+
+text
+p1 = High count in Group 1 / n1
+p2 = High count in Group 2 / n2
+pooled_p = (x1 + x2) / (n1 + n2)
+z = (p1 - p2) / sqrt(pooled_p * (1 - pooled_p) * (1/n1 + 1/n2))
+If pooled_p is 0 or 1, do not calculate z.
+
+If p1 == p2, suppress the card.
+
+If p1 != p2 and pooled_p is 0 or 1, report back rather than silently choosing a different statistical approach.
+
+If this fallback is used, explicitly document that it ignores the Medium-vs-Low distinction and is a weaker approximation of the preferred method.
+
+Step 4 — Sample Size Guards
+Both groups must independently satisfy the minimum:
+
+text
+n1 >= 25   (meals containing the food — existing floor)
+n2 >= 25   (meals not containing the food — new requirement)
+If either fails, suppress the Higher/Lower card. These are two separate, independently enforced conditions — a food with n1 = 200 still fails this gate if n2 = 10.
+
+Step 5 — Eligibility Order (avoid unnecessary computation)
+Apply checks in this order so Steps 1–4 only run when needed:
+
+n1 >= 25 (existing).
+
+lift_ratio < 0.8 or lift_ratio > 1.2 (existing).
+
+Only if both above pass: build Group 2, check n2 >= 25, then run Step 3/Fallback.
+
+Foods in the 0.8–1.2 range never reach the reliability gate — no card either way.
+
+Step 6 — Final Display Rule (direction must match the label)
+text
+Show Higher only if:
+  lift_ratio > 1.2 AND
+  reliabilityScore >= 1.96 (when SE > 0), or mean1 > mean2 (when SE == 0)
+
+Show Lower only if:
+  lift_ratio < 0.8 AND
+  reliabilityScore <= -1.96 (when SE > 0), or mean1 < mean2 (when SE == 0)
+
+Otherwise: suppress the card.
+Do not use |reliabilityScore| >= 1.96 alone — a food could satisfy the magnitude threshold while its measured direction contradicts its lift_ratio label. Direction must agree with the label being shown.
+
+What NOT to Change
+Displayed lift_score, lift_ratio, or the all-meals baseline used for that display.
+
+The 25-reading floor or the 0.8/1.2 ratio boundaries.
+
+Group A cards.
+
+Monthly Report's existing z-test comparisons or call sites.
+
+Carb-only food filtering (separate task).
+
+Required Unit Tests
+Ratio passes, reliability gate fails (n≈25, moderate gap) → no card.
+
+Ratio and reliability gate pass in the same direction → card shown.
+
+Ratio in 0.8–1.2 → no card; reliability gate never computed.
+
+Higher ratio but reliability gate indicates negative direction, or Lower ratio but positive direction → no card (direction mismatch).
+
+n2 < 25 → no card, regardless of ratio or reliability score.
+
+Staple food present in nearly all meals (small or zero n2) does not divide by zero or crash.
+
+SE == 0 with mean1 == mean2 → suppressed; SE == 0 with mean1 != mean2 → passes only in the matching direction.
+
+Two foods with identical High-rate but different Medium/Low distributions produce different reliabilityScore results (confirms Step 3 uses 0/1/2 means, not High-rate alone).
+
+Duplicate food component within a single meal counts as one observation, not two, in either group.
+
+Group 2 correctly excludes all meals containing the tested food; displayed lift_ratio and its baseline remain based on all meals, unaffected by this internal grouping.
