@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   IMPACT_LEVELS,
-  rankActualFoods,
   rankMeasuredFoods,
   sampleFoods,
   type GlucoseImpactLevel,
@@ -28,11 +27,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface GlucosePatternEntry {
-  foodName: string;
-  avgPostMealMmol: number;
-  readingCount: number;
-  impactLevel: GlucoseImpactLevel;
+type ComponentType = "carb" | "sweet_food" | "sweet_drink";
+
+interface GeneralGlucosePatternEntry {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+  carbCategory: string | null;
+  sweetCategory: "sweet_food" | "sweet_drink" | null;
+  componentType: ComponentType;
+  mealCount: number;
 }
 
 interface HstixFoodEntry {
@@ -40,6 +45,9 @@ interface HstixFoodEntry {
   foodNameEn: string;
   foodNameZhHant: string;
   foodNameYue: string;
+  carbCategory: string | null;
+  sweetCategory: "sweet_food" | "sweet_drink" | null;
+  componentType: ComponentType;
   totalMeals: number;
   highMeals: number;
   mediumMeals: number;
@@ -72,30 +80,47 @@ interface HstixNeedsMoreReadingsEntry {
   totalMeals: number;
 }
 
-type ActualFood = GlucosePatternEntry | (HstixFoodEntry & { foodName: string; readingCount: number });
+type ActualFood = HstixFoodEntry & { foodName: string; readingCount: number };
 
 interface PatternsData {
   totalPaired: number;
   totalSnaps: number;
-  topList: GlucosePatternEntry[];
+  topList: GeneralGlucosePatternEntry[];
   hstixList?: HstixFoodEntry[];
   hstixNeedsMoreReadings?: HstixNeedsMoreReadingsEntry[];
 }
 
 interface FoodSuggestion {
-  foodName: string;
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
 }
 
-interface FoodDetail {
+interface HstixFoodDetail {
+  kind: "hstix";
+  foodKey: string;
   foodName: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+  carbCategory: string | null;
+  sweetCategory: "sweet_food" | "sweet_drink" | null;
+  componentType: ComponentType;
   avgPostMealMmol: number | null;
   readingCount: number;
-  impactLevel: GlucoseImpactLevel | null;
+  impactLevel: GlucoseImpactLevel;
   readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
-  lift?: number;
-  highMeals?: number;
-  nonHighMeals?: number;
+  lift: number;
+  highMeals: number;
+  nonHighMeals: number;
 }
+
+interface GeneralFoodDetail extends GeneralGlucosePatternEntry {
+  kind: "general";
+}
+
+type FoodDetail = HstixFoodDetail | GeneralFoodDetail;
 
 interface GlucoseThresholdsData {
   glucoseGroup: string | null;
@@ -184,32 +209,28 @@ export default function GlucosePatterns() {
     },
   });
 
-  const hasMeasuredList = data?.hstixList !== undefined;
-  const actualFoods = useMemo<ActualFood[]>(() => {
-    // Tests and older clients may return only the pre-HStix payload. A defined
-    // empty hstixList remains intentionally empty rather than falling back.
-    if (!hasMeasuredList) return data?.topList ?? [];
-    return (data?.hstixList ?? []).map(food => ({
+  const hasMeasuredList = (data?.hstixList?.length ?? 0) > 0 ||
+    (data?.hstixNeedsMoreReadings?.length ?? 0) > 0;
+  const generalFoods = useMemo(() => (data?.topList ?? []).map(food => ({
+    ...food,
+    foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
+  })), [data?.topList, locale]);
+  const actualFoods = useMemo<ActualFood[]>(() =>
+    (data?.hstixList ?? []).map(food => ({
       ...food,
       foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
       readingCount: food.totalMeals,
-    }));
-  }, [data?.topList, data?.hstixList, hasMeasuredList, locale]);
+    })),
+  [data?.hstixList, locale]);
 
   const actualByImpact = useMemo(() => Object.fromEntries(
     IMPACT_LEVELS.map(level => {
       const foods = actualFoods.filter(food => food.impactLevel === level);
-      if (hasMeasuredList) {
-        const measuredFoods = foods.filter((food): food is HstixFoodEntry & { foodName: string; readingCount: number } =>
-          "lift" in food,
-        );
-        return [level, level === "medium"
-          ? sampleFoods(measuredFoods)
-          : rankMeasuredFoods(measuredFoods, level)];
-      }
-      return [level, rankActualFoods(foods.filter((food): food is GlucosePatternEntry => !("lift" in food)), level)];
+      return [level, level === "medium"
+        ? sampleFoods(foods)
+        : rankMeasuredFoods(foods, level)];
     }),
-  ) as Record<GlucoseImpactLevel, ActualFood[]>, [actualFoods, hasMeasuredList]);
+  ) as Record<GlucoseImpactLevel, ActualFood[]>, [actualFoods]);
   const firstMeasuredImpact = useMemo(
     () => IMPACT_LEVELS.find(level => actualByImpact[level].length > 0),
     [actualByImpact],
@@ -254,8 +275,11 @@ export default function GlucosePatterns() {
     setCardIndex(0);
   };
 
-  const selectSuggestion = (foodName: string) => {
-    setSelectedFood(foodName);
+  const localizedFoodName = (food: Pick<FoodSuggestion, "foodNameEn" | "foodNameZhHant" | "foodNameYue">) =>
+    locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn;
+
+  const selectSuggestion = (suggestion: FoodSuggestion) => {
+    setSelectedFood(suggestion.foodKey);
     setSearch("");
   };
 
@@ -312,17 +336,19 @@ export default function GlucosePatterns() {
 
         {!isLoading && !isLocked && (
           <section data-testid="glucose-patterns-list">
-            <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
-              {IMPACT_LEVELS.map(level => {
-                const count = actualFoods.filter(food => food.impactLevel === level).length;
-                return (
-                  <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
-                    <span className="block">{t(hasMeasuredList ? `glucose.pattern_measured_impact_${level}` : `glucose.impact_${level}`)}</span>
-                    <span className="block text-[11px] opacity-80">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {hasMeasuredList && (
+              <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
+                {IMPACT_LEVELS.map(level => {
+                  const count = actualFoods.filter(food => food.impactLevel === level).length;
+                  return (
+                    <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
+                      <span className="block">{t(`glucose.pattern_measured_impact_${level}`)}</span>
+                      <span className="block text-[11px] opacity-80">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="mb-5">
               <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="glucose-food-search">{t("glucose.pattern_search_label")}</label>
@@ -334,8 +360,8 @@ export default function GlucosePatterns() {
                 <div className="mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm" data-testid="glucose-search-suggestions">
                   {suggestionsLoading && <p className="px-3 py-2.5 text-sm text-muted-foreground">{t("glucose.pattern_loading")}</p>}
                   {!suggestionsLoading && (suggestionData?.suggestions ?? []).map(suggestion => (
-                    <button key={suggestion.foodName} type="button" className="block w-full px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none" onClick={() => selectSuggestion(suggestion.foodName)} data-testid={`glucose-search-suggestion-${suggestion.foodName}`}>
-                      {suggestion.foodName}
+                    <button key={suggestion.foodKey} type="button" className="block w-full px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none" onClick={() => selectSuggestion(suggestion)} data-testid={`glucose-search-suggestion-${suggestion.foodKey}`}>
+                      {localizedFoodName(suggestion)}
                     </button>
                   ))}
                   {!suggestionsLoading && (suggestionData?.suggestions ?? []).length === 0 && <p className="px-3 py-2.5 text-sm text-muted-foreground">{t("glucose.pattern_search_empty")}</p>}
@@ -346,23 +372,25 @@ export default function GlucosePatterns() {
             {showPersonalisedProgress && <p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground" data-testid="text-personalised-progress">{t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}</p>}
             {!hasMeasuredList && isPersonalised && !showPersonalisedPopup && <p className="mb-3 text-sm italic text-muted-foreground" data-testid="text-personalised-disclaimer">{t("glucose.personalised_disclaimer", { count: readingCount })}</p>}
 
-            <div aria-live="polite" data-testid="glucose-ranking-panel">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_actual_heading")}</p>
-                <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
-              </div>
-              {activeFood ? (
-                <div className="overflow-hidden" onPointerDown={event => { swipeStartX.current = event.clientX; }} onPointerUp={handlePointerUp} onPointerCancel={() => { swipeStartX.current = null; }}>
-                  <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
-                    <div className="mb-5 flex items-start justify-between gap-3">
-                      <div>
-                        {!hasMeasuredList && <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t(`glucose.pattern_rank_${activeIndex + 1}`)}</p>}
-                        <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">{"lift" in activeFood ? t("glucose.pattern_hstix_reading") : t("glucose.pattern_actual_reading")}</p>
+            {hasMeasuredList ? (
+              <div aria-live="polite" data-testid="glucose-ranking-panel">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_actual_heading")}</p>
+                  <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
+                </div>
+                {activeFood ? (
+                  <div className="overflow-hidden" onPointerDown={event => { swipeStartX.current = event.clientX; }} onPointerUp={handlePointerUp} onPointerCancel={() => { swipeStartX.current = null; }}>
+                    <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
+                      <div className="mb-5 flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
+                          <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_hstix_reading")}</p>
+                          <p className="mt-1 text-xs font-medium text-muted-foreground" data-testid="glucose-component-type">
+                            {t(`glucose.pattern_component_type_${activeFood.componentType}`)}
+                          </p>
+                        </div>
+                        <ImpactBadge impact={impact} measured />
                       </div>
-                      <ImpactBadge impact={impact} measured={hasMeasuredList} />
-                    </div>
-                    {hasMeasuredList && "lift" in activeFood ? (
                       <div>
                         <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
                         <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
@@ -389,23 +417,42 @@ export default function GlucosePatterns() {
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="flex items-end justify-between">
-                        <div><p className="text-xs text-muted-foreground">{t("glucose.pattern_average")}</p><p className="text-2xl font-bold text-foreground">{(activeFood as GlucosePatternEntry).avgPostMealMmol.toFixed(1)} <span className="text-sm font-medium">mmol/L</span></p></div>
-                        <p className="text-sm text-muted-foreground">{t("glucose.patterns_count", { n: (activeFood as GlucosePatternEntry).readingCount })}</p>
+                    </article>
+                    {activeFoods.length > 1 && (
+                      <div className="mt-3 flex items-center justify-between">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(-1)} disabled={activeIndex === 0} aria-label={t("glucose.pattern_previous")}><ChevronLeft size={18} /></Button>
+                        <p className="text-xs text-muted-foreground">{activeIndex + 1} / {activeFoods.length}</p>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(1)} disabled={activeIndex === activeFoods.length - 1} aria-label={t("glucose.pattern_next")}><ChevronRight size={18} /></Button>
                       </div>
                     )}
-                  </article>
-                  {activeFoods.length > 1 && (
-                    <div className="mt-3 flex items-center justify-between">
-                      <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(-1)} disabled={activeIndex === 0} aria-label={t("glucose.pattern_previous")}><ChevronLeft size={18} /></Button>
-                      <p className="text-xs text-muted-foreground">{activeIndex + 1} / {activeFoods.length}</p>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(1)} disabled={activeIndex === activeFoods.length - 1} aria-label={t("glucose.pattern_next")}><ChevronRight size={18} /></Button>
+                  </div>
+                ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
+              </div>
+            ) : (
+              <div data-testid="glucose-general-component-list">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_general_heading")}</p>
+                  <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: generalFoods.length })}</p>
+                </div>
+                <p className="mb-3 text-sm text-muted-foreground">{t("glucose.pattern_general_description")}</p>
+                <div className="space-y-2">
+                  {generalFoods.map(food => (
+                    <button key={food.foodKey} type="button" onClick={() => setSelectedFood(food.foodKey)} className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left" data-testid={`glucose-general-component-${food.foodKey}`}>
+                      <span>
+                        <span className="block text-sm font-semibold text-foreground">{food.foodName}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">{t(`glucose.pattern_component_type_${food.componentType}`)}</span>
+                      </span>
+                      <span className="text-sm text-muted-foreground">{t("glucose.pattern_frequency_count", { count: food.mealCount })}</span>
+                    </button>
+                  ))}
+                  {generalFoods.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+                      {t("glucose.pattern_general_empty")}
                     </div>
                   )}
                 </div>
-              ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
-            </div>
+              </div>
+            )}
             {hasMeasuredList && needsMoreReadings.length > 0 && (
               <section className="mt-6" data-testid="glucose-needs-more-readings">
                 <h2 className="text-sm font-semibold text-foreground">{t("glucose.pattern_needs_more_readings_heading")}</h2>
@@ -445,28 +492,36 @@ export default function GlucosePatterns() {
           {!detailLoading && detailData?.detail && (
             <>
               <DialogHeader>
-                <DialogTitle>{detailData.detail.foodName}</DialogTitle>
-                <DialogDescription>{t("glucose.pattern_detail_description")}</DialogDescription>
+                <DialogTitle>{localizedFoodName(detailData.detail)}</DialogTitle>
+                <DialogDescription>{t(detailData.detail.kind === "hstix" ? "glucose.pattern_detail_description" : "glucose.pattern_general_description")}</DialogDescription>
               </DialogHeader>
-              <div className="flex items-center justify-between rounded-xl bg-muted/60 p-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("glucose.pattern_aggregate_impact")}</p>
-                  <div className="mt-1">
-                    {detailData.detail.impactLevel
-                      ? <ImpactBadge impact={detailData.detail.impactLevel} />
-                      : <span className="text-sm text-muted-foreground">{t("glucose.pattern_impact_unassessed")}</span>}
+              {detailData.detail.kind === "general" ? (
+                <div className="flex items-center justify-between rounded-xl bg-muted/60 p-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("glucose.pattern_component_type_label")}</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{t(`glucose.pattern_component_type_${detailData.detail.componentType}`)}</p>
                   </div>
+                  <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_frequency_count", { count: detailData.detail.mealCount })}</p>
                 </div>
-                {detailData.detail.avgPostMealMmol != null && <div className="text-right"><p className="text-xs text-muted-foreground">{t("glucose.pattern_average")}</p><p className="text-lg font-bold text-foreground">{detailData.detail.avgPostMealMmol.toFixed(1)} mmol/L</p></div>}
-              </div>
-              {detailData.detail.readings.length > 0 ? (
-                <div>
-                  <p className="mb-2 text-sm font-semibold text-foreground">{t("glucose.pattern_reading_history")}</p>
-                  <ul className="space-y-2">
-                    {detailData.detail.readings.map(reading => <li key={`${reading.recordedAt}-${reading.postMealGlucoseMmol}`} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5"><span className="text-sm text-muted-foreground">{formatDate(reading.recordedAt)}</span><span className="text-sm font-bold text-foreground">{reading.postMealGlucoseMmol.toFixed(1)} mmol/L</span></li>)}
-                  </ul>
-                </div>
-              ) : <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{t("glucose.pattern_no_readings")}</p>}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between rounded-xl bg-muted/60 p-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t("glucose.pattern_aggregate_impact")}</p>
+                      <div className="mt-1"><ImpactBadge impact={detailData.detail.impactLevel} measured /></div>
+                    </div>
+                    <div className="text-right"><p className="text-xs text-muted-foreground">{t("glucose.pattern_average")}</p><p className="text-lg font-bold text-foreground">{detailData.detail.avgPostMealMmol?.toFixed(1)} mmol/L</p></div>
+                  </div>
+                  {detailData.detail.readings.length > 0 ? (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold text-foreground">{t("glucose.pattern_reading_history")}</p>
+                      <ul className="space-y-2">
+                        {detailData.detail.readings.map(reading => <li key={`${reading.recordedAt}-${reading.postMealGlucoseMmol}`} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5"><span className="text-sm text-muted-foreground">{formatDate(reading.recordedAt)}</span><span className="text-sm font-bold text-foreground">{reading.postMealGlucoseMmol.toFixed(1)} mmol/L</span></li>)}
+                      </ul>
+                    </div>
+                  ) : <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{t("glucose.pattern_no_readings")}</p>}
+                </>
+              )}
             </>
           )}
         </DialogContent>

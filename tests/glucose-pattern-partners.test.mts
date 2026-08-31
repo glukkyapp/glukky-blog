@@ -25,6 +25,8 @@ function food(name: string): FoodItemMetadata {
     isCarb: false,
     carbCategory: null,
     carbSubtype: null,
+    sweetCategory: "sweet_food",
+    isSweet: true,
     subtypeConfirmed: false,
     source: "claude",
   };
@@ -49,6 +51,8 @@ function card(item: FoodItemMetadata, impactLevel: HstixFoodCard["impactLevel"] 
     foodNameZhHant: item.nameZhHant,
     foodNameYue: item.nameYue,
     carbCategory: item.carbCategory === "rice" ? "rice" : null,
+    sweetCategory: item.sweetCategory ?? null,
+    componentType: item.isCarb ? "carb" : item.sweetCategory === "sweet_drink" ? "sweet_drink" : "sweet_food",
     totalMeals: 25,
     highMeals: 15,
     mediumMeals: 5,
@@ -226,18 +230,15 @@ check(
   "only the five smallest-lift Lower cards enter partner analysis",
   !buildHstixPartnerInsights(sixthLowMeals, lowCandidates).has(foodItemKey(sixthLow)),
 );
-const nonCarbIndex = food("non-carb index");
-const nonCarbIndexCard = card(nonCarbIndex, "high", 3);
-const carbIndexCard = card(rice, "high", 1);
-const mixedIndexInsights = buildHstixPartnerInsights(
-  Array.from({ length: 25 }, () => meal(8, [rice, roastPork])),
-  [nonCarbIndexCard, carbIndexCard],
+const sweetIndex = food("sweet index");
+const sweetIndexInsight = insightFor(
+  sweetIndex,
+  Array.from({ length: 25 }, () => meal(8, [sweetIndex, rice])),
 );
 check(
-  "only carb cards enter index candidate analysis while non-carb partners remain eligible",
-  !mixedIndexInsights.has(foodItemKey(nonCarbIndex)) &&
-    mixedIndexInsights.get(foodItemKey(rice))?.kind === "dominant" &&
-    mixedIndexInsights.get(foodItemKey(rice))?.partner.foodKey === foodItemKey(roastPork),
+  "sweet-only cards enter index candidate analysis under the shared component gate",
+  sweetIndexInsight?.kind === "dominant" &&
+    sweetIndexInsight.partner.foodKey === foodItemKey(rice),
 );
 const measuredCards = buildHstixFoodCards([
   ...Array.from({ length: 25 }, () => meal(8.2, [rice, roastPork])),

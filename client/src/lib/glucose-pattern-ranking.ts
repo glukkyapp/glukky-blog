@@ -1,25 +1,6 @@
 export type GlucoseImpactLevel = "low" | "medium" | "high";
 
-export interface RankableGlucoseFood {
-  avgPostMealMmol: number;
-  readingCount: number;
-}
-
 export const IMPACT_LEVELS: GlucoseImpactLevel[] = ["low", "medium", "high"];
-
-export function rankActualFoods<T extends RankableGlucoseFood>(
-  foods: T[],
-  impact: GlucoseImpactLevel,
-): T[] {
-  return [...foods]
-    .sort((a, b) => {
-      const mmolOrder = impact === "high"
-        ? b.avgPostMealMmol - a.avgPostMealMmol
-        : a.avgPostMealMmol - b.avgPostMealMmol;
-      return mmolOrder || b.readingCount - a.readingCount;
-    })
-    .slice(0, 5);
-}
 
 export interface RankableMeasuredFood {
   foodKey: string;

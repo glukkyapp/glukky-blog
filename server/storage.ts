@@ -137,10 +137,10 @@ export interface IStorage {
   getGlucosePrediction(userId: string, comboKey: string): Promise<{ avgPostMeal: number | null; entryCount: number }>;
   getTotalPairedEntries(userId: string): Promise<number>;
   getTotalSnaps(userId: string): Promise<number>;
-  getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }>;
-  getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]>;
-  searchGlucosePatternFoods(userId: string, query: string): Promise<GlucosePatternFoodSuggestion[]>;
-  getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null>;
+  getMealSnapsForGlucosePatterns(userId: string): Promise<Array<{
+    foodItems: FoodItemMetadata[] | null;
+    isDeleted: boolean;
+  }>>;
   expireStalePostMealWindows(): Promise<{ expired: number }>;
   getGlucoseSpikeHistoryByFoodName(userId: string, foodName: string, limit: number): Promise<number[]>;
   getDailyGlucoseForMonth(userId: string, month: string): Promise<Array<{ localDate: string; lowCount: number; mediumCount: number; highCount: number }>>;
@@ -184,33 +184,6 @@ export interface HealthHistoryEntry {
   changedAt: Date;
   changeReason: string | null;
   changedBy: string;
-}
-
-export interface GlucosePatternEntry {
-  foodName: string;
-  avgPostMealMmol: number;
-  readingCount: number;
-  hasMultipleCombos: boolean;
-}
-
-export interface GlucoseDrilldownEntry {
-  comboKey: string | null;
-  portion: string | null;
-  sauces: string | null;
-  extras: string | null;
-  avgPostMealMmol: number;
-  readingCount: number;
-}
-
-export interface GlucosePatternFoodSuggestion {
-  foodName: string;
-}
-
-export interface GlucosePatternFoodDetail {
-  foodName: string;
-  avgPostMealMmol: number | null;
-  readingCount: number;
-  readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1424,123 +1397,15 @@ export class DatabaseStorage implements IStorage {
     return parseInt((result.rows[0] as any)?.cnt ?? "0", 10);
   }
 
-  async getGlucosePatterns(userId: string): Promise<{ topList: GlucosePatternEntry[] }> {
-    const result = await db.execute(sql`
-      SELECT
-        ms.food_name,
-        AVG(COALESCE((
-          SELECT hr.glucose_mmol FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_glucose_mmol)) AS avg_post_meal,
-        COUNT(*)::int AS entry_count,
-        COUNT(DISTINCT ms.combo_key)::int AS combo_count
-      FROM meal_snaps ms
-      WHERE ms.user_id = ${userId}
-        AND COALESCE((
-          SELECT hr.glucose_mmol FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_glucose_mmol) IS NOT NULL
-        AND ms.food_name IS NOT NULL
-      GROUP BY ms.food_name
-      ORDER BY avg_post_meal DESC
-    `);
-    return {
-      topList: (result.rows as any[]).map(row => ({
-        foodName: row.food_name,
-        avgPostMealMmol: parseFloat(row.avg_post_meal),
-        readingCount: parseInt(row.entry_count, 10),
-        hasMultipleCombos: parseInt(row.combo_count, 10) > 1,
-      })),
-    };
-  }
-
-  async getGlucosePatternDrilldown(userId: string, foodName: string): Promise<GlucoseDrilldownEntry[]> {
-    const result = await db.execute(sql`
-      SELECT
-        ms.combo_key,
-        ms.portion,
-        ms.sauces,
-        ms.extras,
-        AVG(COALESCE((
-          SELECT hr.glucose_mmol FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_glucose_mmol)) AS avg_post_meal,
-        COUNT(*)::int AS entry_count
-      FROM meal_snaps ms
-      WHERE ms.user_id = ${userId}
-        AND ms.food_name = ${foodName}
-        AND COALESCE((
-          SELECT hr.glucose_mmol FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_glucose_mmol) IS NOT NULL
-      GROUP BY ms.combo_key, ms.portion, ms.sauces, ms.extras
-      ORDER BY avg_post_meal DESC
-    `);
-    return (result.rows as any[]).map(row => ({
-      comboKey: row.combo_key ?? null,
-      portion: row.portion ?? null,
-      sauces: row.sauces ?? null,
-      extras: row.extras ?? null,
-      avgPostMealMmol: parseFloat(row.avg_post_meal),
-      readingCount: parseInt(row.entry_count, 10),
-    }));
-  }
-
-  async searchGlucosePatternFoods(userId: string, query: string): Promise<GlucosePatternFoodSuggestion[]> {
-    const result = await db.execute(sql`
-      SELECT ms.food_name, MAX(ms.snap_time) AS latest_snap
-      FROM meal_snaps ms
-      WHERE ms.user_id = ${userId}
-        AND ms.food_name IS NOT NULL
-        AND ms.food_name ILIKE ${`%${query}%`}
-      GROUP BY ms.food_name
-      ORDER BY latest_snap DESC, ms.food_name ASC
-      LIMIT 8
-    `);
-    return (result.rows as any[]).map(row => ({ foodName: row.food_name }));
-  }
-
-  async getGlucosePatternFoodDetail(userId: string, foodName: string): Promise<GlucosePatternFoodDetail | null> {
-    const result = await db.execute(sql`
-      SELECT
-        COALESCE((
-          SELECT hr.glucose_mmol FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_glucose_mmol) AS post_meal_glucose_mmol,
-        COALESCE((
-          SELECT hr.recorded_at FROM hstix_readings hr
-          WHERE hr.user_id = ${userId} AND hr.meal_snap_id = ms.id
-          ORDER BY hr.recorded_at DESC LIMIT 1
-        ), ms.post_meal_recorded_at, ms.snap_time) AS recorded_at
-      FROM meal_snaps ms
-      WHERE ms.user_id = ${userId}
-        AND ms.food_name = ${foodName}
-      ORDER BY COALESCE(ms.post_meal_recorded_at, ms.snap_time) DESC
-    `);
-    const rows = result.rows as any[];
-    if (rows.length === 0) return null;
-
-    const readings = rows
-      .filter(row => row.post_meal_glucose_mmol != null)
-      .map(row => ({
-        recordedAt: new Date(row.recorded_at).toISOString(),
-        postMealGlucoseMmol: parseFloat(row.post_meal_glucose_mmol),
-      }));
-    const avgPostMealMmol = readings.length > 0
-      ? readings.reduce((sum, reading) => sum + reading.postMealGlucoseMmol, 0) / readings.length
-      : null;
-
-    return {
-      foodName,
-      avgPostMealMmol,
-      readingCount: readings.length,
-      readings,
-    };
+  async getMealSnapsForGlucosePatterns(userId: string): Promise<Array<{
+    foodItems: FoodItemMetadata[] | null;
+    isDeleted: boolean;
+  }>> {
+    return db.select({
+      foodItems: mealSnaps.foodItems,
+      isDeleted: mealSnaps.isDeleted,
+    }).from(mealSnaps)
+      .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.isDeleted, false)));
   }
 
   async expireStalePostMealWindows(): Promise<{ expired: number }> {

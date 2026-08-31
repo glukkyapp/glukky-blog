@@ -36,7 +36,12 @@ import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
 import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
 import { buildFoodFrequencySummary } from "./food-frequency";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "./food-items";
-import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "./glucose-patterns";
+import {
+  buildGeneralGlucosePatternComponents,
+  buildHstixFoodCards,
+  buildHstixFoodsNeedingMoreReadings,
+  isEligibleGlucosePatternComponent,
+} from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
 import { awardHstixCoin, awardSnapCoin } from "./achievements";
@@ -429,16 +434,16 @@ export async function registerRoutes(
   app.get("/api/user/pdf-export", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const [raw, totalPaired, patterns] = await Promise.all([
+      const [raw, totalPaired, generalPatternMeals] = await Promise.all([
         storage.exportUserData(userId),
         storage.getTotalPairedEntries(userId),
-        storage.getGlucosePatterns(userId),
+        storage.getMealSnapsForGlucosePatterns(userId),
       ]);
       const profileRow = (raw.user_profiles as any[])[0] ?? {};
       const userRow = (raw.users as any[])[0] ?? {};
       const LOCKED_THRESHOLD = 10;
       const patternUnlocked = totalPaired >= LOCKED_THRESHOLD;
-      const topList = patterns.topList ?? [];
+      const topList = buildGeneralGlucosePatternComponents(generalPatternMeals);
 
       const allSnaps = (raw.meal_snaps as any[]).filter((s: any) => s.foodName);
       const realEntries = allSnaps
@@ -464,7 +469,7 @@ export async function registerRoutes(
         sectionFood: string; colFood: string; colImpact: string; noMeals: string;
         aiEstimated: string;
         sectionPattern: string; patternLocked: string;
-        highestFood: string; lowestFood: string;
+        mostRecordedComponent: string; leastRecordedComponent: string;
         t2dm: string; prediabetes: string; healthy: string;
       };
 
@@ -483,7 +488,7 @@ export async function registerRoutes(
           aiEstimated: "AI estimated",
           sectionPattern: "Food Pattern",
           patternLocked: "Food pattern insights become available after 10 meals with paired glucose readings.",
-          highestFood: "Highest Impact Food", lowestFood: "Lowest Impact Food",
+          mostRecordedComponent: "Most Recorded Component", leastRecordedComponent: "Least Recorded Component",
           t2dm: "Type 2 Diabetes", prediabetes: "Pre-diabetes", healthy: "Healthy",
         },
         "zh-Hant": {
@@ -499,7 +504,7 @@ export async function registerRoutes(
           aiEstimated: "AI 估算",
           sectionPattern: "飲食模式",
           patternLocked: "記錄 10 餐配對血糖數據後，可解鎖飲食模式分析。",
-          highestFood: "血糖影響最高的食物", lowestFood: "血糖影響最低的食物",
+          mostRecordedComponent: "記錄最多的食物成分", leastRecordedComponent: "記錄最少的食物成分",
           t2dm: "第二型糖尿病", prediabetes: "糖尿病前期", healthy: "健康",
         },
       };
@@ -608,11 +613,17 @@ export async function registerRoutes(
       if (!patternUnlocked) {
         doc.font(F).fontSize(11).fillColor("#888888").text(L.patternLocked);
       } else {
-        const highestFood = topList.length > 0 ? topList[0].foodName : L.na;
-        const lowestFood = topList.length > 1 ? topList[topList.length - 1].foodName : L.na;
+        const localizedComponentName = (component: typeof topList[number]) =>
+          lang === "zh-Hant"
+            ? component.foodNameZhHant
+            : lang === "yue"
+              ? component.foodNameYue
+              : component.foodNameEn;
+        const highestFood = topList.length > 0 ? localizedComponentName(topList[0]) : L.na;
+        const lowestFood = topList.length > 1 ? localizedComponentName(topList[topList.length - 1]) : L.na;
         const patternRows = [
-          [L.highestFood, highestFood],
-          [L.lowestFood, lowestFood],
+          [L.mostRecordedComponent, highestFood],
+          [L.leastRecordedComponent, lowestFood],
         ];
         for (const [label, value] of patternRows) {
           doc.font(F).fontSize(11).fillColor("#444444").text(label, 50, doc.y, { continued: true, width: 200 });
@@ -3368,35 +3379,46 @@ No explanation, just JSON.`,
       if (query != null) {
         const trimmed = query.trim();
         if (!trimmed) return res.json({ suggestions: [] });
-        const [suggestions, hstixSnaps, profile, thresholds] = await Promise.all([
-          storage.searchGlucosePatternFoods(userId, trimmed.slice(0, 100)),
+        const [generalMeals, hstixSnaps, profile] = await Promise.all([
+          storage.getMealSnapsForGlucosePatterns(userId),
           storage.getMealSnapsForHstixCards(userId),
           storage.getProfile(userId),
-          storage.getUserGlucoseThresholds(userId),
         ]);
         const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
-        const hstixSuggestions = buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined)
+        const normalizedQuery = trimmed.slice(0, 100).toLocaleLowerCase();
+        const hstixSuggestions = buildHstixFoodCards(hstixSnaps, glucoseGroup)
           .filter(card => [card.foodNameEn, card.foodNameZhHant, card.foodNameYue]
-            .some(name => name.toLocaleLowerCase().includes(trimmed.toLocaleLowerCase())))
-          .map(card => ({ foodName: card.foodNameEn }));
-        const unique = new Map<string, { foodName: string }>();
-        [...hstixSuggestions, ...suggestions].forEach(suggestion => unique.set(suggestion.foodName, suggestion));
+            .some(name => name.toLocaleLowerCase().includes(normalizedQuery)));
+        const generalSuggestions = buildGeneralGlucosePatternComponents(generalMeals)
+          .filter(component => [component.foodNameEn, component.foodNameZhHant, component.foodNameYue]
+            .some(name => name.toLocaleLowerCase().includes(normalizedQuery)));
+        const unique = new Map<string, {
+          foodKey: string;
+          foodNameEn: string;
+          foodNameZhHant: string;
+          foodNameYue: string;
+        }>();
+        [...hstixSuggestions, ...generalSuggestions].forEach(suggestion => unique.set(suggestion.foodKey, {
+          foodKey: suggestion.foodKey,
+          foodNameEn: suggestion.foodNameEn,
+          foodNameZhHant: suggestion.foodNameZhHant,
+          foodNameYue: suggestion.foodNameYue,
+        }));
         return res.json({ suggestions: Array.from(unique.values()).slice(0, 8) });
       }
       if (food) {
-        const [detail, hstixSnaps, profile, thresholds] = await Promise.all([
-          storage.getGlucosePatternFoodDetail(userId, food),
+        const [generalMeals, hstixSnaps, profile] = await Promise.all([
+          storage.getMealSnapsForGlucosePatterns(userId),
           storage.getMealSnapsForHstixCards(userId),
           storage.getProfile(userId),
-          storage.getUserGlucoseThresholds(userId),
         ]);
         const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
-        const hstixCard = buildHstixFoodCards(hstixSnaps, glucoseGroup, thresholds ?? undefined)
+        const hstixCard = buildHstixFoodCards(hstixSnaps, glucoseGroup)
           .find(card => food === card.foodKey || [card.foodNameEn, card.foodNameZhHant, card.foodNameYue].includes(food));
         if (hstixCard) {
           const readings = hstixSnaps
             .filter(snap => typeof snap.postMealGlucoseMmol === "number" && (snap.foodItems ?? []).some(item =>
-              item.source !== "derived" && foodItemKey(item) === hstixCard.foodKey,
+              isEligibleGlucosePatternComponent(item) && foodItemKey(item) === hstixCard.foodKey,
             ))
             .map(snap => ({
               recordedAt: snap.recordedAt.toISOString(),
@@ -3405,7 +3427,15 @@ No explanation, just JSON.`,
             .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
           return res.json({
             detail: {
+              kind: "hstix",
+              foodKey: hstixCard.foodKey,
               foodName: hstixCard.foodNameEn,
+              foodNameEn: hstixCard.foodNameEn,
+              foodNameZhHant: hstixCard.foodNameZhHant,
+              foodNameYue: hstixCard.foodNameYue,
+              carbCategory: hstixCard.carbCategory,
+              sweetCategory: hstixCard.sweetCategory,
+              componentType: hstixCard.componentType,
               avgPostMealMmol: hstixCard.avgPostMealMmol,
               readingCount: hstixCard.totalMeals,
               impactLevel: hstixCard.impactLevel,
@@ -3416,31 +3446,28 @@ No explanation, just JSON.`,
             },
           });
         }
-        if (!detail) return res.status(404).json({ message: "Food not found." });
+        const generalComponent = buildGeneralGlucosePatternComponents(generalMeals)
+          .find(component => food === component.foodKey ||
+            [component.foodNameEn, component.foodNameZhHant, component.foodNameYue].includes(food));
+        if (!generalComponent) return res.status(404).json({ message: "Food not found." });
         return res.json({
           detail: {
-            ...detail,
-            impactLevel: detail.avgPostMealMmol != null
-              ? classifyPostMealMmol(detail.avgPostMealMmol, glucoseGroup, thresholds ?? undefined)
-              : null,
+            kind: "general",
+            ...generalComponent,
           },
         });
       }
-      const [totalPaired, patterns, profile, thresholds, hstixSnaps] = await Promise.all([
+      const [totalPaired, generalMeals, profile, hstixSnaps] = await Promise.all([
         storage.getTotalPairedEntries(userId),
-        storage.getGlucosePatterns(userId),
+        storage.getMealSnapsForGlucosePatterns(userId),
         storage.getProfile(userId),
-        storage.getUserGlucoseThresholds(userId),
         storage.getMealSnapsForHstixCards(userId),
       ]);
       const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
       res.json({
         totalPaired,
         totalSnaps,
-        topList: patterns.topList.map(entry => ({
-          ...entry,
-          impactLevel: classifyPostMealMmol(entry.avgPostMealMmol, glucoseGroup, thresholds ?? undefined),
-        })),
+        topList: buildGeneralGlucosePatternComponents(generalMeals),
         hstixList: buildHstixFoodCards(hstixSnaps, glucoseGroup),
         hstixNeedsMoreReadings: buildHstixFoodsNeedingMoreReadings(hstixSnaps),
       });

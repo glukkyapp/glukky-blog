@@ -1,0 +1,13 @@
+Task: Audit and align General (all-food) glucose pattern path with HStix component path
+
+Please review server/storage.ts (General/all-food SQL aggregation) and server/glucose-patterns.ts (HStix component path) and answer/fix the following:
+
+Carb identification consistency: Confirm the General path uses the exact same food-component extraction and classifyCarbCategory/carb-subtype logic as the HStix path — not the whole food_name string. If General currently groups by whole dish name instead of decomposed carb components, refactor it to decompose meals the same way section 4 does, and filter to carb items only (isCarb === true).
+
+Remove calculation from General path: General should not average post_meal_glucose_mmol or call classifyPostMealMmol. Replace the current average+classify logic with a simple frequency count: for each carb component, count how many meals it appeared in (using the same eligible-meal set — HStix + AI-estimated, no minimum sample floor required unless you think one is warranted for display stability). Rank output by frequency descending. No lift, no impact level, no z-score for this path.
+
+Live update check: Confirm whether this General frequency ranking recalculates on every new logged meal (live query) or depends on a cached/batch job. If cached, state the refresh trigger and whether a newly logged meal is reflected immediately or after a delay. Do the same check for the HStix component path (section 4) — confirm both paths' refresh behavior explicitly, since inconsistent staleness between the two would be confusing if a user compares them.
+
+z-value threshold consistency: Flag every place in the codebase where a z-value or z-like reliability threshold gates a displayed result (bimonthly report's 1.4, HStix reliability gate's 1.96). List them with file/line references, and confirm whether the differing thresholds are intentional (documented rationale) or should be unified. Do not change the thresholds without confirmation — just report findings.
+
+Do not modify the HStix-only component path (section 4) — it is correct as-is per prior design discussion. Scope this task to the General/all-food path (section 3) plus the z-threshold audit (item 4, read-only).

@@ -3,13 +3,16 @@ import { readFileSync } from "node:fs";
 import type { FoodItemMetadata } from "../shared/schema";
 import {
   classifyCarbCategory,
+  foodItemKey,
   normalize,
   prepareFoodItems,
 } from "../server/carb-subtypes";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "../server/food-items";
 import {
+  buildGeneralGlucosePatternComponents,
   buildHstixFoodCards,
   buildHstixFoodsNeedingMoreReadings,
+  isEligibleGlucosePatternComponent,
   isReliableHstixFoodEvidence,
 } from "../server/glucose-patterns";
 import { classifyHstixTiming } from "../server/hstix-timing";
@@ -41,6 +44,22 @@ const chicken: FoodItemMetadata = {
   subtypeConfirmed: false,
   source: "claude",
 };
+const milkTea: FoodItemMetadata = {
+  ...chicken,
+  nameEn: "milk tea",
+  nameZhHant: "奶茶",
+  nameYue: "奶茶",
+  sweetCategory: "sweet_drink",
+  isSweet: true,
+};
+const cake: FoodItemMetadata = {
+  ...chicken,
+  nameEn: "cake",
+  nameZhHant: "蛋糕",
+  nameYue: "蛋糕",
+  sweetCategory: "sweet_food",
+  isSweet: true,
+};
 
 console.log("Carb category normalization");
 check("normalization trims, NFKC-normalizes, and removes spaces", normalize("　白　飯　") === "白飯");
@@ -67,6 +86,52 @@ check("advice item metadata is server-owned rather than subtype-confirmed", advi
 check("machine-readable food items are removed before advice is stored or shown",
   !stripAdviceFoodItems(adviceWithItems).includes('"foodItems"'));
 
+console.log("\nGlucose Patterns component eligibility");
+const unsupportedCarb: FoodItemMetadata = {
+  ...rice,
+  nameEn: "unsupported carb",
+  nameZhHant: "未支援碳水",
+  nameYue: "未支援碳水",
+  carbCategory: "unsupported",
+};
+check("supported carbs and stored sweet-only components share the analysis gate",
+  isEligibleGlucosePatternComponent(rice) &&
+  isEligibleGlucosePatternComponent(milkTea) &&
+  isEligibleGlucosePatternComponent(cake));
+check("ordinary foods, unsupported carb metadata, and derived components are excluded",
+  !isEligibleGlucosePatternComponent(chicken) &&
+  !isEligibleGlucosePatternComponent(unsupportedCarb) &&
+  !isEligibleGlucosePatternComponent({ ...milkTea, source: "derived" }));
+const generalComponents = buildGeneralGlucosePatternComponents([
+  { foodItems: [rice, rice, milkTea, chicken] },
+  { foodItems: [rice, cake] },
+  { foodItems: [cake] },
+  { foodItems: [{ ...milkTea, source: "derived" }] },
+  { foodItems: [unsupportedCarb] },
+  { foodItems: [rice], isDeleted: true },
+]);
+check("General counts each stable multilingual component once per active meal",
+  generalComponents.find(component => component.foodKey === foodItemKey(rice))?.mealCount === 2 &&
+  generalComponents.find(component => component.foodKey === foodItemKey(cake))?.mealCount === 2 &&
+  generalComponents.find(component => component.foodKey === foodItemKey(milkTea))?.mealCount === 1);
+check("General has no sample floor and orders frequency ties by stable component key",
+  generalComponents.length === 3 &&
+  generalComponents[0].mealCount === 2 &&
+  generalComponents[1].mealCount === 2 &&
+  generalComponents[0].foodKey.localeCompare(generalComponents[1].foodKey) < 0);
+check("General retains sweet type labels without creating glucose classifications",
+  generalComponents.find(component => component.foodKey === foodItemKey(milkTea))?.componentType === "sweet_drink" &&
+  generalComponents.find(component => component.foodKey === foodItemKey(cake))?.sweetCategory === "sweet_food" &&
+  !("impactLevel" in generalComponents[0]) &&
+  !("avgPostMealMmol" in generalComponents[0]));
+
+const onTimeMeal = (postMealGlucoseMmol: number, foodItems: FoodItemMetadata[]) => ({
+  postMealGlucoseMmol,
+  foodItems,
+  mealTimingConfidence: "on_time" as const,
+  isCanonicalHstix: true,
+});
+
 console.log("\nMeasured HStix lift");
 const measuredMeals = Array.from({ length: 25 }, (_, index) => ({
   postMealGlucoseMmol: index < 5 ? 8.2 : 5.5,
@@ -86,6 +151,13 @@ check("food reading bands use fixed phase-one thresholds, not personalised thres
   fixedBandCards.find(card => card.foodNameZhHant === "白飯")?.highMeals === 5);
 check("non-carb foods do not produce measured index cards even with 25 eligible meals",
   cards.some(card => card.foodNameEn === "white rice") && !cards.some(card => card.foodNameEn === "Hainanese chicken"));
+const sweetCards = buildHstixFoodCards([
+  ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [milkTea])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])),
+], "healthy");
+check("sweet-only components receive measured cards with their stored type label",
+  sweetCards.find(card => card.foodKey === foodItemKey(milkTea))?.componentType === "sweet_drink" &&
+  sweetCards.find(card => card.foodKey === foodItemKey(milkTea))?.sweetCategory === "sweet_drink");
 check("component-free extras never appear as evidence cards", !cards.some(card => card.foodNameEn === "gravy"));
 const withDerivedRice = buildHstixFoodCards([
   ...measuredMeals,
@@ -131,12 +203,6 @@ const highExtra: FoodItemMetadata = {
   nameZhHant: "高額外食物",
   nameYue: "高額外食物",
 };
-const onTimeMeal = (postMealGlucoseMmol: number, foodItems: FoodItemMetadata[]) => ({
-  postMealGlucoseMmol,
-  foodItems,
-  mealTimingConfidence: "on_time" as const,
-  isCanonicalHstix: true,
-});
 const expectedRankCard = (extraMeals: ReturnType<typeof onTimeMeal>[]) =>
   buildHstixFoodCards([
     ...Array.from({ length: 25 }, () => onTimeMeal(6.5, [mediumStaple])),
@@ -185,12 +251,12 @@ check(
   buildHstixFoodCards([
     ...Array.from({ length: 24 }, () => onTimeMeal(5.5, [lowExtra])),
     onTimeMeal(6.5, [lowExtra]),
-    ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+    ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])),
   ], "healthy").length === 0,
 );
 const reliableHighCard = buildHstixFoodCards([
   ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra])),
-  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])),
 ], "healthy").find(card => card.foodNameEn === "high extra");
 check(
   "directional evidence that clears the internal threshold remains Higher",
@@ -233,7 +299,7 @@ check(
 );
 const duplicateFoodCard = buildHstixFoodCards([
   ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra, highExtra])),
-  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])),
 ], "healthy").find(card => card.foodNameEn === "high extra");
 check(
   "duplicate food components count once in the present group",
@@ -243,13 +309,13 @@ check(
   "a staple with a small or empty food-absent group cannot make a directional card",
   buildHstixFoodCards([
     ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [mediumStaple])),
-    ...Array.from({ length: 10 }, () => onTimeMeal(8.2, [])),
+    ...Array.from({ length: 10 }, () => onTimeMeal(8.2, [highExtra])),
   ], "healthy").length === 0 &&
     !isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 0), [], "low"),
 );
 const unchangedMathCard = buildHstixFoodCards([
   ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra])),
-  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])),
 ], "healthy").find(card => card.foodNameEn === "high extra");
 check(
   "the reliability gate leaves displayed lift and baseline-derived counts unchanged",

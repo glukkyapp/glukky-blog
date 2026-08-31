@@ -1,4 +1,4 @@
-import type { FoodItemMetadata } from "@shared/schema";
+import type { FoodItemMetadata, SweetCategory } from "@shared/schema";
 import {
   foodItemKey,
   type CarbCategory,
@@ -42,6 +42,8 @@ export interface HstixFoodCard {
   foodNameZhHant: string;
   foodNameYue: string;
   carbCategory: CarbCategory;
+  sweetCategory: SweetCategory;
+  componentType: GlucosePatternComponentType;
   totalMeals: number;
   highMeals: number;
   mediumMeals: number;
@@ -60,7 +62,28 @@ export interface HstixFoodNeedsMoreReadings {
   foodNameEn: string;
   foodNameZhHant: string;
   foodNameYue: string;
+  carbCategory: CarbCategory;
+  sweetCategory: SweetCategory;
+  componentType: GlucosePatternComponentType;
   totalMeals: number;
+}
+
+export type GlucosePatternComponentType = "carb" | "sweet_food" | "sweet_drink";
+
+export interface GeneralGlucosePatternComponent {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+  carbCategory: CarbCategory;
+  sweetCategory: SweetCategory;
+  componentType: GlucosePatternComponentType;
+  mealCount: number;
+}
+
+export interface GeneralGlucosePatternMeal {
+  foodItems: FoodItemMetadata[] | null;
+  isDeleted?: boolean;
 }
 
 type FoodStats = {
@@ -74,26 +97,13 @@ type FoodStats = {
 };
 
 export const MIN_HSTIX_FOOD_MEALS_FOR_CARD = 25;
+// This stricter bar directly supports food-avoidance guidance and is
+// achievable because each directional card already requires at least
+// 25 food-present and 25 food-absent eligible meals.
 const HSTIX_RELIABILITY_THRESHOLD = 1.96;
 
 function impactScore(impact: "low" | "medium" | "high"): number {
   return impact === "high" ? 2 : impact === "medium" ? 1 : 0;
-}
-
-/**
- * This is the single evidence gate for measured-food analysis. It deliberately
- * excludes legacy meal-row values, delayed/unrelated readings, non-finite
- * values, and any meal whose food list contains a display-time-derived
- * component.
- */
-export function filterEligibleHstixMeals(snaps: HstixMealForCards[]): HstixMealForCards[] {
-  return snaps.filter(s =>
-    typeof s.postMealGlucoseMmol === "number" &&
-    Number.isFinite(s.postMealGlucoseMmol) &&
-    s.isCanonicalHstix === true &&
-    s.mealTimingConfidence === "on_time" &&
-    !(s.foodItems ?? []).some(item => item.source === "derived"),
-  );
 }
 
 /**
@@ -153,9 +163,84 @@ function validCarbCategory(value: string | null): CarbCategory {
  * Partners intentionally do not use this helper: any non-derived food may be
  * paired with a carb index food.
  */
-function validatedCarbCategory(item: FoodItemMetadata): CarbCategory {
+export function validatedGlucosePatternCarbCategory(item: FoodItemMetadata): CarbCategory {
   if (item.isCarb !== true) return null;
   return validCarbCategory(item.carbCategory);
+}
+
+function validatedSweetCategory(item: FoodItemMetadata): SweetCategory {
+  return item.sweetCategory === "sweet_food" || item.sweetCategory === "sweet_drink"
+    ? item.sweetCategory
+    : null;
+}
+
+/**
+ * Analysis-only component eligibility. FoodSnap identification owns the stored
+ * metadata; Glucose Patterns only consumes authoritative, non-derived carb or
+ * sweet classifications.
+ */
+export function isEligibleGlucosePatternComponent(item: FoodItemMetadata): boolean {
+  return item.source !== "derived" && (
+    validatedGlucosePatternCarbCategory(item) !== null ||
+    validatedSweetCategory(item) !== null
+  );
+}
+
+export function glucosePatternComponentType(item: FoodItemMetadata): GlucosePatternComponentType | null {
+  if (validatedGlucosePatternCarbCategory(item) !== null) return "carb";
+  return validatedSweetCategory(item);
+}
+
+export function buildGeneralGlucosePatternComponents(
+  meals: GeneralGlucosePatternMeal[],
+): GeneralGlucosePatternComponent[] {
+  const components = new Map<string, { item: FoodItemMetadata; mealCount: number }>();
+
+  for (const meal of meals) {
+    if (meal.isDeleted === true) continue;
+    const seenThisMeal = new Set<string>();
+    for (const item of meal.foodItems ?? []) {
+      if (!isEligibleGlucosePatternComponent(item)) continue;
+      const foodKey = foodItemKey(item);
+      if (seenThisMeal.has(foodKey)) continue;
+      seenThisMeal.add(foodKey);
+      const current = components.get(foodKey);
+      if (current) {
+        current.mealCount += 1;
+      } else {
+        components.set(foodKey, { item, mealCount: 1 });
+      }
+    }
+  }
+
+  return Array.from(components.entries())
+    .map(([foodKey, { item, mealCount }]) => ({
+      foodKey,
+      foodNameEn: item.nameEn,
+      foodNameZhHant: item.nameZhHant,
+      foodNameYue: item.nameYue,
+      carbCategory: validatedGlucosePatternCarbCategory(item),
+      sweetCategory: validatedSweetCategory(item),
+      componentType: glucosePatternComponentType(item)!,
+      mealCount,
+    }))
+    .sort((a, b) => b.mealCount - a.mealCount || a.foodKey.localeCompare(b.foodKey));
+}
+
+/**
+ * This is the evidence gate for measured-food analysis. It excludes legacy
+ * meal-row values, delayed/unrelated readings and non-finite values, and
+ * requires at least one authoritative component accepted by the shared
+ * Glucose Patterns analysis gate.
+ */
+export function filterEligibleHstixMeals(snaps: HstixMealForCards[]): HstixMealForCards[] {
+  return snaps.filter(s =>
+    typeof s.postMealGlucoseMmol === "number" &&
+    Number.isFinite(s.postMealGlucoseMmol) &&
+    s.isCanonicalHstix === true &&
+    s.mealTimingConfidence === "on_time" &&
+    (s.foodItems ?? []).some(isEligibleGlucosePatternComponent),
+  );
 }
 
 export function buildHstixFoodCards(
@@ -175,7 +260,7 @@ export function buildHstixFoodCards(
       score: impactScore(impact),
       foodKeys: new Set(
         (snap.foodItems ?? [])
-          .filter(item => item.source !== "derived")
+          .filter(isEligibleGlucosePatternComponent)
           .map(item => foodItemKey(item)),
       ),
     };
@@ -196,9 +281,7 @@ export function buildHstixFoodCards(
   for (const row of classified) {
     const { snap, impact } = row;
     const seenThisMeal = new Set<string>();
-    for (const item of (snap.foodItems ?? []).filter(candidate =>
-      candidate.source !== "derived" && validatedCarbCategory(candidate) !== null,
-    )) {
+    for (const item of (snap.foodItems ?? []).filter(isEligibleGlucosePatternComponent)) {
       const key = foodItemKey(item);
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
@@ -241,7 +324,9 @@ export function buildHstixFoodCards(
         foodNameEn: food.item.nameEn,
         foodNameZhHant: food.item.nameZhHant,
         foodNameYue: food.item.nameYue,
-        carbCategory: validatedCarbCategory(food.item),
+        carbCategory: validatedGlucosePatternCarbCategory(food.item),
+        sweetCategory: validatedSweetCategory(food.item),
+        componentType: glucosePatternComponentType(food.item)!,
         totalMeals: food.totalMeals,
         highMeals: food.highMeals,
         mediumMeals: food.mediumMeals,
@@ -288,11 +373,11 @@ export function buildHstixPartnerInsights(
   const eligibleMeals = filterEligibleHstixMeals(snaps);
   const candidates = [
     ...cards
-      .filter(card => card.impactLevel === "high" && card.carbCategory !== null)
+      .filter(card => card.impactLevel === "high")
       .sort((a, b) => b.lift - a.lift || comparePartnerFood(a, b))
       .slice(0, 5),
     ...cards
-      .filter(card => card.impactLevel === "low" && card.carbCategory !== null)
+      .filter(card => card.impactLevel === "low")
       .sort((a, b) => a.lift - b.lift || comparePartnerFood(a, b))
       .slice(0, 5),
   ];
@@ -308,7 +393,7 @@ export function buildHstixPartnerInsights(
     let indexMealCount = 0;
 
     for (const meal of eligibleMeals) {
-      const mealItems = (meal.foodItems ?? []).filter(item => item.source !== "derived");
+      const mealItems = (meal.foodItems ?? []).filter(isEligibleGlucosePatternComponent);
       const uniqueItems = new Map<string, FoodItemMetadata>();
       for (const item of mealItems) uniqueItems.set(foodItemKey(item), item);
       if (!uniqueItems.has(candidate.foodKey)) continue;
@@ -383,9 +468,7 @@ export function buildHstixFoodsNeedingMoreReadings(
   for (const snap of filterEligibleHstixMeals(snaps)) {
 
     const seenThisMeal = new Set<string>();
-    for (const item of (snap.foodItems ?? []).filter(item =>
-      item.source !== "derived" && validatedCarbCategory(item) !== null,
-    )) {
+    for (const item of (snap.foodItems ?? []).filter(isEligibleGlucosePatternComponent)) {
       const key = foodItemKey(item);
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
@@ -402,6 +485,9 @@ export function buildHstixFoodsNeedingMoreReadings(
       foodNameEn: food.item.nameEn,
       foodNameZhHant: food.item.nameZhHant,
       foodNameYue: food.item.nameYue,
+      carbCategory: validatedGlucosePatternCarbCategory(food.item),
+      sweetCategory: validatedSweetCategory(food.item),
+      componentType: glucosePatternComponentType(food.item)!,
       totalMeals: food.totalMeals,
     }))
     .sort((a, b) => a.foodKey.localeCompare(b.foodKey));

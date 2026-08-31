@@ -27,21 +27,29 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await page.route("**/api/snap/glucose-patterns**", async route => {
     const url = new URL(route.request().url());
     if (url.searchParams.has("query")) {
-      return route.fulfill({ contentType: "application/json", body: JSON.stringify({ suggestions: [{ foodName: "Apple" }] }) });
+      return route.fulfill({ contentType: "application/json", body: JSON.stringify({
+        suggestions: [{
+          foodKey: "apple|蘋果|蘋果",
+          foodNameEn: "Apple",
+          foodNameZhHant: "蘋果",
+          foodNameYue: "蘋果",
+        }],
+      }) });
     }
     if (url.searchParams.has("food")) {
       return route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
           detail: {
-            foodName: "Apple",
-            avgPostMealMmol: 5.4,
-            readingCount: 2,
-            impactLevel: "low",
-            readings: [
-              { recordedAt: "2026-08-15T12:00:00.000Z", postMealGlucoseMmol: 5.2 },
-              { recordedAt: "2026-08-14T12:00:00.000Z", postMealGlucoseMmol: 5.6 },
-            ],
+            kind: "general",
+            foodKey: "apple|蘋果|蘋果",
+            foodNameEn: "Apple",
+            foodNameZhHant: "蘋果",
+            foodNameYue: "蘋果",
+            carbCategory: "other",
+            sweetCategory: null,
+            componentType: "carb",
+            mealCount: 2,
           },
         }),
       });
@@ -52,9 +60,11 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
         totalPaired: 7,
         totalSnaps: 10,
         topList: [
-          { foodName: "Apple", avgPostMealMmol: 5.4, readingCount: 2, impactLevel: "low" },
-          { foodName: "Yogurt", avgPostMealMmol: 5.7, readingCount: 4, impactLevel: "low" },
+          { foodKey: "apple|蘋果|蘋果", foodNameEn: "Apple", foodNameZhHant: "蘋果", foodNameYue: "蘋果", carbCategory: "other", sweetCategory: null, componentType: "carb", mealCount: 2 },
+          { foodKey: "cake|蛋糕|蛋糕", foodNameEn: "Cake", foodNameZhHant: "蛋糕", foodNameYue: "蛋糕", carbCategory: null, sweetCategory: "sweet_food", componentType: "sweet_food", mealCount: 1 },
         ],
+        hstixList: [],
+        hstixNeedsMoreReadings: [],
       }),
     });
   });
@@ -66,18 +76,19 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await page.goto("/glucose-patterns");
   await expect(page.getByTestId("glucose-mode-ai")).toHaveCount(0);
   await expect(page.getByTestId("glucose-mode-actual")).toHaveCount(0);
-  await expect(page.getByTestId("glucose-impact-low")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
+  await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
+  await expect(page.getByTestId("glucose-general-component-list")).toBeVisible();
 
-  await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("Apple");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toContainText(/1st place|第一名/);
-  await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("5.4");
+  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Apple");
+  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Carbohydrate");
+  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("2 meals");
 
   await page.getByTestId("input-glucose-food-search").fill("app");
-  await page.getByTestId("glucose-search-suggestion-Apple").click();
+  await page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果").click();
   await expect(page.getByTestId("glucose-food-detail-dialog")).toBeVisible();
-  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("5.2 mmol/L");
-  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("5.6 mmol/L");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("Carbohydrate");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("2 meals");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).not.toContainText("mmol/L");
 });
 
 test("Navigation fits five equal slots and Profile exposes the moved tools", async ({ context, page }) => {

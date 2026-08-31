@@ -6,6 +6,9 @@ import {
 } from "./glucose-thresholds";
 
 export const RATE_EQUALITY_TOLERANCE = 1e-12;
+// These cards surface exploratory lifestyle observations. Their calendar
+// buckets can have only 4-10 eligible meals, so a stricter statistical bar
+// would make the completed two-month report impractical at its intended floor.
 export const Z_SCORE_GUARDRAIL = 1.4;
 
 // A meal period needs enough repeated observations to avoid conclusions from
