@@ -4,3 +4,4 @@
 - [Browser test auth origin](browser-test-auth-origin.md) — Playwright API setup and page navigation must use the exact same hostname or session cookies will not carry over.
 - [Radix toast browser tests](radix-toast-browser-tests.md) — count visual toast list items, not live-region announcements, when asserting notification events.
 - [Rolling-report retention](rolling-report-retention.md) — retain minimal final-label facts so two-month reports outlive raw meal deletion.
+- [Development seed guards](development-seed-guards.md) — this workspace's REPLIT_ENVIRONMENT label is not a safe production discriminator; require explicit NODE_ENV.
