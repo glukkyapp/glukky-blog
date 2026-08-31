@@ -1,0 +1,81 @@
+Change only the statistical description, not the implementation.
+
+Keep the Code Unchanged
+Keep:
+
+ts
+const standardError = Math.sqrt(
+  variance1 / group1.length +
+  variance2 / group2.length,
+);
+
+const reliabilityScore =
+  (mean1 - mean2) / standardError;
+
+if (reliabilityScore >= 1.96) return "high";
+if (reliabilityScore <= -1.96) return "low";
+return null;
+Also keep:
+
+minimum 25 meals containing the food;
+
+minimum 25 meals not containing the food;
+
+separate sample variances;
+
+existing lift-score calculation;
+
+existing 
+0.8
+/
+1.2
+0.8/1.2 display boundaries;
+
+direction matching;
+
+zero-standard-error behavior;
+
+internal-only reliability result.
+
+Change the Task Wording
+Replace:
+
+The check uses separate sample variances and the 1.96 directional threshold.
+
+With:
+
+The check compares the mean 0/1/2 impact scores of mutually exclusive food-present and food-absent meal groups using separate sample variances. It calculates an internal reliability statistic as the mean-score difference divided by its separate-variance standard error and applies the fixed directional threshold of 1.96.
+
+Replace:
+
+z-score gating
+
+with:
+
+score-based reliability gating
+
+or:
+
+separate-variance reliability gating
+
+Do not call reliabilityScore a zScore in the task description, because the formula uses estimated sample variances and is therefore t-like rather than a formally calibrated normal z-test. The unequal-variance two-group structure is consistent with Welch-style comparison logic.
+
+Add This Scope Clarification
+Add:
+
+The 1.96 threshold is an internal product gate for suppressing weak directional evidence. It is not presented as a clinical significance test, confidence level, or user-facing statistical result.
+
+Do Not Add a CI
+Do not add a confidence interval to the implementation. Your existing product logic is:
+
+Calculate the existing food lift ratio.
+
+Classify it using < 0.8, 0.8–1.2, and > 1.2.
+
+If the result is Medium, do not run the reliability gate.
+
+If the result is Higher or Lower, calculate the internal reliability statistic.
+
+Show the card only when the reliability direction matches the existing lift direction.
+
+So the precise answer is: no code change is required; change the terminology and documentation from “z-score/statistical significance” to “fixed-threshold score-based reliability gate.”
