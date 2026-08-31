@@ -49,6 +49,7 @@ import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
 import { awardHstixCoin, awardSnapCoin } from "./achievements";
 import { buildTwoMonthReport, getLatestTwoCompletedMonths } from "./two-month-report";
+import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 
 type SnapRow = {
   mealType: string | null;
@@ -809,6 +810,32 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/user/glucose-patterns/swipe-tutorial", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.set("Cache-Control", "no-store");
+      res.json({ seen: profile.glucosePatternsSwipeTutorialSeen });
+    } catch (error) {
+      console.error("Error fetching glucose patterns swipe tutorial state:", error);
+      res.status(500).json({ message: "Failed to fetch swipe tutorial state" });
+    }
+  });
+
+  app.post("/api/user/glucose-patterns/swipe-tutorial/seen", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.updateProfile(userId, { glucosePatternsSwipeTutorialSeen: true });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.set("Cache-Control", "no-store");
+      res.json({ seen: profile.glucosePatternsSwipeTutorialSeen });
+    } catch (error) {
+      console.error("Error saving glucose patterns swipe tutorial state:", error);
+      res.status(500).json({ message: "Failed to save swipe tutorial state" });
+    }
+  });
+
   app.patch("/api/profile/health-markers", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1241,6 +1268,23 @@ export async function registerRoutes(
     }
     return res.status(403).json({ message: "Forbidden" });
   };
+
+  app.post("/api/dev/glucose-patterns/swipe-tutorial/reset", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await authStorage.getUser(userId);
+      if (!canResetGlucosePatternsSwipeTutorial(user?.email, process.env.NODE_ENV)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const profile = await storage.updateProfile(userId, { glucosePatternsSwipeTutorialSeen: false });
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.set("Cache-Control", "no-store");
+      res.json({ seen: profile.glucosePatternsSwipeTutorialSeen });
+    } catch (error) {
+      console.error("Error resetting glucose patterns swipe tutorial:", error);
+      res.status(500).json({ message: "Failed to reset swipe tutorial" });
+    }
+  });
 
   app.post("/api/dev/test-notification", isAuthenticated, isDevUser, async (req: any, res) => {
     try {

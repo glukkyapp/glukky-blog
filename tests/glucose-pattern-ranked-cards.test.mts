@@ -14,6 +14,10 @@ import {
   findGlucosePatternFoodForMode,
   findRetainedFoodHistoryEntry,
 } from "../server/glucose-patterns";
+import {
+  canResetGlucosePatternsSwipeTutorial,
+  GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL,
+} from "../server/glucose-pattern-swipe-tutorial";
 
 let passed = 0;
 function check(label: string, condition: boolean) {
@@ -81,6 +85,8 @@ const postMeal = readFileSync("client/src/components/PostMealCard.tsx", "utf8");
 const recurringFoods = readFileSync("client/src/components/RecurringFoodInsights.tsx", "utf8");
 const swipeableFoodCard = readFileSync("client/src/components/SwipeableFoodCard.tsx", "utf8");
 const styles = readFileSync("client/src/index.css", "utf8");
+const schema = readFileSync("shared/schema.ts", "utf8");
+const startupMigrations = readFileSync("server/startup-migrations.ts", "utf8");
 const report = readFileSync("client/src/pages/report.tsx", "utf8");
 const twoMonth = readFileSync("server/two-month-report.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
@@ -211,18 +217,42 @@ check("Carousel navigation works with pointer gestures and keyboard arrows",
   swipeableFoodCard.includes("tabIndex={isMultiCard ? 0 : undefined}") &&
   swipeableFoodCard.includes("distance <= -SWIPE_MIN_PX") &&
   swipeableFoodCard.includes("distance >= SWIPE_MIN_PX"));
-check("The first eligible carousel tutorial is delayed, persistent, shared, and reduced-motion safe",
-  swipeableFoodCard.includes('SWIPE_TUTORIAL_STORAGE_KEY = "glukky_glucose_patterns_swipe_tutorial_seen"') &&
+check("The first eligible carousel tutorial is delayed, account-persistent, and reduced-motion safe",
+  swipeableFoodCard.includes('SWIPE_TUTORIAL_QUERY_PATH = "/api/user/glucose-patterns/swipe-tutorial"') &&
   swipeableFoodCard.includes("SWIPE_TUTORIAL_DELAY_MS = 650") &&
-  swipeableFoodCard.includes("window.localStorage.setItem") &&
+  swipeableFoodCard.includes("useAuth()") &&
+  swipeableFoodCard.includes("tutorialQueryKey") &&
+  swipeableFoodCard.includes("apiRequest(\"POST\", SWIPE_TUTORIAL_SEEN_PATH") &&
+  !swipeableFoodCard.includes("localStorage") &&
   swipeableFoodCard.includes('data-testid="pattern-swipe-tutorial"') &&
   styles.includes("@media (prefers-reduced-motion: reduce)") &&
   styles.includes("translateX(-30px)"));
+check("Swipe tutorial persistence is stored on each user profile",
+  schema.includes('glucosePatternsSwipeTutorialSeen: boolean("glucose_patterns_swipe_tutorial_seen").notNull().default(false)') &&
+  startupMigrations.includes("ADD COLUMN IF NOT EXISTS glucose_patterns_swipe_tutorial_seen boolean NOT NULL DEFAULT false") &&
+  routes.includes('app.get("/api/user/glucose-patterns/swipe-tutorial"') &&
+  routes.includes('app.post("/api/user/glucose-patterns/swipe-tutorial/seen"') &&
+  routes.includes("{ glucosePatternsSwipeTutorialSeen: true }"));
+check("Only the exact development test account can reset its swipe tutorial",
+  canResetGlucosePatternsSwipeTutorial(GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL, "development") &&
+  canResetGlucosePatternsSwipeTutorial(" GLUCOSETEST@GMAIL.COM ", "development") &&
+  !canResetGlucosePatternsSwipeTutorial("someone-else@gmail.com", "development") &&
+  !canResetGlucosePatternsSwipeTutorial(GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL, "production") &&
+  !canResetGlucosePatternsSwipeTutorial(GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL, undefined) &&
+  routes.includes('app.post("/api/dev/glucose-patterns/swipe-tutorial/reset"') &&
+  routes.indexOf("canResetGlucosePatternsSwipeTutorial") < routes.indexOf("{ glucosePatternsSwipeTutorialSeen: false }"));
 check("HStix cards use the requested pale surfaces and accent colours",
   page.includes('low: "border-[#55B98A] border-l-4 bg-[#F2FBF6]"') &&
   page.includes('medium: "border-[#D49A22] border-l-4 bg-[#FFFBEA]"') &&
   page.includes('high: "border-[#E85A5A] border-l-4 bg-[#FFF4F3]"') &&
-  page.includes("shadow-[0_8px_20px_rgba(0,0,0,0.08)]"));
+  page.includes("glucose-pattern-card is-active"));
+check("General and HStix cards use the requested base and active elevations",
+  recurringFoods.includes('className="glucose-pattern-card border') &&
+  recurringFoods.includes('className="glucose-pattern-card is-active border') &&
+  page.includes("glucose-pattern-card min-h-40") &&
+  page.includes("glucose-pattern-card is-active min-h-40") &&
+  styles.includes("0 4px 10px rgba(35, 54, 49, 0.07), 0 14px 28px rgba(35, 54, 49, 0.08)") &&
+  styles.includes("0 6px 14px rgba(35, 54, 49, 0.10), 0 18px 36px rgba(35, 54, 49, 0.10)"));
 check("HStix badge and supporting-text colours meet WCAG AA against every pale card surface",
   [
     ["#1F6B4B", "#DDF4E8"],

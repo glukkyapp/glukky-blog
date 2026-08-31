@@ -21,13 +21,31 @@ async function setupUser(context: BrowserContext, page: Page) {
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
+test("Swipe tutorial reset rejects every other account without changing its state", async ({ context, page }) => {
+  await setupUser(context, page);
+  const api = context.request;
+
+  const markSeen = await api.post(`${BASE}/api/user/glucose-patterns/swipe-tutorial/seen`);
+  expect(markSeen.status()).toBe(200);
+  expect(await markSeen.json()).toEqual({ seen: true });
+
+  const rejectedReset = await api.post(`${BASE}/api/dev/glucose-patterns/swipe-tutorial/reset`);
+  expect(rejectedReset.status()).toBe(403);
+
+  const unchanged = await api.get(`${BASE}/api/user/glucose-patterns/swipe-tutorial`);
+  expect(unchanged.status()).toBe(200);
+  expect(await unchanged.json()).toEqual({ seen: true });
+});
+
 test("Swipe tutorial waits for a multi-card group, respects reduced motion, and persists across groups", async ({ context, page }) => {
   await setupUser(context, page);
-  await page.addInitScript(() => {
-    if (!sessionStorage.getItem("glucose-carousel-test-initialized")) {
-      localStorage.removeItem("glukky_glucose_patterns_swipe_tutorial_seen");
-      sessionStorage.setItem("glucose-carousel-test-initialized", "1");
-    }
+  let tutorialSeen = false;
+  await page.route("**/api/user/glucose-patterns/swipe-tutorial**", route => {
+    if (route.request().method() === "POST") tutorialSeen = true;
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ seen: tutorialSeen }),
+    });
   });
 
   let foods = [
@@ -78,6 +96,7 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   await expect(page.getByTestId("pattern-next-card-sliver")).toHaveCount(0);
   await expect(page.getByTestId("pattern-next")).toHaveCount(0);
   await expect(page.getByTestId("pattern-card-viewport")).not.toHaveAttribute("tabindex", "0");
+  expect(tutorialSeen).toBe(false);
   expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBeNull();
 
   foods = [
@@ -92,7 +111,8 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   await expect(page.getByTestId("pattern-swipe-tutorial")).toBeVisible({ timeout: 600 });
   await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
   expect(await page.locator(".swipe-tutorial-nudge").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
-  expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBe("1");
+  expect(tutorialSeen).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBeNull();
 
   await page.getByTestId("pattern-next").click();
   await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);

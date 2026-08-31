@@ -405,12 +405,12 @@ export default function GlucosePatterns() {
                       onPrevious={() => moveCard(-1)}
                       onNext={() => moveCard(1)}
                       nextCard={activeIndex < activeFoods.length - 1 ? (
-                        <article className={`min-h-40 rounded-2xl border p-4 text-[#153126] shadow-[0_8px_20px_rgba(0,0,0,0.06)] ${IMPACT_CARD_STYLES[impact]}`}>
+                        <article className={`glucose-pattern-card min-h-40 rounded-2xl border p-4 text-[#153126] ${IMPACT_CARD_STYLES[impact]}`}>
                           <h2 className="text-lg font-bold">{activeFoods[activeIndex + 1].foodName}</h2>
                         </article>
                       ) : undefined}
                     >
-                      <article className={`min-h-40 rounded-2xl border p-4 text-[#153126] shadow-[0_8px_20px_rgba(0,0,0,0.08)] ${IMPACT_CARD_STYLES[impact]}`} data-testid={`glucose-ranking-card-${activeIndex}`}>
+                      <article className={`glucose-pattern-card is-active min-h-40 rounded-2xl border p-4 text-[#153126] ${IMPACT_CARD_STYLES[impact]}`} data-testid={`glucose-ranking-card-${activeIndex}`}>
                         <div className="mb-5 flex items-start justify-between gap-3">
                           <div>
                             {impact !== "medium" && (

@@ -51,6 +51,7 @@ export const userProfiles = pgTable("user_profiles", {
   consecutiveSkippedMeals: integer("consecutive_skipped_meals").notNull().default(0),
   glucoseGroup: text("glucose_group"),
   glucosePersonalisedSeen: boolean("glucose_personalised_seen").notNull().default(true),
+  glucosePatternsSwipeTutorialSeen: boolean("glucose_patterns_swipe_tutorial_seen").notNull().default(false),
   diabetesMedication: text("diabetes_medication"),
   // Clinical pilot fields — set manually by a clinician after face-to-face enrollment.
   // Never touched by onboarding or any user-facing flow.

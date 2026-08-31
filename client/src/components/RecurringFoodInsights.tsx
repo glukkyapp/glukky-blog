@@ -76,7 +76,7 @@ export function RecurringFoodInsights() {
               onPrevious={() => setFoodIndex(current => Math.max(0, current - 1))}
               onNext={() => setFoodIndex(current => Math.min(topFoods.length - 1, current + 1))}
               nextCard={activeIndex < topFoods.length - 1 ? (
-                <Card className="border-[#DCE9D7] bg-[#F8FBF5]">
+                <Card className="glucose-pattern-card border-[#DCE9D7] bg-[#F8FBF5]">
                   <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
                     <span className="truncate text-sm font-medium text-[#214B36]">{displayName(topFoods[activeIndex + 1])}</span>
                     <span className="shrink-0 text-xs text-[#6E8477]">
@@ -87,7 +87,7 @@ export function RecurringFoodInsights() {
               ) : undefined}
             >
               <Card
-                className="border-[#DCE9D7] bg-[#F8FBF5]"
+                className="glucose-pattern-card is-active border-[#DCE9D7] bg-[#F8FBF5]"
                 data-testid="recurring-food-card"
               >
                 <CardContent className="flex items-center justify-between gap-3 px-3 py-3">

@@ -184,6 +184,10 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS diabetes_medication text",
   },
   {
+    name: "user_profiles.glucose_patterns_swipe_tutorial_seen",
+    sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS glucose_patterns_swipe_tutorial_seen boolean NOT NULL DEFAULT false",
+  },
+  {
     name: "meal_snaps.previous_meal_overlap",
     sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS previous_meal_overlap boolean NOT NULL DEFAULT false",
   },
