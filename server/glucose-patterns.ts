@@ -70,9 +70,15 @@ type FoodStats = {
   mediumMeals: number;
   lowMeals: number;
   sumMmol: number;
+  presentScores: number[];
 };
 
 export const MIN_HSTIX_FOOD_MEALS_FOR_CARD = 25;
+const HSTIX_RELIABILITY_THRESHOLD = 1.96;
+
+function impactScore(impact: "low" | "medium" | "high"): number {
+  return impact === "high" ? 2 : impact === "medium" ? 1 : 0;
+}
 
 /**
  * This is the single evidence gate for measured-food analysis. It deliberately
@@ -88,6 +94,51 @@ export function filterEligibleHstixMeals(snaps: HstixMealForCards[]): HstixMealF
     s.mealTimingConfidence === "on_time" &&
     !(s.foodItems ?? []).some(item => item.source === "derived"),
   );
+}
+
+/**
+ * Checks whether the score difference between mutually exclusive food-present
+ * and food-absent meals is strong enough to support the card's direction.
+ *
+ * This is deliberately separate from the displayed lift calculation. It uses
+ * the sample variance of the 0/1/2 impact scores in each group and is never
+ * included in the card or API response.
+ */
+export function isReliableHstixFoodEvidence(
+  presentScores: number[],
+  absentScores: number[],
+  direction: "low" | "high",
+): boolean {
+  if (
+    presentScores.length < MIN_HSTIX_FOOD_MEALS_FOR_CARD ||
+    absentScores.length < MIN_HSTIX_FOOD_MEALS_FOR_CARD
+  ) {
+    return false;
+  }
+
+  const mean = (scores: number[]) => scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const sampleVariance = (scores: number[], average: number) =>
+    scores.reduce((sum, score) => sum + (score - average) ** 2, 0) / (scores.length - 1);
+  const presentMean = mean(presentScores);
+  const absentMean = mean(absentScores);
+  const difference = presentMean - absentMean;
+  const directionMatches = direction === "high" ? difference > 0 : difference < 0;
+
+  // A zero standard error still supports a directional result when both
+  // groups are constant but have different means. Equal constant groups have
+  // no directional evidence and must remain suppressed.
+  if (!directionMatches) return false;
+
+  const standardErrorSquared =
+    sampleVariance(presentScores, presentMean) / presentScores.length +
+    sampleVariance(absentScores, absentMean) / absentScores.length;
+  if (!Number.isFinite(standardErrorSquared) || standardErrorSquared < 0) return false;
+  if (standardErrorSquared === 0) return true;
+
+  const reliability = difference / Math.sqrt(standardErrorSquared);
+  return direction === "high"
+    ? Number.isFinite(reliability) && reliability >= HSTIX_RELIABILITY_THRESHOLD
+    : Number.isFinite(reliability) && reliability <= -HSTIX_RELIABILITY_THRESHOLD;
 }
 
 function validCarbCategory(value: string | null): CarbCategory {
@@ -114,12 +165,21 @@ export function buildHstixFoodCards(
 ): HstixFoodCard[] {
   const numericSnaps = filterEligibleHstixMeals(snaps);
 
-  const classified = numericSnaps.map(snap => ({
-    snap,
+  const classified = numericSnaps.map(snap => {
     // Food evidence uses the fixed phase-one bands so its comparisons stay
     // consistent as a user's personalised thresholds evolve.
-    impact: classifyPostMealMmol(snap.postMealGlucoseMmol!, glucoseGroup),
-  }));
+    const impact = classifyPostMealMmol(snap.postMealGlucoseMmol!, glucoseGroup);
+    return {
+      snap,
+      impact,
+      score: impactScore(impact),
+      foodKeys: new Set(
+        (snap.foodItems ?? [])
+          .filter(item => item.source !== "derived")
+          .map(item => foodItemKey(item)),
+      ),
+    };
+  });
   const allHighMeals = classified.filter(row => row.impact === "high").length;
   const totalMeals = classified.length;
   if (totalMeals === 0) return [];
@@ -133,7 +193,8 @@ export function buildHstixFoodCards(
   if (expectedBaselineRank === 0) return [];
 
   const stats = new Map<string, FoodStats>();
-  for (const { snap, impact } of classified) {
+  for (const row of classified) {
+    const { snap, impact } = row;
     const seenThisMeal = new Set<string>();
     for (const item of (snap.foodItems ?? []).filter(candidate =>
       candidate.source !== "derived" && validatedCarbCategory(candidate) !== null,
@@ -148,10 +209,12 @@ export function buildHstixFoodCards(
         mediumMeals: 0,
         lowMeals: 0,
         sumMmol: 0,
+        presentScores: [],
       };
       current.totalMeals += 1;
       current[`${impact}Meals`] += 1;
       current.sumMmol += snap.postMealGlucoseMmol!;
+      current.presentScores.push(row.score);
       stats.set(key, current);
     }
   }
@@ -164,6 +227,15 @@ export function buildHstixFoodCards(
       const expectedFoodRank = (food.mediumMeals + 2 * food.highMeals) / food.totalMeals;
       const lift = expectedFoodRank / expectedBaselineRank;
       const impactLevel: HstixFoodCard["impactLevel"] = lift > 1.2 ? "high" : lift < 0.8 ? "low" : "medium";
+      if (impactLevel !== "medium") {
+        const foodKey = foodItemKey(food.item);
+        const absentScores = classified
+          .filter(row => !row.foodKeys.has(foodKey))
+          .map(row => row.score);
+        if (!isReliableHstixFoodEvidence(food.presentScores, absentScores, impactLevel)) {
+          return null;
+        }
+      }
       return {
         foodKey: foodItemKey(food.item),
         foodNameEn: food.item.nameEn,
@@ -182,6 +254,7 @@ export function buildHstixFoodCards(
         impactLevel,
       };
     })
+    .filter((card): card is HstixFoodCard => card !== null)
     .sort((a, b) => a.foodKey.localeCompare(b.foodKey));
   const partnerInsights = buildHstixPartnerInsights(numericSnaps, cards);
   return cards.map(card => {

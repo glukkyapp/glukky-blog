@@ -88,6 +88,8 @@ check("HStix foods below the evidence threshold have their own section", page.in
 check("Needs-more foods use a dropdown while the top cards remain swipeable", page.includes("SelectTrigger") && page.includes("glucose-needs-more-readings-selected") && page.includes("onPointerDown") && page.includes("glucose-ranking-card-"));
 check("HStix flow does not show personalised UI", page.includes("!hasMeasuredList && isPersonalised"));
 check("Partner insights render only inside the measured HStix card branch", page.includes('hasMeasuredList && "lift" in activeFood') && page.includes("glucose-partner-dominant") && page.includes("glucose-partner-comparison") && page.includes("glucose-partner-disclaimer"));
+check("Reliability calculations remain server-only and statistics-free in the UI",
+  !/(reliability|standard error|variance|confidence interval)/i.test(page));
 check("The obsolete AI-only response and ranking path are removed",
   !page.includes("aiOnlyList") &&
   !routes.includes("aiOnlyList") &&

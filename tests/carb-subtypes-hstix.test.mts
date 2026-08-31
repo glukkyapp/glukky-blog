@@ -7,7 +7,11 @@ import {
   prepareFoodItems,
 } from "../server/carb-subtypes";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "../server/food-items";
-import { buildHstixFoodCards, buildHstixFoodsNeedingMoreReadings } from "../server/glucose-patterns";
+import {
+  buildHstixFoodCards,
+  buildHstixFoodsNeedingMoreReadings,
+  isReliableHstixFoodEvidence,
+} from "../server/glucose-patterns";
 import { classifyHstixTiming } from "../server/hstix-timing";
 
 let passed = 0;
@@ -148,7 +152,10 @@ check(
 );
 check(
   "an expected-rank ratio above 1.2 is higher impact",
-  expectedRankCard(Array.from({ length: 6 }, () => onTimeMeal(5.5, [lowExtra])))?.impactLevel === "high",
+  expectedRankCard([
+    ...Array.from({ length: 16 }, () => onTimeMeal(6.5, [lowExtra])),
+    ...Array.from({ length: 9 }, () => onTimeMeal(5.5, [lowExtra])),
+  ])?.impactLevel === "high",
 );
 const lowerBoundaryCards = (highCount: number) => buildHstixFoodCards([
   ...Array.from({ length: 75 }, () => onTimeMeal(6.5, [mediumStaple])),
@@ -165,6 +172,96 @@ check(
 check(
   "a zero expected baseline rank produces no comparable cards",
   buildHstixFoodCards(Array.from({ length: 25 }, () => onTimeMeal(5.5, [rice])), "healthy").length === 0,
+);
+
+console.log("\nScore-based HStix reliability gate");
+const scoreGroup = (high: number, medium: number, low: number) => [
+  ...Array.from({ length: high }, () => 2),
+  ...Array.from({ length: medium }, () => 1),
+  ...Array.from({ length: low }, () => 0),
+];
+check(
+  "weak directional evidence is suppressed even when the displayed ratio is directional",
+  buildHstixFoodCards([
+    ...Array.from({ length: 24 }, () => onTimeMeal(5.5, [lowExtra])),
+    onTimeMeal(6.5, [lowExtra]),
+    ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+  ], "healthy").length === 0,
+);
+const reliableHighCard = buildHstixFoodCards([
+  ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+], "healthy").find(card => card.foodNameEn === "high extra");
+check(
+  "directional evidence that clears the internal threshold remains Higher",
+  reliableHighCard?.impactLevel === "high",
+);
+check(
+  "a score-based ratio-band card remains visible without a food-absent group",
+  buildHstixFoodCards(Array.from({ length: 25 }, () => onTimeMeal(6.5, [mediumStaple])), "healthy")
+    .find(card => card.foodNameEn === "medium staple")?.impactLevel === "medium",
+);
+check(
+  "a direction mismatch fails even with a large score difference",
+  !isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 2), Array.from({ length: 25 }, () => 0), "low"),
+);
+check(
+  "food-absent evidence has the same 25-meal minimum",
+  !isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 2), Array.from({ length: 24 }, () => 0), "high"),
+);
+check(
+  "equal zero-variance groups do not create directional evidence",
+  !isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 1), Array.from({ length: 25 }, () => 1), "high"),
+);
+check(
+  "unequal zero-variance groups pass in the matching direction",
+  isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 2), Array.from({ length: 25 }, () => 0), "high") &&
+    isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 0), Array.from({ length: 25 }, () => 2), "low"),
+);
+check(
+  "equal High rates still use the different Medium and Low scores",
+  isReliableHstixFoodEvidence(
+    scoreGroup(10, 0, 15),
+    scoreGroup(10, 15, 0),
+    "low",
+  ),
+);
+check(
+  "unequal group sizes and variances enforce the fixed 1.96 reliability boundary",
+  !isReliableHstixFoodEvidence(scoreGroup(1, 21, 3), scoreGroup(11, 2, 27), "high") &&
+    isReliableHstixFoodEvidence(scoreGroup(13, 1, 11), scoreGroup(2, 22, 16), "high"),
+);
+const duplicateFoodCard = buildHstixFoodCards([
+  ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra, highExtra])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+], "healthy").find(card => card.foodNameEn === "high extra");
+check(
+  "duplicate food components count once in the present group",
+  duplicateFoodCard?.totalMeals === 25 && duplicateFoodCard.lift === 2 && duplicateFoodCard.impactLevel === "high",
+);
+check(
+  "a staple with a small or empty food-absent group cannot make a directional card",
+  buildHstixFoodCards([
+    ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [mediumStaple])),
+    ...Array.from({ length: 10 }, () => onTimeMeal(8.2, [])),
+  ], "healthy").length === 0 &&
+    !isReliableHstixFoodEvidence(Array.from({ length: 25 }, () => 0), [], "low"),
+);
+const unchangedMathCard = buildHstixFoodCards([
+  ...Array.from({ length: 25 }, () => onTimeMeal(8.2, [highExtra])),
+  ...Array.from({ length: 25 }, () => onTimeMeal(5.5, [])),
+], "healthy").find(card => card.foodNameEn === "high extra");
+check(
+  "the reliability gate leaves displayed lift and baseline-derived counts unchanged",
+  unchangedMathCard?.lift === 2 &&
+    unchangedMathCard.highMeals === 25 &&
+    unchangedMathCard.mediumMeals === 0 &&
+    unchangedMathCard.lowMeals === 0,
+);
+check(
+  "reliability statistics never enter the measured-card response",
+  !!unchangedMathCard &&
+    Object.keys(unchangedMathCard).every(key => !/(reliab|variance|standardError|confidence|score)/i.test(key)),
 );
 
 console.log("\nHStix timing boundaries");

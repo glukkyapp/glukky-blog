@@ -247,6 +247,15 @@ check(
   "qualified insights are returned on the measured card itself",
   measuredCards.find(result => result.foodKey === foodItemKey(rice))?.partnerInsight?.kind === "dominant",
 );
+const unreliableCards = buildHstixFoodCards([
+  ...Array.from({ length: 24 }, () => meal(5.5, [rice, roastPork])),
+  meal(6.5, [rice, roastPork]),
+  ...Array.from({ length: 25 }, () => meal(5.5, [food("baseline")])),
+], "healthy");
+check(
+  "partner analysis cannot restore a directional card rejected by the reliability gate",
+  !unreliableCards.some(result => result.foodKey === foodItemKey(rice)),
+);
 const mediumOnlyInsight = buildHstixPartnerInsights(
   Array.from({ length: 25 }, () => meal(8, [rice, alpha])),
   [card(rice, "medium", 1)],
