@@ -1153,8 +1153,9 @@
   "offline_body": "Please check your connection and try again.",
   "offline_button": "Reload",
   "food_frequency": {
-    "title": "Carbohydrates/sugars you like to eat",
-    "favourite_category": "Your favourite category: {{categories}}.",
+    "title": "Your favourite foods",
+    "favourite_category_title": "Your favourite category",
+    "meals": "{{count}} meals",
     "sweet_drink": "Sweet drinks",
     "sweet_food": "Sweet foods",
     "rice": "Rice",

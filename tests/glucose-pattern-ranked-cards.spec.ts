@@ -124,18 +124,26 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     contentType: "application/json",
     body: JSON.stringify({ glucoseGroup: "healthy", readingCount: 2, isPersonalised: false, glucosePersonalisedSeen: true }),
   }));
+  const foodFrequencyResponse = {
+    totalMeals: 25,
+    eligible: true,
+    foods: [
+      { nameEn: "Chicken breast", nameZhHant: "雞胸肉", nameYue: "雞胸肉", mealCount: 6 },
+      { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 5 },
+      { nameEn: "Vegetables", nameZhHant: "蔬菜", nameYue: "菜", mealCount: 4 },
+      { nameEn: "Cake", nameZhHant: "蛋糕", nameYue: "蛋糕", mealCount: 3 },
+      { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 2 },
+      { nameEn: "Oats", nameZhHant: "燕麥", nameYue: "燕麥", mealCount: 1 },
+    ],
+    sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
+    carbCategories: [
+      { carbCategory: "rice", mealCount: 4 },
+      { carbCategory: "other", mealCount: 2 },
+    ],
+  };
   await page.route("**/api/snap/food-frequency", route => route.fulfill({
     contentType: "application/json",
-    body: JSON.stringify({
-      totalMeals: 25,
-      eligible: true,
-      foods: [{ nameEn: "Apple", nameZhHant: "蘋果", nameYue: "蘋果", mealCount: 2, sweetCategory: null }],
-      sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
-      carbCategories: [
-        { carbCategory: "rice", mealCount: 3 },
-        { carbCategory: "other", mealCount: 2 },
-      ],
-    }),
+    body: JSON.stringify(foodFrequencyResponse),
   }));
 
   await page.goto("/glucose-patterns");
@@ -144,15 +152,23 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-mode-general")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("glucose-mode-hstix")).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
-  await expect(page.getByTestId("glucose-general-component-list")).toBeVisible();
-  await expect(page.getByTestId("card-recurring-foods")).toContainText("Carbohydrates/sugars you like to eat");
-  await expect(page.getByTestId("food-frequency-favourite-category")).toHaveText("Your favourite category: Rice and Sweet drinks.");
-  await expect(page.getByTestId("card-recurring-foods")).not.toContainText("Based on");
-  await expect(page.getByTestId("card-recurring-foods")).not.toContainText("Recorded categories");
+  await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Your favourite foods");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCount(5);
+  await expect(page.getByTestId("recurring-food-card").nth(0)).toContainText("Chicken breast");
+  await expect(page.getByTestId("recurring-food-card").nth(2)).toContainText("Vegetables");
+  await expect(page.getByTestId("recurring-food-card").nth(4)).toContainText("Noodles");
+  await expect(page.getByTestId("card-favourite-category")).toBeVisible();
+  await expect(page.getByTestId("card-favourite-category")).toContainText("Your favourite category");
+  await expect(page.getByTestId("food-frequency-favourite-category")).toHaveText("Rice");
+  await expect(page.getByTestId("card-recurring-foods")).not.toContainText("Your favourite category");
 
-  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Apple");
-  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Carbohydrate");
-  await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("2 meals");
+  foodFrequencyResponse.sweetSubtypes = [];
+  foodFrequencyResponse.carbCategories = [];
+  await page.reload();
+  await expect(page.getByTestId("recurring-food-card")).toHaveCount(5);
+  await expect(page.getByTestId("recurring-food-card").nth(0)).toContainText("Chicken breast");
+  await expect(page.getByTestId("card-favourite-category")).toHaveCount(0);
 
   await page.getByTestId("input-glucose-food-search").fill("app");
   await page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果").click();
@@ -175,6 +191,7 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-impact-low")).toBeVisible();
   await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
   await expect(page.getByTestId("card-recurring-foods")).toHaveCount(0);
+  await expect(page.getByTestId("card-favourite-category")).toHaveCount(0);
 
   await page.getByTestId("input-glucose-food-search").fill("chicken");
   await expect(page.getByTestId("glucose-search-suggestions")).toContainText("No matching foods in your history.");

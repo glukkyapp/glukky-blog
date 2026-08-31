@@ -154,26 +154,28 @@ check("All supported locales include search and component type labels", [en, zhH
   ["pattern_mode_general", "pattern_mode_hstix", "pattern_component_type_carb", "pattern_component_type_sweet_food", "pattern_component_type_sweet_drink", "pattern_frequency_count"]
     .every(key => locale.includes(`"${key}"`)),
 ));
-check("Recurring food insights moved to General and shows only the top combined category sentence",
+check("General shows five food cards followed by one category card, without the recorded component list",
   page.includes("<RecurringFoodInsights />") &&
   !report.includes("RecurringFoodInsights") &&
+  recurringFoods.includes("data.foods.filter(food => food.mealCount > 1).slice(0, 5)") &&
+  recurringFoods.includes('data-testid="recurring-food-card"') &&
   recurringFoods.includes("data.sweetSubtypes.map") &&
   recurringFoods.includes("(data.carbCategories ?? []).map") &&
-  recurringFoods.includes("highestMealCount") &&
-  recurringFoods.includes("category.mealCount === highestMealCount") &&
-  recurringFoods.includes("food_frequency.favourite_category") &&
-  !recurringFoods.includes("recurring-food-row") &&
-  !recurringFoods.includes("food_frequency.based_on") &&
-  !recurringFoods.includes("food_frequency.subtypes_heading"));
+  recurringFoods.includes("categories[0].key") &&
+  recurringFoods.includes("favourite_category_title") &&
+  recurringFoods.includes("topFoods.length > 0") &&
+  recurringFoods.includes("favouriteCategory &&") &&
+  !page.includes("glucose-general-component-list") &&
+  !recurringFoods.includes(".filter(category => category.mealCount"));
 check("Food-frequency category labels cover sweet and carb categories in every locale", [en, zhHant, yue].every(locale =>
   ["sweet_drink", "sweet_food", "rice", "noodles", "bread", "potatoes", "other"]
     .every(key => locale.includes(`"${key}"`)),
 ));
-check("Recurring-food titles and all-category summary copy are localized",
-  en.includes('"title": "Carbohydrates/sugars you like to eat"') &&
-  zhHant.includes('"title": "你喜歡吃的碳水化合物／糖類"') &&
-  yue.includes('"title": "你鍾意食嘅碳水化合物／糖類"') &&
-  [en, zhHant, yue].every(locale => locale.includes('"favourite_category"')));
+check("Recurring-food titles and category-card copy are localized",
+  en.includes('"title": "Your favourite foods"') &&
+  zhHant.includes('"title": "你最喜歡的食物"') &&
+  yue.includes('"title": "你最鍾意嘅食物"') &&
+  [en, zhHant, yue].every(locale => locale.includes('"favourite_category_title"')));
 check("Personalised glucose copy avoids threshold and colour-band wording",
   en.includes('"personalised_popup_title": "Personalised glucose values ready"') &&
   zhHant.includes('"personalised_popup_title": "個人化血糖值已設定"') &&

@@ -220,10 +220,6 @@ export default function GlucosePatterns() {
   const hasMeasuredList = (data?.hstixList?.length ?? 0) > 0 ||
     (data?.hstixNeedsMoreReadings?.length ?? 0) > 0;
   const isHstixMode = mode === "hstix";
-  const generalFoods = useMemo(() => (data?.topList ?? []).map(food => ({
-    ...food,
-    foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
-  })), [data?.topList, locale]);
   const actualFoods = useMemo<ActualFood[]>(() =>
     (data?.hstixList ?? []).map(food => ({
       ...food,
@@ -501,32 +497,7 @@ export default function GlucosePatterns() {
                 )}
               </>
             ) : (
-              <>
-                <RecurringFoodInsights />
-                <div data-testid="glucose-general-component-list">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_general_heading")}</p>
-                    <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: generalFoods.length })}</p>
-                  </div>
-                  <p className="mb-3 text-sm text-muted-foreground">{t("glucose.pattern_general_description")}</p>
-                  <div className="space-y-2">
-                    {generalFoods.map(food => (
-                      <button key={food.foodKey} type="button" onClick={() => setSelectedFood(food.foodKey)} className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left" data-testid={`glucose-general-component-${food.foodKey}`}>
-                        <span>
-                          <span className="block text-sm font-semibold text-foreground">{food.foodName}</span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">{t(`glucose.pattern_component_type_${food.componentType}`)}</span>
-                        </span>
-                        <span className="text-sm text-muted-foreground">{t("glucose.pattern_frequency_count", { count: food.mealCount })}</span>
-                      </button>
-                    ))}
-                    {generalFoods.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-                        {t("glucose.pattern_general_empty")}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
+              <RecurringFoodInsights />
             )}
           </section>
         )}

@@ -1157,8 +1157,9 @@
   "offline_body": "請檢查您的網絡連線，然後再試一次。",
   "offline_button": "重新載入",
   "food_frequency": {
-    "title": "你喜歡吃的碳水化合物／糖類",
-    "favourite_category": "你最喜歡的類別：{{categories}}。",
+    "title": "你最喜歡的食物",
+    "favourite_category_title": "你最喜歡的類別",
+    "meals": "{{count}} 餐",
     "sweet_drink": "甜味飲料",
     "sweet_food": "甜食",
     "rice": "飯類",
