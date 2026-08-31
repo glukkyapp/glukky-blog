@@ -65,6 +65,12 @@ check("Timeline is guarded by recorded meals", daily.includes("snaps.length > 0 
 check("Two-month report calls only its dedicated endpoint", reports.includes('"/api/snap/two-month-summary"'));
 check("Unavailable diagnostic cards are omitted from rendering", reports.includes('card.state !== "unavailable"'));
 check("Two-month report renders named and neutral states", reports.includes('two_month_report.named_observation') && reports.includes('two_month_report.no_clear_difference'));
+check(
+  "Two-month dimensions use accessible visual emphasis for all three cards",
+  reports.includes('data-testid={`two-month-dimension-${card.cardType}`}') &&
+    reports.includes('className="font-bold text-primary"') &&
+    reports.includes("<strong"),
+);
 check("Two-month report retains a safety disclaimer", reports.includes('t("snap.advice_disclaimer")'));
 check("Home no longer duplicates Daily and Weekly reports", !homeSource.includes("DailyFoodSummaryBanner") && !homeSource.includes("<WeeklyCard"));
 check("Home no longer renders FoodSnap or Report action buttons",
@@ -116,9 +122,38 @@ check("Home does not retain the planner dinner check-in", !homeSource.includes("
 check("Fixed pixel text utilities scale in small-text mode", styles.includes("html.font-small .text-\\[29px\\]") && styles.includes("html.font-small .text-\\[18px\\]"));
 
 console.log("\nLocalized report copy");
+const expectedDimensionLabels: Record<string, Record<string, string>> = {
+  en: {
+    mealtime: "Mealtime",
+    weekday: "Day of week",
+    weekday_weekend: "Weekday and weekend",
+  },
+  "zh-Hant": {
+    mealtime: "用餐時間",
+    weekday: "星期幾",
+    weekday_weekend: "平日與週末",
+  },
+  yue: {
+    mealtime: "食飯時間",
+    weekday: "星期幾",
+    weekday_weekend: "平日同週末",
+  },
+};
 for (const locale of ["en", "zh-Hant", "yue"]) {
   const source = readFileSync(`client/src/locales/${locale}.json`, "utf8");
+  const translations = JSON.parse(source) as {
+    two_month_report?: {
+      no_clear_difference?: string;
+      cards?: Record<string, string>;
+    };
+  };
   check(`${locale} includes Last-2-month report copy`, source.includes('"two_month_report"') && source.includes('"no_clear_difference"'));
+  check(
+    `${locale} preserves all three Last-2-month dimension labels`,
+    Object.entries(expectedDimensionLabels[locale]).every(
+      ([key, value]) => translations.two_month_report?.cards?.[key] === value,
+    ),
+  );
 }
 
 console.log(`\n${passed} passed`);

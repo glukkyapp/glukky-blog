@@ -797,7 +797,14 @@ export function LastTwoMonthsCard() {
             className="rounded-xl bg-muted/40 px-3 py-3"
             data-testid={`two-month-card-${card.cardType}`}
           >
-            <p className="mb-1 text-xs font-semibold text-foreground">{t(PATTERN_CARD_TITLES[card.cardType])}</p>
+            <p className="mb-1 text-xs text-foreground">
+              <strong
+                className="font-bold text-primary"
+                data-testid={`two-month-dimension-${card.cardType}`}
+              >
+                {t(PATTERN_CARD_TITLES[card.cardType])}
+              </strong>
+            </p>
             {card.state === "named" ? (
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {t("two_month_report.named_observation", {

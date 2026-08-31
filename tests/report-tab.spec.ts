@@ -59,6 +59,64 @@ test.describe("Report tab", () => {
     await expect(page.getByTestId("card-two-month-report")).toBeVisible();
   });
 
+  test("emphasizes all three two-month report dimensions", async ({ page }) => {
+    await page.route("**/api/snap/two-month-summary", route => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "ready",
+        window: {
+          months: ["2026-06", "2026-07"],
+          startDate: "2026-06-01",
+          endDate: "2026-07-31",
+        },
+        totalMeals: 60,
+        cards: [
+          {
+            cardType: "mealtime",
+            state: "named",
+            leadingBucket: "breakfast",
+            runnerUpBucket: "lunch",
+            leadingRate: 0.8,
+            runnerUpRate: 0.2,
+            zScore: 2.1,
+          },
+          {
+            cardType: "weekday",
+            state: "named",
+            leadingBucket: "monday",
+            runnerUpBucket: "tuesday",
+            leadingRate: 0.8,
+            runnerUpRate: 0.2,
+            zScore: 2.1,
+          },
+          {
+            cardType: "weekday-weekend",
+            state: "named",
+            leadingBucket: "weekday",
+            runnerUpBucket: "weekend",
+            leadingRate: 0.8,
+            runnerUpRate: 0.2,
+            zScore: 2.1,
+          },
+        ],
+      }),
+    }));
+
+    await page.goto("/report?view=two-month");
+
+    const dimensions = [
+      ["mealtime", "Mealtime"],
+      ["weekday", "Day of week"],
+      ["weekday-weekend", "Weekday and weekend"],
+    ] as const;
+    for (const [cardType, label] of dimensions) {
+      const dimension = page.getByTestId(`two-month-dimension-${cardType}`);
+      await expect(dimension).toHaveText(label);
+      await expect(dimension).toHaveClass(/font-bold/);
+      await expect(dimension).toHaveClass(/text-primary/);
+    }
+  });
+
   test("keeps Report ownership only for food history entered from Report", async ({ page }) => {
     await page.goto("/food-log?from=report");
     await expect(page.getByTestId("nav-tab-report")).toHaveAttribute("aria-current", "page");
