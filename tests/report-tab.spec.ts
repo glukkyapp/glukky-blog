@@ -110,4 +110,29 @@ test.describe("Report tab", () => {
       expectedNext === "small" ? /font-small/ : /^(?!.*font-small)/,
     );
   });
+
+  test("home keeps HStix and meal suggestions without redundant actions or artwork", async ({ page }) => {
+    await page.route("**/api/dev/time", route => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ timeOverride: 18, dateOverride: null }),
+    }));
+    await page.route("**/api/meal-suggestions**", route => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ name: "Steamed fish with vegetables", source: "list" }),
+    }));
+
+    await page.goto("/");
+
+    await expect(page.getByTestId("text-greeting")).toBeVisible();
+    await expect(page.getByTestId("section-home-hstix")).toBeVisible();
+    await expect(
+      page.getByTestId("button-home-hstix-record").or(page.getByTestId("button-home-hstix-change")),
+    ).toBeVisible();
+    await expect(page.getByTestId("button-home-snap")).toHaveCount(0);
+    await expect(page.getByTestId("button-home-report")).toHaveCount(0);
+    await expect(page.getByTestId("img-gift-greeting")).toHaveCount(0);
+
+    await page.getByTestId("button-meal-suggestion").click();
+    await expect(page.getByTestId("card-meal-suggestion-result")).toContainText("Steamed fish with vegetables");
+  });
 });

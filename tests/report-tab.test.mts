@@ -67,6 +67,21 @@ check("Unavailable diagnostic cards are omitted from rendering", reports.include
 check("Two-month report renders named and neutral states", reports.includes('two_month_report.named_observation') && reports.includes('two_month_report.no_clear_difference'));
 check("Two-month report retains a safety disclaimer", reports.includes('t("snap.advice_disclaimer")'));
 check("Home no longer duplicates Daily and Weekly reports", !homeSource.includes("DailyFoodSummaryBanner") && !homeSource.includes("<WeeklyCard"));
+check("Home no longer renders FoodSnap or Report action buttons",
+  !homeSource.includes("button-home-snap") &&
+  !homeSource.includes("button-home-report") &&
+  !homeSource.includes('setLocation("/snap")') &&
+  !homeSource.includes('setLocation("/report")'));
+check("Home greeting no longer imports or renders the decorative gift image",
+  !homeSource.includes("img-gift-greeting") &&
+  !homeSource.includes("35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_preview_1776612834467.png"));
+check("Home keeps the focused HStix, suggestion, piggy bank, greeting, and goal experiences",
+  homeSource.includes("button-home-hstix-record") &&
+  homeSource.includes("button-home-hstix-change") &&
+  homeSource.includes("button-meal-suggestion") &&
+  homeSource.includes("<PiggyBankCard") &&
+  homeSource.includes('data-testid="text-greeting"') &&
+  homeSource.includes('data-testid="text-goal-reminder"'));
 
 console.log("\nTwo-month retention");
 check(

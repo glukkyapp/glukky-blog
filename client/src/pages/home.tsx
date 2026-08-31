@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, ChartNoAxesCombined, Droplets } from "lucide-react";
+import { Droplets } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 import type { UserProfile } from "@shared/schema";
-import giftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_preview_1776612834467.png";
 
 type CorrectableHstixReading = {
   id: number;
@@ -154,9 +153,9 @@ export default function Home() {
         <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }} data-testid="text-week-header">
           {weekdayLabel}
         </h1>
-        <div className="flex items-center justify-between gap-3 -mt-2">
+        <div className="-mt-2">
           <p
-            className="text-[50px] font-bold leading-none flex-1 min-w-0"
+            className="text-[50px] font-bold leading-none min-w-0"
             style={{ color: "#214B36" }}
             data-testid="text-greeting"
           >
@@ -164,7 +163,6 @@ export default function Home() {
               ? t("home.greeting_with_name", { name: profile.name })
               : t("home.greeting_no_name")}
           </p>
-          <img src={giftImg} alt="" className="w-16 h-16 shrink-0" data-testid="img-gift-greeting" />
         </div>
       </header>
 
@@ -247,14 +245,6 @@ export default function Home() {
         </section>
       )}
 
-      <Button className="w-full h-16 text-base btn-pop" onClick={() => setLocation("/snap")} data-testid="button-home-snap">
-        <Camera className="w-5 h-5 mr-2" />
-        {t("nav.snap")}
-      </Button>
-      <Button variant="outline" className="w-full h-14" onClick={() => setLocation("/report")} data-testid="button-home-report">
-        <ChartNoAxesCombined className="w-5 h-5 mr-2" />
-        {t("nav.report", { defaultValue: "Reports" })}
-      </Button>
     </motion.main>
   );
 }
