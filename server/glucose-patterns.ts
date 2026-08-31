@@ -97,6 +97,7 @@ type FoodStats = {
 };
 
 export const MIN_HSTIX_FOOD_MEALS_FOR_CARD = 25;
+export const MAX_DIRECTIONAL_HSTIX_FOOD_CARDS = 5;
 // This stricter bar directly supports food-avoidance guidance and is
 // achievable because each directional card already requires at least
 // 25 food-present and 25 food-absent eligible meals.
@@ -303,7 +304,7 @@ export function buildHstixFoodCards(
   }
 
   const overallHighProbability = allHighMeals / totalMeals;
-  const cards = Array.from(stats.values())
+  const allCards = Array.from(stats.values())
     .filter(food => food.totalMeals >= MIN_HSTIX_FOOD_MEALS_FOR_CARD)
     .map(food => {
       const highProbability = food.highMeals / food.totalMeals;
@@ -339,8 +340,20 @@ export function buildHstixFoodCards(
         impactLevel,
       };
     })
-    .filter((card): card is HstixFoodCard => card !== null)
-    .sort((a, b) => a.foodKey.localeCompare(b.foodKey));
+    .filter((card): card is HstixFoodCard => card !== null);
+  const cards = [
+    ...allCards
+      .filter(card => card.impactLevel === "low")
+      .sort((a, b) => a.lift - b.lift || a.foodKey.localeCompare(b.foodKey))
+      .slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS),
+    ...allCards
+      .filter(card => card.impactLevel === "medium")
+      .sort((a, b) => a.foodKey.localeCompare(b.foodKey)),
+    ...allCards
+      .filter(card => card.impactLevel === "high")
+      .sort((a, b) => b.lift - a.lift || a.foodKey.localeCompare(b.foodKey))
+      .slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS),
+  ];
   const partnerInsights = buildHstixPartnerInsights(numericSnaps, cards);
   return cards.map(card => {
     const partnerInsight = partnerInsights.get(card.foodKey);
@@ -393,7 +406,10 @@ export function buildHstixPartnerInsights(
     let indexMealCount = 0;
 
     for (const meal of eligibleMeals) {
-      const mealItems = (meal.foodItems ?? []).filter(isEligibleGlucosePatternComponent);
+      // The index food must pass the carb/sweet analysis gate, but its meal
+      // partners may be any authoritative component. This lets truthful foods
+      // such as char siu explain a rice pattern without becoming index cards.
+      const mealItems = (meal.foodItems ?? []).filter(item => item.source !== "derived");
       const uniqueItems = new Map<string, FoodItemMetadata>();
       for (const item of mealItems) uniqueItems.set(foodItemKey(item), item);
       if (!uniqueItems.has(candidate.foodKey)) continue;

@@ -40,6 +40,14 @@ function carbFood(name: string): FoodItemMetadata {
   };
 }
 
+function ordinaryFood(name: string): FoodItemMetadata {
+  return {
+    ...food(name),
+    sweetCategory: null,
+    isSweet: false,
+  };
+}
+
 function meal(mmol: number, foodItems: FoodItemMetadata[], timing: HstixMealForCards["mealTimingConfidence"] = "on_time"): HstixMealForCards {
   return { postMealGlucoseMmol: mmol, foodItems, mealTimingConfidence: timing, isCanonicalHstix: true };
 }
@@ -71,9 +79,9 @@ function insightFor(index: FoodItemMetadata, meals: HstixMealForCards[], impactL
 }
 
 const rice = carbFood("rice");
-const roastPork = food("roast pork");
-const chicken = food("chicken");
-const greens = food("greens");
+const roastPork = ordinaryFood("roast pork");
+const chicken = ordinaryFood("chicken");
+const greens = ordinaryFood("greens");
 
 console.log("Eligible measured-food evidence");
 const derivedRice = { ...rice, source: "derived" as const };
@@ -119,6 +127,13 @@ check(
   riceCombinationInsight?.kind === "comparison" &&
     riceCombinationInsight.higherPartner.foodKey === foodItemKey(roastPork) &&
     riceCombinationInsight.lowerPartner.foodKey === foodItemKey(chicken),
+);
+check(
+  "ordinary partners remain explanations without becoming measured index cards",
+  !buildHstixFoodCards([
+    ...Array.from({ length: 25 }, () => meal(8.2, [rice, roastPork])),
+    ...Array.from({ length: 25 }, () => meal(5.5, [carbFood("baseline")])),
+  ], "healthy").some(result => result.foodKey === foodItemKey(roastPork)),
 );
 
 console.log("\nDominant partner rules");

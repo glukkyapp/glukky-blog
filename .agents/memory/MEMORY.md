@@ -5,3 +5,4 @@
 - [Radix toast browser tests](radix-toast-browser-tests.md) — count visual toast list items, not live-region announcements, when asserting notification events.
 - [Rolling-report retention](rolling-report-retention.md) — retain minimal final-label facts so two-month reports outlive raw meal deletion.
 - [Development seed guards](development-seed-guards.md) — this workspace's REPLIT_ENVIRONMENT label is not a safe production discriminator; require explicit NODE_ENV.
+- [Glucose pattern index vs partners](glucose-pattern-index-vs-partners.md) — carb/sweet-only index; ordinary foods remain eligible as explanatory meal partners.

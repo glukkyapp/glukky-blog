@@ -147,10 +147,11 @@ test("Needs more readings is a selector and keeps the measured card visible", as
         lift: 1.5,
         avgPostMealMmol: 7.9,
         impactLevel: "high",
+        componentType: "carb",
       }],
       hstixNeedsMoreReadings: [
-        { foodKey: "chicken", foodNameEn: "Chicken", foodNameZhHant: "雞肉", foodNameYue: "雞肉", totalMeals: 12 },
-        { foodKey: "tofu", foodNameEn: "Tofu", foodNameZhHant: "豆腐", foodNameYue: "豆腐", totalMeals: 18 },
+        { foodKey: "toast", foodNameEn: "Toast", foodNameZhHant: "多士", foodNameYue: "多士", componentType: "carb", totalMeals: 12 },
+        { foodKey: "milk-tea", foodNameEn: "Milk tea", foodNameZhHant: "奶茶", foodNameYue: "奶茶", componentType: "sweet_drink", totalMeals: 18 },
       ],
     }),
   }));
@@ -161,11 +162,13 @@ test("Needs more readings is a selector and keeps the measured card visible", as
 
   await page.goto("/glucose-patterns");
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
+  await expect(page.getByTestId("glucose-card-rank")).toHaveText("1st place");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("20 high readings from 25 meals");
   await expect(page.getByTestId("glucose-needs-more-readings-select")).toBeVisible();
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("12 eligible readings");
 
   await page.getByTestId("glucose-needs-more-readings-select").click();
-  await page.getByRole("option", { name: "Tofu" }).click();
+  await page.getByRole("option", { name: "Milk tea" }).click();
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("18 eligible readings");
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("7 more needed");
 });
@@ -195,6 +198,7 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
           lift: 1.5,
           avgPostMealMmol: 7.9,
           impactLevel: "high",
+          componentType: "carb",
           partnerInsight: {
             kind: "dominant",
             partner: { foodKey: "pork", foodNameEn: "Roast pork", foodNameZhHant: "燒肉", foodNameYue: "燒肉" },
@@ -215,6 +219,7 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
           lift: 0.6,
           avgPostMealMmol: 5.8,
           impactLevel: "low",
+          componentType: "carb",
           partnerInsight: {
             kind: "comparison",
             higherPartner: { foodKey: "milk", foodNameEn: "Milk", foodNameZhHant: "牛奶", foodNameYue: "牛奶" },

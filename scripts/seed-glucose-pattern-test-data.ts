@@ -96,9 +96,9 @@ const FOODS: Record<string, FoodDefinition> = {
   beef: { slug: "beef", nameEn: "beef", nameZhHant: "牛肉", nameYue: "牛肉" },
   broccoli: { slug: "broccoli", nameEn: "broccoli", nameZhHant: "西蘭花", nameYue: "西蘭花" },
   chicken: { slug: "chicken-breast", nameEn: "chicken breast", nameZhHant: "雞胸肉", nameYue: "雞胸肉" },
-  vegetables: { slug: "vegetable-bun", nameEn: "vegetable bun", nameZhHant: "菜", nameYue: "菜" },
-  charSiu: { slug: "char-siu-bun", nameEn: "char siu bun", nameZhHant: "叉燒", nameYue: "叉燒" },
-  roastPork: { slug: "roast-pork-bun", nameEn: "roast pork bun", nameZhHant: "燒肉", nameYue: "燒肉" },
+  vegetables: { slug: "vegetables", nameEn: "vegetables", nameZhHant: "菜", nameYue: "菜" },
+  charSiu: { slug: "char-siu", nameEn: "char siu", nameZhHant: "叉燒", nameYue: "叉燒" },
+  roastPork: { slug: "roast-pork", nameEn: "roast pork", nameZhHant: "燒肉", nameYue: "燒肉" },
   friedRice: { slug: "fried-rice", nameEn: "fried rice", nameZhHant: "炒飯", nameYue: "炒飯" },
   cheungFun: { slug: "cheung-fun", nameEn: "cheung fun", nameZhHant: "腸粉", nameYue: "腸粉" },
   steamedFish: { slug: "steamed-fish", nameEn: "steamed fish", nameZhHant: "蒸魚", nameYue: "蒸魚" },
@@ -921,6 +921,16 @@ async function verifySeed(
   const riceNoodles = findCard("米線");
   const oatmeal = findCard("燕麥");
   const partnerIndex = findCard("米粉");
+  const ordinaryFoodNames = new Set(["叉燒", "燒肉", "菜"]);
+  if (
+    cards.some(card => ordinaryFoodNames.has(card.foodNameZhHant)) ||
+    needsMore.some(food => ordinaryFoodNames.has(food.foodNameZhHant))
+  ) {
+    throw new Error(`Ordinary partner foods leaked into HStix index results: ${JSON.stringify({
+      cards: cards.filter(card => ordinaryFoodNames.has(card.foodNameZhHant)),
+      needsMore: needsMore.filter(food => ordinaryFoodNames.has(food.foodNameZhHant)),
+    })}`);
+  }
   if (!whiteRice || whiteRice.totalMeals !== 30 || whiteRice.highMeals !== 23) {
     throw new Error(`White-rice card shape failed: ${JSON.stringify(whiteRice)}`);
   }

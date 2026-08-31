@@ -30,7 +30,7 @@ check("Higher-impact measured cards are ordered by lift descending with stable f
   rankMeasuredFoods(measuredFoods.slice(0, 3), "high").map(food => food.foodKey).join("|") === "bread|noodles|rice");
 check("Lower-impact measured cards are ordered by lift ascending",
   rankMeasuredFoods(measuredFoods.slice(3), "low").map(food => food.foodKey).join("|") === "potato|oats");
-check("Measured Higher and Lower card ordering keeps all cards rather than imposing a display cap",
+check("The client ranking helper preserves the backend-selected result set",
   rankMeasuredFoods(Array.from({ length: 7 }, (_, index) => ({ foodKey: `food-${index}`, lift: index })), "high").length === 7);
 
 console.log("\nPage and API contracts");
@@ -55,7 +55,7 @@ check("The established ten-snap lock remains in place",
   page.includes("const LOCKED_THRESHOLD = 10") && page.includes("totalSnaps < LOCKED_THRESHOLD"));
 check("The ten-snap lock also protects search and food-detail API data",
   routes.includes('if (totalSnaps < 10)') && routes.includes("return res.status(403)"));
-check("Measured Higher and Lower cards are ordered by lift while Medium cards use display-only random sampling",
+check("Measured Higher and Lower cards preserve lift ordering while Medium cards use display-only random sampling",
   page.includes("rankMeasuredFoods(foods, level)") &&
   page.includes('level === "medium"') &&
   page.includes("sampleFoods(foods)"));
@@ -63,7 +63,15 @@ check("An empty HStix response does not hide the General component-frequency lis
   page.includes("(data?.hstixList?.length ?? 0) > 0") &&
   page.includes("(data?.hstixNeedsMoreReadings?.length ?? 0) > 0") &&
   !page.includes("data?.hstixList !== undefined"));
-check("Measured cards do not show ordinal ranks", !page.includes("pattern_rank_"));
+check("Measured cards show their selected ranking position while retaining the High/total result",
+  page.includes("glucose-card-rank") &&
+  page.includes("pattern_rank_${activeIndex + 1}") &&
+  page.includes("pattern_hstix_result") &&
+  page.includes("high: activeFood.highMeals") &&
+  page.includes("total: activeFood.totalMeals"));
+check("The backend caps directional result groups at five after lift ordering",
+  glucosePatterns.includes("MAX_DIRECTIONAL_HSTIX_FOOD_CARDS = 5") &&
+  glucosePatterns.includes(".slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS)"));
 check("Cards support pointer swipes",
   page.includes("onPointerDown") && page.includes("onPointerUp") && page.includes("SWIPE_MIN_PX"));
 check("Search uses live structured component reads rather than whole-dish names",

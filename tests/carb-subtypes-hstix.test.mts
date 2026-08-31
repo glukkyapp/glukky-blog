@@ -175,13 +175,19 @@ check(
   buildHstixFoodCards(mixedTimingMeals, "healthy").length === 0,
 );
 check(
-  "non-carb foods do not appear in the below-threshold index-food list",
-  !buildHstixFoodsNeedingMoreReadings([{
+  "below-threshold encouragement includes carbs and sweets but excludes ordinary foods",
+  (() => {
+    const needsMore = buildHstixFoodsNeedingMoreReadings([{
     postMealGlucoseMmol: 7,
-    foodItems: [rice, chicken],
+    foodItems: [rice, chicken, milkTea, cake],
     mealTimingConfidence: "on_time" as const,
     isCanonicalHstix: true,
-  }]).some(food => food.foodNameEn === "Hainanese chicken"),
+    }]);
+    return needsMore.some(food => food.foodKey === foodItemKey(rice)) &&
+      needsMore.some(food => food.foodKey === foodItemKey(milkTea) && food.componentType === "sweet_drink") &&
+      needsMore.some(food => food.foodKey === foodItemKey(cake) && food.componentType === "sweet_food") &&
+      !needsMore.some(food => food.foodNameEn === "Hainanese chicken");
+  })(),
 );
 
 console.log("\nExpected-rank HStix impact");
@@ -324,6 +330,88 @@ check(
     unchangedMathCard.mediumMeals === 0 &&
     unchangedMathCard.lowMeals === 0,
 );
+const highRankFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
+  ...rice,
+  nameEn: `high rank ${index}`,
+  nameZhHant: `高排名${index}`,
+  nameYue: `高排名${index}`,
+}));
+const highRankCards = buildHstixFoodCards([
+  ...highRankFoods.flatMap(item => Array.from({ length: 25 }, () => onTimeMeal(8.2, [item]))),
+  ...Array.from({ length: 100 }, () => onTimeMeal(5.5, [rice])),
+], "healthy").filter(card => card.impactLevel === "high");
+check(
+  "backend limits tied Higher results to five with stable food-key ordering",
+  highRankCards.length === 5 &&
+    !highRankCards.some(card => card.foodKey === foodItemKey(highRankFoods[5])) &&
+    highRankCards.every((card, index, cards) =>
+      index === 0 ||
+      cards[index - 1].lift > card.lift ||
+      (cards[index - 1].lift === card.lift && cards[index - 1].foodKey.localeCompare(card.foodKey) < 0)),
+);
+const distinctHighFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
+  ...rice,
+  nameEn: `distinct high ${index}`,
+  nameZhHant: `不同高排名${index}`,
+  nameYue: `不同高排名${index}`,
+}));
+const distinctHighCards = buildHstixFoodCards([
+  ...distinctHighFoods.flatMap((item, index) => [
+    ...Array.from({ length: 25 - index }, () => onTimeMeal(8.2, [item])),
+    ...Array.from({ length: index }, () => onTimeMeal(5.5, [item])),
+  ]),
+  ...Array.from({ length: 100 }, () => onTimeMeal(5.5, [rice])),
+], "healthy").filter(card => card.impactLevel === "high");
+check(
+  "backend keeps the five highest distinct Higher lift ratios",
+  distinctHighCards.length === 5 &&
+    distinctHighCards.map(card => card.foodKey).join("|") === distinctHighFoods
+      .slice(0, 5)
+      .map(foodItemKey)
+      .join("|") &&
+    !distinctHighCards.some(card => card.foodKey === foodItemKey(distinctHighFoods[5])),
+);
+const lowRankFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
+  ...rice,
+  nameEn: `low rank ${index}`,
+  nameZhHant: `低排名${index}`,
+  nameYue: `低排名${index}`,
+}));
+const lowRankCards = buildHstixFoodCards([
+  ...lowRankFoods.flatMap(item => Array.from({ length: 25 }, () => onTimeMeal(5.5, [item]))),
+  ...Array.from({ length: 100 }, () => onTimeMeal(8.2, [rice])),
+], "healthy").filter(card => card.impactLevel === "low");
+check(
+  "backend limits tied Lower results to five with stable food-key ordering",
+  lowRankCards.length === 5 &&
+    !lowRankCards.some(card => card.foodKey === foodItemKey(lowRankFoods[5])) &&
+    lowRankCards.every((card, index, cards) =>
+      index === 0 ||
+      cards[index - 1].lift < card.lift ||
+      (cards[index - 1].lift === card.lift && cards[index - 1].foodKey.localeCompare(card.foodKey) < 0)),
+);
+const distinctLowFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
+  ...rice,
+  nameEn: `distinct low ${index}`,
+  nameZhHant: `不同低排名${index}`,
+  nameYue: `不同低排名${index}`,
+}));
+const distinctLowCards = buildHstixFoodCards([
+  ...distinctLowFoods.flatMap((item, index) => [
+    ...Array.from({ length: index }, () => onTimeMeal(8.2, [item])),
+    ...Array.from({ length: 25 - index }, () => onTimeMeal(5.5, [item])),
+  ]),
+  ...Array.from({ length: 100 }, () => onTimeMeal(8.2, [rice])),
+], "healthy").filter(card => card.impactLevel === "low");
+check(
+  "backend keeps the five lowest distinct Lower lift ratios",
+  distinctLowCards.length === 5 &&
+    distinctLowCards.map(card => card.foodKey).join("|") === distinctLowFoods
+      .slice(0, 5)
+      .map(foodItemKey)
+      .join("|") &&
+    !distinctLowCards.some(card => card.foodKey === foodItemKey(distinctLowFoods[5])),
+);
 check(
   "reliability statistics never enter the measured-card response",
   !!unchangedMathCard &&
@@ -380,7 +468,7 @@ check("food items persist on the exact library combo, not a global meal name",
   schema.includes('foodItems: jsonb("food_items")') &&
   storage.includes("target: foodLabels.internalId") &&
   storage.includes("set: { foodItems }"));
-check("measured card explanation is localized without a numeric count sentence", en.includes("After eating {{food}}, your blood sugar tends to run higher than usual.") &&
+check("the legacy directional explanation remains localized without changing result counts", en.includes("After eating {{food}}, your blood sugar tends to run higher than usual.") &&
   zhHant.includes("你吃{{food}}之後，血糖比平時容易偏高。") &&
   yue.includes("你食{{food}}之後，血糖比平時容易偏高。"));
 check("daily summaries classify the canonical HStix value before legacy fallback",

@@ -242,7 +242,7 @@ export default function GlucosePatterns() {
   const selectedNeedsMoreReading = needsMoreReadings.find(food => food.foodKey === selectedNeedsMoreFood) ?? null;
 
   const activeFoods = actualByImpact[impact];
-  const matchingCount = actualFoods.filter(food => food.impactLevel === impact).length;
+  const matchingCount = activeFoods.length;
   const activeIndex = Math.min(cardIndex, Math.max(0, activeFoods.length - 1));
   const activeFood = activeFoods[activeIndex];
   const totalSnaps = data?.totalSnaps ?? 0;
@@ -339,7 +339,7 @@ export default function GlucosePatterns() {
             {hasMeasuredList && (
               <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
                 {IMPACT_LEVELS.map(level => {
-                  const count = actualFoods.filter(food => food.impactLevel === level).length;
+                  const count = actualByImpact[level].length;
                   return (
                     <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
                       <span className="block">{t(`glucose.pattern_measured_impact_${level}`)}</span>
@@ -383,6 +383,9 @@ export default function GlucosePatterns() {
                     <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
                       <div className="mb-5 flex items-start justify-between gap-3">
                         <div>
+                           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" data-testid="glucose-card-rank">
+                             {t(`glucose.pattern_rank_${activeIndex + 1}`)}
+                           </p>
                           <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
                           <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_hstix_reading")}</p>
                           <p className="mt-1 text-xs font-medium text-muted-foreground" data-testid="glucose-component-type">
