@@ -1,0 +1,94 @@
+The required change is to turn the General food-frequency Category section from a sweet-only summary into a unified sweet-and-carb category summary.
+
+Server summary
+In server/food-frequency.ts:
+
+Replace the sweet-specific sweetSubtypes output with a general category summary, such as categories.
+
+Define the category union from both existing classification systems:
+
+Sweet: sweet_drink, sweet_food
+
+Carb: rice, noodles, bread, potatoes, other
+
+While processing each meal, collect both item.sweetCategory and item.carbCategory.
+
+Count each category once per meal with a per-meal Set.
+
+Preserve existing named-food counting exactly as it is.
+
+Return the new category list in FoodFrequencySummary; the existing API route can continue to return that summary unchanged.
+
+Client card
+In RecurringFoodInsights.tsx:
+
+Replace the sweetSubtypes client type with the new general category list.
+
+Update the Category block to render all returned categories, not only sweet categories.
+
+Keep the existing Category heading/layout unless product copy requires a rename.
+
+The card should show combinations such as:
+
+飯類：6 餐 · 麵類：4 餐 · 甜味飲料：3 餐
+
+A food can contribute to more than one distinct category in the same meal—for example, a sweet bun may count toward both sweet_food and bread—but neither category may be counted twice within that meal.
+
+Locales
+Update English, Traditional Chinese, and Cantonese locale files with labels for every supported category:
+
+sweet_drink
+
+sweet_food
+
+rice
+
+noodles
+
+bread
+
+potatoes
+
+other
+
+In Traditional Chinese, change:
+
+json
+"sweet_drink": "甜飲品：{{count}} 餐"
+to:
+
+json
+"sweet_drink": "甜味飲料：{{count}} 餐"
+and add, at minimum:
+
+json
+"rice": "飯類：{{count}} 餐",
+"noodles": "麵類：{{count}} 餐",
+"bread": "麵包類：{{count}} 餐",
+"potatoes": "薯類：{{count}} 餐",
+"other": "其他澱粉類：{{count}} 餐"
+Tests
+Add or update coverage to verify:
+
+Rice, noodles, bread, potatoes, and other reach the frequency-summary category output.
+
+Sweet categories remain included.
+
+Each category is counted once per meal, even if multiple qualifying items occur in that meal.
+
+An item with both a sweet and carb category contributes to both distinct categories.
+
+Named-food frequency counts remain unchanged.
+
+The API contract exposes the general category field.
+
+The General Category UI renders mixed carb and sweet categories.
+
+Localized wording—including 甜味飲料—works in English, Traditional Chinese, and Cantonese.
+
+No changes needed
+server/carb-subtypes.ts classification and aliases already cover the required carb categories.
+
+/api/snap/food-frequency route logic does not need filtering changes.
+
+HStix eligibility, impact classification, ranking, lift, pairing logic, and report calculations stay unchanged.
