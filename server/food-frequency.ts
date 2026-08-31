@@ -1,5 +1,5 @@
 import type { FoodItemMetadata, MealSnap, SweetCategory } from "@shared/schema";
-import { foodItemKey } from "./carb-subtypes";
+import { foodItemKey, type CarbCategory } from "./carb-subtypes";
 
 export const FOOD_FREQUENCY_MEAL_THRESHOLD = 25;
 
@@ -15,29 +15,38 @@ export type FoodFrequencySubtype = {
   mealCount: number;
 };
 
+export type FoodFrequencyCarbCategory = {
+  carbCategory: Exclude<CarbCategory, null>;
+  mealCount: number;
+};
+
 export type FoodFrequencySummary = {
   totalMeals: number;
   eligible: boolean;
   foods: FoodFrequencyFood[];
   sweetSubtypes: FoodFrequencySubtype[];
+  carbCategories: FoodFrequencyCarbCategory[];
 };
 
 type FrequencySnap = Pick<MealSnap, "foodItems" | "isDeleted">;
 
 /**
  * Counts a component once per meal. Food identity uses all three canonical
- * names, while sweet subtype identity is counted independently, so one
- * component can contribute to both without appearing twice as a food.
+ * names, while sweet subtype and carb-category identity are counted
+ * independently, so one component can contribute to both without appearing
+ * twice as a food.
  * Legacy items without sweet metadata stay unclassified.
  */
 export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequencySummary {
   const activeSnaps = snaps.filter(snap => snap.isDeleted !== true);
   const foods = new Map<string, FoodFrequencyFood>();
   const sweetSubtypes = new Map<Exclude<SweetCategory, null>, number>();
+  const carbCategories = new Map<Exclude<CarbCategory, null>, number>();
 
   for (const snap of activeSnaps) {
     const seenFoodsThisMeal = new Set<string>();
-    const seenSubtypesThisMeal = new Set<Exclude<SweetCategory, null>>();
+    const seenSweetSubtypesThisMeal = new Set<Exclude<SweetCategory, null>>();
+    const seenCarbCategoriesThisMeal = new Set<Exclude<CarbCategory, null>>();
 
     for (const item of (snap.foodItems ?? [])) {
       if (item.source === "derived") continue;
@@ -61,11 +70,27 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
 
       // A missing legacy field is unknown, not false. A known null is the
       // explicit result of classifying a newly prepared non-sweet item.
-      if (item.sweetCategory == null) continue;
-      const category = item.sweetCategory as Exclude<SweetCategory, null>;
-      if (seenSubtypesThisMeal.has(category)) continue;
-      seenSubtypesThisMeal.add(category);
-      sweetSubtypes.set(category, (sweetSubtypes.get(category) ?? 0) + 1);
+      if (item.sweetCategory != null) {
+        const category = item.sweetCategory as Exclude<SweetCategory, null>;
+        if (!seenSweetSubtypesThisMeal.has(category)) {
+          seenSweetSubtypesThisMeal.add(category);
+          sweetSubtypes.set(category, (sweetSubtypes.get(category) ?? 0) + 1);
+        }
+      }
+
+      const carbCategory = item.isCarb === true ? item.carbCategory : null;
+      if (
+        carbCategory === "rice" ||
+        carbCategory === "noodles" ||
+        carbCategory === "bread" ||
+        carbCategory === "potatoes" ||
+        carbCategory === "other"
+      ) {
+        if (!seenCarbCategoriesThisMeal.has(carbCategory)) {
+          seenCarbCategoriesThisMeal.add(carbCategory);
+          carbCategories.set(carbCategory, (carbCategories.get(carbCategory) ?? 0) + 1);
+        }
+      }
     }
   }
 
@@ -76,5 +101,8 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
     sweetSubtypes: Array.from(sweetSubtypes.entries())
       .map(([sweetCategory, mealCount]) => ({ sweetCategory, mealCount }))
       .sort((a, b) => b.mealCount - a.mealCount || a.sweetCategory.localeCompare(b.sweetCategory)),
+    carbCategories: Array.from(carbCategories.entries())
+      .map(([carbCategory, mealCount]) => ({ carbCategory, mealCount }))
+      .sort((a, b) => b.mealCount - a.mealCount || a.carbCategory.localeCompare(b.carbCategory)),
   };
 }

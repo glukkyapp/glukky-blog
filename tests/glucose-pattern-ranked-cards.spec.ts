@@ -27,16 +27,42 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await page.route("**/api/snap/glucose-patterns**", async route => {
     const url = new URL(route.request().url());
     if (url.searchParams.has("query")) {
+      const mode = url.searchParams.get("mode");
       return route.fulfill({ contentType: "application/json", body: JSON.stringify({
         suggestions: [{
           foodKey: "apple|蘋果|蘋果",
-          foodNameEn: "Apple",
+          foodNameEn: mode === "hstix" ? "Apple HStix" : "Apple",
           foodNameZhHant: "蘋果",
           foodNameYue: "蘋果",
         }],
       }) });
     }
     if (url.searchParams.has("food")) {
+      if (url.searchParams.get("mode") === "hstix") {
+        return route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            detail: {
+              kind: "hstix",
+              foodKey: "apple|蘋果|蘋果",
+              foodName: "Apple",
+              foodNameEn: "Apple",
+              foodNameZhHant: "蘋果",
+              foodNameYue: "蘋果",
+              carbCategory: "other",
+              sweetCategory: null,
+              componentType: "carb",
+              avgPostMealMmol: 7.1,
+              readingCount: 25,
+              impactLevel: "medium",
+              lift: 1,
+              highMeals: 8,
+              nonHighMeals: 17,
+              readings: [{ recordedAt: "2026-08-30T12:00:00.000Z", postMealGlucoseMmol: 7.1 }],
+            },
+          }),
+        });
+      }
       return route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
@@ -72,12 +98,27 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     contentType: "application/json",
     body: JSON.stringify({ glucoseGroup: "healthy", readingCount: 2, isPersonalised: false, glucosePersonalisedSeen: true }),
   }));
+  await page.route("**/api/snap/food-frequency", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      totalMeals: 25,
+      eligible: true,
+      foods: [{ nameEn: "Apple", nameZhHant: "蘋果", nameYue: "蘋果", mealCount: 2, sweetCategory: null }],
+      sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
+      carbCategories: [{ carbCategory: "other", mealCount: 2 }],
+    }),
+  }));
 
   await page.goto("/glucose-patterns");
   await expect(page.getByTestId("glucose-mode-ai")).toHaveCount(0);
   await expect(page.getByTestId("glucose-mode-actual")).toHaveCount(0);
+  await expect(page.getByTestId("glucose-mode-general")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("glucose-mode-hstix")).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
   await expect(page.getByTestId("glucose-general-component-list")).toBeVisible();
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Foods you like to eat");
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Sweet drinks: 3 meals");
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Other starches: 2 meals");
 
   await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Apple");
   await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Carbohydrate");
@@ -89,6 +130,18 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("Carbohydrate");
   await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("2 meals");
   await expect(page.getByTestId("glucose-food-detail-dialog")).not.toContainText("mmol/L");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toHaveCount(0);
+
+  await page.getByTestId("glucose-mode-hstix").click();
+  await expect(page.getByTestId("glucose-impact-low")).toBeVisible();
+  await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
+  await expect(page.getByTestId("card-recurring-foods")).toHaveCount(0);
+
+  await page.getByTestId("input-glucose-food-search").fill("app");
+  await expect(page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果")).toContainText("Apple HStix");
+  await page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果").click();
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("7.1 mmol/L");
 });
 
 test("Navigation fits five equal slots and Profile exposes the moved tools", async ({ context, page }) => {
@@ -161,6 +214,7 @@ test("Needs more readings is a selector and keeps the measured card visible", as
   }));
 
   await page.goto("/glucose-patterns");
+  await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
   await expect(page.getByTestId("glucose-card-rank")).toHaveText("1st place");
   await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("20 high readings from 25 meals");
@@ -236,13 +290,59 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   }));
 
   await page.goto("/glucose-patterns");
+  await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
+  await expect(page.getByTestId("glucose-partner-comparison").locator("strong")).toHaveText(["Milk", "Berries"]);
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
   await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
 
   await page.getByTestId("glucose-impact-high").click();
   await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
+  await expect(page.getByTestId("glucose-partner-dominant").locator("strong")).toHaveText("Roast pork");
   await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
+});
+
+test("Medium HStix keeps five sampled cards without ordinal text", async ({ context, page }) => {
+  await setupUser(context, page);
+
+  await page.route("**/api/snap/glucose-patterns**", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      totalPaired: 60,
+      totalSnaps: 60,
+      topList: [],
+      hstixList: Array.from({ length: 6 }, (_, index) => ({
+        foodKey: `medium-${index}`,
+        foodNameEn: `Medium food ${index + 1}`,
+        foodNameZhHant: `中等食物 ${index + 1}`,
+        foodNameYue: `中等食物 ${index + 1}`,
+        totalMeals: 25,
+        highMeals: 8,
+        mediumMeals: 9,
+        lowMeals: 8,
+        nonHighMeals: 17,
+        highProbability: 0.32,
+        overallHighProbability: 0.32,
+        lift: 1,
+        avgPostMealMmol: 6.8,
+        impactLevel: "medium",
+        componentType: "carb",
+      })),
+      hstixNeedsMoreReadings: [],
+    }),
+  }));
+  await page.route("**/api/user/glucose-thresholds", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ glucoseGroup: "healthy", readingCount: 60, isPersonalised: true, glucosePersonalisedSeen: true }),
+  }));
+
+  await page.goto("/glucose-patterns");
+  await page.getByTestId("glucose-mode-hstix").click();
+  await page.getByTestId("glucose-impact-medium").click();
+
+  await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
+  await expect(page.getByTestId("glucose-card-rank")).toHaveCount(0);
+  await expect(page.getByText("1 / 5", { exact: true })).toBeVisible();
 });
 
 test.describe("desktop navigation layout", () => {

@@ -53,6 +53,7 @@ check("Period switch uses native button semantics", report.includes("aria-presse
 check("Daily view does not duplicate the former Weekly report", !report.includes('variant="preview"') && !report.includes("button-open-weekly-report"));
 check("Rolling view uses its dedicated two-month report", report.includes("<LastTwoMonthsCard"));
 check("Report tab no longer references the weekly summary", !report.includes("WeeklyCard") && !report.includes("weekly-summary"));
+check("Recurring food insights moved out of Report", !report.includes("RecurringFoodInsights"));
 check("Meal action enters food history from Report", report.includes('setLocation("/food-log?from=report")'));
 check("Food history back action returns to Report", foodLog.includes('get("from") === "report"') && foodLog.includes('setLocation("/report")'));
 

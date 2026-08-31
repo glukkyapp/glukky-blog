@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Lock, Search } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RecurringFoodInsights } from "@/components/RecurringFoodInsights";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/select";
 
 type ComponentType = "carb" | "sweet_food" | "sweet_drink";
+type PatternMode = "general" | "hstix";
 
 interface GeneralGlucosePatternEntry {
   foodKey: string;
@@ -153,6 +155,7 @@ export default function GlucosePatterns() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const locale = i18n.language || "en";
+  const [mode, setMode] = useState<PatternMode>("general");
   const [impact, setImpact] = useState<GlucoseImpactLevel>("low");
   const [cardIndex, setCardIndex] = useState(0);
   const [search, setSearch] = useState("");
@@ -172,9 +175,9 @@ export default function GlucosePatterns() {
 
   const trimmedSearch = search.trim();
   const { data: suggestionData, isFetching: suggestionsLoading } = useQuery<{ suggestions: FoodSuggestion[] }>({
-    queryKey: ["/api/snap/glucose-patterns", "search", trimmedSearch],
+    queryKey: ["/api/snap/glucose-patterns", "search", mode, trimmedSearch],
     queryFn: async () => {
-      const res = await fetch(`/api/snap/glucose-patterns?query=${encodeURIComponent(trimmedSearch)}`, { credentials: "include" });
+      const res = await fetch(`/api/snap/glucose-patterns?mode=${mode}&query=${encodeURIComponent(trimmedSearch)}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -182,9 +185,9 @@ export default function GlucosePatterns() {
   });
 
   const { data: detailData, isLoading: detailLoading } = useQuery<{ detail: FoodDetail }>({
-    queryKey: ["/api/snap/glucose-patterns", "detail", selectedFood],
+    queryKey: ["/api/snap/glucose-patterns", "detail", mode, selectedFood],
     queryFn: async () => {
-      const res = await fetch(`/api/snap/glucose-patterns?food=${encodeURIComponent(selectedFood!)}`, { credentials: "include" });
+      const res = await fetch(`/api/snap/glucose-patterns?mode=${mode}&food=${encodeURIComponent(selectedFood!)}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -211,6 +214,7 @@ export default function GlucosePatterns() {
 
   const hasMeasuredList = (data?.hstixList?.length ?? 0) > 0 ||
     (data?.hstixNeedsMoreReadings?.length ?? 0) > 0;
+  const isHstixMode = mode === "hstix";
   const generalFoods = useMemo(() => (data?.topList ?? []).map(food => ({
     ...food,
     foodName: locale === "zh-Hant" ? food.foodNameZhHant : locale === "yue" ? food.foodNameYue : food.foodNameEn,
@@ -250,8 +254,8 @@ export default function GlucosePatterns() {
   const remaining = Math.max(0, LOCKED_THRESHOLD - totalSnaps);
   const readingCount = thresholdsData?.readingCount ?? 0;
   const isPersonalised = thresholdsData?.isPersonalised ?? false;
-  const showPersonalisedPopup = !hasMeasuredList && isPersonalised && thresholdsData?.glucosePersonalisedSeen === false;
-  const showPersonalisedProgress = !hasMeasuredList && !isPersonalised && readingCount < PERSONALISED_THRESHOLD;
+  const showPersonalisedPopup = !isHstixMode && isPersonalised && thresholdsData?.glucosePersonalisedSeen === false;
+  const showPersonalisedProgress = !isHstixMode && !isPersonalised && readingCount < PERSONALISED_THRESHOLD;
 
   useEffect(() => {
     if (hasMeasuredList && firstMeasuredImpact) {
@@ -336,19 +340,26 @@ export default function GlucosePatterns() {
 
         {!isLoading && !isLocked && (
           <section data-testid="glucose-patterns-list">
-            {hasMeasuredList && (
-              <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
-                {IMPACT_LEVELS.map(level => {
-                  const count = actualByImpact[level].length;
-                  return (
-                    <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
-                      <span className="block">{t(`glucose.pattern_measured_impact_${level}`)}</span>
-                      <span className="block text-[11px] opacity-80">{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1" aria-label={t("glucose.pattern_mode_label")}>
+              <button
+                type="button"
+                aria-pressed={mode === "general"}
+                onClick={() => setMode("general")}
+                className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${mode === "general" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="glucose-mode-general"
+              >
+                {t("glucose.pattern_mode_general")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "hstix"}
+                onClick={() => setMode("hstix")}
+                className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${mode === "hstix" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="glucose-mode-hstix"
+              >
+                {t("glucose.pattern_mode_hstix")}
+              </button>
+            </div>
 
             <div className="mb-5">
               <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="glucose-food-search">{t("glucose.pattern_search_label")}</label>
@@ -370,120 +381,148 @@ export default function GlucosePatterns() {
             </div>
 
             {showPersonalisedProgress && <p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground" data-testid="text-personalised-progress">{t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}</p>}
-            {!hasMeasuredList && isPersonalised && !showPersonalisedPopup && <p className="mb-3 text-sm italic text-muted-foreground" data-testid="text-personalised-disclaimer">{t("glucose.personalised_disclaimer", { count: readingCount })}</p>}
+            {!isHstixMode && isPersonalised && !showPersonalisedPopup && <p className="mb-3 text-sm italic text-muted-foreground" data-testid="text-personalised-disclaimer">{t("glucose.personalised_disclaimer", { count: readingCount })}</p>}
 
-            {hasMeasuredList ? (
-              <div aria-live="polite" data-testid="glucose-ranking-panel">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_actual_heading")}</p>
-                  <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
+            {isHstixMode ? (
+              <>
+                <div className="mb-5 grid grid-cols-3 gap-2" aria-label={t("glucose.pattern_impact_label")}>
+                  {IMPACT_LEVELS.map(level => {
+                    const count = actualByImpact[level].length;
+                    return (
+                      <button key={level} type="button" aria-pressed={impact === level} onClick={() => setSelection(level)} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors ${impact === level ? (IMPACT_BUTTON_COLORS[level]?.selected ?? "") : (IMPACT_BUTTON_COLORS[level]?.unselected ?? "")}`} data-testid={`glucose-impact-${level}`}>
+                        <span className="block">{t(`glucose.pattern_measured_impact_${level}`)}</span>
+                        <span className="block text-[11px] opacity-80">{count}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {activeFood ? (
-                  <div className="overflow-hidden" onPointerDown={event => { swipeStartX.current = event.clientX; }} onPointerUp={handlePointerUp} onPointerCancel={() => { swipeStartX.current = null; }}>
-                    <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
-                      <div className="mb-5 flex items-start justify-between gap-3">
-                        <div>
-                           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" data-testid="glucose-card-rank">
-                             {t(`glucose.pattern_rank_${activeIndex + 1}`)}
-                           </p>
-                          <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
-                          <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_hstix_reading")}</p>
-                          <p className="mt-1 text-xs font-medium text-muted-foreground" data-testid="glucose-component-type">
-                            {t(`glucose.pattern_component_type_${activeFood.componentType}`)}
-                          </p>
-                        </div>
-                        <ImpactBadge impact={impact} measured />
-                      </div>
-                      <div>
-                        <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
-                        <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
-                        {activeFood.partnerInsight?.kind === "dominant" && (
-                          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
-                            {t("glucose.pattern_partner_dominant", {
-                              indexFood: activeFood.foodName,
-                              partner: localizedPartnerName(activeFood.partnerInsight.partner),
-                            })}
-                          </p>
-                        )}
-                        {activeFood.partnerInsight?.kind === "comparison" && (
-                          <div className="mt-4 space-y-1.5" data-testid="glucose-partner-comparison">
-                            <p className="text-sm leading-5 text-muted-foreground">
-                              {t("glucose.pattern_partner_comparison", {
-                                indexFood: activeFood.foodName,
-                                higherPartner: localizedPartnerName(activeFood.partnerInsight.higherPartner),
-                                lowerPartner: localizedPartnerName(activeFood.partnerInsight.lowerPartner),
-                              })}
-                            </p>
-                            <p className="text-xs leading-5 text-muted-foreground" data-testid="glucose-partner-disclaimer">
-                              {t("glucose.pattern_partner_disclaimer")}
+
+                <div aria-live="polite" data-testid="glucose-ranking-panel">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_actual_heading")}</p>
+                    <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
+                  </div>
+                  {activeFood ? (
+                    <div className="overflow-hidden" onPointerDown={event => { swipeStartX.current = event.clientX; }} onPointerUp={handlePointerUp} onPointerCancel={() => { swipeStartX.current = null; }}>
+                      <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
+                        <div className="mb-5 flex items-start justify-between gap-3">
+                          <div>
+                            {impact !== "medium" && (
+                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" data-testid="glucose-card-rank">
+                                {t(`glucose.pattern_rank_${activeIndex + 1}`)}
+                              </p>
+                            )}
+                            <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_hstix_reading")}</p>
+                            <p className="mt-1 text-xs font-medium text-muted-foreground" data-testid="glucose-component-type">
+                              {t(`glucose.pattern_component_type_${activeFood.componentType}`)}
                             </p>
                           </div>
-                        )}
-                      </div>
-                    </article>
-                    {activeFoods.length > 1 && (
-                      <div className="mt-3 flex items-center justify-between">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(-1)} disabled={activeIndex === 0} aria-label={t("glucose.pattern_previous")}><ChevronLeft size={18} /></Button>
-                        <p className="text-xs text-muted-foreground">{activeIndex + 1} / {activeFoods.length}</p>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(1)} disabled={activeIndex === activeFoods.length - 1} aria-label={t("glucose.pattern_next")}><ChevronRight size={18} /></Button>
+                          <ImpactBadge impact={impact} measured />
+                        </div>
+                        <div>
+                          <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
+                          <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
+                          {activeFood.partnerInsight?.kind === "dominant" && (
+                            <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
+                              <Trans
+                                i18nKey="glucose.pattern_partner_dominant"
+                                values={{
+                                  indexFood: activeFood.foodName,
+                                  partner: localizedPartnerName(activeFood.partnerInsight.partner),
+                                }}
+                                components={{ food: <strong className="font-bold text-amber-900" /> }}
+                              />
+                            </p>
+                          )}
+                          {activeFood.partnerInsight?.kind === "comparison" && (
+                            <div className="mt-4 space-y-1.5" data-testid="glucose-partner-comparison">
+                              <p className="text-sm leading-5 text-muted-foreground">
+                                <Trans
+                                  i18nKey="glucose.pattern_partner_comparison"
+                                  values={{
+                                    indexFood: activeFood.foodName,
+                                    higherPartner: localizedPartnerName(activeFood.partnerInsight.higherPartner),
+                                    lowerPartner: localizedPartnerName(activeFood.partnerInsight.lowerPartner),
+                                  }}
+                                  components={{ food: <strong className="font-semibold text-foreground" /> }}
+                                />
+                              </p>
+                              <p className="text-xs leading-5 text-muted-foreground" data-testid="glucose-partner-disclaimer">
+                                {t("glucose.pattern_partner_disclaimer")}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                      {activeFoods.length > 1 && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(-1)} disabled={activeIndex === 0} aria-label={t("glucose.pattern_previous")}><ChevronLeft size={18} /></Button>
+                          <p className="text-xs text-muted-foreground">{activeIndex + 1} / {activeFoods.length}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(1)} disabled={activeIndex === activeFoods.length - 1} aria-label={t("glucose.pattern_next")}><ChevronRight size={18} /></Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
+                </div>
+
+                {needsMoreReadings.length > 0 && (
+                  <section className="mt-6" data-testid="glucose-needs-more-readings">
+                    <h2 className="text-sm font-semibold text-foreground">{t("glucose.pattern_needs_more_readings_heading")}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_needs_more_readings_description")}</p>
+                    <div className="mt-3 space-y-3">
+                      <Select value={selectedNeedsMoreFood ?? undefined} onValueChange={setSelectedNeedsMoreFood}>
+                        <SelectTrigger id="glucose-needs-more-readings-select" data-testid="glucose-needs-more-readings-select">
+                          <SelectValue placeholder={t("glucose.pattern_needs_more_readings_placeholder")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {needsMoreReadings.map(food => (
+                            <SelectItem key={food.foodKey} value={food.foodKey}>{food.foodName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedNeedsMoreReading && (
+                        <div className="rounded-xl border border-border bg-card px-3 py-2.5" data-testid="glucose-needs-more-readings-selected">
+                          <p className="text-sm font-medium text-foreground">{selectedNeedsMoreReading.foodName}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {t("glucose.pattern_needs_more_readings_count", {
+                              total: selectedNeedsMoreReading.totalMeals,
+                              remaining: Math.max(0, 25 - selectedNeedsMoreReading.totalMeals),
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
+              </>
+            ) : (
+              <>
+                <RecurringFoodInsights />
+                <div data-testid="glucose-general-component-list">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_general_heading")}</p>
+                    <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: generalFoods.length })}</p>
+                  </div>
+                  <p className="mb-3 text-sm text-muted-foreground">{t("glucose.pattern_general_description")}</p>
+                  <div className="space-y-2">
+                    {generalFoods.map(food => (
+                      <button key={food.foodKey} type="button" onClick={() => setSelectedFood(food.foodKey)} className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left" data-testid={`glucose-general-component-${food.foodKey}`}>
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">{food.foodName}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{t(`glucose.pattern_component_type_${food.componentType}`)}</span>
+                        </span>
+                        <span className="text-sm text-muted-foreground">{t("glucose.pattern_frequency_count", { count: food.mealCount })}</span>
+                      </button>
+                    ))}
+                    {generalFoods.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+                        {t("glucose.pattern_general_empty")}
                       </div>
                     )}
                   </div>
-                ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
-              </div>
-            ) : (
-              <div data-testid="glucose-general-component-list">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">{t("glucose.pattern_general_heading")}</p>
-                  <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: generalFoods.length })}</p>
                 </div>
-                <p className="mb-3 text-sm text-muted-foreground">{t("glucose.pattern_general_description")}</p>
-                <div className="space-y-2">
-                  {generalFoods.map(food => (
-                    <button key={food.foodKey} type="button" onClick={() => setSelectedFood(food.foodKey)} className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left" data-testid={`glucose-general-component-${food.foodKey}`}>
-                      <span>
-                        <span className="block text-sm font-semibold text-foreground">{food.foodName}</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">{t(`glucose.pattern_component_type_${food.componentType}`)}</span>
-                      </span>
-                      <span className="text-sm text-muted-foreground">{t("glucose.pattern_frequency_count", { count: food.mealCount })}</span>
-                    </button>
-                  ))}
-                  {generalFoods.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-                      {t("glucose.pattern_general_empty")}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {hasMeasuredList && needsMoreReadings.length > 0 && (
-              <section className="mt-6" data-testid="glucose-needs-more-readings">
-                <h2 className="text-sm font-semibold text-foreground">{t("glucose.pattern_needs_more_readings_heading")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_needs_more_readings_description")}</p>
-                <div className="mt-3 space-y-3">
-                  <Select value={selectedNeedsMoreFood ?? undefined} onValueChange={setSelectedNeedsMoreFood}>
-                    <SelectTrigger id="glucose-needs-more-readings-select" data-testid="glucose-needs-more-readings-select">
-                      <SelectValue placeholder={t("glucose.pattern_needs_more_readings_placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {needsMoreReadings.map(food => (
-                        <SelectItem key={food.foodKey} value={food.foodKey}>{food.foodName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedNeedsMoreReading && (
-                    <div className="rounded-xl border border-border bg-card px-3 py-2.5" data-testid="glucose-needs-more-readings-selected">
-                      <p className="text-sm font-medium text-foreground">{selectedNeedsMoreReading.foodName}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {t("glucose.pattern_needs_more_readings_count", {
-                          total: selectedNeedsMoreReading.totalMeals,
-                          remaining: Math.max(0, 25 - selectedNeedsMoreReading.totalMeals),
-                        })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </section>
+              </>
             )}
           </section>
         )}

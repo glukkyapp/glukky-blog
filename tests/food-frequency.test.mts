@@ -26,7 +26,11 @@ function item(names: Parameters<typeof rawItem>[0], source: "claude" | "derived"
 const milkTea = item({ nameEn: "Hong Kong milk tea", nameZhHant: "港式奶茶", nameYue: "奶茶" });
 const soda = item({ nameEn: "Soda", nameZhHant: "汽水", nameYue: "汽水" });
 const rice = item({ nameEn: "White rice", nameZhHant: "白飯", nameYue: "白飯" });
-assert(milkTea && soda && rice);
+const noodles = item({ nameEn: "Rice noodles", nameZhHant: "米粉", nameYue: "米粉" });
+const bread = item({ nameEn: "Toast", nameZhHant: "多士", nameYue: "多士" });
+const potatoes = item({ nameEn: "Sweet potato", nameZhHant: "番薯", nameYue: "番薯" });
+const otherCarb = item({ nameEn: "Oatmeal", nameZhHant: "燕麥", nameYue: "燕麥" });
+assert(milkTea && soda && rice && noodles && bread && potatoes && otherCarb);
 
 assert.equal(classifySweetCategory(rawItem({ nameEn: "milk tea", nameZhHant: "奶茶", nameYue: "奶茶" })), "sweet_drink");
 assert.equal(classifySweetCategory(rawItem({ nameEn: "soda", nameZhHant: "汽水", nameYue: "汽水" })), "sweet_drink");
@@ -52,6 +56,19 @@ assert.equal(duplicatedMealSummary.foods.find(food => food.nameEn === milkTea.na
 assert.equal(duplicatedMealSummary.foods.find(food => food.nameEn === soda.nameEn)?.mealCount, 3);
 assert.equal(duplicatedMealSummary.foods.find(food => food.nameEn === rice.nameEn)?.mealCount, 1);
 assert.deepEqual(duplicatedMealSummary.sweetSubtypes, [{ sweetCategory: "sweet_drink", mealCount: 4 }]);
+assert.deepEqual(duplicatedMealSummary.carbCategories, [{ carbCategory: "rice", mealCount: 1 }]);
+
+const carbCategorySummary = buildFoodFrequencySummary([
+  meal([rice, rice, noodles, bread, potatoes, otherCarb]),
+  meal([rice, noodles]),
+]);
+assert.deepEqual(carbCategorySummary.carbCategories, [
+  { carbCategory: "noodles", mealCount: 2 },
+  { carbCategory: "rice", mealCount: 2 },
+  { carbCategory: "bread", mealCount: 1 },
+  { carbCategory: "other", mealCount: 1 },
+  { carbCategory: "potatoes", mealCount: 1 },
+]);
 
 const dualClassified = item({ nameEn: "sweet bun", nameZhHant: "甜包", nameYue: "甜包" });
 assert(dualClassified);
@@ -61,6 +78,7 @@ const dualSummary = buildFoodFrequencySummary([meal([dualClassified, dualClassif
 assert.equal(dualSummary.foods.length, 1);
 assert.equal(dualSummary.foods[0].mealCount, 1);
 assert.deepEqual(dualSummary.sweetSubtypes, [{ sweetCategory: "sweet_food", mealCount: 1 }]);
+assert.deepEqual(dualSummary.carbCategories, [{ carbCategory: "bread", mealCount: 1 }]);
 
 const legacyItem = {
   ...rawItem({ nameEn: "Legacy dish", nameZhHant: "舊菜式", nameYue: "舊菜式" }),
@@ -73,6 +91,7 @@ const legacyItem = {
 const legacySummary = buildFoodFrequencySummary([meal([legacyItem])]);
 assert.equal(legacySummary.foods[0].sweetCategory, undefined);
 assert.equal(legacySummary.sweetSubtypes.length, 0);
+assert.equal(legacySummary.carbCategories.length, 0);
 
 const derivedSummary = buildFoodFrequencySummary([
   meal([milkTea, { ...soda, source: "derived" }]),

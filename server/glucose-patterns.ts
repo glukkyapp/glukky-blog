@@ -86,6 +86,40 @@ export interface GeneralGlucosePatternMeal {
   isDeleted?: boolean;
 }
 
+type NamedPatternFood = {
+  foodKey: string;
+  foodNameEn: string;
+  foodNameZhHant: string;
+  foodNameYue: string;
+};
+
+export function findGlucosePatternFoodForMode<
+  GeneralFood extends NamedPatternFood,
+  HstixFood extends NamedPatternFood,
+>(
+  mode: "general" | "hstix" | null,
+  food: string,
+  generalFoods: GeneralFood[],
+  hstixFoods: HstixFood[],
+):
+  | { kind: "general"; food: GeneralFood }
+  | { kind: "hstix"; food: HstixFood }
+  | null {
+  const matches = (candidate: NamedPatternFood) =>
+    food === candidate.foodKey ||
+    [candidate.foodNameEn, candidate.foodNameZhHant, candidate.foodNameYue].includes(food);
+
+  if (mode !== "general") {
+    const hstixFood = hstixFoods.find(matches);
+    if (hstixFood) return { kind: "hstix", food: hstixFood };
+  }
+  if (mode !== "hstix") {
+    const generalFood = generalFoods.find(matches);
+    if (generalFood) return { kind: "general", food: generalFood };
+  }
+  return null;
+}
+
 type FoodStats = {
   item: FoodItemMetadata;
   totalMeals: number;

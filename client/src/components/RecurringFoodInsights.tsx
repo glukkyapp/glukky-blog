@@ -15,6 +15,10 @@ type FoodFrequencySummary = {
   eligible: boolean;
   foods: FoodFrequencyFood[];
   sweetSubtypes: Array<{ sweetCategory: "sweet_drink" | "sweet_food"; mealCount: number }>;
+  carbCategories: Array<{
+    carbCategory: "rice" | "noodles" | "bread" | "potatoes" | "other";
+    mealCount: number;
+  }>;
 };
 
 export function RecurringFoodInsights() {
@@ -34,6 +38,16 @@ export function RecurringFoodInsights() {
   const displayName = (food: FoodFrequencyFood) =>
     language === "yue" ? food.nameYue : language.startsWith("zh") ? food.nameZhHant : food.nameEn;
   const recurringFoods = data.foods.filter(food => food.mealCount > 1).slice(0, 5);
+  const categories = [
+    ...data.sweetSubtypes.map(category => ({
+      key: category.sweetCategory,
+      mealCount: category.mealCount,
+    })),
+    ...(data.carbCategories ?? []).map(category => ({
+      key: category.carbCategory,
+      mealCount: category.mealCount,
+    })),
+  ].sort((a, b) => b.mealCount - a.mealCount || a.key.localeCompare(b.key));
 
   return (
     <Card className="mb-5 border-[#DCE9D7] bg-[#F8FBF5]" data-testid="card-recurring-foods">
@@ -64,14 +78,14 @@ export function RecurringFoodInsights() {
         ) : (
           <p className="text-sm text-[#6E8477]">{t("food_frequency.no_repeats")}</p>
         )}
-        {data.sweetSubtypes.length > 0 && (
+        {categories.length > 0 && (
           <div className="mt-3 border-t border-[#DCE9D7] pt-3">
             <p className="mb-1 text-xs font-semibold uppercase tracking-[.12em] text-[#6E8477]">
               {t("food_frequency.subtypes_heading")}
             </p>
             <p className="text-sm text-[#355C43]">
-              {data.sweetSubtypes.map(subtype =>
-                t(`food_frequency.${subtype.sweetCategory}`, { count: subtype.mealCount })
+              {categories.map(category =>
+                t(`food_frequency.${category.key}`, { count: category.mealCount })
               ).join(" · ")}
             </p>
           </div>

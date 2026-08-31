@@ -9,6 +9,7 @@ import {
   rankMeasuredFoods,
   IMPACT_LEVELS,
 } from "../client/src/lib/glucose-pattern-ranking";
+import { findGlucosePatternFoodForMode } from "../server/glucose-patterns";
 
 let passed = 0;
 function check(label: string, condition: boolean) {
@@ -32,6 +33,12 @@ check("Lower-impact measured cards are ordered by lift ascending",
   rankMeasuredFoods(measuredFoods.slice(3), "low").map(food => food.foodKey).join("|") === "potato|oats");
 check("The client ranking helper preserves the backend-selected result set",
   rankMeasuredFoods(Array.from({ length: 7 }, (_, index) => ({ foodKey: `food-${index}`, lift: index })), "high").length === 7);
+const overlappingGeneral = [{ foodKey: "rice", foodNameEn: "Rice", foodNameZhHant: "白飯", foodNameYue: "白飯", mealCount: 12 }];
+const overlappingHstix = [{ foodKey: "rice", foodNameEn: "Rice", foodNameZhHant: "白飯", foodNameYue: "白飯", lift: 1.4 }];
+check("General detail selects frequency data when the same food also has HStix evidence",
+  findGlucosePatternFoodForMode("general", "rice", overlappingGeneral, overlappingHstix)?.kind === "general");
+check("HStix detail selects measured data for that same overlapping food",
+  findGlucosePatternFoodForMode("hstix", "rice", overlappingGeneral, overlappingHstix)?.kind === "hstix");
 
 console.log("\nPage and API contracts");
 const page = readFileSync("client/src/pages/glucose-patterns.tsx", "utf8");
@@ -42,6 +49,8 @@ const storage = readFileSync("server/storage.ts", "utf8");
 const glucosePatterns = readFileSync("server/glucose-patterns.ts", "utf8");
 const snap = readFileSync("client/src/pages/snap.tsx", "utf8");
 const postMeal = readFileSync("client/src/components/PostMealCard.tsx", "utf8");
+const recurringFoods = readFileSync("client/src/components/RecurringFoodInsights.tsx", "utf8");
+const report = readFileSync("client/src/pages/report.tsx", "utf8");
 const twoMonth = readFileSync("server/two-month-report.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
 const zhHant = readFileSync("client/src/locales/zh-Hant.json", "utf8");
@@ -63,21 +72,39 @@ check("An empty HStix response does not hide the General component-frequency lis
   page.includes("(data?.hstixList?.length ?? 0) > 0") &&
   page.includes("(data?.hstixNeedsMoreReadings?.length ?? 0) > 0") &&
   !page.includes("data?.hstixList !== undefined"));
+check("General and HStix are explicit user-selected groups",
+  page.includes('type PatternMode = "general" | "hstix"') &&
+  page.includes('data-testid="glucose-mode-general"') &&
+  page.includes('data-testid="glucose-mode-hstix"') &&
+  page.includes('useState<PatternMode>("general")'));
+check("Impact controls and needs-more readings are inside the HStix branch",
+  page.includes("{isHstixMode ? (") &&
+  page.includes("data-testid={`glucose-impact-${level}`}") &&
+  page.includes("glucose-needs-more-readings"));
 check("Measured cards show their selected ranking position while retaining the High/total result",
   page.includes("glucose-card-rank") &&
   page.includes("pattern_rank_${activeIndex + 1}") &&
   page.includes("pattern_hstix_result") &&
   page.includes("high: activeFood.highMeals") &&
   page.includes("total: activeFood.totalMeals"));
+check("Medium cards suppress ordinal text without changing five-card sampling",
+  page.includes('impact !== "medium"') &&
+  page.includes("sampleFoods(foods)"));
 check("The backend caps directional result groups at five after lift ordering",
   glucosePatterns.includes("MAX_DIRECTIONAL_HSTIX_FOOD_CARDS = 5") &&
   glucosePatterns.includes(".slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS)"));
 check("Cards support pointer swipes",
   page.includes("onPointerDown") && page.includes("onPointerUp") && page.includes("SWIPE_MIN_PX"));
 check("Search uses live structured component reads rather than whole-dish names",
-  page.includes("?query=${encodeURIComponent(trimmedSearch)}") &&
+  page.includes("?mode=${mode}&query=${encodeURIComponent(trimmedSearch)}") &&
   routes.includes("storage.getMealSnapsForGlucosePatterns(userId)") &&
   routes.includes("buildGeneralGlucosePatternComponents(generalMeals)"));
+check("Search and detail stay inside the selected General or HStix group",
+  page.includes('queryKey: ["/api/snap/glucose-patterns", "search", mode, trimmedSearch]') &&
+  page.includes('queryKey: ["/api/snap/glucose-patterns", "detail", mode, selectedFood]') &&
+  page.includes("?mode=${mode}&food=${encodeURIComponent(selectedFood!)}") &&
+  routes.includes('requestedMode === "general"') &&
+  routes.includes('requestedMode === "hstix"'));
 check("Measured detail keeps dated readings while General detail is frequency-only",
   routes.includes('kind: "hstix"') &&
   routes.includes("recordedAt: snap.recordedAt.toISOString()") &&
@@ -97,9 +124,22 @@ check("General output contains frequency identity and no glucose calculations",
   !page.includes("(activeFood as GlucosePatternEntry).avgPostMealMmol"));
 check("All supported locales include search and component type labels", [en, zhHant, yue].every(locale =>
   locale.includes('"pattern_search_label"') &&
-  ["pattern_component_type_carb", "pattern_component_type_sweet_food", "pattern_component_type_sweet_drink", "pattern_frequency_count"]
+  ["pattern_mode_general", "pattern_mode_hstix", "pattern_component_type_carb", "pattern_component_type_sweet_food", "pattern_component_type_sweet_drink", "pattern_frequency_count"]
     .every(key => locale.includes(`"${key}"`)),
 ));
+check("Recurring food insights moved to General and displays separate sweet and carb results",
+  page.includes("<RecurringFoodInsights />") &&
+  !report.includes("RecurringFoodInsights") &&
+  recurringFoods.includes("data.sweetSubtypes.map") &&
+  recurringFoods.includes("(data.carbCategories ?? []).map"));
+check("Food-frequency category labels cover sweet and carb categories in every locale", [en, zhHant, yue].every(locale =>
+  ["sweet_drink", "sweet_food", "rice", "noodles", "bread", "potatoes", "other"]
+    .every(key => locale.includes(`"${key}"`)),
+));
+check("Traditional Chinese and Cantonese use the requested recurring-food and sweet-drink wording",
+  zhHant.includes('"title": "你喜歡吃的食物"') &&
+  zhHant.includes('"sweet_drink": "甜味飲料：{{count}} 餐"') &&
+  yue.includes('"sweet_drink": "甜味飲料：{{count}} 餐"'));
 check("Measured impact terminology and reading-progress copy are localized", [en, zhHant, yue].every(locale =>
   ["pattern_measured_impact_high", "pattern_measured_impact_medium", "pattern_measured_impact_low", "pattern_needs_more_readings_heading", "pattern_needs_more_readings_count"]
     .every(key => locale.includes(`"${key}"`)),
@@ -122,14 +162,19 @@ check("Needs-more foods use a dropdown while the top cards remain swipeable",
   page.includes("glucose-needs-more-readings-selected") &&
   page.includes("onPointerDown") &&
   page.includes("glucose-ranking-card-"));
-check("HStix flow does not show personalised UI", page.includes("!hasMeasuredList && isPersonalised"));
+check("HStix flow does not show personalised UI", page.includes("!isHstixMode && isPersonalised"));
 check("HStix sweet component type is returned and visibly labelled",
   glucosePatterns.includes("sweetCategory: validatedSweetCategory(food.item)") &&
   page.includes("pattern_component_type_${activeFood.componentType}"));
 check("Partner insights render inside the measured HStix card branch",
   page.includes("glucose-partner-dominant") &&
   page.includes("glucose-partner-comparison") &&
-  page.includes("glucose-partner-disclaimer"));
+  page.includes("glucose-partner-disclaimer") &&
+  page.includes("<Trans") &&
+  [en, zhHant, yue].every(locale =>
+    locale.includes("<food>{{partner}}</food>") &&
+    locale.includes("<food>{{higherPartner}}</food>") &&
+    locale.includes("<food>{{lowerPartner}}</food>")));
 check("Reliability calculations remain server-only and statistics-free in the UI",
   !/(reliability|standard error|variance|confidence interval)/i.test(page));
 check("Meal and HStix writes invalidate the live Glucose Patterns query",

@@ -40,6 +40,7 @@ import {
   buildGeneralGlucosePatternComponents,
   buildHstixFoodCards,
   buildHstixFoodsNeedingMoreReadings,
+  findGlucosePatternFoodForMode,
   isEligibleGlucosePatternComponent,
 } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
@@ -3368,7 +3369,12 @@ No explanation, just JSON.`,
   app.get("/api/snap/glucose-patterns", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { food, query } = req.query as { food?: string; query?: string };
+      const { food, query, mode } = req.query as {
+        food?: string;
+        query?: string;
+        mode?: "general" | "hstix";
+      };
+      const requestedMode = mode === "general" || mode === "hstix" ? mode : null;
       const totalSnaps = await storage.getTotalSnaps(userId);
       if (totalSnaps < 10) {
         if (food || query != null) {
@@ -3398,7 +3404,12 @@ No explanation, just JSON.`,
           foodNameZhHant: string;
           foodNameYue: string;
         }>();
-        [...hstixSuggestions, ...generalSuggestions].forEach(suggestion => unique.set(suggestion.foodKey, {
+        const scopedSuggestions = requestedMode === "general"
+          ? generalSuggestions
+          : requestedMode === "hstix"
+            ? hstixSuggestions
+            : [...hstixSuggestions, ...generalSuggestions];
+        scopedSuggestions.forEach(suggestion => unique.set(suggestion.foodKey, {
           foodKey: suggestion.foodKey,
           foodNameEn: suggestion.foodNameEn,
           foodNameZhHant: suggestion.foodNameZhHant,
@@ -3413,9 +3424,14 @@ No explanation, just JSON.`,
           storage.getProfile(userId),
         ]);
         const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
-        const hstixCard = buildHstixFoodCards(hstixSnaps, glucoseGroup)
-          .find(card => food === card.foodKey || [card.foodNameEn, card.foodNameZhHant, card.foodNameYue].includes(food));
-        if (hstixCard) {
+        const selectedPattern = findGlucosePatternFoodForMode(
+          requestedMode,
+          food,
+          buildGeneralGlucosePatternComponents(generalMeals),
+          buildHstixFoodCards(hstixSnaps, glucoseGroup),
+        );
+        if (selectedPattern?.kind === "hstix") {
+          const hstixCard = selectedPattern.food;
           const readings = hstixSnaps
             .filter(snap => typeof snap.postMealGlucoseMmol === "number" && (snap.foodItems ?? []).some(item =>
               isEligibleGlucosePatternComponent(item) && foodItemKey(item) === hstixCard.foodKey,
@@ -3446,14 +3462,11 @@ No explanation, just JSON.`,
             },
           });
         }
-        const generalComponent = buildGeneralGlucosePatternComponents(generalMeals)
-          .find(component => food === component.foodKey ||
-            [component.foodNameEn, component.foodNameZhHant, component.foodNameYue].includes(food));
-        if (!generalComponent) return res.status(404).json({ message: "Food not found." });
+        if (selectedPattern?.kind !== "general") return res.status(404).json({ message: "Food not found." });
         return res.json({
           detail: {
             kind: "general",
-            ...generalComponent,
+            ...selectedPattern.food,
           },
         });
       }
