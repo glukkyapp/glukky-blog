@@ -113,7 +113,9 @@ test.describe("Report tab", () => {
       const dimension = page.getByTestId(`two-month-dimension-${cardType}`);
       await expect(dimension).toHaveText(label);
       await expect(dimension).toHaveClass(/font-bold/);
-      await expect(dimension).toHaveClass(/text-primary/);
+      await expect(dimension).toHaveClass(/bg-primary/);
+      await expect(dimension).toHaveClass(/text-primary-foreground/);
+      await expect(dimension).toHaveClass(/border-primary\/20/);
     }
   });
 

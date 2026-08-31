@@ -2,18 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type FoodFrequencyFood = {
-  nameEn: string;
-  nameZhHant: string;
-  nameYue: string;
-  mealCount: number;
-  sweetCategory: "sweet_drink" | "sweet_food" | null;
-};
-
 type FoodFrequencySummary = {
   totalMeals: number;
   eligible: boolean;
-  foods: FoodFrequencyFood[];
   sweetSubtypes: Array<{ sweetCategory: "sweet_drink" | "sweet_food"; mealCount: number }>;
   carbCategories: Array<{
     carbCategory: "rice" | "noodles" | "bread" | "potatoes" | "other";
@@ -35,9 +26,6 @@ export function RecurringFoodInsights() {
   if (isLoading || !data?.eligible) return null;
 
   const language = i18n.language;
-  const displayName = (food: FoodFrequencyFood) =>
-    language === "yue" ? food.nameYue : language.startsWith("zh") ? food.nameZhHant : food.nameEn;
-  const recurringFoods = data.foods.filter(food => food.mealCount > 1).slice(0, 5);
   const categories = [
     ...data.sweetSubtypes.map(category => ({
       key: category.sweetCategory,
@@ -48,6 +36,19 @@ export function RecurringFoodInsights() {
       mealCount: category.mealCount,
     })),
   ].sort((a, b) => b.mealCount - a.mealCount || a.key.localeCompare(b.key));
+  if (categories.length === 0) return null;
+
+  const highestMealCount = categories[0].mealCount;
+  const categoryLabels = categories
+    .filter(category => category.mealCount === highestMealCount)
+    .map(category => t(`food_frequency.${category.key}`));
+  const joinedCategories = language.startsWith("zh") || language === "yue"
+    ? categoryLabels.join("、")
+    : categoryLabels.length <= 1
+      ? categoryLabels.join("")
+      : categoryLabels.length === 2
+        ? categoryLabels.join(" and ")
+        : `${categoryLabels.slice(0, -1).join(", ")}, and ${categoryLabels[categoryLabels.length - 1]}`;
 
   return (
     <Card className="mb-5 border-[#DCE9D7] bg-[#F8FBF5]" data-testid="card-recurring-foods">
@@ -55,41 +56,11 @@ export function RecurringFoodInsights() {
         <CardTitle className="text-base text-[#214B36]">
           {t("food_frequency.title")}
         </CardTitle>
-        <p className="text-xs text-[#6E8477]">
-          {t("food_frequency.based_on", { count: data.totalMeals })}
-        </p>
       </CardHeader>
       <CardContent className="pb-4">
-        {recurringFoods.length > 0 ? (
-          <div className="space-y-2" aria-label={t("food_frequency.title")}>
-            {recurringFoods.map(food => (
-              <div
-                key={`${food.nameEn}-${food.nameZhHant}-${food.nameYue}`}
-                className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5"
-                data-testid="recurring-food-row"
-              >
-                <span className="truncate text-sm font-medium text-[#214B36]">{displayName(food)}</span>
-                <span className="shrink-0 text-xs text-[#6E8477]">
-                  {t("food_frequency.meals", { count: food.mealCount })}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[#6E8477]">{t("food_frequency.no_repeats")}</p>
-        )}
-        {categories.length > 0 && (
-          <div className="mt-3 border-t border-[#DCE9D7] pt-3">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[.12em] text-[#6E8477]">
-              {t("food_frequency.subtypes_heading")}
-            </p>
-            <p className="text-sm text-[#355C43]">
-              {categories.map(category =>
-                t(`food_frequency.${category.key}`, { count: category.mealCount })
-              ).join(" · ")}
-            </p>
-          </div>
-        )}
+        <p className="text-sm text-[#355C43]" data-testid="food-frequency-favourite-category">
+          {t("food_frequency.favourite_category", { categories: joinedCategories })}
+        </p>
       </CardContent>
     </Card>
   );

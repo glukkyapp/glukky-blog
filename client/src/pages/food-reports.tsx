@@ -797,9 +797,9 @@ export function LastTwoMonthsCard() {
             className="rounded-xl bg-muted/40 px-3 py-3"
             data-testid={`two-month-card-${card.cardType}`}
           >
-            <p className="mb-1 text-xs text-foreground">
+            <p className="mb-2 text-xs text-foreground">
               <strong
-                className="font-bold text-primary"
+                className="inline-flex rounded-md border border-primary/20 bg-primary px-2.5 py-1 font-bold text-primary-foreground shadow-sm"
                 data-testid={`two-month-dimension-${card.cardType}`}
               >
                 {t(PATTERN_CARD_TITLES[card.cardType])}

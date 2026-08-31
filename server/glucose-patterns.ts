@@ -82,6 +82,7 @@ export interface GeneralGlucosePatternComponent {
 }
 
 export interface GeneralGlucosePatternMeal {
+  foodName?: string | null;
   foodItems: FoodItemMetadata[] | null;
   isDeleted?: boolean;
 }
@@ -92,6 +93,10 @@ type NamedPatternFood = {
   foodNameZhHant: string;
   foodNameYue: string;
 };
+
+export interface RetainedFoodHistoryEntry extends NamedPatternFood {
+  mealCount: number;
+}
 
 export function findGlucosePatternFoodForMode<
   GeneralFood extends NamedPatternFood,
@@ -118,6 +123,83 @@ export function findGlucosePatternFoodForMode<
     if (generalFood) return { kind: "general", food: generalFood };
   }
   return null;
+}
+
+/**
+ * Builds a search-only index from retained meal history. Unlike the General
+ * and HStix card builders, this does not apply carbohydrate/sweet eligibility
+ * or statistical evidence gates.
+ */
+export function buildRetainedFoodHistory(
+  meals: GeneralGlucosePatternMeal[],
+): RetainedFoodHistoryEntry[] {
+  const history = new Map<string, RetainedFoodHistoryEntry>();
+
+  const addEntry = (
+    foodKey: string,
+    foodNameEn: string,
+    foodNameZhHant: string,
+    foodNameYue: string,
+  ) => {
+    const current = history.get(foodKey);
+    if (current) {
+      current.mealCount += 1;
+      return;
+    }
+    history.set(foodKey, {
+      foodKey,
+      foodNameEn,
+      foodNameZhHant,
+      foodNameYue,
+      mealCount: 1,
+    });
+  };
+
+  for (const meal of meals) {
+    if (meal.isDeleted === true) continue;
+    const seenThisMeal = new Set<string>();
+    const items = meal.foodItems ?? [];
+    const rawFoodName = meal.foodName?.trim();
+
+    if (rawFoodName) {
+      const normalizedRawName = rawFoodName.toLocaleLowerCase();
+      const matchingItem = items.find(item =>
+        [item.nameEn, item.nameZhHant, item.nameYue]
+          .some(name => name.trim().toLocaleLowerCase() === normalizedRawName),
+      );
+      const rawKey = matchingItem
+        ? foodItemKey(matchingItem)
+        : `history:${normalizedRawName}`;
+      seenThisMeal.add(rawKey);
+      if (matchingItem) {
+        addEntry(rawKey, matchingItem.nameEn, matchingItem.nameZhHant, matchingItem.nameYue);
+      } else {
+        addEntry(rawKey, rawFoodName, rawFoodName, rawFoodName);
+      }
+    }
+
+    for (const item of items) {
+      const foodKey = foodItemKey(item);
+      if (seenThisMeal.has(foodKey)) continue;
+      seenThisMeal.add(foodKey);
+      addEntry(foodKey, item.nameEn, item.nameZhHant, item.nameYue);
+    }
+  }
+
+  return Array.from(history.values())
+    .sort((a, b) => b.mealCount - a.mealCount || a.foodKey.localeCompare(b.foodKey));
+}
+
+export function findRetainedFoodHistoryEntry(
+  food: string,
+  history: RetainedFoodHistoryEntry[],
+): RetainedFoodHistoryEntry | null {
+  const normalizedFood = food.toLocaleLowerCase();
+  return history.find(entry =>
+    entry.foodKey === food ||
+    [entry.foodNameEn, entry.foodNameZhHant, entry.foodNameYue]
+      .some(name => name.toLocaleLowerCase() === normalizedFood),
+  ) ?? null;
 }
 
 type FoodStats = {

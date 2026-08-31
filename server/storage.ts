@@ -89,6 +89,7 @@ export interface IStorage {
   insertMealSnap(snap: InsertMealSnap): Promise<MealSnap>;
   getMealSnapsForHstixCards(userId: string): Promise<Array<{
     postMealGlucoseMmol: number | null;
+    foodName: string | null;
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
     mealTimingConfidence: MealTimingConfidence;
@@ -138,6 +139,7 @@ export interface IStorage {
   getTotalPairedEntries(userId: string): Promise<number>;
   getTotalSnaps(userId: string): Promise<number>;
   getMealSnapsForGlucosePatterns(userId: string): Promise<Array<{
+    foodName: string | null;
     foodItems: FoodItemMetadata[] | null;
     isDeleted: boolean;
   }>>;
@@ -812,6 +814,7 @@ export class DatabaseStorage implements IStorage {
 
   async getMealSnapsForHstixCards(userId: string): Promise<Array<{
     postMealGlucoseMmol: number | null;
+    foodName: string | null;
     foodItems: FoodItemMetadata[] | null;
     recordedAt: Date;
     mealTimingConfidence: MealTimingConfidence;
@@ -819,6 +822,7 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const canonicalRows = await db.select({
       postMealGlucoseMmol: hstixReadings.glucoseMmol,
+      foodName: mealSnaps.foodName,
       foodItems: mealSnaps.foodItems,
       recordedAt: hstixReadings.recordedAt,
       mealTimingConfidence: hstixReadings.mealTimingConfidence,
@@ -834,6 +838,7 @@ export class DatabaseStorage implements IStorage {
       ));
     return canonicalRows.map(row => ({
       postMealGlucoseMmol: row.postMealGlucoseMmol,
+      foodName: row.foodName ?? null,
       foodItems: row.foodItems ?? null,
       recordedAt: row.recordedAt,
       mealTimingConfidence: "on_time" as const,
@@ -1398,10 +1403,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMealSnapsForGlucosePatterns(userId: string): Promise<Array<{
+    foodName: string | null;
     foodItems: FoodItemMetadata[] | null;
     isDeleted: boolean;
   }>> {
     return db.select({
+      foodName: mealSnaps.foodName,
       foodItems: mealSnaps.foodItems,
       isDeleted: mealSnaps.isDeleted,
     }).from(mealSnaps)

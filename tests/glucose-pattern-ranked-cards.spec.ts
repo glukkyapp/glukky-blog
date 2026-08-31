@@ -28,6 +28,17 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     const url = new URL(route.request().url());
     if (url.searchParams.has("query")) {
       const mode = url.searchParams.get("mode");
+      const query = url.searchParams.get("query")?.toLowerCase() ?? "";
+      if (query.includes("chicken")) {
+        return route.fulfill({ contentType: "application/json", body: JSON.stringify({
+          suggestions: mode === "hstix" ? [] : [{
+            foodKey: "history:chicken breast",
+            foodNameEn: "Chicken Breast",
+            foodNameZhHant: "雞胸肉",
+            foodNameYue: "雞胸肉",
+          }],
+        }) });
+      }
       return route.fulfill({ contentType: "application/json", body: JSON.stringify({
         suggestions: [{
           foodKey: "apple|蘋果|蘋果",
@@ -38,6 +49,21 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
       }) });
     }
     if (url.searchParams.has("food")) {
+      if (url.searchParams.get("food") === "history:chicken breast") {
+        return route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            detail: {
+              kind: "history",
+              foodKey: "history:chicken breast",
+              foodNameEn: "Chicken Breast",
+              foodNameZhHant: "雞胸肉",
+              foodNameYue: "雞胸肉",
+              mealCount: 2,
+            },
+          }),
+        });
+      }
       if (url.searchParams.get("mode") === "hstix") {
         return route.fulfill({
           contentType: "application/json",
@@ -105,7 +131,10 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
       eligible: true,
       foods: [{ nameEn: "Apple", nameZhHant: "蘋果", nameYue: "蘋果", mealCount: 2, sweetCategory: null }],
       sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
-      carbCategories: [{ carbCategory: "other", mealCount: 2 }],
+      carbCategories: [
+        { carbCategory: "rice", mealCount: 3 },
+        { carbCategory: "other", mealCount: 2 },
+      ],
     }),
   }));
 
@@ -116,9 +145,10 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-mode-hstix")).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
   await expect(page.getByTestId("glucose-general-component-list")).toBeVisible();
-  await expect(page.getByTestId("card-recurring-foods")).toContainText("Foods you like to eat");
-  await expect(page.getByTestId("card-recurring-foods")).toContainText("Sweet drinks: 3 meals");
-  await expect(page.getByTestId("card-recurring-foods")).toContainText("Other starches: 2 meals");
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Carbohydrates/sugars you like to eat");
+  await expect(page.getByTestId("food-frequency-favourite-category")).toHaveText("Your favourite category: Rice and Sweet drinks.");
+  await expect(page.getByTestId("card-recurring-foods")).not.toContainText("Based on");
+  await expect(page.getByTestId("card-recurring-foods")).not.toContainText("Recorded categories");
 
   await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Apple");
   await expect(page.getByTestId("glucose-general-component-apple|蘋果|蘋果")).toContainText("Carbohydrate");
@@ -133,11 +163,21 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("glucose-food-detail-dialog")).toHaveCount(0);
 
+  await page.getByTestId("input-glucose-food-search").fill("chicken");
+  await page.getByTestId("glucose-search-suggestion-history:chicken breast").click();
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("Chicken Breast");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("Recorded in 2 meals");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).toContainText("No glucose pattern data is available for this food yet.");
+  await expect(page.getByTestId("glucose-food-detail-dialog")).not.toContainText("mmol/L");
+  await page.keyboard.press("Escape");
+
   await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-impact-low")).toBeVisible();
   await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
   await expect(page.getByTestId("card-recurring-foods")).toHaveCount(0);
 
+  await page.getByTestId("input-glucose-food-search").fill("chicken");
+  await expect(page.getByTestId("glucose-search-suggestions")).toContainText("No matching foods in your history.");
   await page.getByTestId("input-glucose-food-search").fill("app");
   await expect(page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果")).toContainText("Apple HStix");
   await page.getByTestId("glucose-search-suggestion-apple|蘋果|蘋果").click();

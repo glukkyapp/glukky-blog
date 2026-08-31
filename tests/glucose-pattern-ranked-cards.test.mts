@@ -9,7 +9,11 @@ import {
   rankMeasuredFoods,
   IMPACT_LEVELS,
 } from "../client/src/lib/glucose-pattern-ranking";
-import { findGlucosePatternFoodForMode } from "../server/glucose-patterns";
+import {
+  buildRetainedFoodHistory,
+  findGlucosePatternFoodForMode,
+  findRetainedFoodHistoryEntry,
+} from "../server/glucose-patterns";
 
 let passed = 0;
 function check(label: string, condition: boolean) {
@@ -39,6 +43,17 @@ check("General detail selects frequency data when the same food also has HStix e
   findGlucosePatternFoodForMode("general", "rice", overlappingGeneral, overlappingHstix)?.kind === "general");
 check("HStix detail selects measured data for that same overlapping food",
   findGlucosePatternFoodForMode("hstix", "rice", overlappingGeneral, overlappingHstix)?.kind === "hstix");
+const retainedHistory = buildRetainedFoodHistory([
+  { foodName: "Chicken Breast", foodItems: null, isDeleted: false },
+  { foodName: "chicken breast", foodItems: null, isDeleted: false },
+  { foodName: "Deleted Chicken Breast", foodItems: null, isDeleted: true },
+]);
+check("Retained history indexes raw logged food names without pattern eligibility",
+  retainedHistory.some(food => food.foodKey === "history:chicken breast" && food.mealCount === 2));
+check("Deleted meals stay out of retained-history search",
+  !retainedHistory.some(food => food.foodNameEn === "Deleted Chicken Breast"));
+check("A retained-history selection resolves case-insensitively",
+  findRetainedFoodHistoryEntry("CHICKEN BREAST", retainedHistory)?.mealCount === 2);
 
 console.log("\nPage and API contracts");
 const page = readFileSync("client/src/pages/glucose-patterns.tsx", "utf8");
@@ -95,16 +110,27 @@ check("The backend caps directional result groups at five after lift ordering",
   glucosePatterns.includes(".slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS)"));
 check("Cards support pointer swipes",
   page.includes("onPointerDown") && page.includes("onPointerUp") && page.includes("SWIPE_MIN_PX"));
-check("Search uses live structured component reads rather than whole-dish names",
+check("Search uses retained food history rather than only eligible pattern cards",
   page.includes("?mode=${mode}&query=${encodeURIComponent(trimmedSearch)}") &&
   routes.includes("storage.getMealSnapsForGlucosePatterns(userId)") &&
-  routes.includes("buildGeneralGlucosePatternComponents(generalMeals)"));
-check("Search and detail stay inside the selected General or HStix group",
+  routes.includes("buildRetainedFoodHistory(historyMeals)") &&
+  glucosePatterns.includes("rawFoodName"));
+check("Search and detail remain scoped to the selected General or HStix history",
   page.includes('queryKey: ["/api/snap/glucose-patterns", "search", mode, trimmedSearch]') &&
   page.includes('queryKey: ["/api/snap/glucose-patterns", "detail", mode, selectedFood]') &&
   page.includes("?mode=${mode}&food=${encodeURIComponent(selectedFood!)}") &&
-  routes.includes('requestedMode === "general"') &&
-  routes.includes('requestedMode === "hstix"'));
+  routes.includes('requestedMode === "hstix"') &&
+  routes.includes("? await storage.getMealSnapsForHstixCards(userId)") &&
+  routes.includes(": await storage.getMealSnapsForGlucosePatterns(userId)"));
+check("A retained food without pattern evidence gets a truthful non-glucose detail",
+  routes.includes('kind: "history"') &&
+  page.includes('detailData.detail.kind === "history"') &&
+  page.includes("pattern_history_no_glucose_data"));
+check("Infrequent HStix history returns its real readings without becoming a ranked card",
+  routes.includes('requestedMode === "hstix" && retainedEntry') &&
+  routes.includes("const matchingReadings = hstixSnaps") &&
+  routes.includes("avgPostMealMmol") &&
+  routes.includes("classifyPostMealMmol(avgPostMealMmol, glucoseGroup)"));
 check("Measured detail keeps dated readings while General detail is frequency-only",
   routes.includes('kind: "hstix"') &&
   routes.includes("recordedAt: snap.recordedAt.toISOString()") &&
@@ -112,6 +138,7 @@ check("Measured detail keeps dated readings while General detail is frequency-on
   page.includes('detailData.detail.kind === "general"'));
 check("General storage reads active structured metadata without glucose aggregation",
   storage.includes("getMealSnapsForGlucosePatterns") &&
+  storage.includes("foodName: mealSnaps.foodName") &&
   storage.includes("foodItems: mealSnaps.foodItems") &&
   storage.includes("eq(mealSnaps.isDeleted, false)") &&
   !generalStorageMethod.includes("hstixReadings") &&
@@ -127,19 +154,41 @@ check("All supported locales include search and component type labels", [en, zhH
   ["pattern_mode_general", "pattern_mode_hstix", "pattern_component_type_carb", "pattern_component_type_sweet_food", "pattern_component_type_sweet_drink", "pattern_frequency_count"]
     .every(key => locale.includes(`"${key}"`)),
 ));
-check("Recurring food insights moved to General and displays separate sweet and carb results",
+check("Recurring food insights moved to General and shows only the top combined category sentence",
   page.includes("<RecurringFoodInsights />") &&
   !report.includes("RecurringFoodInsights") &&
   recurringFoods.includes("data.sweetSubtypes.map") &&
-  recurringFoods.includes("(data.carbCategories ?? []).map"));
+  recurringFoods.includes("(data.carbCategories ?? []).map") &&
+  recurringFoods.includes("highestMealCount") &&
+  recurringFoods.includes("category.mealCount === highestMealCount") &&
+  recurringFoods.includes("food_frequency.favourite_category") &&
+  !recurringFoods.includes("recurring-food-row") &&
+  !recurringFoods.includes("food_frequency.based_on") &&
+  !recurringFoods.includes("food_frequency.subtypes_heading"));
 check("Food-frequency category labels cover sweet and carb categories in every locale", [en, zhHant, yue].every(locale =>
   ["sweet_drink", "sweet_food", "rice", "noodles", "bread", "potatoes", "other"]
     .every(key => locale.includes(`"${key}"`)),
 ));
-check("Traditional Chinese and Cantonese use the requested recurring-food and sweet-drink wording",
-  zhHant.includes('"title": "你喜歡吃的食物"') &&
-  zhHant.includes('"sweet_drink": "甜味飲料：{{count}} 餐"') &&
-  yue.includes('"sweet_drink": "甜味飲料：{{count}} 餐"'));
+check("Recurring-food titles and all-category summary copy are localized",
+  en.includes('"title": "Carbohydrates/sugars you like to eat"') &&
+  zhHant.includes('"title": "你喜歡吃的碳水化合物／糖類"') &&
+  yue.includes('"title": "你鍾意食嘅碳水化合物／糖類"') &&
+  [en, zhHant, yue].every(locale => locale.includes('"favourite_category"')));
+check("Personalised glucose copy avoids threshold and colour-band wording",
+  en.includes('"personalised_popup_title": "Personalised glucose values ready"') &&
+  zhHant.includes('"personalised_popup_title": "個人化血糖值已設定"') &&
+  yue.includes('"personalised_popup_title": "個人化血糖值已設定"') &&
+  !page.includes("personalised_disclaimer") &&
+  ![en, zhHant, yue].some(locale => locale.includes('"personalised_disclaimer"')) &&
+  !zhHant.includes("個人閾值") &&
+  !yue.includes("個人閾值"));
+check("HStix recorded-food and retained-history fallback copy are localized",
+  en.includes('"pattern_mode_hstix": "HStix recorded food"') &&
+  zhHant.includes('"pattern_mode_hstix": "已紀錄血糖的食物"') &&
+  yue.includes('"pattern_mode_hstix": "已記錄血糖嘅食物"') &&
+  [en, zhHant, yue].every(locale =>
+    ["pattern_history_detail_description", "pattern_history_recorded_label", "pattern_history_no_glucose_data"]
+      .every(key => locale.includes(`"${key}"`))));
 check("Measured impact terminology and reading-progress copy are localized", [en, zhHant, yue].every(locale =>
   ["pattern_measured_impact_high", "pattern_measured_impact_medium", "pattern_measured_impact_low", "pattern_needs_more_readings_heading", "pattern_needs_more_readings_count"]
     .every(key => locale.includes(`"${key}"`)),

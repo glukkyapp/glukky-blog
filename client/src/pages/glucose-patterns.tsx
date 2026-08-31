@@ -36,9 +36,9 @@ interface GeneralGlucosePatternEntry {
   foodNameEn: string;
   foodNameZhHant: string;
   foodNameYue: string;
-  carbCategory: string | null;
-  sweetCategory: "sweet_food" | "sweet_drink" | null;
-  componentType: ComponentType;
+  carbCategory?: string | null;
+  sweetCategory?: "sweet_food" | "sweet_drink" | null;
+  componentType?: ComponentType;
   mealCount: number;
 }
 
@@ -113,16 +113,21 @@ interface HstixFoodDetail {
   readingCount: number;
   impactLevel: GlucoseImpactLevel;
   readings: Array<{ recordedAt: string; postMealGlucoseMmol: number }>;
-  lift: number;
-  highMeals: number;
-  nonHighMeals: number;
+  lift?: number;
+  highMeals?: number;
+  nonHighMeals?: number;
 }
 
 interface GeneralFoodDetail extends GeneralGlucosePatternEntry {
   kind: "general";
 }
 
-type FoodDetail = HstixFoodDetail | GeneralFoodDetail;
+interface HistoryFoodDetail extends FoodSuggestion {
+  kind: "history";
+  mealCount: number;
+}
+
+type FoodDetail = HstixFoodDetail | GeneralFoodDetail | HistoryFoodDetail;
 
 interface GlucoseThresholdsData {
   glucoseGroup: string | null;
@@ -381,7 +386,6 @@ export default function GlucosePatterns() {
             </div>
 
             {showPersonalisedProgress && <p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground" data-testid="text-personalised-progress">{t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}</p>}
-            {!isHstixMode && isPersonalised && !showPersonalisedPopup && <p className="mb-3 text-sm italic text-muted-foreground" data-testid="text-personalised-disclaimer">{t("glucose.personalised_disclaimer", { count: readingCount })}</p>}
 
             {isHstixMode ? (
               <>
@@ -535,9 +539,24 @@ export default function GlucosePatterns() {
             <>
               <DialogHeader>
                 <DialogTitle>{localizedFoodName(detailData.detail)}</DialogTitle>
-                <DialogDescription>{t(detailData.detail.kind === "hstix" ? "glucose.pattern_detail_description" : "glucose.pattern_general_description")}</DialogDescription>
+                <DialogDescription>{t(
+                  detailData.detail.kind === "hstix"
+                    ? "glucose.pattern_detail_description"
+                    : detailData.detail.kind === "history"
+                      ? "glucose.pattern_history_detail_description"
+                      : "glucose.pattern_general_description",
+                )}</DialogDescription>
               </DialogHeader>
-              {detailData.detail.kind === "general" ? (
+              {detailData.detail.kind === "history" ? (
+                <div className="space-y-3">
+                  <p className="rounded-xl bg-muted/60 p-3 text-sm font-semibold text-foreground">
+                    {t("glucose.pattern_history_recorded_label", { count: detailData.detail.mealCount })}
+                  </p>
+                  <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+                    {t("glucose.pattern_history_no_glucose_data")}
+                  </p>
+                </div>
+              ) : detailData.detail.kind === "general" ? (
                 <div className="flex items-center justify-between rounded-xl bg-muted/60 p-3">
                   <div>
                     <p className="text-xs text-muted-foreground">{t("glucose.pattern_component_type_label")}</p>

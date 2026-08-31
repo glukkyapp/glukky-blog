@@ -40,7 +40,9 @@ import {
   buildGeneralGlucosePatternComponents,
   buildHstixFoodCards,
   buildHstixFoodsNeedingMoreReadings,
+  buildRetainedFoodHistory,
   findGlucosePatternFoodForMode,
+  findRetainedFoodHistoryEntry,
   isEligibleGlucosePatternComponent,
 } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
@@ -3385,37 +3387,23 @@ No explanation, just JSON.`,
       if (query != null) {
         const trimmed = query.trim();
         if (!trimmed) return res.json({ suggestions: [] });
-        const [generalMeals, hstixSnaps, profile] = await Promise.all([
-          storage.getMealSnapsForGlucosePatterns(userId),
-          storage.getMealSnapsForHstixCards(userId),
-          storage.getProfile(userId),
-        ]);
-        const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
+        const historyMeals = requestedMode === "hstix"
+          ? await storage.getMealSnapsForHstixCards(userId)
+          : await storage.getMealSnapsForGlucosePatterns(userId);
         const normalizedQuery = trimmed.slice(0, 100).toLocaleLowerCase();
-        const hstixSuggestions = buildHstixFoodCards(hstixSnaps, glucoseGroup)
-          .filter(card => [card.foodNameEn, card.foodNameZhHant, card.foodNameYue]
-            .some(name => name.toLocaleLowerCase().includes(normalizedQuery)));
-        const generalSuggestions = buildGeneralGlucosePatternComponents(generalMeals)
-          .filter(component => [component.foodNameEn, component.foodNameZhHant, component.foodNameYue]
-            .some(name => name.toLocaleLowerCase().includes(normalizedQuery)));
-        const unique = new Map<string, {
-          foodKey: string;
-          foodNameEn: string;
-          foodNameZhHant: string;
-          foodNameYue: string;
-        }>();
-        const scopedSuggestions = requestedMode === "general"
-          ? generalSuggestions
-          : requestedMode === "hstix"
-            ? hstixSuggestions
-            : [...hstixSuggestions, ...generalSuggestions];
-        scopedSuggestions.forEach(suggestion => unique.set(suggestion.foodKey, {
-          foodKey: suggestion.foodKey,
-          foodNameEn: suggestion.foodNameEn,
-          foodNameZhHant: suggestion.foodNameZhHant,
-          foodNameYue: suggestion.foodNameYue,
-        }));
-        return res.json({ suggestions: Array.from(unique.values()).slice(0, 8) });
+        const suggestions = buildRetainedFoodHistory(historyMeals)
+          .filter(entry =>
+            [entry.foodNameEn, entry.foodNameZhHant, entry.foodNameYue]
+              .some(name => name.toLocaleLowerCase().includes(normalizedQuery)),
+          )
+          .slice(0, 8)
+          .map(({ foodKey, foodNameEn, foodNameZhHant, foodNameYue }) => ({
+            foodKey,
+            foodNameEn,
+            foodNameZhHant,
+            foodNameYue,
+          }));
+        return res.json({ suggestions });
       }
       if (food) {
         const [generalMeals, hstixSnaps, profile] = await Promise.all([
@@ -3424,12 +3412,18 @@ No explanation, just JSON.`,
           storage.getProfile(userId),
         ]);
         const glucoseGroup: GlucoseGroup = profile?.glucoseGroup === "t2dm" ? "t2dm" : "healthy";
-        const selectedPattern = findGlucosePatternFoodForMode(
-          requestedMode,
-          food,
-          buildGeneralGlucosePatternComponents(generalMeals),
-          buildHstixFoodCards(hstixSnaps, glucoseGroup),
+        const generalFoods = buildGeneralGlucosePatternComponents(generalMeals);
+        const hstixFoods = buildHstixFoodCards(hstixSnaps, glucoseGroup);
+        const scopedHistory = buildRetainedFoodHistory(
+          requestedMode === "hstix" ? hstixSnaps : generalMeals,
         );
+        const retainedEntry = findRetainedFoodHistoryEntry(food, scopedHistory);
+        const lookupValues = retainedEntry
+          ? [food, retainedEntry.foodNameEn, retainedEntry.foodNameZhHant, retainedEntry.foodNameYue]
+          : [food];
+        const selectedPattern = lookupValues
+          .map(value => findGlucosePatternFoodForMode(requestedMode, value, generalFoods, hstixFoods))
+          .find((value): value is NonNullable<typeof value> => value != null) ?? null;
         if (selectedPattern?.kind === "hstix") {
           const hstixCard = selectedPattern.food;
           const readings = hstixSnaps
@@ -3462,7 +3456,48 @@ No explanation, just JSON.`,
             },
           });
         }
-        if (selectedPattern?.kind !== "general") return res.status(404).json({ message: "Food not found." });
+        if (!selectedPattern && requestedMode === "hstix" && retainedEntry) {
+          const normalizedNames = new Set(
+            [retainedEntry.foodNameEn, retainedEntry.foodNameZhHant, retainedEntry.foodNameYue]
+              .map(name => name.toLocaleLowerCase()),
+          );
+          const matchingReadings = hstixSnaps
+            .filter(snap =>
+              (snap.foodName != null && normalizedNames.has(snap.foodName.trim().toLocaleLowerCase())) ||
+              (snap.foodItems ?? []).some(item => foodItemKey(item) === retainedEntry.foodKey),
+            )
+            .filter(snap => typeof snap.postMealGlucoseMmol === "number" && Number.isFinite(snap.postMealGlucoseMmol))
+            .map(snap => ({
+              recordedAt: snap.recordedAt.toISOString(),
+              postMealGlucoseMmol: snap.postMealGlucoseMmol!,
+            }))
+            .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+          if (matchingReadings.length > 0) {
+            const avgPostMealMmol = matchingReadings.reduce(
+              (sum, reading) => sum + reading.postMealGlucoseMmol,
+              0,
+            ) / matchingReadings.length;
+            return res.json({
+              detail: {
+                kind: "hstix",
+                ...retainedEntry,
+                avgPostMealMmol,
+                readingCount: matchingReadings.length,
+                impactLevel: classifyPostMealMmol(avgPostMealMmol, glucoseGroup),
+                readings: matchingReadings,
+              },
+            });
+          }
+        }
+        if (selectedPattern?.kind !== "general") {
+          if (!retainedEntry) return res.status(404).json({ message: "Food not found." });
+          return res.json({
+            detail: {
+              kind: "history",
+              ...retainedEntry,
+            },
+          });
+        }
         return res.json({
           detail: {
             kind: "general",

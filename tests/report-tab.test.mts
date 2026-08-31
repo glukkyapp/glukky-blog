@@ -66,9 +66,11 @@ check("Two-month report calls only its dedicated endpoint", reports.includes('"/
 check("Unavailable diagnostic cards are omitted from rendering", reports.includes('card.state !== "unavailable"'));
 check("Two-month report renders named and neutral states", reports.includes('two_month_report.named_observation') && reports.includes('two_month_report.no_clear_difference'));
 check(
-  "Two-month dimensions use accessible visual emphasis for all three cards",
+  "Two-month dimensions use a high-contrast badge treatment for all three cards",
   reports.includes('data-testid={`two-month-dimension-${card.cardType}`}') &&
-    reports.includes('className="font-bold text-primary"') &&
+    reports.includes("bg-primary") &&
+    reports.includes("text-primary-foreground") &&
+    reports.includes("border-primary/20") &&
     reports.includes("<strong"),
 );
 check("Two-month report retains a safety disclaimer", reports.includes('t("snap.advice_disclaimer")'));
