@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SwipeableFoodCard } from "@/components/SwipeableFoodCard";
 
 type FoodFrequencyFood = {
   nameEn: string;
@@ -22,6 +24,7 @@ type FoodFrequencySummary = {
 
 export function RecurringFoodInsights() {
   const { t, i18n } = useTranslation();
+  const [foodIndex, setFoodIndex] = useState(0);
   const { data, isLoading } = useQuery<FoodFrequencySummary>({
     queryKey: ["/api/snap/food-frequency"],
     queryFn: async () => {
@@ -31,12 +34,19 @@ export function RecurringFoodInsights() {
     },
   });
 
-  if (isLoading || !data?.eligible) return null;
-
   const language = i18n.language;
   const displayName = (food: FoodFrequencyFood) =>
     language === "yue" ? food.nameYue : language.startsWith("zh") ? food.nameZhHant : food.nameEn;
-  const topFoods = data.foods.filter(food => food.mealCount > 1).slice(0, 5);
+  const topFoods = data?.foods?.filter(food => food.mealCount > 1).slice(0, 5) ?? [];
+  const activeIndex = Math.min(foodIndex, Math.max(0, topFoods.length - 1));
+  const activeFood = topFoods[activeIndex];
+
+  useEffect(() => {
+    setFoodIndex(0);
+  }, [topFoods.length]);
+
+  if (isLoading || !data?.eligible) return null;
+
   const categories = [
     ...data.sweetSubtypes.map(category => ({
       key: category.sweetCategory,
@@ -59,21 +69,35 @@ export function RecurringFoodInsights() {
           <h2 className="mb-3 text-base font-semibold text-[#214B36]">
             {t("food_frequency.title")}
           </h2>
-          <div className="space-y-2" aria-label={t("food_frequency.title")}>
-            {topFoods.map(food => (
+          <div aria-label={t("food_frequency.title")}>
+            <SwipeableFoodCard
+              index={activeIndex}
+              total={topFoods.length}
+              onPrevious={() => setFoodIndex(current => Math.max(0, current - 1))}
+              onNext={() => setFoodIndex(current => Math.min(topFoods.length - 1, current + 1))}
+              nextCard={activeIndex < topFoods.length - 1 ? (
+                <Card className="border-[#DCE9D7] bg-[#F8FBF5]">
+                  <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
+                    <span className="truncate text-sm font-medium text-[#214B36]">{displayName(topFoods[activeIndex + 1])}</span>
+                    <span className="shrink-0 text-xs text-[#6E8477]">
+                      {t("food_frequency.meals", { count: topFoods[activeIndex + 1].mealCount })}
+                    </span>
+                  </CardContent>
+                </Card>
+              ) : undefined}
+            >
               <Card
-                key={`${food.nameEn}-${food.nameZhHant}-${food.nameYue}`}
                 className="border-[#DCE9D7] bg-[#F8FBF5]"
                 data-testid="recurring-food-card"
               >
                 <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
-                  <span className="truncate text-sm font-medium text-[#214B36]">{displayName(food)}</span>
+                  <span className="truncate text-sm font-medium text-[#214B36]">{displayName(activeFood)}</span>
                   <span className="shrink-0 text-xs text-[#6E8477]">
-                    {t("food_frequency.meals", { count: food.mealCount })}
+                    {t("food_frequency.meals", { count: activeFood.mealCount })}
                   </span>
                 </CardContent>
               </Card>
-            ))}
+            </SwipeableFoodCard>
           </div>
         </section>
       )}

@@ -19,7 +19,96 @@ async function setupUser(context: BrowserContext, page: Page) {
   await page.addInitScript(() => localStorage.setItem("glukky_has_session", "1"));
 }
 
-test.use({ viewport: { width: 390, height: 844 } });
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+test("Swipe tutorial waits for a multi-card group, respects reduced motion, and persists across groups", async ({ context, page }) => {
+  await setupUser(context, page);
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("glucose-carousel-test-initialized")) {
+      localStorage.removeItem("glukky_glucose_patterns_swipe_tutorial_seen");
+      sessionStorage.setItem("glucose-carousel-test-initialized", "1");
+    }
+  });
+
+  let foods = [
+    { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 5 },
+  ];
+  const lowHstixFoods = ["Oats", "Potato"].map((name, index) => ({
+    foodKey: name.toLowerCase(),
+    foodNameEn: name,
+    foodNameZhHant: index === 0 ? "燕麥" : "薯仔",
+    foodNameYue: index === 0 ? "燕麥" : "薯仔",
+    totalMeals: 25,
+    highMeals: 2,
+    mediumMeals: 4,
+    lowMeals: 19,
+    nonHighMeals: 23,
+    highProbability: 0.08,
+    overallHighProbability: 0.5,
+    lift: 0.5 + index * 0.1,
+    avgPostMealMmol: 5.8,
+    impactLevel: "low",
+    componentType: "carb",
+  }));
+
+  await page.route("**/api/snap/glucose-patterns**", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      totalPaired: 50,
+      totalSnaps: 50,
+      topList: [],
+      hstixList: lowHstixFoods,
+      hstixNeedsMoreReadings: [],
+    }),
+  }));
+  await page.route("**/api/user/glucose-thresholds", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ glucoseGroup: "healthy", readingCount: 50, isPersonalised: true, glucosePersonalisedSeen: true }),
+  }));
+  await page.route("**/api/snap/food-frequency", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ totalMeals: 10, eligible: true, foods, sweetSubtypes: [], carbCategories: [] }),
+  }));
+
+  await page.goto("/glucose-patterns");
+  await expect(page.getByTestId("recurring-food-card")).toBeVisible();
+  await page.waitForTimeout(850);
+  await expect(page.getByTestId("pattern-swipe-cue")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-next-card-sliver")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-next")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-card-viewport")).not.toHaveAttribute("tabindex", "0");
+  expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBeNull();
+
+  foods = [
+    ...foods,
+    { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 4 },
+  ];
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(page.getByTestId("pattern-swipe-cue")).toBeVisible();
+  await page.waitForTimeout(450);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toBeVisible({ timeout: 600 });
+  await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
+  expect(await page.locator(".swipe-tutorial-nudge").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+  expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBe("1");
+
+  await page.getByTestId("pattern-next").click();
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-position")).toHaveText("2 / 2");
+
+  await page.reload();
+  await expect(page.getByTestId("recurring-food-card")).toBeVisible();
+  await page.waitForTimeout(850);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+
+  await page.getByTestId("glucose-mode-hstix").click();
+  await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
+  await expect(page.getByTestId("pattern-swipe-cue")).toBeVisible();
+  await page.waitForTimeout(850);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+});
 
 test("Glucose Patterns opens on recorded cards and lets users browse food details", async ({ context, page }) => {
   await setupUser(context, page);
@@ -154,10 +243,41 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
   await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
   await expect(page.getByTestId("card-recurring-foods")).toContainText("Your favourite foods");
-  await expect(page.getByTestId("recurring-food-card")).toHaveCount(5);
-  await expect(page.getByTestId("recurring-food-card").nth(0)).toContainText("Chicken breast");
-  await expect(page.getByTestId("recurring-food-card").nth(2)).toContainText("Vegetables");
-  await expect(page.getByTestId("recurring-food-card").nth(4)).toContainText("Noodles");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCount(1);
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Chicken breast");
+  await expect(page.getByTestId("pattern-swipe-cue")).toContainText("Swipe left to see the next food");
+  await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
+  await expect(page.getByTestId("pattern-position")).toHaveText("1 / 5");
+  await page.getByTestId("pattern-next").click();
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Rice");
+  await expect(page.getByTestId("pattern-position")).toHaveText("2 / 5");
+  await page.getByTestId("pattern-card-viewport").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Vegetables");
+  await expect(page.getByTestId("pattern-position")).toHaveText("3 / 5");
+  const viewportBox = await page.getByTestId("pattern-card-viewport").boundingBox();
+  expect(viewportBox).not.toBeNull();
+  const touchX = viewportBox!.x + viewportBox!.width - 35;
+  const touchY = viewportBox!.y + viewportBox!.height / 2;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: touchX, y: touchY, id: 1 }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ x: touchX - 45, y: touchY, id: 1 }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ x: touchX - 90, y: touchY, id: 1 }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Cake");
+  await expect(page.getByTestId("pattern-position")).toHaveText("4 / 5");
   await expect(page.getByTestId("card-favourite-category")).toBeVisible();
   await expect(page.getByTestId("card-favourite-category")).toContainText("Your favourite category");
   await expect(page.getByTestId("food-frequency-favourite-category")).toHaveText("Rice");
@@ -166,8 +286,9 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   foodFrequencyResponse.sweetSubtypes = [];
   foodFrequencyResponse.carbCategories = [];
   await page.reload();
-  await expect(page.getByTestId("recurring-food-card")).toHaveCount(5);
-  await expect(page.getByTestId("recurring-food-card").nth(0)).toContainText("Chicken breast");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCount(1);
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Chicken breast");
+  await expect(page.getByTestId("pattern-position")).toHaveText("1 / 5");
   await expect(page.getByTestId("card-favourite-category")).toHaveCount(0);
 
   await page.getByTestId("input-glucose-food-search").fill("app");
@@ -275,6 +396,11 @@ test("Needs more readings is a selector and keeps the measured card visible", as
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
   await expect(page.getByTestId("glucose-card-rank")).toHaveText("1st place");
   await expect(page.getByTestId("glucose-ranking-card-0")).toContainText("20 high readings from 25 meals");
+  await expect(page.getByTestId("pattern-swipe-cue")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-next-card-sliver")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-next")).toHaveCount(0);
+  await expect(page.getByTestId("pattern-card-viewport")).not.toHaveAttribute("tabindex", "0");
   await expect(page.getByTestId("glucose-needs-more-readings-select")).toBeVisible();
   await expect(page.getByTestId("glucose-needs-more-readings-selected")).toContainText("12 eligible readings");
 
@@ -349,11 +475,15 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await page.goto("/glucose-patterns");
   await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(242, 251, 246)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(85, 185, 138)");
   await expect(page.getByTestId("glucose-partner-comparison").locator("strong")).toHaveText(["Milk", "Berries"]);
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
   await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
 
   await page.getByTestId("glucose-impact-high").click();
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(255, 244, 243)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(232, 90, 90)");
   await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
   await expect(page.getByTestId("glucose-partner-dominant").locator("strong")).toHaveText("Roast pork");
   await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
@@ -400,6 +530,41 @@ test("Medium HStix keeps five sampled cards without ordinal text", async ({ cont
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
   await expect(page.getByTestId("glucose-card-rank")).toHaveCount(0);
   await expect(page.getByText("1 / 5", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("pattern-swipe-cue")).toBeVisible();
+  await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
+
+  const mediumCardStyle = await page.getByTestId("glucose-ranking-card-0").evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderLeftColor: style.borderLeftColor,
+      borderLeftWidth: style.borderLeftWidth,
+    };
+  });
+  expect(mediumCardStyle).toEqual({
+    backgroundColor: "rgb(255, 251, 234)",
+    borderLeftColor: "rgb(212, 154, 34)",
+    borderLeftWidth: "4px",
+  });
+
+  const badgeStyle = await page.getByTestId("glucose-impact-badge-medium").evaluate(element => {
+    const style = getComputedStyle(element);
+    return { backgroundColor: style.backgroundColor, color: style.color };
+  });
+  expect(badgeStyle).toEqual({
+    backgroundColor: "rgb(255, 240, 194)",
+    color: "rgb(107, 74, 15)",
+  });
+
+  for (const testId of ["pattern-previous", "pattern-next"]) {
+    const box = await page.getByTestId(testId).boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.getByTestId("pattern-card-viewport").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("pattern-position")).toHaveText("2 / 5");
 });
 
 test.describe("desktop navigation layout", () => {

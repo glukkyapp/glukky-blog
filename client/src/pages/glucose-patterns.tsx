@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Trans, useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Lock, Search } from "lucide-react";
+import { ChevronLeft, Lock, Search } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RecurringFoodInsights } from "@/components/RecurringFoodInsights";
+import { SwipeableFoodCard } from "@/components/SwipeableFoodCard";
 import {
   Dialog,
   DialogContent,
@@ -138,22 +139,26 @@ interface GlucoseThresholdsData {
 
 const LOCKED_THRESHOLD = 10;
 const PERSONALISED_THRESHOLD = 15;
-const SWIPE_MIN_PX = 40;
-
 function ImpactBadge({ impact, measured = false }: { impact: GlucoseImpactLevel; measured?: boolean }) {
   const { t } = useTranslation();
   const style = impact === "low"
-    ? "bg-emerald-100 text-emerald-800"
+    ? "border border-[#55B98A]/45 bg-[#DDF4E8] text-[#1F6B4B]"
     : impact === "medium"
-      ? "bg-amber-100 text-amber-800"
-      : "bg-red-100 text-red-800";
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${style}`}>{t(measured ? `glucose.pattern_measured_impact_${impact}` : `glucose.impact_${impact}`)}</span>;
+      ? "border border-[#D49A22]/45 bg-[#FFF0C2] text-[#6B4A0F]"
+      : "border border-[#E85A5A]/45 bg-[#FFE0DE] text-[#9D2F2F]";
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${style}`} data-testid={`glucose-impact-badge-${impact}`}>{t(measured ? `glucose.pattern_measured_impact_${impact}` : `glucose.impact_${impact}`)}</span>;
 }
 
 const IMPACT_BUTTON_COLORS: Record<string, { selected: string; unselected: string }> = {
   low:    { selected: "border-emerald-500 bg-emerald-500 text-white", unselected: "border-emerald-200 text-emerald-700 hover:bg-emerald-50" },
   medium: { selected: "border-amber-500 bg-amber-500 text-white",     unselected: "border-amber-200 text-amber-700 hover:bg-amber-50" },
   high:   { selected: "border-red-500 bg-red-500 text-white",         unselected: "border-red-200 text-red-700 hover:bg-red-50" },
+};
+
+const IMPACT_CARD_STYLES: Record<GlucoseImpactLevel, string> = {
+  low: "border-[#55B98A] border-l-4 bg-[#F2FBF6]",
+  medium: "border-[#D49A22] border-l-4 bg-[#FFFBEA]",
+  high: "border-[#E85A5A] border-l-4 bg-[#FFF4F3]",
 };
 
 export default function GlucosePatterns() {
@@ -166,7 +171,6 @@ export default function GlucosePatterns() {
   const [search, setSearch] = useState("");
   const [selectedFood, setSelectedFood] = useState<string | null>(null);
   const [selectedNeedsMoreFood, setSelectedNeedsMoreFood] = useState<string | null>(null);
-  const swipeStartX = useRef<number | null>(null);
 
   const { data, isLoading } = useQuery<PatternsData>({
     queryKey: ["/api/snap/glucose-patterns"],
@@ -292,14 +296,6 @@ export default function GlucosePatterns() {
     setCardIndex(current => Math.max(0, Math.min(activeFoods.length - 1, current + direction)));
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (swipeStartX.current == null) return;
-    const distance = event.clientX - swipeStartX.current;
-    swipeStartX.current = null;
-    if (distance <= -SWIPE_MIN_PX) moveCard(1);
-    if (distance >= SWIPE_MIN_PX) moveCard(-1);
-  };
-
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(value));
   const localizedPartnerName = (partner: HstixPartnerFood) =>
     locale === "zh-Hant" ? partner.foodNameZhHant : locale === "yue" ? partner.foodNameYue : partner.foodNameEn;
@@ -403,26 +399,36 @@ export default function GlucosePatterns() {
                     <p className="text-xs text-muted-foreground">{t("glucose.pattern_matching_count", { count: matchingCount })}</p>
                   </div>
                   {activeFood ? (
-                    <div className="overflow-hidden" onPointerDown={event => { swipeStartX.current = event.clientX; }} onPointerUp={handlePointerUp} onPointerCancel={() => { swipeStartX.current = null; }}>
-                      <article className="min-h-40 rounded-2xl border border-border bg-card p-4 shadow-sm touch-pan-y" data-testid={`glucose-ranking-card-${activeIndex}`}>
+                    <SwipeableFoodCard
+                      index={activeIndex}
+                      total={activeFoods.length}
+                      onPrevious={() => moveCard(-1)}
+                      onNext={() => moveCard(1)}
+                      nextCard={activeIndex < activeFoods.length - 1 ? (
+                        <article className={`min-h-40 rounded-2xl border p-4 text-[#153126] shadow-[0_8px_20px_rgba(0,0,0,0.06)] ${IMPACT_CARD_STYLES[impact]}`}>
+                          <h2 className="text-lg font-bold">{activeFoods[activeIndex + 1].foodName}</h2>
+                        </article>
+                      ) : undefined}
+                    >
+                      <article className={`min-h-40 rounded-2xl border p-4 text-[#153126] shadow-[0_8px_20px_rgba(0,0,0,0.08)] ${IMPACT_CARD_STYLES[impact]}`} data-testid={`glucose-ranking-card-${activeIndex}`}>
                         <div className="mb-5 flex items-start justify-between gap-3">
                           <div>
                             {impact !== "medium" && (
-                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" data-testid="glucose-card-rank">
+                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#53685C]" data-testid="glucose-card-rank">
                                 {t(`glucose.pattern_rank_${activeIndex + 1}`)}
                               </p>
                             )}
-                            <h2 className="text-lg font-bold text-foreground">{activeFood.foodName}</h2>
-                            <p className="mt-1 text-sm text-muted-foreground">{t("glucose.pattern_hstix_reading")}</p>
-                            <p className="mt-1 text-xs font-medium text-muted-foreground" data-testid="glucose-component-type">
+                            <h2 className="text-lg font-bold">{activeFood.foodName}</h2>
+                            <p className="mt-1 text-sm text-[#53685C]">{t("glucose.pattern_hstix_reading")}</p>
+                            <p className="mt-1 text-xs font-medium text-[#53685C]" data-testid="glucose-component-type">
                               {t(`glucose.pattern_component_type_${activeFood.componentType}`)}
                             </p>
                           </div>
                           <ImpactBadge impact={impact} measured />
                         </div>
                         <div>
-                          <p className="mb-3 text-sm text-muted-foreground">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
-                          <p className="text-sm text-muted-foreground">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
+                          <p className="mb-3 text-sm text-[#43594D]">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
+                          <p className="text-sm text-[#43594D]">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
                           {activeFood.partnerInsight?.kind === "dominant" && (
                             <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
                               <Trans
@@ -437,7 +443,7 @@ export default function GlucosePatterns() {
                           )}
                           {activeFood.partnerInsight?.kind === "comparison" && (
                             <div className="mt-4 space-y-1.5" data-testid="glucose-partner-comparison">
-                              <p className="text-sm leading-5 text-muted-foreground">
+                              <p className="text-sm leading-5 text-[#43594D]">
                                 <Trans
                                   i18nKey="glucose.pattern_partner_comparison"
                                   values={{
@@ -445,24 +451,17 @@ export default function GlucosePatterns() {
                                     higherPartner: localizedPartnerName(activeFood.partnerInsight.higherPartner),
                                     lowerPartner: localizedPartnerName(activeFood.partnerInsight.lowerPartner),
                                   }}
-                                  components={{ food: <strong className="font-semibold text-foreground" /> }}
+                                  components={{ food: <strong className="font-semibold text-[#153126]" /> }}
                                 />
                               </p>
-                              <p className="text-xs leading-5 text-muted-foreground" data-testid="glucose-partner-disclaimer">
+                              <p className="text-xs leading-5 text-[#43594D]" data-testid="glucose-partner-disclaimer">
                                 {t("glucose.pattern_partner_disclaimer")}
                               </p>
                             </div>
                           )}
                         </div>
                       </article>
-                      {activeFoods.length > 1 && (
-                        <div className="mt-3 flex items-center justify-between">
-                          <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(-1)} disabled={activeIndex === 0} aria-label={t("glucose.pattern_previous")}><ChevronLeft size={18} /></Button>
-                          <p className="text-xs text-muted-foreground">{activeIndex + 1} / {activeFoods.length}</p>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => moveCard(1)} disabled={activeIndex === activeFoods.length - 1} aria-label={t("glucose.pattern_next")}><ChevronRight size={18} /></Button>
-                        </div>
-                      )}
-                    </div>
+                    </SwipeableFoodCard>
                   ) : <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground" data-testid="glucose-ranking-empty">{t("glucose.pattern_actual_empty")}</div>}
                 </div>
 

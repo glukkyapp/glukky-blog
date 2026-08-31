@@ -22,6 +22,20 @@ function check(label: string, condition: boolean) {
   passed += 1;
 }
 
+function contrastRatio(foreground: string, background: string) {
+  const luminance = (hex: string) => {
+    const channels = hex.match(/[A-Fa-f0-9]{2}/g)?.map(channel => {
+      const value = Number.parseInt(channel, 16) / 255;
+      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    if (!channels || channels.length !== 3) return 0;
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const lighter = Math.max(luminance(foreground), luminance(background));
+  const darker = Math.min(luminance(foreground), luminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 console.log("Measured-card ranking rules");
 check("All impact tabs are Low, Medium, High", IMPACT_LEVELS.join("|") === "low|medium|high");
 const measuredFoods = [
@@ -65,6 +79,8 @@ const glucosePatterns = readFileSync("server/glucose-patterns.ts", "utf8");
 const snap = readFileSync("client/src/pages/snap.tsx", "utf8");
 const postMeal = readFileSync("client/src/components/PostMealCard.tsx", "utf8");
 const recurringFoods = readFileSync("client/src/components/RecurringFoodInsights.tsx", "utf8");
+const swipeableFoodCard = readFileSync("client/src/components/SwipeableFoodCard.tsx", "utf8");
+const styles = readFileSync("client/src/index.css", "utf8");
 const report = readFileSync("client/src/pages/report.tsx", "utf8");
 const twoMonth = readFileSync("server/two-month-report.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
@@ -109,7 +125,10 @@ check("The backend caps directional result groups at five after lift ordering",
   glucosePatterns.includes("MAX_DIRECTIONAL_HSTIX_FOOD_CARDS = 5") &&
   glucosePatterns.includes(".slice(0, MAX_DIRECTIONAL_HSTIX_FOOD_CARDS)"));
 check("Cards support pointer swipes",
-  page.includes("onPointerDown") && page.includes("onPointerUp") && page.includes("SWIPE_MIN_PX"));
+  swipeableFoodCard.includes("onPointerDown") &&
+  swipeableFoodCard.includes("onPointerUp") &&
+  swipeableFoodCard.includes("SWIPE_MIN_PX") &&
+  swipeableFoodCard.includes("touch-pan-y"));
 check("Search uses retained food history rather than only eligible pattern cards",
   page.includes("?mode=${mode}&query=${encodeURIComponent(trimmedSearch)}") &&
   routes.includes("storage.getMealSnapsForGlucosePatterns(userId)") &&
@@ -154,10 +173,12 @@ check("All supported locales include search and component type labels", [en, zhH
   ["pattern_mode_general", "pattern_mode_hstix", "pattern_component_type_carb", "pattern_component_type_sweet_food", "pattern_component_type_sweet_drink", "pattern_frequency_count"]
     .every(key => locale.includes(`"${key}"`)),
 ));
-check("General shows five food cards followed by one category card, without the recorded component list",
+check("General presents up to five foods in the shared one-card carousel followed by one category card",
   page.includes("<RecurringFoodInsights />") &&
   !report.includes("RecurringFoodInsights") &&
-  recurringFoods.includes("data.foods.filter(food => food.mealCount > 1).slice(0, 5)") &&
+  recurringFoods.includes("data?.foods?.filter(food => food.mealCount > 1).slice(0, 5)") &&
+  recurringFoods.includes("<SwipeableFoodCard") &&
+  recurringFoods.includes("activeFood") &&
   recurringFoods.includes('data-testid="recurring-food-card"') &&
   recurringFoods.includes("data.sweetSubtypes.map") &&
   recurringFoods.includes("(data.carbCategories ?? []).map") &&
@@ -167,6 +188,50 @@ check("General shows five food cards followed by one category card, without the 
   recurringFoods.includes("favouriteCategory &&") &&
   !page.includes("glucose-general-component-list") &&
   !recurringFoods.includes(".filter(category => category.mealCount"));
+check("Both General and HStix use the same swipeable-card implementation",
+  recurringFoods.includes('from "@/components/SwipeableFoodCard"') &&
+  page.includes('from "@/components/SwipeableFoodCard"') &&
+  recurringFoods.includes("<SwipeableFoodCard") &&
+  page.includes("<SwipeableFoodCard"));
+check("Multi-card carousels expose a cue, next-card sliver, position, and 44px controls",
+  swipeableFoodCard.includes('data-testid="pattern-swipe-cue"') &&
+  swipeableFoodCard.includes('data-testid="pattern-next-card-sliver"') &&
+  swipeableFoodCard.includes('data-testid="pattern-position"') &&
+  swipeableFoodCard.includes('className="h-11 w-11 p-0"') &&
+  swipeableFoodCard.includes("{isMultiCard && (") &&
+  swipeableFoodCard.includes("{hasNextCard && ("));
+check("Single-card viewports are not presented as keyboard or pointer controls",
+  swipeableFoodCard.includes("tabIndex={isMultiCard ? 0 : undefined}") &&
+  swipeableFoodCard.includes("onKeyDown={isMultiCard ? handleKeyDown : undefined}") &&
+  swipeableFoodCard.includes("onPointerDown={isMultiCard ? handlePointerDown : undefined}") &&
+  swipeableFoodCard.includes("onPointerUp={isMultiCard ? handlePointerUp : undefined}"));
+check("Carousel navigation works with pointer gestures and keyboard arrows",
+  swipeableFoodCard.includes('event.key === "ArrowLeft"') &&
+  swipeableFoodCard.includes('event.key === "ArrowRight"') &&
+  swipeableFoodCard.includes("tabIndex={isMultiCard ? 0 : undefined}") &&
+  swipeableFoodCard.includes("distance <= -SWIPE_MIN_PX") &&
+  swipeableFoodCard.includes("distance >= SWIPE_MIN_PX"));
+check("The first eligible carousel tutorial is delayed, persistent, shared, and reduced-motion safe",
+  swipeableFoodCard.includes('SWIPE_TUTORIAL_STORAGE_KEY = "glukky_glucose_patterns_swipe_tutorial_seen"') &&
+  swipeableFoodCard.includes("SWIPE_TUTORIAL_DELAY_MS = 650") &&
+  swipeableFoodCard.includes("window.localStorage.setItem") &&
+  swipeableFoodCard.includes('data-testid="pattern-swipe-tutorial"') &&
+  styles.includes("@media (prefers-reduced-motion: reduce)") &&
+  styles.includes("translateX(-30px)"));
+check("HStix cards use the requested pale surfaces and accent colours",
+  page.includes('low: "border-[#55B98A] border-l-4 bg-[#F2FBF6]"') &&
+  page.includes('medium: "border-[#D49A22] border-l-4 bg-[#FFFBEA]"') &&
+  page.includes('high: "border-[#E85A5A] border-l-4 bg-[#FFF4F3]"') &&
+  page.includes("shadow-[0_8px_20px_rgba(0,0,0,0.08)]"));
+check("HStix badge and supporting-text colours meet WCAG AA against every pale card surface",
+  [
+    ["#1F6B4B", "#DDF4E8"],
+    ["#6B4A0F", "#FFF0C2"],
+    ["#9D2F2F", "#FFE0DE"],
+    ["#43594D", "#F2FBF6"],
+    ["#43594D", "#FFFBEA"],
+    ["#43594D", "#FFF4F3"],
+  ].every(([foreground, background]) => contrastRatio(foreground, background) >= 4.5));
 check("Food-frequency category labels cover sweet and carb categories in every locale", [en, zhHant, yue].every(locale =>
   ["sweet_drink", "sweet_food", "rice", "noodles", "bread", "potatoes", "other"]
     .every(key => locale.includes(`"${key}"`)),
@@ -195,6 +260,10 @@ check("Measured impact terminology and reading-progress copy are localized", [en
   ["pattern_measured_impact_high", "pattern_measured_impact_medium", "pattern_measured_impact_low", "pattern_needs_more_readings_heading", "pattern_needs_more_readings_count"]
     .every(key => locale.includes(`"${key}"`)),
 ));
+check("Swipe guidance, tutorial acknowledgement, and carousel labels are localized", [en, zhHant, yue].every(locale =>
+  ["pattern_carousel_label", "pattern_swipe_cue", "pattern_swipe_tutorial", "pattern_swipe_tutorial_acknowledge"]
+    .every(key => locale.includes(`"${key}"`)),
+) && zhHant.includes('"pattern_swipe_cue": "向左滑查看下一款食物"'));
 check("Partner warning, observed-combination advice, and non-causation disclaimer are localized", [en, zhHant, yue].every(locale =>
   ["pattern_partner_dominant", "pattern_partner_comparison", "pattern_partner_disclaimer"]
     .every(key => locale.includes(`"${key}"`)),
@@ -211,7 +280,7 @@ check("HStix foods below the evidence threshold have their own section",
 check("Needs-more foods use a dropdown while the top cards remain swipeable",
   page.includes("SelectTrigger") &&
   page.includes("glucose-needs-more-readings-selected") &&
-  page.includes("onPointerDown") &&
+  page.includes("<SwipeableFoodCard") &&
   page.includes("glucose-ranking-card-"));
 check("HStix flow does not show personalised UI", page.includes("!isHstixMode && isPersonalised"));
 check("HStix sweet component type is returned and visibly labelled",
