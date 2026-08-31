@@ -1,0 +1,62 @@
+Create a dev/test-only seed script that inserts fake meal + HStix data for one test user account, so I can manually verify the Daily Report, Bimonthly Report, General frequency list, and HStix component cards. Do not run this against production data — use a designated test user ID, and make the script idempotent/reversible (able to delete/reset the seeded data afterward).
+
+Time range: Backdate entries to span the two most recently completed calendar months plus a handful of "today/yesterday" entries for the Daily Report tests.
+
+Volume and mix, please insert:
+
+Daily Report test days (7 separate days, most recent):
+Day 1: breakfast 8am, lunch 1pm, dinner 7pm, all low-impact glucose readings.
+
+Day 2: same times, but dinner logged as high-impact (food: 炒飯).
+
+Day 3: lunch AND dinner both high-impact.
+
+Day 4: normal 3 meals + 1 snack logged at 10:30pm.
+
+Day 5: breakfast logged at 11:30am (outside normal window), rest normal.
+
+Day 6: zero meals logged.
+
+Day 7: exactly one meal logged.
+
+
+Bimonthly comparison data (spread across the two prior completed months):
+30 weekend dinners, ~78% classified/measured as high-impact (use foods like 炒飯, 腸粉 with high glucose readings).
+
+30 weekday dinners, ~23% high-impact (use foods like 蒸魚, 白灼菜 with low/medium readings).
+
+15 weekday lunches and 15 weekend lunches, both around 40% high-impact (to produce a "no clear pattern" neutral case).
+
+12 breakfasts and 12 additional lunches per weekday/weekend split to satisfy the meal-time and weekday-part bucket minimums.
+
+3 weekend breakfasts only (deliberately below the 4-minimum, to test the insufficient-data path).
+
+
+General frequency list data (can overlap with #2's meals, add if needed):
+白飯: 10 occurrences (mix of HStix-linked and AI-estimated-only meals).
+
+米粉: 5 occurrences.
+
+多士: 3 occurrences.
+
+蕃薯: 2 occurrences.
+
+奶茶: 6 occurrences (tests sweet-category inclusion).
+
+牛肉 and 西蘭花: 4 occurrences each, non-carb non-sweet negative controls.
+
+
+HStix component card data:
+30 meals containing 白飯, ~77% with high glucose readings, all on-time and non-derived.
+
+38 meals without 白飯 (varied other foods), ~22% high.
+
+26 meals containing 米線, glucose readings deliberately noisy/mixed (roughly half high, half low) — this food should meet the 25-meal floor but fail the reliability gate.
+
+One food with a lift ratio landing between 0.8 and 1.2, at any sample size, to confirm it displays as Medium without a reliability check.
+
+Within the 白飯 dataset: pair 叉燒 with 白飯 in 22 of its 30 meals (dominant-partner case).
+
+A second food (e.g., 蒸排骨) as a 白飯 index test: pair 燒肉 in 10 of its meals and 菜 in 9 of its meals, with real glucose differences exceeding 1.5 mmol/L between them, both under the 70% dominance line but above the 16%/8-meal minimums.
+
+25+ meals with 奶茶 and 25+ without, to test whether it produces its own HStix card via the sweet-category fix (if that fix has shipped — otherwise this batch should show 奶茶 absent from HStix cards, confirming the fix is still pending).
