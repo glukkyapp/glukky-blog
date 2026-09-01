@@ -1,0 +1,55 @@
+Gaps to Specify Before Building
+1. Token hashing algorithm is unspecified for storage.
+The plan says to hash the new password with the existing bcrypt config, but doesn't say what to hash the reset token with. Don't reuse bcrypt for this — a reset token is already a high-entropy random value (unlike a user-chosen password), so bcrypt's deliberate slowness adds cost without adding security. Use a fast deterministic hash like SHA-256 (optionally HMAC'd with a server secret) instead.
+
+2. Token generation parameters need to be explicit.
+Specify the source and size, e.g., crypto.randomBytes(32) (256 bits), encoded as base64url or hex for safe inclusion in a URL. Don't leave "cryptographically random" undefined — an underspecified implementation could end up with insufficient entropy.
+
+3. Session invalidation is harder than one line implies.
+connect-pg-simple stores sessions keyed by session ID, with session data in a JSON column — there's no built-in "invalidate all sessions for user X" operation. You'll need either a query against the JSONB session payload for matching user IDs (if your Postgres schema supports it efficiently) or a separate lookup table mapping user ID to active session IDs. This should be called out as its own implementation step, not assumed to be a one-liner.
+
+4. Email delivery provider isn't chosen yet.
+The plan correctly notes "no email-delivery library configured" as a current gap, but the steps don't include picking and wiring one (e.g., SES, SendGrid, Postmark, Resend). This is a hard prerequisite for step 2 to function at all and should be an explicit step with its own configuration/secrets handling.
+
+5. Response timing can still leak account existence.
+Returning identical response text isn't enough if the code path for an existing account (hash generation + email send) takes measurably longer than the no-op path for a nonexistent one. Either make the email send fire-and-forget (don't await it before responding) or add equivalent dummy work on the non-existent-account path so response timing doesn't become a side channel.
+
+6. Token consumption needs to be atomic.
+"Mark the token as used" should be a single conditional update (e.g., UPDATE ... SET used_at = now() WHERE used_at IS NULL AND token_hash = $1), not a read-then-write sequence — otherwise two near-simultaneous confirm requests with the same token could both succeed before either marks it used.
+
+Worth Considering, Not Blocking
+Rate-limiting the confirm endpoint too, not just the request endpoint, as defense-in-depth against token-guessing attempts (even though 256-bit tokens make brute force infeasible).
+
+Sending a "your password was changed" notification email after a successful reset, so the legitimate account owner is alerted if they weren't the one who triggered it.
+
+Once the token-hashing algorithm, token format, session-invalidation mechanism, and email-provider choice are made explicit, this design is ready to implement.
+
+explain in plain terms
+The password reset plan is solid on security fundamentals but leaves a few technical details unspecified that need answers before someone can actually build it.
+
+What's Already Right
+It never reveals whether an email address has an account — same message either way, which is the correct way to stop attackers from testing which emails are registered.
+
+The reset link is a one-time, time-limited token, stored as a hash rather than in plain text — so even someone with database access can't reuse it.
+
+Apple sign-in accounts are correctly excluded, since they don't have a password to reset.
+
+Logging the user out of all existing sessions after a reset is a good safety step — if someone else had gotten into the account, this kicks them out the moment the real owner resets the password.
+
+It correctly accounts for the fact that a password-reset email link usually opens in the phone's regular browser, not inside the app itself, and the page still needs to work there.
+
+What Still Needs to Be Decided
+How the token gets scrambled for storage. The plan says to use the strong, slow password-hashing method for the new password, but doesn't say what to use for the reset token itself. A token is already random and hard to guess, so it should use a fast, simple scrambling method — not the slow one meant for passwords, which would just waste server time for no extra safety.
+
+Exactly how random and how long the token is. "Cryptographically random" needs a number attached — otherwise it's easy to accidentally make it too short or predictable.
+
+Logging someone out of all their sessions is trickier than it sounds. The way sessions are currently stored doesn't have a simple "log this person out everywhere" button built in — that needs its own small piece of work to figure out which sessions belong to which user.
+
+No email-sending service has been chosen yet. The plan says the app currently has no way to send emails at all. Before this feature can work, someone needs to pick and set up an actual mail provider — that's a real missing step, not just a detail.
+
+The response should take the same amount of time either way. If checking a real account takes longer than checking a fake one (because it triggers an email send), an attacker could measure that time difference to guess which emails are real, even though the message text looks identical.
+
+Using the token twice in quick succession should be blocked cleanly. If someone accidentally clicks the reset link twice at nearly the same moment, the system needs to make sure only one of those attempts can actually succeed.
+
+Once those six points are nailed down, the plan is ready to build.
+
