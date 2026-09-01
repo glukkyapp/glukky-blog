@@ -1,0 +1,191 @@
+You do not need to create a separate domain just for password resets. The reset link should use the same public web address users already use for Glukky—for example, if the app is at https://glukky.com, reset links use that same domain.
+
+Where the Domain Comes From
+You configure one server environment variable with your real public app address:
+
+text
+PUBLIC_APP_ORIGIN=https://glukky.com
+Then the server creates reset links from that configured value:
+
+ts
+const resetUrl =
+  `${process.env.PUBLIC_APP_ORIGIN}/#reset_token=${encodeURIComponent(rawToken)}`;
+So:
+
+Production: PUBLIC_APP_ORIGIN=https://glukky.com
+
+Development: PUBLIC_APP_ORIGIN=http://localhost:5000 or whatever your local app URL is
+
+Staging, if you have one: its own configured staging URL
+
+Do not generate the domain from the visitor’s request, such as req.headers.host. An attacker could manipulate that header and cause a real reset token to be emailed in a link pointing to their own domain. OWASP specifically identifies this as a password-reset poisoning risk.
+
+Proposed Changes Summary
+Required core reset flow
+Add a password_reset_tokens table.
+
+Store:
+
+user ID;
+
+SHA-256 hash of the token, never the raw token;
+
+expiry time;
+
+used time;
+
+creation time.
+
+Generate each token using 32 random bytes:
+
+ts
+randomBytes(32).toString("base64url")
+Make each token:
+
+one-time use;
+
+valid for 30 minutes;
+
+invalidated when a newer reset link is requested for the same account.
+
+Provide a “Forgot password?” option on the login page.
+
+Request endpoint accepts an email and always returns the same generic message.
+
+Send a reset email only for a real email/password account.
+
+Do not send reset emails for Apple-only accounts, but give the same public response.
+
+Reset confirmation requires token, new password, and password confirmation.
+
+Apply the same password policy as registration: currently at least six characters.
+
+Do not automatically log the user in after successful reset.
+
+Required database safety
+Put these three changes inside one PostgreSQL transaction:
+
+Mark the reset token as used.
+
+Replace the user’s password hash.
+
+Delete every active session belonging to that user.
+
+If any one fails, all three roll back.
+
+This ensures that the user never ends up with a changed password but surviving old sessions, or a consumed reset link without a changed password.
+
+Before launch, inspect a real non-sensitive session row and confirm that this deletion query matches the actual session format:
+
+sql
+sess ->> 'userId'
+Email behavior
+Email contains only the reset link.
+
+Never email a password.
+
+Use a configured email provider separately from the database transaction.
+
+If email sending fails:
+
+do not tell the requester;
+
+return the same generic response;
+
+leave the newly created token until it expires or a later reset request invalidates it.
+
+Later, optionally add a transactional outbox/email job system. Do not add it if you want the smallest first version.
+
+Reset-link handling
+Use the same Glukky domain, via:
+
+text
+PUBLIC_APP_ORIGIN=https://your-real-domain.com
+Prefer a URL fragment link:
+
+text
+https://glukky.com/#reset_token=LONG_RANDOM_TOKEN
+instead of:
+
+text
+https://glukky.com/?reset_token=LONG_RANDOM_TOKEN
+Reason: the #reset_token=... portion stays in the browser and is normally not sent in the initial request to the web server, reducing ordinary server/access-log exposure. Query-string secrets can appear in browser history, reverse-proxy logs, server logs, and referrer data.
+
+The reset page then:
+
+Reads the token from window.location.hash.
+
+Keeps it only in React memory.
+
+Immediately removes it from the visible address bar with history.replaceState.
+
+Sends it to the confirmation API only in the HTTPS POST request body.
+
+Anti-leakage protections
+Set these headers on the reset HTML page:
+
+text
+Cache-Control: no-store
+Referrer-Policy: no-referrer
+Use HTTPS only.
+
+Do not initialize PostHog, session replay, chat widgets, analytics, ad scripts, or other third-party resources while the reset screen is open.
+
+Do not log:
+
+raw token;
+
+reset URL;
+
+password;
+
+password hash;
+
+session cookie;
+
+confirmation request body;
+
+routine email address values.
+
+Redact query strings/fragments from error-reporting and access-log tools if they might capture URLs.
+
+Ensure reset confirmation API accepts token/password only in the POST JSON body, never in the URL.
+
+Add separate rate limits for:
+
+reset requests by IP;
+
+reset requests by normalized email/account;
+
+confirmation attempts by IP;
+
+confirmation attempts by token/account where practical.
+
+Keep response timing similar for valid and invalid accounts. For the first version, impose a minimum response duration and do equivalent dummy work for ineligible requests; later, use a durable background email queue.
+
+Verify session cookie settings in production:
+
+text
+Secure
+HttpOnly
+SameSite=Lax
+Verify all existing sessions really fail after reset, including a session on another browser/device.
+
+Minimal Decision List
+If you want the smallest secure first release, lock in only these decisions:
+
+Domain: same Glukky domain, configured in PUBLIC_APP_ORIGIN; no separate reset domain.
+
+Token: 32 random bytes, SHA-256 hash stored, 30-minute expiry, single use.
+
+Link: use #reset_token=... fragment format.
+
+Transaction: consume token + change password + delete sessions in one database transaction.
+
+Email: generic public response; provider call outside transaction; failed delivery remains undisclosed.
+
+Sessions: delete all sessions; user signs in again manually.
+
+Leakage: no-store/no-referrer reset page, no analytics/third parties, strict secret-redaction in logs.
+
+Verification: inspect real session JSON before release and test multi-device session invalidation.
