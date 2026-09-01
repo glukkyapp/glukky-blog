@@ -9,12 +9,15 @@ type FoodFrequencyFood = {
   nameZhHant: string;
   nameYue: string;
   mealCount: number;
+  giRank: "low" | "medium" | "high" | null;
+  giStatus: "resolved" | "pending" | "unavailable";
 };
 
 type FoodFrequencySummary = {
   totalMeals: number;
   eligible: boolean;
   foods: FoodFrequencyFood[];
+  topFoods: FoodFrequencyFood[];
   sweetSubtypes: Array<{ sweetCategory: "sweet_drink" | "sweet_food"; mealCount: number }>;
   carbCategories: Array<{
     carbCategory: "rice" | "noodles" | "bread" | "potatoes" | "other";
@@ -37,7 +40,7 @@ export function RecurringFoodInsights() {
   const language = i18n.language;
   const displayName = (food: FoodFrequencyFood) =>
     language === "yue" ? food.nameYue : language.startsWith("zh") ? food.nameZhHant : food.nameEn;
-  const topFoods = data?.foods?.filter(food => food.mealCount > 1).slice(0, 5) ?? [];
+  const topFoods = data?.topFoods ?? [];
   const activeIndex = Math.min(foodIndex, Math.max(0, topFoods.length - 1));
   const activeFood = topFoods[activeIndex];
 
@@ -91,7 +94,15 @@ export function RecurringFoodInsights() {
                 data-testid="recurring-food-card"
               >
                 <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
-                  <span className="truncate text-sm font-medium text-[#214B36]">{displayName(activeFood)}</span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-[#214B36]">{displayName(activeFood)}</span>
+                    <p className="mt-1 text-xs text-[#53685C]" data-testid="general-food-gi-rank">
+                      <span className="font-medium">{t("glucose.gi_label")}:</span>{" "}
+                      {activeFood.giRank
+                        ? t(`glucose.gi_rank_${activeFood.giRank}`)
+                        : t(activeFood.giStatus === "pending" ? "glucose.gi_pending" : "glucose.gi_unavailable")}
+                    </p>
+                  </div>
                   <span className="shrink-0 text-xs text-[#6E8477]">
                     {t("food_frequency.meals", { count: activeFood.mealCount })}
                   </span>

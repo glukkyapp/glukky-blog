@@ -4,6 +4,7 @@ import {
   type IngredientVocabulary, type InsertIngredientVocabulary,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
+  type FoodGiEntry,
   type ScheduledNotification,
   type MealSnap, type InsertMealSnap, type FoodItemMetadata,
   type HstixReading, type InsertHstixReading, type MealTimingConfidence,
@@ -12,7 +13,7 @@ import {
   type DeletionRequest,
   userProfiles,
   piggyBankEvents,
-  ingredientVocabulary, foodLabels, foodAdviceCache,
+  ingredientVocabulary, foodLabels, foodAdviceCache, foodGiEntries,
   scheduledNotifications,
   mealSnaps, hstixReadings, snapReportMealFacts, snapReportUserMetadata,
   snapDailyGlucose, snapMonthlyArchive,
@@ -121,6 +122,24 @@ export interface IStorage {
   getReportMealFacts(userId: string, startDate: string, endDate: string): Promise<Array<{ localDate: string; mealType: string | null; finalImpact: string | null }>>;
   getReportFirstMealLocalDate(userId: string): Promise<string | null>;
   getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]>;
+  getUserIdsWithMealSnaps(): Promise<string[]>;
+  getFoodGiEntries(normalizedFoodNames: string[]): Promise<FoodGiEntry[]>;
+  claimFoodGiEntry(entry: {
+    normalizedFoodName: string;
+    claimToken: string;
+    now: Date;
+    retryNoMatchBefore: Date;
+    claimExpiresAt: Date;
+  }): Promise<boolean>;
+  completeFoodGiEntry(entry: {
+    normalizedFoodName: string;
+    claimToken: string;
+    status: "resolved" | "no_match";
+    referenceId: string | null;
+    giValue: number | null;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean>;
   upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void>;
   upsertMonthlyArchive(record: InsertSnapMonthlyArchive): Promise<void>;
   getMonthlyArchive(userId: string, month: string): Promise<SnapMonthlyArchive | null>;
@@ -1111,6 +1130,82 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(mealSnaps)
       .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.isDeleted, false)))
       .orderBy(desc(mealSnaps.snapTime));
+  }
+
+  async getUserIdsWithMealSnaps(): Promise<string[]> {
+    const rows = await db.selectDistinct({ userId: mealSnaps.userId })
+      .from(mealSnaps)
+      .where(eq(mealSnaps.isDeleted, false));
+    return rows.map(row => row.userId);
+  }
+
+  async getFoodGiEntries(normalizedFoodNames: string[]): Promise<FoodGiEntry[]> {
+    if (normalizedFoodNames.length === 0) return [];
+    return db.select().from(foodGiEntries)
+      .where(inArray(foodGiEntries.normalizedFoodName, normalizedFoodNames));
+  }
+
+  async claimFoodGiEntry(entry: {
+    normalizedFoodName: string;
+    claimToken: string;
+    now: Date;
+    retryNoMatchBefore: Date;
+    claimExpiresAt: Date;
+  }): Promise<boolean> {
+    const result = await db.execute(sql`
+      INSERT INTO food_gi_entries (
+        normalized_food_name, status, reference_id, gi_value, source, resolved_at, claim_expires_at, claim_token
+      )
+      VALUES (
+        ${entry.normalizedFoodName}, 'pending', NULL, NULL, 'pending', ${entry.now}, ${entry.claimExpiresAt}, ${entry.claimToken}
+      )
+      ON CONFLICT (normalized_food_name) DO UPDATE SET
+        status = 'pending',
+        reference_id = NULL,
+        gi_value = NULL,
+        source = 'pending',
+        resolved_at = ${entry.now},
+        claim_expires_at = ${entry.claimExpiresAt},
+        claim_token = ${entry.claimToken}
+      WHERE (
+        food_gi_entries.status = 'no_match'
+        AND food_gi_entries.resolved_at <= ${entry.retryNoMatchBefore}
+      ) OR (
+        food_gi_entries.status = 'pending'
+        AND (
+          food_gi_entries.claim_expires_at IS NULL
+          OR food_gi_entries.claim_expires_at <= ${entry.now}
+        )
+      )
+      RETURNING normalized_food_name
+    `);
+    return result.rows.length === 1;
+  }
+
+  async completeFoodGiEntry(entry: {
+    normalizedFoodName: string;
+    claimToken: string;
+    status: "resolved" | "no_match";
+    referenceId: string | null;
+    giValue: number | null;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean> {
+    const result = await db.execute(sql`
+      UPDATE food_gi_entries SET
+        status = ${entry.status},
+        reference_id = ${entry.referenceId},
+        gi_value = ${entry.giValue},
+        source = ${entry.source},
+        resolved_at = ${entry.resolvedAt},
+        claim_expires_at = NULL,
+        claim_token = NULL
+      WHERE normalized_food_name = ${entry.normalizedFoodName}
+        AND status = 'pending'
+        AND claim_token = ${entry.claimToken}
+      RETURNING normalized_food_name
+    `);
+    return result.rows.length === 1;
   }
 
   async upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void> {

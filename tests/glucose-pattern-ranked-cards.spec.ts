@@ -85,7 +85,7 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   }));
   await page.route("**/api/snap/food-frequency", route => route.fulfill({
     contentType: "application/json",
-    body: JSON.stringify({ totalMeals: 10, eligible: true, foods, sweetSubtypes: [], carbCategories: [] }),
+    body: JSON.stringify({ totalMeals: 10, eligible: true, foods, topFoods: foods, sweetSubtypes: [], carbCategories: [] }),
   }));
 
   await page.goto("/glucose-patterns");
@@ -237,11 +237,11 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     totalMeals: 25,
     eligible: true,
     foods: [
-      { nameEn: "Chicken breast", nameZhHant: "雞胸肉", nameYue: "雞胸肉", mealCount: 6 },
-      { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 5 },
-      { nameEn: "Vegetables", nameZhHant: "蔬菜", nameYue: "菜", mealCount: 4 },
-      { nameEn: "Cake", nameZhHant: "蛋糕", nameYue: "蛋糕", mealCount: 3 },
-      { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 2 },
+      { nameEn: "Chicken breast", nameZhHant: "雞胸肉", nameYue: "雞胸肉", mealCount: 6, giRank: null, giStatus: "unavailable" },
+      { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 5, giRank: "high", giStatus: "resolved" },
+      { nameEn: "Vegetables", nameZhHant: "蔬菜", nameYue: "菜", mealCount: 4, giRank: null, giStatus: "pending" },
+      { nameEn: "Cake", nameZhHant: "蛋糕", nameYue: "蛋糕", mealCount: 3, giRank: "medium", giStatus: "resolved" },
+      { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 2, giRank: "low", giStatus: "resolved" },
       { nameEn: "Oats", nameZhHant: "燕麥", nameYue: "燕麥", mealCount: 1 },
     ],
     sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
@@ -250,6 +250,7 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
       { carbCategory: "other", mealCount: 2 },
     ],
   };
+  Object.assign(foodFrequencyResponse, { topFoods: foodFrequencyResponse.foods.slice(0, 5) });
   await page.route("**/api/snap/food-frequency", route => route.fulfill({
     contentType: "application/json",
     body: JSON.stringify(foodFrequencyResponse),
@@ -265,11 +266,14 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("card-recurring-foods")).toContainText("Your favourite foods");
   await expect(page.getByTestId("recurring-food-card")).toHaveCount(1);
   await expect(page.getByTestId("recurring-food-card")).toContainText("Chicken breast");
+  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: Unavailable");
   await expect(page.getByTestId("pattern-swipe-cue")).toContainText("Swipe left to see the next food");
   await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
   await expect(page.getByTestId("pattern-position")).toHaveText("1 / 5");
   await page.getByTestId("pattern-next").click();
   await expect(page.getByTestId("recurring-food-card")).toContainText("Rice");
+  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: High");
+  await expect(page.getByTestId("recurring-food-card")).not.toContainText(/confidence/i);
   await expect(page.getByTestId("pattern-position")).toHaveText("2 / 5");
   await page.getByTestId("pattern-card-viewport").focus();
   await page.keyboard.press("ArrowRight");
@@ -329,6 +333,7 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await page.keyboard.press("Escape");
 
   await page.getByTestId("glucose-mode-hstix").click();
+  await expect(page.getByTestId("general-food-gi-rank")).toHaveCount(0);
   await expect(page.getByTestId("glucose-impact-low")).toBeVisible();
   await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
   await expect(page.getByTestId("card-recurring-foods")).toHaveCount(0);

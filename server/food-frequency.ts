@@ -5,6 +5,7 @@ export const FOOD_FREQUENCY_MEAL_THRESHOLD = 25;
 
 export type FoodFrequencyFood = Pick<FoodItemMetadata, "nameEn" | "nameZhHant" | "nameYue"> & {
   mealCount: number;
+  carbCategory: CarbCategory;
   // Undefined is preserved for legacy items whose sweet fields predate this
   // feature. It is distinct from a newly classified non-sweet null.
   sweetCategory?: SweetCategory;
@@ -27,6 +28,15 @@ export type FoodFrequencySummary = {
   sweetSubtypes: FoodFrequencySubtype[];
   carbCategories: FoodFrequencyCarbCategory[];
 };
+
+/**
+ * This is the single selector used by both the General card response and the
+ * background GI resolver. Keep the existing display rule here so enrichment
+ * cannot drift from the cards it annotates.
+ */
+export function selectGeneralTopFoods(foods: FoodFrequencyFood[]): FoodFrequencyFood[] {
+  return foods.filter(food => food.mealCount > 1).slice(0, 5);
+}
 
 type FrequencySnap = Pick<MealSnap, "foodItems" | "isDeleted">;
 
@@ -63,6 +73,7 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
             nameZhHant: item.nameZhHant,
             nameYue: item.nameYue,
             mealCount: 1,
+            carbCategory: item.isCarb === true ? (item.carbCategory as CarbCategory) : null,
             sweetCategory: item.sweetCategory,
           });
         }

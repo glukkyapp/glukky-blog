@@ -153,6 +153,21 @@ export type InsertFoodLabel = z.infer<typeof insertFoodLabelSchema>;
 export type FoodAdviceCache = typeof foodAdviceCache.$inferSelect;
 export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
 
+export const foodGiEntries = pgTable("food_gi_entries", {
+  id: serial("id").primaryKey(),
+  normalizedFoodName: text("normalized_food_name").notNull().unique(),
+  status: varchar("status", { length: 16 }).$type<"resolved" | "no_match" | "pending">().notNull(),
+  referenceId: text("reference_id"),
+  giValue: real("gi_value"),
+  source: text("source").notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }).notNull().defaultNow(),
+  claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+  claimToken: text("claim_token"),
+});
+
+export type FoodGiEntry = typeof foodGiEntries.$inferSelect;
+export type InsertFoodGiEntry = typeof foodGiEntries.$inferInsert;
+
 export type FoodItemMetadata = {
   nameEn: string;
   nameZhHant: string;

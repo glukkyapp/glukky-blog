@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import path from "path";
 import { existsSync } from "fs";
-import { timingSafeEqual } from "crypto";
+import { randomUUID, timingSafeEqual } from "crypto";
 import { adminLimiter, aiSnapLimiter } from "./rate-limiters";
 import { createServer, type Server } from "http";
 import { z } from "zod";
@@ -35,6 +35,17 @@ import { trackServer, captureException, getPosthogConsent } from "./posthog";
 import { classifyPostMealMmol, type GlucoseGroup } from "./glucose-thresholds";
 import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
 import { buildFoodFrequencySummary } from "./food-frequency";
+import {
+  GI_REFERENCE_SOURCE,
+  GI_NO_MATCH_RETRY_MS,
+  getGiCandidatesForFood,
+  getPublicGiState,
+  giFoodKey,
+  isRecentNoMatch,
+  selectGeneralTopFoods,
+  validateGiMatches,
+  type GiReferenceCandidate,
+} from "./gi-resolution";
 import { extractAdviceFoodItems, stripAdviceFoodItems } from "./food-items";
 import {
   buildGeneralGlucosePatternComponents,
@@ -1188,6 +1199,141 @@ export async function registerRoutes(
     apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
+
+  type GiMatchRequest = {
+    inputIndex: number;
+    normalizedFoodName: string;
+    food: ReturnType<typeof selectGeneralTopFoods>[number];
+    candidates: GiReferenceCandidate[];
+    claimToken?: string;
+  };
+
+  async function resolveGiMatchBatch(requests: GiMatchRequest[]): Promise<Map<number, string>> {
+    if (requests.length === 0) return new Map();
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 400,
+      temperature: 0,
+      system: [
+        "You match each input food to one supplied reference-table candidate.",
+        "Return JSON only: {\"matches\":[{\"inputIndex\":0,\"referenceId\":\"...\"}]}",
+        "Use only the inputIndex and referenceId values supplied for that input.",
+        "Omit an input when none of its candidates is a defensible match.",
+        "Do not estimate or return a GI value, GI range, rank, confidence, rationale, or any extra fields.",
+      ].join(" "),
+      messages: [{
+        role: "user",
+        content: JSON.stringify({
+          inputs: requests.map(request => ({
+            inputIndex: request.inputIndex,
+            names: {
+              en: request.food.nameEn,
+              zhHant: request.food.nameZhHant,
+              yue: request.food.nameYue,
+            },
+            candidates: request.candidates.map(candidate => ({
+              referenceId: candidate.referenceId,
+              canonicalName: candidate.canonicalName,
+              aliases: candidate.aliases,
+            })),
+          })),
+        }),
+      }],
+    });
+    const text = response.content.find(block => block.type === "text")?.text ?? "";
+    const parsed = extractJsonObject(text);
+    const rawMatches = Array.isArray(parsed?.matches) ? parsed.matches : [];
+    return validateGiMatches(rawMatches, requests);
+  }
+
+  let giResolutionJobRunning = false;
+  async function runGiResolutionJob(): Promise<void> {
+    if (giResolutionJobRunning) return;
+    giResolutionJobRunning = true;
+    try {
+      const userIds = await storage.getUserIdsWithMealSnaps();
+      for (const userId of userIds) {
+        try {
+          const summary = buildFoodFrequencySummary(
+            await storage.getMealSnapsForFoodFrequency(userId),
+          );
+          const topFoods = selectGeneralTopFoods(summary.foods);
+          const keys = topFoods.map(giFoodKey);
+          const existingEntries = await storage.getFoodGiEntries(keys);
+          const existingByKey = new Map(
+            existingEntries.map(entry => [entry.normalizedFoodName, entry]),
+          );
+          const now = new Date();
+          const pending = topFoods
+            .map((food, inputIndex): GiMatchRequest => ({
+              inputIndex,
+              normalizedFoodName: giFoodKey(food),
+              food,
+              candidates: getGiCandidatesForFood(food),
+            }))
+            .filter(request => {
+              const existing = existingByKey.get(request.normalizedFoodName);
+              return !existing || isRecentNoMatch(existing, now) === false;
+            })
+            .filter(request => existingByKey.get(request.normalizedFoodName)?.status !== "resolved");
+
+          const claimed: GiMatchRequest[] = [];
+          for (const request of pending) {
+            const claimToken = randomUUID();
+            const wonClaim = await storage.claimFoodGiEntry({
+              normalizedFoodName: request.normalizedFoodName,
+              claimToken,
+              now,
+              retryNoMatchBefore: new Date(now.getTime() - GI_NO_MATCH_RETRY_MS),
+              claimExpiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+            });
+            if (wonClaim) claimed.push({ ...request, claimToken });
+          }
+
+          for (const request of claimed.filter(request => request.candidates.length === 0)) {
+            await storage.completeFoodGiEntry({
+              normalizedFoodName: request.normalizedFoodName,
+              claimToken: request.claimToken!,
+              status: "no_match",
+              referenceId: null,
+              giValue: null,
+              source: `${GI_REFERENCE_SOURCE}:no-match`,
+              resolvedAt: now,
+            });
+          }
+
+          const matchable = claimed.filter(request => request.candidates.length > 0);
+          const matchesByIndex = await resolveGiMatchBatch(matchable);
+          for (const request of matchable) {
+            const referenceId = matchesByIndex.get(request.inputIndex);
+            const candidate = request.candidates.find(item => item.referenceId === referenceId);
+            await storage.completeFoodGiEntry(candidate ? {
+              normalizedFoodName: request.normalizedFoodName,
+              claimToken: request.claimToken!,
+              status: "resolved",
+              referenceId: candidate.referenceId,
+              giValue: candidate.giValue,
+              source: GI_REFERENCE_SOURCE,
+              resolvedAt: now,
+            } : {
+              normalizedFoodName: request.normalizedFoodName,
+              claimToken: request.claimToken!,
+              status: "no_match",
+              referenceId: null,
+              giValue: null,
+              source: `${GI_REFERENCE_SOURCE}:no-match`,
+              resolvedAt: now,
+            });
+          }
+        } catch (error: any) {
+          console.error(`[gi/resolve] Error for user ${userId}:`, error?.message ?? error);
+        }
+      }
+      console.log(`[gi/resolve] Hourly job complete. Processed ${userIds.length} users.`);
+    } finally {
+      giResolutionJobRunning = false;
+    }
+  }
 
   // One single daily snap cap per App Store subscription. The advice
   // endpoint no longer keeps its own counter — advice is always
@@ -2665,7 +2811,19 @@ No explanation, just JSON.`,
     try {
       const userId = req.user.claims.sub;
       const snaps = await storage.getMealSnapsForFoodFrequency(userId);
-      return res.json(buildFoodFrequencySummary(snaps));
+      const summary = buildFoodFrequencySummary(snaps);
+      const topFoods = selectGeneralTopFoods(summary.foods);
+      const topKeys = new Set(topFoods.map(giFoodKey));
+      const entries = await storage.getFoodGiEntries(Array.from(topKeys));
+      const entriesByKey = new Map(entries.map(entry => [entry.normalizedFoodName, entry]));
+      const annotatedTopFoods = topFoods.map(food => {
+        const key = giFoodKey(food);
+        return { ...food, ...getPublicGiState(entriesByKey.get(key)) };
+      });
+      return res.json({
+        ...summary,
+        topFoods: annotatedTopFoods,
+      });
     } catch (error: any) {
       console.error("Snap food-frequency error:", error);
       return res.status(500).json({ message: "Failed to fetch recurring food summary." });
@@ -4015,6 +4173,12 @@ No explanation, just JSON.`,
       console.error("[post-meal/expire] Error:", e?.message)
     );
   }, 5 * 60 * 1000);
+
+  setInterval(() => {
+    runGiResolutionJob().catch(e =>
+      console.error("[gi/resolve] Scheduler:", e?.message ?? e)
+    );
+  }, 60 * 60 * 1000);
 
   async function runNightlyThresholdJob() {
     const { computePersonalisedThresholds, PHASE1_THRESHOLDS, PERSONALISED_THRESHOLD } = await import("./glucose-thresholds");

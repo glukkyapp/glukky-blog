@@ -14,6 +14,13 @@ import {
   findGlucosePatternFoodForMode,
   findRetainedFoodHistoryEntry,
 } from "../server/glucose-patterns";
+import { selectGeneralTopFoods } from "../server/food-frequency";
+import {
+  deriveGiRank,
+  getPublicGiState,
+  isRecentNoMatch,
+  validateGiMatches,
+} from "../server/gi-resolution";
 import {
   canResetGlucosePatternsSwipeTutorial,
   GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL,
@@ -73,6 +80,37 @@ check("Deleted meals stay out of retained-history search",
 check("A retained-history selection resolves case-insensitively",
   findRetainedFoodHistoryEntry("CHICKEN BREAST", retainedHistory)?.mealCount === 2);
 
+console.log("\nGeneral-card GI rules");
+check("GI boundaries are deterministic at 55/56 and 69/70",
+  [deriveGiRank(55), deriveGiRank(56), deriveGiRank(69), deriveGiRank(70)].join("|") ===
+    "low|medium|medium|high");
+const generalFoodsForGi = [
+  { nameEn: "A", nameZhHant: "甲", nameYue: "甲", mealCount: 8, carbCategory: "rice" as const },
+  { nameEn: "B", nameZhHant: "乙", nameYue: "乙", mealCount: 7, carbCategory: "bread" as const },
+  { nameEn: "C", nameZhHant: "丙", nameYue: "丙", mealCount: 6, carbCategory: "other" as const },
+  { nameEn: "D", nameZhHant: "丁", nameYue: "丁", mealCount: 5, carbCategory: "noodles" as const },
+  { nameEn: "E", nameZhHant: "戊", nameYue: "戊", mealCount: 4, carbCategory: "potatoes" as const },
+  { nameEn: "F", nameZhHant: "己", nameYue: "己", mealCount: 3, carbCategory: "rice" as const },
+  { nameEn: "Single", nameZhHant: "單", nameYue: "單", mealCount: 1, carbCategory: null },
+];
+check("The shared General selector preserves frequency order and caps lookup at five",
+  selectGeneralTopFoods(generalFoodsForGi).map(food => food.nameEn).join("|") === "A|B|C|D|E");
+check("Resolved GI state exposes only a rank while missing data stays pending",
+  JSON.stringify(getPublicGiState({ status: "resolved", giValue: 70, resolvedAt: new Date() })) ===
+    '{"giRank":"high","giStatus":"resolved"}' &&
+  JSON.stringify(getPublicGiState(undefined)) === '{"giRank":null,"giStatus":"pending"}');
+check("A stored no-match suppresses hourly retries during its backoff",
+  isRecentNoMatch({ status: "no_match", giValue: null, resolvedAt: new Date() }));
+const validatedMatches = validateGiMatches([
+  { inputIndex: 0, referenceId: "rice-white" },
+  { inputIndex: 1, referenceId: "rice-white" },
+], [
+  { inputIndex: 0, candidates: [{ referenceId: "rice-white" }] },
+  { inputIndex: 1, candidates: [{ referenceId: "bread-white" }] },
+]);
+check("A candidate ID valid for one input is rejected when returned for another input",
+  validatedMatches.get(0) === "rice-white" && validatedMatches.has(1) === false);
+
 console.log("\nPage and API contracts");
 const page = readFileSync("client/src/pages/glucose-patterns.tsx", "utf8");
 const nav = readFileSync("client/src/components/floating-nav-bar.tsx", "utf8");
@@ -87,6 +125,7 @@ const swipeableFoodCard = readFileSync("client/src/components/SwipeableFoodCard.
 const styles = readFileSync("client/src/index.css", "utf8");
 const schema = readFileSync("shared/schema.ts", "utf8");
 const startupMigrations = readFileSync("server/startup-migrations.ts", "utf8");
+const giResolution = readFileSync("server/gi-resolution.ts", "utf8");
 const report = readFileSync("client/src/pages/report.tsx", "utf8");
 const twoMonth = readFileSync("server/two-month-report.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
@@ -182,7 +221,8 @@ check("All supported locales include search and component type labels", [en, zhH
 check("General presents up to five foods in the shared one-card carousel followed by one category card",
   page.includes("<RecurringFoodInsights />") &&
   !report.includes("RecurringFoodInsights") &&
-  recurringFoods.includes("data?.foods?.filter(food => food.mealCount > 1).slice(0, 5)") &&
+  recurringFoods.includes("data?.topFoods ?? []") &&
+  routes.includes("selectGeneralTopFoods(summary.foods)") &&
   recurringFoods.includes("<SwipeableFoodCard") &&
   recurringFoods.includes("activeFood") &&
   recurringFoods.includes('data-testid="recurring-food-card"') &&
@@ -194,6 +234,46 @@ check("General presents up to five foods in the shared one-card carousel followe
   recurringFoods.includes("favouriteCategory &&") &&
   !page.includes("glucose-general-component-list") &&
   !recurringFoods.includes(".filter(category => category.mealCount"));
+check("GI is server-resolved only for the shared General top-five selection",
+  routes.includes("const topFoods = selectGeneralTopFoods(summary.foods)") &&
+  routes.includes("getFoodGiEntries(keys)") &&
+  routes.includes("getGiCandidatesForFood(food)") &&
+  routes.includes("matchable = claimed.filter") &&
+  !routes.includes("requestsByIndex") &&
+  routes.includes("matchesByIndex") &&
+  giResolution.includes("candidateIdsByIndex.get(inputIndex)?.has(referenceId)") &&
+  giResolution.includes("GI_NO_MATCH_RETRY_MS"));
+check("Each unresolved food requires an atomic expiring database claim before Claude",
+  storage.includes("async claimFoodGiEntry") &&
+  storage.includes("ON CONFLICT (normalized_food_name) DO UPDATE") &&
+  storage.includes("RETURNING normalized_food_name") &&
+  routes.includes("if (wonClaim) claimed.push({ ...request, claimToken })") &&
+  routes.includes("const matchable = claimed.filter"));
+check("Only the current claim owner can finalize a GI result",
+  storage.includes("async completeFoodGiEntry") &&
+  storage.includes("AND status = 'pending'") &&
+  storage.includes("AND claim_token = ${entry.claimToken}") &&
+  routes.includes("claimToken: request.claimToken!"));
+check("Claude may only choose a supplied per-food reference ID and never returns GI or confidence",
+  giResolution.includes("candidateIdsByIndex.get(inputIndex)?.has(referenceId)") &&
+  routes.includes("Do not estimate or return a GI value, GI range, rank, confidence") &&
+  !schema.slice(schema.indexOf("foodGiEntries"), schema.indexOf("export type FoodItemMetadata")).includes("confidence") &&
+  !recurringFoods.toLocaleLowerCase().includes("confidence"));
+check("The public General card payload and UI never expose numeric GI values",
+  routes.includes("getPublicGiState(entriesByKey.get(key))") &&
+  recurringFoods.includes('data-testid="general-food-gi-rank"') &&
+  !recurringFoods.includes("giValue") &&
+  !recurringFoods.includes("referenceId"));
+check("GI resolution is hourly background work, not meal-log work",
+  routes.includes("runGiResolutionJob().catch") &&
+  routes.includes("}, 60 * 60 * 1000)") &&
+  (routes.match(/runGiResolutionJob\(/g)?.length ?? 0) === 2);
+check("GI labels and ranks are localized with the exact Traditional Chinese label",
+  [en, zhHant, yue].every(locale =>
+    ["gi_label", "gi_rank_low", "gi_rank_medium", "gi_rank_high", "gi_pending", "gi_unavailable"]
+      .every(key => locale.includes(`"${key}"`))) &&
+  zhHant.includes('"gi_label": "升糖指數"') &&
+  recurringFoods.includes('t("glucose.gi_label")'));
 check("Both General and HStix use the same swipeable-card implementation",
   recurringFoods.includes('from "@/components/SwipeableFoodCard"') &&
   page.includes('from "@/components/SwipeableFoodCard"') &&

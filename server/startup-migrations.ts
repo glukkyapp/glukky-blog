@@ -263,6 +263,44 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       first_meal_local_date DATE NOT NULL
     )`,
   },
+  {
+    name: "food_gi_entries.create",
+    sql: `CREATE TABLE IF NOT EXISTS food_gi_entries (
+      id SERIAL PRIMARY KEY,
+      normalized_food_name TEXT NOT NULL UNIQUE,
+      status VARCHAR(16) NOT NULL,
+      reference_id TEXT,
+      gi_value REAL,
+      source TEXT NOT NULL,
+      resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      claim_expires_at TIMESTAMPTZ,
+      claim_token TEXT,
+      CONSTRAINT food_gi_entries_status_check CHECK (status IN ('resolved', 'no_match', 'pending')),
+      CONSTRAINT food_gi_entries_resolved_check CHECK (
+        (status = 'resolved' AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
+        OR (status = 'no_match' AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
+        OR (status = 'pending' AND reference_id IS NULL AND gi_value IS NULL
+          AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL)
+      )
+    )`,
+  },
+  {
+    name: "food_gi_entries.add_atomic_claims",
+    sql: `ALTER TABLE food_gi_entries
+      ADD COLUMN IF NOT EXISTS claim_expires_at TIMESTAMPTZ;
+    ALTER TABLE food_gi_entries
+      ADD COLUMN IF NOT EXISTS claim_token TEXT;
+    ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_status_check;
+    ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_resolved_check;
+    ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_status_check
+      CHECK (status IN ('resolved', 'no_match', 'pending'));
+    ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_resolved_check CHECK (
+      (status = 'resolved' AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
+      OR (status = 'no_match' AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
+      OR (status = 'pending' AND reference_id IS NULL AND gi_value IS NULL
+        AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL)
+    )`,
+  },
 ];
 
 export async function runStartupMigrations(): Promise<void> {
