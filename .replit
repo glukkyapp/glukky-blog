@@ -113,3 +113,11 @@ timeoutMs = 20000
 [userenv.shared]
 POSTHOG_API_KEY = "phc_qkCN6RruzAijf52kVtWqf4aWBrf7Ar5NawNC5PBiTAyq"
 GATE_MODE = "off"
+
+[userenv.development]
+PASSWORD_RESET_FROM_EMAIL = "Glukky <noreply@glukky.com>"
+PUBLIC_APP_ORIGIN = "https://5322b358-f4bd-4c78-9be1-d8e103e57e4b-00-3ov5vcspa8o5o.riker.replit.dev:5000"
+
+[userenv.production]
+PASSWORD_RESET_FROM_EMAIL = "Glukky <noreply@glukky.com>"
+PUBLIC_APP_ORIGIN = "https://glukky-sugar.replit.app"

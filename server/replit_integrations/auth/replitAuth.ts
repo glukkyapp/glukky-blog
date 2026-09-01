@@ -6,7 +6,26 @@ import { authStorage } from "./storage";
 import { exchangeAuthCodeForRefreshToken, verifyAppleIdentityToken } from "../../apple-auth";
 import { storage } from "../../storage";
 import { pool } from "../../db";
-import { authLimiter } from "../../rate-limiters";
+import {
+  authLimiter,
+  passwordResetConfirmIpLimiter,
+  passwordResetConfirmTokenLimiter,
+  passwordResetRequestAccountLimiter,
+  passwordResetRequestIpLimiter,
+} from "../../rate-limiters";
+import {
+  doResetTimingWork,
+  hashPasswordForReset,
+  isValidEmail,
+  issuePasswordResetToken,
+  normalizeEmail,
+  PASSWORD_RESET_GENERIC_MESSAGE,
+  PASSWORD_RESET_INVALID_MESSAGE,
+  PASSWORD_RESET_MIN_PASSWORD_LENGTH,
+  performPasswordReset,
+  sendPasswordResetEmail,
+  waitForMinimumResetResponse,
+} from "./password-reset";
 
 declare module "express-session" {
   interface SessionData {
@@ -39,6 +58,91 @@ export function getSession() {
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
+
+  app.post(
+    "/api/auth/password-reset/request",
+    passwordResetRequestIpLimiter,
+    passwordResetRequestAccountLimiter,
+    async (req, res) => {
+      const startedAt = Date.now();
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Referrer-Policy", "no-referrer");
+
+      try {
+        const email = normalizeEmail(req.body?.email);
+        const eligible = isValidEmail(email);
+        const issued = eligible ? await issuePasswordResetToken(email) : null;
+
+        if (issued) {
+          // TODO(password-reset-email): Keep this provider call after the
+          // committed token write and before the generic response. Delivery
+          // failures intentionally leave the token available until expiry.
+          try {
+            await sendPasswordResetEmail(email, issued.rawToken);
+          } catch {
+            // Never reveal delivery/configuration failures or log the address,
+            // token, reset URL, or provider response.
+            console.error("[password-reset] email delivery failed");
+          }
+        } else {
+          // Equalise the obvious unknown/malformed-account timing path without
+          // storing any token for an ineligible account.
+          await doResetTimingWork();
+        }
+
+        await waitForMinimumResetResponse(startedAt);
+        return res.json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+      } catch {
+        await doResetTimingWork().catch(() => {});
+        await waitForMinimumResetResponse(startedAt);
+        return res.json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+      }
+    },
+  );
+
+  app.post(
+    "/api/auth/password-reset/confirm",
+    passwordResetConfirmIpLimiter,
+    passwordResetConfirmTokenLimiter,
+    async (req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Referrer-Policy", "no-referrer");
+
+      const token = typeof req.body?.token === "string" ? req.body.token : "";
+      const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+      const confirmPassword =
+        typeof req.body?.confirmPassword === "string" ? req.body.confirmPassword : "";
+
+      if (!token || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "Token, new password, and confirmation are required" });
+      }
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+      if (newPassword.length < PASSWORD_RESET_MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({
+          message: `Password must be at least ${PASSWORD_RESET_MIN_PASSWORD_LENGTH} characters`,
+        });
+      }
+
+      try {
+        // Hashing happens before the DB transaction; all three database
+        // mutations remain inside performPasswordReset's transaction.
+        const newPasswordHash = await hashPasswordForReset(newPassword);
+        const reset = await performPasswordReset(token, newPasswordHash);
+        if (!reset) {
+          return res.status(400).json({ message: PASSWORD_RESET_INVALID_MESSAGE });
+        }
+
+        // The transaction removes every session row. Clearing this browser's
+        // cookie also handles a reset link opened in an already-signed-in tab.
+        res.clearCookie("connect.sid");
+        return res.json({ message: "Password reset successfully" });
+      } catch {
+        return res.status(500).json({ message: "Password reset failed" });
+      }
+    },
+  );
 
   app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {

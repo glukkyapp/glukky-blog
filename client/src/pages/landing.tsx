@@ -51,6 +51,8 @@ export default function Landing() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState("");
   const [isChangingLang, setIsChangingLang] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -97,6 +99,8 @@ export default function Landing() {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setForgotPassword(false);
+    setForgotMessage("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -222,6 +226,31 @@ export default function Landing() {
         hapticNotify("ERROR");
         setError(err instanceof Error ? err.message : t("landing.error_generic"));
       }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setForgotMessage("");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message || t("landing.error_generic"));
+        return;
+      }
+      setForgotMessage(t("landing.reset_request_sent"));
+    } catch {
+      setError(t("landing.error_network"));
     } finally {
       setIsLoading(false);
     }
@@ -561,7 +590,8 @@ export default function Landing() {
         </p>
       </div>
 
-      <div className="flex w-full rounded-xl overflow-hidden border mb-4" data-testid="auth-tabs">
+      {!forgotPassword && (
+        <div className="flex w-full rounded-xl overflow-hidden border mb-4" data-testid="auth-tabs">
         <button
           type="button"
           onClick={() => switchTab("login")}
@@ -584,8 +614,47 @@ export default function Landing() {
         >
           {t("landing.register")}
         </button>
-      </div>
+        </div>
+      )}
 
+      {forgotPassword ? (
+        <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+          <div className="text-center space-y-1 mb-1">
+            <h1 className="text-lg font-semibold text-[#214B36]">{t("landing.forgot_password_title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("landing.forgot_password_body")}</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="forgot-email">{t("landing.email")}</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              data-testid="input-forgot-email"
+            />
+          </div>
+          {forgotMessage && <p className="text-sm text-[#127843]" data-testid="text-forgot-message">{forgotMessage}</p>}
+          {error && <p className="text-sm text-red-500" data-testid="text-error">{error}</p>}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full text-white mt-1 btn-pop"
+            style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
+            data-testid="button-forgot-submit"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("landing.send_reset_link")}
+          </Button>
+          <button
+            type="button"
+            onClick={() => { setForgotPassword(false); setForgotMessage(""); setError(""); }}
+            className="text-sm text-muted-foreground underline underline-offset-2"
+            data-testid="button-back-to-login"
+          >
+            {t("landing.back_to_login")}
+          </button>
+        </form>
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">{t("landing.email")}</Label>
@@ -609,6 +678,22 @@ export default function Landing() {
             onChange={(e) => setPassword(e.target.value)}
             data-testid="input-password"
           />
+          {tab === "login" && (
+            <button
+              type="button"
+              onClick={() => {
+                setForgotPassword(true);
+                setPassword("");
+                setConfirmPassword("");
+                setError("");
+                setForgotMessage("");
+              }}
+              className="self-end text-xs text-[#127843] hover:underline underline-offset-2"
+              data-testid="button-forgot-password"
+            >
+              {t("landing.forgot_password")}
+            </button>
+          )}
         </div>
 
         {tab === "register" && (
@@ -645,6 +730,7 @@ export default function Landing() {
           )}
         </Button>
       </form>
+      )}
 
       <button
         type="button"

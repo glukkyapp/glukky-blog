@@ -731,7 +731,25 @@
     "choose_language": "選擇語言 / Choose your language",
     "or": "或",
     "apple_signin": "以 Apple 帳戶繼續",
-    "continue_with_email": "以電郵繼續"
+    "continue_with_email": "以電郵繼續",
+    "forgot_password": "忘記密碼？",
+    "forgot_password_title": "重設密碼",
+    "forgot_password_body": "輸入你的電郵。如果帳戶存在，我們會寄出重設連結。",
+    "send_reset_link": "寄出重設連結",
+    "reset_request_sent": "如果此電郵有對應帳戶，我們會寄出重設連結。",
+    "back_to_login": "返回登入"
+  },
+  "password_reset": {
+    "title": "建立新密碼",
+    "body": "為你的 Glukky 帳戶選擇新密碼。",
+    "submit": "重設密碼",
+    "invalid_link": "此重設連結無效或已過期，請重新申請。",
+    "error_required": "請輸入並確認新密碼",
+    "error_mismatch": "密碼不一致",
+    "error_short": "密碼至少需要6個字元",
+    "success_title": "密碼已重設",
+    "success_body": "你的密碼已更改，請重新登入。",
+    "back_to_login": "返回登入"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "外出用餐是本週你的重點",

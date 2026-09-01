@@ -28,6 +28,7 @@ export function serveStatic(app: Express) {
 
   const sendIndex = (res: Response) => {
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     if (cachedIndexHtml != null) {
       res.send(cachedIndexHtml);
@@ -53,6 +54,7 @@ export function serveStatic(app: Express) {
         const rel = path.relative(distPath, filePath).split(path.sep).join("/");
         if (rel === "index.html") {
           res.setHeader("Cache-Control", "no-store");
+          res.setHeader("Referrer-Policy", "no-referrer");
         } else if (rel.startsWith("assets/")) {
           res.setHeader(
             "Cache-Control",

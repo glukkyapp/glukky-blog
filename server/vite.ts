@@ -53,7 +53,11 @@ export async function setupVite(server: Server, app: Express) {
       const page = injectBuildShaIntoHtml(transformed);
       res
         .status(200)
-        .set({ "Content-Type": "text/html", "Cache-Control": "no-store" })
+        .set({
+          "Content-Type": "text/html",
+          "Cache-Control": "no-store",
+          "Referrer-Policy": "no-referrer",
+        })
         .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);

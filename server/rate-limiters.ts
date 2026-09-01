@@ -1,4 +1,5 @@
 import { rateLimit } from "express-rate-limit";
+import { createHash } from "node:crypto";
 
 /**
  * Auth endpoints: login, register, apple-signin.
@@ -11,6 +12,50 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7", // sets RateLimit-* and Retry-After headers
   legacyHeaders: false,
   message: { message: "Too many requests — please try again later." },
+});
+
+const resetGenericMessage = {
+  message: "If the account exists, please check your email for a reset link.",
+};
+
+export const passwordResetRequestIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: resetGenericMessage,
+});
+
+export const passwordResetRequestAccountLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  keyGenerator: (req: any) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    return createHash("sha256").update(email).digest("hex");
+  },
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: resetGenericMessage,
+});
+
+export const passwordResetConfirmIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many reset attempts. Please request a new link later." },
+});
+
+export const passwordResetConfirmTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  keyGenerator: (req: any) => {
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    return createHash("sha256").update(token).digest("hex");
+  },
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many reset attempts. Please request a new link later." },
 });
 
 /**

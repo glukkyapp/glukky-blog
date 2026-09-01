@@ -61,6 +61,15 @@ const FoodLog = lazy(() => import("@/pages/food-log"));
 const Hstix = lazy(() => import("@/pages/hstix"));
 const GlucosePatterns = lazy(() => import("@/pages/glucose-patterns"));
 const Confidentiality = lazy(() => import("@/pages/confidentiality"));
+const PasswordReset = lazy(() => import("@/pages/password-reset"));
+
+function hasPasswordResetToken(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  return Boolean(new URLSearchParams(hash).get("reset_token"));
+}
 
 const RouteFallback = () => (
   <div
@@ -1901,6 +1910,23 @@ function App() {
 }
 
 function AppWithProviders() {
+  const [passwordResetFlow] = useState(hasPasswordResetToken);
+
+  if (passwordResetFlow) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <TooltipProvider>
+            <Toaster />
+            <Suspense fallback={<RouteFallback />}>
+              <PasswordReset />
+            </Suspense>
+          </TooltipProvider>
+        </I18nextProvider>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ConsentProvider>

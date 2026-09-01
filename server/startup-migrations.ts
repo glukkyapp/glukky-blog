@@ -12,6 +12,24 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_refresh_token text",
   },
   {
+    name: "password_reset_tokens.create",
+    sql: `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(64) NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_user_created_idx
+      ON password_reset_tokens (user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_expires_idx
+      ON password_reset_tokens (expires_at);
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_active_user_idx
+      ON password_reset_tokens (user_id)
+      WHERE used_at IS NULL`,
+  },
+  {
     name: "profiles.backfill_glucose_group",
     sql: null,
     fn: async (client) => {

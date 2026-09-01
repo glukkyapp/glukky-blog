@@ -3,7 +3,7 @@ import { pgTable, text, varchar, integer, boolean, date, real, jsonb, timestamp,
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export { users, sessions } from "./models/auth";
+export { users, sessions, passwordResetTokens } from "./models/auth";
 export type { User, UpsertUser } from "./models/auth";
 
 export const userProfiles = pgTable("user_profiles", {

@@ -727,7 +727,25 @@
     "choose_language": "Choose your language / 選擇語言",
     "or": "or",
     "apple_signin": "Continue with Apple",
-    "continue_with_email": "Continue with email instead"
+    "continue_with_email": "Continue with email instead",
+    "forgot_password": "Forgot password?",
+    "forgot_password_title": "Reset your password",
+    "forgot_password_body": "Enter your email and we’ll send a reset link if an account exists.",
+    "send_reset_link": "Send reset link",
+    "reset_request_sent": "If an account exists for that email, a reset link will be sent.",
+    "back_to_login": "Back to log in"
+  },
+  "password_reset": {
+    "title": "Create a new password",
+    "body": "Choose a new password for your Glukky account.",
+    "submit": "Reset password",
+    "invalid_link": "This reset link is invalid or has expired. Please request a new one.",
+    "error_required": "Please enter and confirm your new password",
+    "error_mismatch": "Passwords do not match",
+    "error_short": "Password must be at least 6 characters",
+    "success_title": "Password reset",
+    "success_body": "Your password has been changed. Please log in again.",
+    "back_to_login": "Back to log in"
   },
   "auto_focus_popup": {
     "no_struggles_eat_out_title": "Eating Out is your focus this week",
