@@ -1,0 +1,24 @@
+Verify: Top-Five Filter Must Match Existing Logic, Not Be Reinvented
+The sample join code introduces:
+
+ts
+const generalTopFive = generalFoods
+  .filter(food => food.mealCount > 1)
+  .slice(0, 5);
+This mealCount > 1 threshold hasn't appeared anywhere earlier in this conversation as an established General ranking rule. Since the whole point of this feature is to attach GI only to whatever the real top-5 General ranking already shows, this join must call the existing top-five selection function directly rather than reimplementing filter/slice logic here. If this snippet's filter diverges even slightly from the actual production selection logic (different threshold, different sort key, different eligibility rule), the GI-annotated list and the real displayed list could silently drift apart. Step 1 in the ticket ("Confirm the existing data paths") should explicitly require reusing the existing function/query, not recreating its filtering logic inline.
+
+Localization Inconsistency in the Sample Code
+The display snippet does this:
+
+tsx
+{i18n.language === "zh-Hant" ? "升糖指數" : t("glucose.gi_label")}
+This hardcodes the Traditional Chinese string outside the i18n system, which breaks the pattern used everywhere else in this project (all label text lives in locale JSON files, keyed by t(), across English/Traditional Chinese/Cantonese). It should simply be:
+
+tsx
+{t("glucose.gi_label")}
+with "gi_label": "升糖指數" set directly in the zh-Hant locale file, matching how every other label in #848/#851 was specified. The inline ternary is both redundant and inconsistent with the established localization convention, and it also means Cantonese never gets special-cased even if it needed a distinct label later.
+
+Gap: No Backoff for Foods With No Reference Match
+The ticket says an unresolved food shows a neutral pending/unavailable state, but doesn't distinguish between "not checked yet" and "checked, but the reference source has no entry for this food." Without that distinction, a food that will never have a match (e.g., a very specific homemade dish not in any reference table) will be re-submitted to the lookup process on every single hourly run indefinitely, since it never acquires a stored entry and therefore always appears in "foods without a valid backend entry."
+
+Recommend storing a negative-result marker too (e.g., giRank: null with a resolvedAt timestamp and source: "no-match"), and having the hourly job skip foods with a recent no-match result rather than retrying every hour. This avoids wasted lookups and keeps the job bounded even for a General ranking that includes idiosyncratic or highly specific dish names.
