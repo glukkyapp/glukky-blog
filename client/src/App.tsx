@@ -9,7 +9,7 @@ import FloatingNavBar from "@/components/floating-nav-bar";
 import { lazy, Suspense, useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
 import { createPortal } from "react-dom";
 import i18n from "./i18n";
-import { useTranslation } from "react-i18next";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
