@@ -1,0 +1,155 @@
+Required Corrections
+1. Import sql
+The schema uses:
+
+ts
+.default(sql`gen_random_uuid()`)
+but the shown import does not include sql.
+
+Add:
+
+ts
+import { sql } from "drizzle-orm";
+Without it, the schema will not compile.
+
+2. Do not claim email delivery is transactional
+The reset-confirmation transaction is atomic for:
+
+token consumption;
+
+password replacement;
+
+session deletion.
+
+Email delivery is not part of that transaction, and it should not be. The request flow currently stores the token and then sends the email. If email delivery fails, the token row remains stored, although the user may never receive the link.
+
+For the first version, choose one explicit behavior:
+
+leave the token stored and allow a later reset request to invalidate it; or
+
+mark/delete that newly created token if sending fails.
+
+The stronger production design is a transactional outbox: insert the reset token and an email-delivery job in one database transaction, then let a worker send the email. OWASP also recommends asynchronous or equivalent timing controls for consistent reset-request responses.
+
+3. Verify the session JSON shape before implementation
+This assumption must be verified:
+
+sql
+sess ->> 'userId'
+If the actual connect-pg-simple row stores a different JSON path, the transaction can succeed while failing to delete the user’s sessions.
+
+The test must inspect a real session row and confirm that the stored value is actually:
+
+sql
+sess ->> 'userId'
+If it is, the deletion approach is reasonable:
+
+ts
+await tx.delete(sessions).where(
+  sql`${sessions.sess} ->> 'userId' = ${consumedToken.userId}`,
+);
+4. Make sure the password policy matches the existing app
+This schema uses:
+
+ts
+newPassword: z.string().min(6).max(200)
+That is correct only if the existing registration/change-password flow also permits six characters. The reset endpoint must use the same password policy as normal account creation and password change; otherwise users may obtain a password through reset that they could not create through the ordinary flow.
+
+5. Add Content-Type and security headers explicitly
+For the reset page/response, ensure the server sends:
+
+text
+Referrer-Policy: no-referrer
+Cache-Control: no-store
+Also ensure the page is served over HTTPS. OWASP specifically recommends avoiding referrer leakage from token URLs and not constructing reset URLs from an untrusted Host header.
+
+Removing the token with:
+
+ts
+window.history.replaceState({}, "", "/?tab=login");
+is useful, but it does not protect against a token being captured before React runs. Therefore:
+
+do not initialize analytics while the token is present;
+
+avoid third-party resources on the reset page;
+
+use the response headers above;
+
+use HTTPS;
+
+ensure server/proxy/access logs do not record full query strings containing reset tokens.
+
+6. Add an explicit reset-token cleanup strategy
+The expiry index is useful only if expired rows are periodically removed. Add a cleanup mechanism later, such as a scheduled job, to delete expired or used tokens. This is not required for correctness of the reset flow, but it prevents indefinite table growth.
+
+Transaction Review
+This section is correct:
+
+ts
+return db.transaction(async (tx) => {
+  const [consumedToken] = await tx
+    .update(passwordResetTokens)
+    .set({ usedAt: now })
+    .where(
+      and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        isNull(passwordResetTokens.usedAt),
+        gt(passwordResetTokens.expiresAt, now),
+      ),
+    )
+    .returning({
+      userId: passwordResetTokens.userId,
+    });
+
+  if (!consumedToken) return false;
+
+  await tx.update(users) ...;
+  await tx.delete(sessions) ...;
+
+  return true;
+});
+The conditional update makes token consumption atomic. Two concurrent requests using the same unused token cannot both update the same row successfully because the first request changes usedAt; the second request then no longer satisfies isNull(passwordResetTokens.usedAt).
+
+If the password update throws, the transaction rolls back token consumption. If session deletion throws, the transaction rolls back both the password update and token consumption.
+
+Reset Request Review
+This is also correct:
+
+normalize the email;
+
+return the same public response for valid, invalid, nonexistent, and Apple-only accounts;
+
+generate a random raw token;
+
+store only its SHA-256 hash;
+
+use an expiry time;
+
+construct the URL from a trusted configured origin;
+
+do not log the email, raw token, or reset URL.
+
+One detail: your current code catches all request errors and still returns the generic success message. That is appropriate for account-enumeration resistance, but the logging must remain deliberately generic:
+
+ts
+console.error("Password reset request failed");
+Do not log the caught error if it may contain the email, token, URL, provider payload, or request body.
+
+Tests to Keep
+Your essential test list is appropriate. The most important tests are:
+
+two concurrent confirmations: exactly one succeeds;
+
+password-update failure: token remains unused and old password remains valid;
+
+session-deletion failure: token and password update roll back;
+
+successful reset: every session for that user is removed;
+
+another user’s sessions remain;
+
+nonexistent and Apple-only accounts receive the identical public response;
+
+raw tokens never appear in database rows or logs;
+
+old password fails and new password succeeds after reset.
