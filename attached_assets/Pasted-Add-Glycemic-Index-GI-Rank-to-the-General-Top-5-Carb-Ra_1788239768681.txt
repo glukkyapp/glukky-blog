@@ -1,0 +1,52 @@
+Add Glycemic Index (GI) Rank to the General Top-5 Carb Ranking
+What & Why
+The General group currently ranks carb foods by logging frequency only. We want to add a glycemic index (GI) rank as an additional, informational attribute, scoped only to the foods currently shown in the General top-5 ranking — not to every distinct food ever logged.
+
+GI resolution will be done by sending unresolved food names to an LLM (Claude), instead of matching against a preset GI table, to avoid food-naming inconsistency issues. This must be an asynchronous, cached operation scoped to the current top-5 list, never a per-meal or per-log-event operation.
+
+Do not assume the shape of any existing table, model, file, or module named in this ticket. Investigate the actual codebase first (storage layer, existing General frequency ranking code, existing scheduled-job infrastructure if any, and existing LLM-integration code if any) and adapt this design to those existing patterns. Do not invent or guess at existing schema fields, existing job-scheduling mechanisms, or existing LLM client wrappers — find them, or flag that they don't exist and need to be introduced.
+
+Done Looks Like
+GI resolution only ever considers the foods currently present in the General top-5 ranking. Foods that appear in a user's logged-meal history but are not in that top-5 are never sent to Claude and never receive a GI entry as a side effect of this feature.
+
+A meal log event never blocks on, or triggers, a live call to Claude.
+
+A scheduled job runs on an hourly cadence. Each run reads the current top-5 General ranked foods, checks which of those (at most 5) do not yet have a stored GI entry for their normalized name, and sends only those missing entries to Claude in a single batch request.
+
+For each resolved food, the stored result includes at minimum: the estimated numeric GI value (or range) as returned by Claude, a confidence indicator, a brief textual basis/rationale for the estimate, and enough metadata to know when and how it was resolved.
+
+GI rank (low/medium/high) is derived from the stored numeric value using fixed, deterministic thresholds applied in application code — not by asking Claude to output the bucket label directly. Use: GI ≤ 55 → low; GI 56–69 → medium; GI ≥ 70 → high. If Claude returns a range rather than a single number, define and document one consistent rule for reducing it to a single value before classification (e.g., always use the midpoint, or always use the upper bound) — pick one, apply it everywhere, and do not vary the rule per food.
+
+A GI entry, once resolved for a given normalized food name, is reused if that food re-enters the top-5 later. It is not re-queried from Claude while a valid stored entry already exists.
+
+GI rank is joined into the General top-5 display at query/render time as an additive field. It must never change the existing frequency-based ordering, and a food's position in the top-5 ranking must never shift, appear, or disappear as a result of GI resolution completing or being pending.
+
+A top-5 food that does not yet have a resolved GI entry (for example, because it just entered the top-5 since the last hourly run, or because a prior resolution attempt failed) displays a neutral pending/unavailable state for its GI rank, consistent with how other insufficient-data states are already handled elsewhere in the app. It does not block the food from appearing in its normal ranked position.
+
+Existing General frequency counting, carbCategories/sweetSubtypes aggregation, and card eligibility/threshold behavior are unchanged.
+
+Out of Scope
+Resolving or storing GI data for any food outside the current General top-5 ranking.
+
+Changing how frequency ranking, eligibility, or thresholds work for the General group.
+
+Changing HStix eligibility, reliability gating, lift calculations, or ranking behavior.
+
+Building a manually curated or preset GI lookup table.
+
+Any synchronous or inline LLM call triggered directly by a meal-logging request.
+
+Re-ordering or regenerating existing cards as a result of a new GI resolution.
+
+Steps
+Investigate existing infrastructure — Identify how the General top-5 ranking is currently computed, how food names are normalized/canonicalized (if at all), whether any scheduled/background job mechanism already exists, and whether any LLM client integration already exists in the codebase. Do not assume; report what is actually found.
+
+Add a persistent GI lookup store — Introduce a way to persist, per normalized food name: the resolved numeric GI value or range, the derived low/medium/high rank, a confidence indicator, a brief basis/rationale string, and a resolution timestamp/source marker. Use existing storage conventions found in step 1.
+
+Add an hourly resolution job scoped to the top-5 — On an hourly schedule, read the current General top-5 ranked foods, determine which of those (at most 5) lack a stored GI entry, and send only those to Claude in one batch request, asking for an estimated GI value (or range), a confidence indicator, and a brief basis for each. Persist results. Handle partial failures (e.g., a malformed response for one item) without blocking the rest of the batch; a food whose resolution fails simply remains unresolved and is retried on a later run.
+
+Apply deterministic classification — In application code, convert each stored numeric GI value into a low/medium/high rank using the fixed thresholds above. Do not have Claude perform this classification.
+
+Join GI rank into the top-5 display — At query or render time, attach the GI rank (or pending state, if unresolved) to each of the current top-5 General foods, without altering the existing ranking order or eligibility logic.
+
+Add regression coverage — Cover: only foods currently in the top-5 are ever sent to Claude; a food outside the top-5 never receives a GI entry as a side effect; the hourly job resolves only the top-5 foods missing an entry; a previously resolved food is not re-queried if it re-enters the top-5; numeric-to-rank classification is correct at and around the 55/56 and 69/70 boundaries; a food's ranked position is unchanged whether or not its GI has resolved; a food newly entering the top-5 shows the neutral pending state until the next hourly run; and no GI-related call occurs synchronously during meal logging.
