@@ -1,0 +1,14 @@
+1. Species/variety disambiguation in the food database.
+Confirm whether Glukky's GI lookup table has a specific entry for 山藥/淮山 (Chinese yam) versus a generic "yam/sweet potato/tuber" bucket that might be pulling a high-GI value from an unrelated species. This is the most likely root cause of the miscalibration.
+
+2. GI vs. GL conflation.
+The udon line uses a rate claim ("升糖快" — spikes quickly), while the yam line uses a quantity claim ("澀粉質較高" — relatively high starch content). These are two different axes — glycemic index (how fast) versus glycemic load or carb quantity (how much). Check whether the underlying rule engine has a defined, separate field for each, or whether it's inconsistently mixing "fast/slow" and "high/low quantity" language per food without a consistent schema. If there's no explicit GI-vs-GL field separation, that's a structural gap worth fixing before writing more card copy.
+
+3. Preparation-state modifier logic.
+Check whether the system has an explicit rule that adjusts a food's baseline GI/GL upward when the input is identified as mashed/pureed/ground (山藥泥 vs. whole/cubed 山藥), or whether "泥" is being ignored and the system is just applying a flat, unmodified "yam = high" label regardless of prep. If no prep-state modifier exists, this is the correct fix — not rewriting this one card, but adding a preparation-adjustment rule that applies consistently across all mashable/grindable starches (potato, taro, yam, rice porridge vs. whole rice, etc.).
+
+4. Cross-check the reference source actually powering this classification.
+Confirm which GI reference table Glukky's backend is actually pulling from for 山藥 — international Sydney GI database, a Taiwan/HK-specific source, or an AI-generated estimate. If it's AI-estimated without a grounded lookup, that's the deeper issue: an ungrounded estimate produced "high starch" for a food multiple real GI studies call low-to-moderate.
+
+5. Consistency check across the whole card set.
+Since this three-item card mixes GI-rate language, GI-quantity language, and a meal-level aggregate claim (the egg line from the earlier correction) inconsistently, run a broader audit of other generated food cards to see if this is a one-off or a systemic pattern — i.e., whether the underlying advice-generation logic has a defined per-food data schema at all, or is generating free-text characterizations per food without a consistent structured basis.
