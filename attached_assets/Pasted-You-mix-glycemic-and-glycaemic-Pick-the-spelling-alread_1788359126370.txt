@@ -1,0 +1,51 @@
+You mix glycemic and glycaemic. Pick the spelling already used by the existing prompt. If it uses “glycaemic,” change:
+
+text
+glycemic evidence
+glycemic-load conclusion
+glycemic load
+to:
+
+text
+glycaemic evidence
+glycaemic-load conclusion
+glycaemic load
+This is cosmetic, but avoids duplicated rule wording and inconsistent locale copy.
+
+2. Refine the quantity rule
+This:
+
+text
+Do not claim carbohydrate quantity or glycaemic load without portion information.
+could inadvertently prohibit qualitative statements such as “udon is a carbohydrate source.” Use:
+
+text
+Do not state an estimated carbohydrate amount, total carbohydrate burden, or glycaemic-load value without sufficient portion and composition information.
+Then retain your later fallback:
+
+text
+When portion or composition data is unavailable, the advice may still describe a component qualitatively as a carbohydrate source, without stating an amount or glycaemic load.
+That preserves the distinction you want: qualitative source identification is allowed; an amount, aggregate burden, or GL is not.
+
+3. Make “supported” evidence-bound
+This:
+
+text
+Consider the complete meal, portion, preparation, sauces/condiments, extras, food order, and supported mixed-meal effects.
+is correct but vague. Use:
+
+text
+Consider the complete meal, available portion information, preparation, sauces/condiments, extras, food order, and evidence-supported mixed-meal effects. Do not present these effects as a precise glucose prediction.
+The reason is important: mixed-meal response can be affected by protein, fat, fibre, acidity, food structure, and carbohydrate quantity, and a simplistic GI-based prediction is not reliable.
+
+4. Add cache invalidation as an explicit implementation requirement
+Your “Done looks like” mentions stale cache behavior, but it is not stated as a required implementation action. Add under the implementation constraints:
+
+text
+Version or invalidate cached FoodSnap advice generated under the previous prompt/rule contract, and regenerate affected entries so legacy 山藥 or egg wording cannot be returned after release.
+One Minor Structural Change
+Move the line below directly beneath the first block of scope rules, rather than leaving it later under “Prompt concision and uncertainty safeguard”:
+
+text
+When portion or composition data is unavailable, the advice may still describe a component qualitatively as a carbohydrate source, without stating an amount or glycaemic load.
+It belongs next to the meal-level quantity/GL rule, because it defines the permitted fallback.
