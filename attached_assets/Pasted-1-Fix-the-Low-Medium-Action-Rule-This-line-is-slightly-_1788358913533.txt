@@ -1,0 +1,55 @@
+1. Fix the Low/Medium Action Rule
+This line is slightly ambiguous:
+
+text
+- If Blood sugar impact is Low or Medium, select exactly one action.
+- The selected action must be 1, 3, or 5.
+As written, the second bullet could be read as applying to High too. Make the condition explicit:
+
+text
+- If Blood sugar impact is Low or Medium, select exactly one action from 1, 3, or 5.
+2. Remove One Duplicate Paragraph
+This paragraph repeats the earlier ingredient-attribution rules:
+
+text
+For a meal with multiple components, attribute direct carbohydrate and glycaemic evidence to the components that actually contribute them, using the available portion and meal context.
+You already state:
+
+ingredient rows describe only the named component’s own contribution;
+
+burden cannot be attributed across components;
+
+meal-level conclusions must name actual contributors.
+
+Delete this paragraph. The following “Mixed-meal effects may be considered…” section can remain.
+
+3. Clarify “Low-Carbohydrate” Safeguard
+This is directionally right:
+
+text
+A negligible- or low-carbohydrate item must not be blamed for carbohydrate contributed by other items.
+But “low carbohydrate” can be material at a large portion, or where a product varies. Better:
+
+text
+An item that is not identified in the confirmed meal data as a material carbohydrate contributor must not be blamed for carbohydrate contributed by other items.
+That protects egg while handling tofu, yogurt, cheese, sweetened dairy products, and large portions correctly.
+
+4. Add an Explicit Conservative Fallback
+Your uncertainty rule is excellent. Add one short final sentence to make the required fallback unambiguous:
+
+text
+When uncertain, prefer a cautious meal-level statement over an ingredient-specific warning.
+This is especially important for image-recognition uncertainty: it avoids the model confidently calling an unidentified root vegetable “high GI” or assigning a carbohydrate burden to the wrong item.
+
+Exact Replacement Blocks
+Replace the component-burden sentence
+text
+Never put an aggregate meal claim in a Watch out row, and never attribute one component’s carbohydrate, starch, or glycaemic burden to another component. An item that is not identified in the confirmed meal data as a material carbohydrate contributor must not be blamed for carbohydrate contributed by other items.
+Replace the Low/Medium action rules
+text
+- If Blood sugar impact is Low or Medium, select exactly one action from 1, 3, or 5.
+- If Blood sugar impact is High, select exactly two actions.
+- At least one selected High-impact action must be 2 or 4.
+Add to the uncertainty paragraph
+text
+When uncertain, prefer a cautious meal-level statement over an ingredient-specific warning.
