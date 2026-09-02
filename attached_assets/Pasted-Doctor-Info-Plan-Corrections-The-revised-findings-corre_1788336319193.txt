@@ -1,0 +1,120 @@
+Doctor Info Plan: Corrections
+The revised findings correct two earlier assumptions:
+
+Personal JSON export does not automatically include the full doctor_info record. Although storage.exportUserData() returns raw rows internally, the public /api/user/data-export route creates a curated readable object. Keep doctor_info out of the storage export query and do not add it to the public JSON object. This satisfies your requirement that doctor information does not appear in exports.
+
+PDF export should also omit doctor information. Do not add doctor fields to its curated rendering.
+
+The proposed dedicated doctor_info table, dedicated GET/PATCH endpoints, and separate route are consistent with the verified codebase. They prevent doctor data from entering the existing health-marker route or health-history audit logic.
+
+One Issue to Resolve
+The new shortcut makes the current grid have four items:
+
+tsx
+<div className="grid grid-cols-3 gap-2">
+The plan must specify the final layout deliberately. A four-item grid cannot remain grid-cols-3 without putting the fourth button alone on a second row.
+
+Because you said “add one more as the doctor information” and “align along with the 3 other buttons,” the likely intended change is:
+
+tsx
+<div className="grid grid-cols-4 gap-2">
+That gives all four buttons one row:
+
+Glucose
+
+Food log
+
+Health info
+
+My Doctor
+
+However, this should be checked against the supplied template image and mobile width. The coding agent should use the existing Glukky styling, not copy the template’s blue color.
+
+Final Doctor Info Scope
+Data stored
+All fields optional:
+
+Doctor’s name
+
+Clinic or hospital
+
+Specialty
+
+Office phone
+
+Address
+
+Last visit date
+
+Notes
+
+Do not include:
+
+Doctor email
+
+Doctor mobile number
+
+Emergency number
+
+Required user copy
+At the top of the page:
+
+Enter the information of your family doctor here.
+
+Near the office-phone field:
+
+Not for emergencies.
+
+The existing planned wording is safer than falsely implying the stored clinic number is an emergency channel. The app should not use language that suggests the number is available at all hours or that Glukky can contact the doctor.
+
+Data boundaries
+Store doctor info in dedicated doctor_info, one optional row per user.
+
+Read it only through GET /api/profile/doctor-info.
+
+Save it only through PATCH /api/profile/doctor-info.
+
+Do not use the health-marker endpoint.
+
+Do not add any doctor field to health history/audit tracking.
+
+Do not include it in the personal JSON export.
+
+Do not include it in the PDF export.
+
+Do not expose it to PostHog: add all proposed normalized keys to both client and server BLOCKED_KEYS.
+
+Do not build any research export now. The codebase explicitly does not permit health data to be used for research/cohort analysis, and no research-export implementation currently exists.
+
+Loading Text Task #860
+Task #860 is correctly scoped.
+
+It removes only:
+
+rotating promotional/tip text;
+
+its dot/page indicators;
+
+state/timers used solely to rotate that text;
+
+any font-loading code used solely for that content.
+
+It keeps:
+
+animated Glukky logo;
+
+existing Loading label;
+
+animated ellipsis;
+
+all readiness gates;
+
+minimum loading duration;
+
+dismissal behavior;
+
+unrelated loaders.
+
+The only implementation choice is visual spacing: reduce or rebalance the vertical gap left after removing the rotating copy, without changing the logo animation or loading text behavior.
+
+No additional product or backend changes are needed for #860.
