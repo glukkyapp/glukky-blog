@@ -1,0 +1,58 @@
+#XXX — Add "My Doctor" Info Page
+What & Why
+Add an optional "My Doctor" section so users can privately store their family doctor's contact details for personal reference. Add a 4th button to the Profile page, joining the 3 existing buttons [UNCONFIRMED — exact button-row file location, styling, and container not yet located in code; locate before implementing]. Final placement and destination-screen layout (inline card vs. separate page) will be confirmed against a template image the user will provide [UNCONFIRMED — image not yet supplied; do not assume layout until received].
+
+Done Looks Like
+A 4th button appears on the Profile page, visually consistent with the existing 3 buttons [UNCONFIRMED — exact existing button component/style not yet located; match once found].
+
+Tapping it opens the "My Doctor" section, containing optional fields: doctor name, clinic/hospital name, specialty, phone number, address, last-visit date, notes.
+
+An instructional line appears near the top of the section: "Enter the information of your family doctor here," localized into English, Traditional Chinese, and Cantonese.
+
+A persistent disclaimer appears fixed beside the phone field: "Not for emergencies — call [local emergency number] instead," localized into all three languages.
+
+Data is saved via a new dedicated endpoint (e.g. PATCH /api/profile/doctor-info), not routed through the existing /api/profile/health-markers endpoint, and is not added to the PROFILE_HEALTH_FIELDS health-history audit trail, since doctor info is not clinical health data.
+
+Doctor-info fields are stored in a new dedicated table (e.g. doctor_info, one row per user), separate from user_profiles [PROPOSED — not yet confirmed against team preference; flag before finalizing schema].
+
+The personal JSON export (/api/user/data-export) may continue to include doctor-info fields automatically, since it selects the full profile row and this is the user's own data.
+
+The personal PDF export (/api/user/pdf-export) must not include doctor-info fields — explicitly exclude them from the curated PDF field list.
+
+Doctor-info field names are added to both existing PostHog BLOCKED_KEYS lists (client/src/lib/posthog.ts, server/posthog.ts) as a precaution against accidental inclusion in analytics events.
+
+A code comment and a note in replit.md (or equivalent) state that if a research/clinical-study export pipeline is ever built in the future, doctor-info fields must be excluded via a schema-level exclusion list, not a per-account conditional check. No such pipeline exists today, so no exclusion code is built now — documentation only.
+
+Focused tests confirm: fields save/clear correctly; the disclaimer and instructional text render in all three locales; the new table/route is untouched by health-history audit logic; doctor fields do not appear in the PDF export; doctor fields do not appear in any PostHog event payload.
+
+Out of Scope
+Cross-user visibility, search, directory listing, ratings, or recommendation of doctors.
+
+Automated outreach (calls/SMS) to the stored phone number by the app.
+
+Any fee/pricing field.
+
+Building an actual research-export pipeline — documentation note only, since none currently exists.
+
+Final visual placement/spacing decisions — pending the template image and located button-row code.
+
+Steps
+Locate existing button row — Find and report the exact file, component, and styling of the 3 existing Profile buttons before writing new UI code. [UNCONFIRMED until located]
+
+Schema — Create doctor_info table with userId, doctorName, doctorClinic, doctorSpecialty, doctorPhone, doctorAddress, doctorLastVisit, doctorNotes, createdAt, updatedAt. [PROPOSED table structure — confirm before migrating]
+
+Backend route — Add PATCH /api/profile/doctor-info (and read access via existing GET /api/profile or a new endpoint) using a dedicated storage method, not the health-markers path.
+
+Frontend UI — Build the doctor-info section once the template image is received; match its layout exactly rather than assuming card vs. page. [Blocked pending image]
+
+Add 4th button — Insert into the existing button row located in step 1, matching its established style.
+
+Copy and disclaimers — Add instructional text and the emergency disclaimer, localized into en.json, zh-Hant.json, yue.json under the profile.<snake_case_key> convention.
+
+Exports — Exclude doctor-info fields from the PDF export's rendered field list; leave JSON export as-is.
+
+PostHog safeguard — Add doctor-field key names to both BLOCKED_KEYS lists.
+
+Documentation — Add the future-research-export exclusion note to replit.md.
+
+Tests — Cover save/clear behavior, locale rendering, audit-trail isolation, PDF exclusion, and PostHog exclusion.
