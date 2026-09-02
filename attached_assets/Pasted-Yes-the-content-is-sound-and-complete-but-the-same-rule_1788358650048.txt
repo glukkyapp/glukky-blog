@@ -1,0 +1,61 @@
+Yes — the content is sound and complete, but the same rules are stated 3 to 5 times each in slightly different wording, which adds length without adding new constraint. There's also one safeguard from earlier that got dropped. Here's what to trim, consolidate, and restore.
+
+1. Consolidate the Ingredient/Meal Attribution Rule (5 → 2 statements)
+Currently this same idea appears five separate times:
+
+"Never put an aggregate meal claim in a Watch out row."
+
+"Do not attribute one component's carbohydrate burden to another component..."
+
+"Any meal-level carbohydrate, starch, quantity, or glycaemic-load conclusion must identify the actual contributing components."
+
+"For a meal with multiple components, attribute direct carbohydrate and glycaemic evidence to the components that actually contribute them..."
+
+"Describe each component only by its own direct contribution. Put any combined conclusion in the meal-level 'Blood sugar impact' assessment and name the actual contributing components."
+
+Trim to two statements (the scope rule already covers most of this):
+
+text
+Never put an aggregate meal claim in a Watch out row, and never attribute one component's carbohydrate, starch, or glycaemic burden to another component — a negligible- or low-carbohydrate item must not be blamed for carbohydrate contributed by other items.
+
+Any meal-level carbohydrate, starch, quantity, or glycaemic-load conclusion must name the actual contributing components, using available portion and meal context.
+This removes three redundant restatements of the same constraint.
+
+2. Consolidate the JSON-Is-Separate/Mandatory Statement (3 → 1)
+This is repeated three times:
+
+"The machine-readable foodItems JSON line below is still mandatory and is separate from the human-readable advice."
+
+"The final line must contain only this JSON object and no other JSON keys: {...}"
+
+"The final JSON line is machine-readable and separate from the human-readable advice section. Do not add explanation, commentary, code fences, or additional JSON keys."
+
+Keep only one, placed immediately before the schema:
+
+text
+The final line must contain only this JSON object, separate from the human-readable advice above, with no explanation, commentary, code fences, or additional keys — required even when the Watch out line is omitted:
+
+{"foodItems":[{"nameEn":"...","nameZhHant":"...","nameYue":"..."}]}
+3. Restore a Missing Safeguard
+Your earlier draft had a rule for uncertain identity/preparation/portion that isn't in this version:
+
+text
+If food identity, preparation, evidence, or portion is uncertain, do not invent a GI, carbohydrate amount, glycaemic load, or categorical high/low classification — use cautious, non-specific wording instead.
+Add this near the "Do not make a carbohydrate-quantity or glycaemic-load claim when... unavailable" line — it covers identity/preparation uncertainty, which that line doesn't.
+
+4. Trim a Redundant Selection-Rule Clause
+text
+For Low or Medium impact, the selected action must be 1, 3, or 5.
+Never select actions 2 or 4 alone for Low or Medium impact.
+The second line is logically implied by the first (2 and 4 aren't in {1, 3, 5}), so it adds nothing. Drop it.
+
+5. Minor Precision Add: Qualitative Fallback
+Your GL rule bans a quantity/load claim without portion data, but doesn't say what's still allowed. Since glycaemic load specifically requires GI and available-carbohydrate grams per serving to calculate, add a one-line fallback so the model isn't left with no valid phrasing:
+
+text
+When portion or composition data is unavailable, you may still describe a component qualitatively as a carbohydrate source, without stating an amount or load.
+What Doesn't Need Trimming
+The mixed-meal effects bullet list, the Right now action list and selection rules, the HK food-familiarity line, and the food-identity/preparation-distinctness paragraph are each stated once and are doing real work — leave them as-is.
+
+Net Effect
+These edits cut roughly 6–8 redundant sentences without removing any constraint, and restore one safeguard that should be there. Everything else in the prompt — locale handling, no-diagnosis rule, evidence-concept separation, action-selection logic, JSON schema — is already precise and non-duplicated.
