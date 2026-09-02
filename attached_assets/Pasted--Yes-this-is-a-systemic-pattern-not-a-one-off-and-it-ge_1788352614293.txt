@@ -1,0 +1,28 @@
+
+Yes — this is a systemic pattern, not a one-off, and it generalizes into two clear risk categories that Glukky should audit across its whole food library, not just yam and egg.
+
+Risk Category 1: Species/Variety Conflation for Starchy Vegetables
+Chinese yam isn't the only starchy vegetable where "same-sounding food name, different GI" can happen:
+
+Food	GI range found	Why it varies
+Taro (芋頭)	48–54, low	Consistent across sources 
+Sweet potato (蕃薯)	44–94, huge spread	Depends heavily on cooking method (boiled vs. baked vs. instant) and variety 
+Pumpkin (南瓜)	51–75, wide spread	Varies by species/region — Jamaican vs. South African boiled pumpkin differ by 24 points 
+Yam species	44–104, extreme spread	Chinese yam (Dioscorea opposita) tests low; African pounded-yam varieties test very high 
+The general principle: any starchy vegetable with multiple common species, cultivars, or cooking methods sharing one name is at risk of the same collapse into a single generic bucket. Sweet potato is the highest-risk case in Glukky's context, since its GI can range from "low" to "high" depending purely on how it's cooked — the same mashing/particle-size effect that applies to yam.
+
+Risk Category 2: Low-Carb Proteins Wrongly Blamed for Meal Starch
+Egg is one instance of a broader class: any near-zero-carbohydrate protein food can be misattributed a meal's starch/GL burden if the advice engine reasons at the wrong level.
+
+Tofu: 1.9–3g carbs per 100g, "glycemic index framework doesn't apply directly" — glucose response comes from what it's served with, not the tofu itself.
+
+Meat, fish, poultry: essentially zero carbohydrate, classified as "zero glycemic foods".
+
+Cheese, plain yogurt (unsweetened): low-to-zero carbohydrate, same risk.
+
+The general principle: any food dense in protein/fat with negligible carbohydrate is structurally incapable of contributing meaningfully to a meal's starch/glycemic load, so it should never be the subject of an aggregate-carb warning — that warning belongs exclusively to the meal's actual carbohydrate sources (rice, noodles, root vegetables, bread, sugary sauces).
+
+A Single General Principle for the Ticket
+Both risk categories collapse into one rule worth stating explicitly in ticket #865's evidence model: a food's glycemic classification must be tied to (a) its verified species/variety-specific evidence, and (b) its actual measured or estimated carbohydrate content — never inferred from category membership (root vegetable, tuber, "usually starchy") or from co-occurrence in a meal with genuinely starchy foods.
+
+Concretely, this means the same fix protects against two failure directions at once — overclassifying a low/moderate-GI vegetable as high-impact due to species confusion (yam, pumpkin, sweet potato), and misattributing meal-level starch to a food that structurally can't carry it (egg, tofu, meat, cheese). Both are symptoms of the same missing piece: no structured, per-food, per-preparation, source-linked record — the exact gap ticket #865 is meant to close. Extending the regression suite to include at least one sweet-potato preparation-variant case and one tofu-in-a-carb-heavy-meal case would validate the fix generalizes beyond the yam/egg example.
