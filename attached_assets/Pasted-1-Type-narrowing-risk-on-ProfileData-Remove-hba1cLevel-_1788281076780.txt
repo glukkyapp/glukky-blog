@@ -1,0 +1,14 @@
+1. Type-narrowing risk on ProfileData
+"Remove hba1cLevel from the client-side ProfileData interface if it is no longer used by the page" is conditional wording in a task meant to produce a deterministic diff. Before implementation, explicitly search the client codebase for every reference to hba1cLevel (not just on the Profile page) — if any other client component, hook, or type-derived payload references it, removing it from the interface will break that call site rather than silently doing nothing. The task should state definitively whether it exists elsewhere, not leave it as "if."
+
+2. Mutation payload narrowing could break existing consumers
+"Change the Health Markers mutation payload type so it only handles bloodTestDate" needs a check: confirm the mutation function is not exported/shared with any other component that might still pass an hba1cLevel field. If it's Profile-page-local, this is safe; if it's a shared hook used elsewhere, narrowing the type could cause a compile error somewhere unrelated that isn't part of this task's stated file scope.
+
+3. Test coverage should include a negative-regression check on data-testid
+Good that data-testid="input-hba1c" and data-testid="button-edit-hba1c" are named explicitly for removal — this makes the regression test ("no HbA1c entry controls exist in any locale") concrete and verifiable, rather than just checking translation strings are absent (which wouldn't catch a hardcoded English fallback string missed in one locale).
+
+4. Missing explicit check: server should not reject a payload without hba1cLevel
+If the server's Health Markers update endpoint currently expects an hba1cLevel field (even as optional) and does something meaningful when it's absent vs. explicitly null vs. omitted entirely, this task should verify the endpoint tolerates a payload containing only bloodTestDate without error. This is implied by "server compatibility behavior remain available" but isn't explicitly listed as a validation step — add it to the "Run validation" step explicitly.
+
+One Wording Fix
+Under Steps → Run validation, the phrase "review the final source search to confirm there is no other user-facing HbA1c input" should specify what counts as user-facing — e.g., explicitly exclude the generated PDF report and JSON export from that search (since those intentionally still show HbA1c), otherwise a literal grep-based check would incorrectly flag those retained paths as violations.
