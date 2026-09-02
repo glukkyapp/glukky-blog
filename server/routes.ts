@@ -16,7 +16,13 @@ import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
 import { CONTENTS, DEV_TEST_TEMPLATES } from "./notifications";
 import { type InsertUserProfile } from "@shared/schema";
 import { pickSources } from "./advice-sources";
-import { buildStructuredAdvice, selectNextTime, sanitizeEmoji, nextTimeLabel } from "./snap-advice-structured";
+import {
+  buildStructuredAdvice,
+  sanitizeAdviceAttribution,
+  selectNextTime,
+  sanitizeEmoji,
+  nextTimeLabel,
+} from "./snap-advice-structured";
 import { canUseFeature, getGateStatus, computePremiumRefreshUpdate } from "./gate";
 import { BUILD_INFO } from "./build-info";
 import { ensureCompPremium, isCompUserId } from "./comp-emails";
@@ -2418,6 +2424,9 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
 
       const label = await storage.getFoodLabelByCombo(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
       const activeComboKey = label ? label.internalId : buildInternalId(name, resolvedPortionId, resolvedSauceIds, resolvedToppingIds);
+      // Advice wording/attribution rules are versioned independently from the
+      // stable food-library combo key used by meal history and glucose patterns.
+      const adviceCacheKey = `${activeComboKey}::advice-v2`;
       // The exact combo's library items are the only cache-hit source. New
       // items are generated below from the user-confirmed labels, never from
       // a client-provided subtype selection.
@@ -2539,7 +2548,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         // Step 6 of the FoodSnap flow: exact combo match in library check 2.
         // food_labels.useCount is already bumped inside getFoodLabelByCombo above
         // (#578: previous parallel food_combos bump removed with the table).
-        const cachedAdvice = await storage.getCachedAdvice(activeComboKey, lang);
+        const cachedAdvice = await storage.getCachedAdvice(adviceCacheKey, lang);
         if (cachedAdvice && !needsFoodItemsBackfill) {
           const snapId = await insertSnapRecord(cachedAdvice);
           try {
@@ -2564,7 +2573,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         }
       }
 
-      const existingCachedAdvice = !label ? await storage.getCachedAdvice(activeComboKey, lang) : null;
+      const existingCachedAdvice = !label ? await storage.getCachedAdvice(adviceCacheKey, lang) : null;
       if (existingCachedAdvice) {
         const snapId = await insertSnapRecord(existingCachedAdvice);
         try {
@@ -2605,7 +2614,7 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
         extras ? `Extras / toppings: ${extras}` : null,
       ].filter(Boolean).join("\n");
 
-      const foodItemsInstruction = `\n\nOn the FINAL new line, output ONLY this JSON object and no other keys:
+      const foodItemsInstruction = `\n\nThe final model-output line must contain only this JSON object, separate from the human-readable advice above, with no explanation, commentary, code fences, or additional keys. It is required even when the Watch out line is omitted:
 {"foodItems":[{"nameEn":"...","nameZhHant":"...","nameYue":"..."}]}
 
 Identify items only from the user-confirmed Food and Extras / toppings fields. Include substantive food and drink items. Exclude sauces, condiments, spices, seasoning, herbs, and decorative garnishes. Keep fixed food compounds whole, but split genuinely separate foods into individual items. Do not include a top-level meal name.`;
@@ -2625,15 +2634,27 @@ Reply in ${langLabel[locale] ?? "English"}.
 Important rules:
 - If the food is genuinely low-risk and healthy, say so plainly. Do NOT manufacture warnings or unnecessary advice for healthy food.
 - Never use the word "diabetes" in any form.
+- Do NOT output a Next time section. The server adds it separately.
 
-Always reply in this format. Use ONLY plain text markers — never any emoji characters anywhere in your reply:
+Advice scope and evidence:
+- Assess Blood sugar impact at MEAL LEVEL. Consider the complete meal, available portion information, preparation, sauces/condiments, extras, food order, and evidence-supported mixed-meal effects. Do not present mixed-meal effects as a precise glucose prediction.
+- Every Watch out row is INGREDIENT LEVEL. It may describe only the named ingredient's own carbohydrate contribution, glycaemic evidence, sweetness, or preparation effect.
+- Never put an aggregate meal claim in a Watch out row, and never attribute one component's carbohydrate, starch, or glycaemic burden to another component. An item that is not identified in the confirmed meal data as a material carbohydrate contributor must not be blamed for carbohydrate contributed by other items.
+- Any meal-level carbohydrate, starch, quantity, or glycaemic-load conclusion must name the ingredients driving it, using available portion and meal context. Do not state an estimated carbohydrate amount, total carbohydrate burden, or glycaemic-load value without sufficient portion and composition information.
+- When portion or composition data is unavailable, you may still describe a component qualitatively as a carbohydrate source, without stating an amount or glycaemic load.
+- Keep GI/rate evidence separate from carbohydrate quantity and glycaemic load. Do not infer one from another, and do not average ingredient GI values to calculate a mixed-meal GI.
+- Keep food identity, species or variety, and preparation state distinct. Resolve identity from the confirmed meal information; do not substitute one food, species, or variety for another based only on a broad or ambiguous label. Treat texture and preparation descriptors as modifiers, not as a different food identity or an automatic high-impact classification.
+- If food identity, preparation, evidence, or portion is uncertain, do not invent a specific GI value, carbohydrate amount, glycaemic load, or ingredient-specific categorical claim for the uncertain component. Use cautious, non-specific wording instead. When uncertain, prefer a cautious meal-level statement over an ingredient-specific warning. The required meal-level Blood sugar impact label may still be selected from confirmed evidence and must reflect the uncertainty.
+- Mixed-meal effects may be considered conservatively when supported by the available information, including combined carbohydrate sources and portions, added-sugar sauces or drinks, preparation and food structure, fibre/viscosity or acidity, protein and fat as possible timing/delay modifiers, and food order. Do not claim that protein or fat cancels carbohydrate or promise a precise interaction magnitude without suitable portion and composition data.
+
+Always reply in this format for the human-readable advice. Use ONLY plain text markers — never any emoji characters anywhere in your reply:
 
 ${locale === "zh-Hant" || locale === "yue" ? "血糖影響: [高 / 中 / 低]" : "Blood sugar impact: [High / Medium / Low]"}
 ${locale === "zh-Hant" || locale === "yue" ? "注意：" : "Watch out:"} [1–3 rows of "food --> risk", each risk UNDER SIX WORDS, rows separated by "；" — e.g. "milk tea --> condensed milk sugar；white rice --> fast glucose spike"]
 ${locale === "zh-Hant" ? "現在：" : locale === "yue" ? "依家：" : "Right now:"} [ONLY the selector number(s) from the action list below — e.g. "1" or "2,4". Output NO other words on this line.]
 Food order: [Only when action 1 is selected AND the meal has a carbohydrate alongside at least one vegetable or protein: the food-specific ordering phrase in ${langLabel[locale] ?? "English"} — e.g. "cabbage first, plain rice later", listing only foods present in the meal. Omit this line entirely otherwise.]
 
-If the food is genuinely healthy and low-risk, OMIT the ${locale === "en" ? "Watch out" : "注意"} line entirely; the good choice is affirmed automatically. In that case output only 2 lines (Blood sugar impact, ${locale === "zh-Hant" ? "現在" : locale === "yue" ? "依家" : "Right now"}).
+If the food is genuinely healthy and low-risk, OMIT the ${locale === "en" ? "Watch out" : "注意"} line entirely; the good choice is affirmed automatically. In that case the human-readable section has only 2 lines (Blood sugar impact, ${locale === "zh-Hant" ? "現在" : locale === "yue" ? "依家" : "Right now"}), followed by the required final foodItems JSON line.
 If there is a genuine concern, output all 3 lines.
 
 Evidence-based principles from Diabetes Care 2019 Consensus & WHO/ADA guidance.
@@ -2647,8 +2668,9 @@ Right-now action list (refer to them ONLY by number):
 5. Reduce the portion of carbs in this meal.
 
 Selection rules:
-- If Blood sugar impact is Low or Medium: select EXACTLY ONE action, and it must be 1, 3, or 5 (never 2 or 4).
-- If Blood sugar impact is High: select EXACTLY TWO actions, and at least one of them must be 2 or 4.
+- If Blood sugar impact is Low or Medium: select EXACTLY ONE action from 1, 3, or 5.
+- If Blood sugar impact is High: select EXACTLY TWO actions.
+- At least one selected High-impact action must be 2 or 4.
 - Select action 1 only if the meal clearly contains both a carbohydrate AND at least one vegetable or protein, e.g. rice with cabbage, fish with rice, beef noodles with choi sum etc. When selected, also output a Food order line with a short meal-specific phrase — e.g. "cabbage first, plain rice later" — listing only foods present in that meal.
 
 Hard constraints on your advice:
@@ -2669,7 +2691,7 @@ Hard constraints on your advice:
           // combo's items before the meal record is created.
           existing: needsFoodItemsBackfill && locale === backfillLocale
             ? null
-            : await storage.getCachedAdvice(activeComboKey, locale),
+            : await storage.getCachedAdvice(adviceCacheKey, locale),
         }))
       );
       const anyAdviceCacheMiss = cachedAdvicePerLocale.some(c => !c.existing);
@@ -2721,17 +2743,29 @@ Hard constraints on your advice:
         });
       }
 
-      const cleanedResults = adviceResults.map(r => ({
-        ...r,
-        advice: stripAdviceFoodItems(r.advice),
-      }));
+      const cleanedResults = adviceResults.map(r => {
+        const attribution = sanitizeAdviceAttribution(r.advice, {
+          foodItems: structuredFoodItems,
+          sauces,
+        });
+        if (attribution.removedRows > 0) {
+          console.warn(
+            `[snap/advice] removed ${attribution.removedRows} unsafe Watch out ` +
+            `row(s) locale=${r.locale} source=${r.fromCache ? "cache" : "claude"}`,
+          );
+        }
+        return {
+          ...r,
+          advice: stripAdviceFoodItems(attribution.advice),
+        };
+      });
 
       const foodName = name;
 
       await Promise.all(
         cleanedResults
           .filter(r => !r.fromCache && r.advice)
-          .map(r => storage.saveCachedAdvice(foodName, activeComboKey, r.locale, r.advice, "claude"))
+          .map(r => storage.saveCachedAdvice(foodName, adviceCacheKey, r.locale, r.advice, "claude"))
       );
 
       if (!label) {

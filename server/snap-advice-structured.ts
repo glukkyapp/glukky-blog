@@ -1,3 +1,5 @@
+import type { FoodItemMetadata } from "@shared/schema";
+
 /**
  * Structured snap-advice contract (#802).
  *
@@ -313,6 +315,147 @@ export function parseWatchOutRows(body: string): WatchOutRow[] {
   return rows;
 }
 
+const AGGREGATE_BURDEN_PATTERN =
+  /(?:\b(?:the\s+)?(?:meal|overall|total|combined|entire|whole|this)\b.{0,70}\b(?:starch|carb(?:ohydrate)?s?|glyc(?:emic|aemic)\s*load|blood\s+sugar|glucose|sugar)\b|\b(?:starch|carb(?:ohydrate)?s?|glyc(?:emic|aemic)\s*load)\b.{0,70}\b(?:meal|overall|total|combined|burden)\b|整餐|全餐|整體|總(?:碳水|澱粉)|碳水負擔|澱粉負擔|這餐.*(?:高|多).*(?:碳水|澱粉|糖))/i;
+
+const ATTRIBUTION_STOP_WORDS = new Set([
+  "and", "with", "the", "plain", "white", "brown", "fresh", "cooked",
+  "chinese", "hong", "kong", "style", "large", "small", "medium",
+]);
+
+type AttributionComponent = {
+  id: string;
+  aliases: string[];
+  directGlycaemicClaimsAllowed: boolean;
+};
+
+export type AdviceAttributionContext = {
+  foodItems: FoodItemMetadata[];
+  sauces?: string | null;
+};
+
+function normalizeAlias(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase().trim();
+}
+
+function aliasesFromName(value: string): string[] {
+  const normalized = normalizeAlias(value);
+  if (!normalized) return [];
+  const aliases = new Set([normalized]);
+  for (const token of normalized.split(/[^a-z0-9\u3400-\u9fff]+/i)) {
+    if (token.length >= 3 && !ATTRIBUTION_STOP_WORDS.has(token)) aliases.add(token);
+  }
+  return [...aliases];
+}
+
+function splitConfirmedComponents(value?: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(/[，,；;、/+&]|\s+\band\b\s+|\s+\bwith\b\s+/i)
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+const EXPLICIT_CARBOHYDRATE_IDENTITY_PATTERN =
+  /\b(?:sweetened|sugared|sugar|syrup|honey|milk|yogurt|yoghurt)\b|(?:加糖|含糖|甜|糖漿|蜜糖|奶|乳酪)/i;
+
+const DIRECT_GLYCAEMIC_RISK_PATTERN =
+  /\b(?:starch|carb(?:ohydrate)?s?|glyc(?:emic|aemic)|gi|blood\s+sugar|glucose|sugar|spike)\b|(?:澱粉|碳水|升糖|血糖|糖分|糖份|糖)/i;
+
+function buildAttributionComponents(context: AdviceAttributionContext): AttributionComponent[] {
+  const foodComponents = context.foodItems.map((item, index) => {
+    const aliases = new Set([
+      ...aliasesFromName(item.nameEn),
+      ...aliasesFromName(item.nameZhHant),
+      ...aliasesFromName(item.nameYue),
+    ]);
+    const identityText = `${item.nameEn} ${item.nameZhHant} ${item.nameYue}`;
+    return {
+      id: `food-${index}`,
+      aliases: [...aliases],
+      directGlycaemicClaimsAllowed:
+        item.isCarb ||
+        item.isSweet === true ||
+        item.sweetCategory != null ||
+        EXPLICIT_CARBOHYDRATE_IDENTITY_PATTERN.test(identityText),
+    };
+  });
+
+  const sauceComponents = splitConfirmedComponents(context.sauces).map((name, index) => ({
+    id: `sauce-${index}`,
+    aliases: [
+      ...aliasesFromName(name),
+      "sauce", "condiment", "dressing", "gravy", "syrup",
+      "醬", "醬汁", "汁", "調味", "糖漿",
+    ],
+    directGlycaemicClaimsAllowed: true,
+  }));
+  return [...foodComponents, ...sauceComponents];
+}
+
+function textContainsAlias(text: string, alias: string): boolean {
+  const normalizedText = normalizeAlias(text);
+  const normalizedAlias = normalizeAlias(alias);
+  if (!normalizedAlias) return false;
+  if (/^[a-z0-9 ]+$/i.test(normalizedAlias)) {
+    const escaped = normalizedAlias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(normalizedText);
+  }
+  return normalizedText.includes(normalizedAlias);
+}
+
+/**
+ * Removes Watch out rows that contain a meal-wide burden claim or name one
+ * confirmed component while assigning risk from another confirmed component.
+ * Food metadata is used only for multilingual identity matching, never as a
+ * nutrient quantity judgement.
+ */
+export function sanitizeAdviceAttribution(
+  adviceText: string,
+  context: AdviceAttributionContext,
+): { advice: string; removedRows: number } {
+  if (!adviceText) return { advice: adviceText, removedRows: 0 };
+
+  let removedRows = 0;
+  const components = buildAttributionComponents(context);
+  const lines = adviceText.split("\n");
+  const sanitizedLines = lines.flatMap(rawLine => {
+    const line = sanitizeEmoji(rawLine);
+    if (!line || !WATCH_OUT_MARKERS.some(marker => marker.test(line))) return [rawLine];
+
+    const body = stripMarker(line, WATCH_OUT_MARKERS);
+    const rows = parseWatchOutRows(body);
+    if (rows.length === 0) return [rawLine];
+
+    const safeRows = rows.filter(row => {
+      const owner = row.food
+        ? components.find(component => component.aliases.some(alias => textContainsAlias(row.food, alias)))
+        : null;
+      const namesAnotherComponent = owner
+        ? components.some(component =>
+            component.id !== owner.id &&
+            component.aliases.some(alias => textContainsAlias(row.risk, alias)),
+          )
+        : false;
+      const unsupportedDirectClaim =
+        DIRECT_GLYCAEMIC_RISK_PATTERN.test(row.risk) &&
+        owner?.directGlycaemicClaimsAllowed !== true;
+      const unsafe =
+        AGGREGATE_BURDEN_PATTERN.test(row.risk) ||
+        namesAnotherComponent ||
+        unsupportedDirectClaim;
+      if (unsafe) removedRows += 1;
+      return !unsafe;
+    });
+
+    if (safeRows.length === 0) return [];
+    const marker = line.slice(0, line.length - body.length);
+    return [`${marker}${safeRows.map(row => row.food ? `${row.food} --> ${row.risk}` : row.risk).join("；")}`];
+  });
+
+  return { advice: sanitizedLines.join("\n"), removedRows };
+}
+
 /**
  * Build the full structured advice payload from raw Claude output or a
  * legacy cached advice string.
@@ -395,7 +538,7 @@ export function buildStructuredAdvice(
     impactDisplay: impact ? IMPACT_DISPLAY[loc][impact] : "",
     opener,
     watchOut: watchOutClamped,
-    positiveLine: watchOutClamped.length === 0 ? POSITIVE_LINE[loc] : null,
+    positiveLine: impact === "low" && watchOutClamped.length === 0 ? POSITIVE_LINE[loc] : null,
     rightNow: rightNow.map(sanitizeEmoji).filter(Boolean),
     nextTime: sanitizeEmoji(nextTime),
   };

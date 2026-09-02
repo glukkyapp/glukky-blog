@@ -148,7 +148,7 @@ export function classifyCarbCategory(item: {
   for (const [category, aliases] of Object.entries(CARB_CATEGORY_ALIASES)) {
     for (const alias of aliases.map(normalize)) {
       if (!alias) continue;
-      if (names.some(name => name.includes(alias) || alias.includes(name))) {
+      if (names.some(name => name.includes(alias))) {
         if (!best || alias.length > best.aliasLength) {
           best = { category: category as Exclude<CarbCategory, null>, aliasLength: alias.length };
         }
