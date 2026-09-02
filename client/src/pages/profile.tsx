@@ -35,7 +35,6 @@ interface ProfileData {
   goal: string | null;
   healthCondition: string | null;
   notificationEmail: string;
-  hba1cLevel: number | null;
   bloodTestDate: string | null;
   preferredLanguage: string;
 }
@@ -80,13 +79,11 @@ function ProfileSkeleton() {
 function HealthMarkersCard({ profile }: { profile: ProfileData }) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [editingHba1c, setEditingHba1c] = useState(false);
   const [editingDate, setEditingDate] = useState(false);
-  const [hba1cValue, setHba1cValue] = useState(profile.hba1cLevel?.toString() ?? "");
   const [dateValue, setDateValue] = useState(profile.bloodTestDate ?? "");
 
   const mutation = useMutation({
-    mutationFn: async (data: { hba1cLevel?: number | null; bloodTestDate?: string | null }) => {
+    mutationFn: async (data: { bloodTestDate?: string | null }) => {
       const res = await apiRequest("PATCH", "/api/profile/health-markers", data);
       return res.json();
     },
@@ -100,14 +97,6 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
       toast({ title: "Failed to save", variant: "destructive" });
     },
   });
-
-  const saveHba1c = () => {
-    if (!editingHba1c) return;
-    setEditingHba1c(false);
-    const parsed = parseFloat(hba1cValue);
-    const value = isNaN(parsed) ? null : parsed;
-    mutation.mutate({ hba1cLevel: value });
-  };
 
   const saveDate = () => {
     if (!editingDate) return;
@@ -123,34 +112,6 @@ function HealthMarkersCard({ profile }: { profile: ProfileData }) {
         <CardTitle className="text-base">{t("profile.health_markers")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">{t("profile.hba1c_level")}</span>
-          {editingHba1c ? (
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                step="0.1"
-                className="w-20 h-7 text-sm"
-                value={hba1cValue}
-                onChange={(e) => setHba1cValue(e.target.value)}
-                onBlur={saveHba1c}
-                onKeyDown={(e) => e.key === "Enter" && saveHba1c()}
-                autoFocus
-                data-testid="input-hba1c"
-              />
-              <span className="text-xs">%</span>
-            </div>
-          ) : (
-            <button
-              className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
-              onClick={() => { setEditingHba1c(true); setHba1cValue(profile.hba1cLevel?.toString() ?? ""); }}
-              data-testid="button-edit-hba1c"
-            >
-              {profile.hba1cLevel != null ? `${profile.hba1cLevel}%` : t("profile.tap_to_add")}
-              <Pencil className="w-3 h-3" />
-            </button>
-          )}
-        </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">{t("profile.last_blood_test")}</span>
           {editingDate ? (
