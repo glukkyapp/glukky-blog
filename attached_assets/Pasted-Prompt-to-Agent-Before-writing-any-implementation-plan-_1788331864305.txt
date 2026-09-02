@@ -1,0 +1,29 @@
+Prompt to Agent:
+
+Before writing any implementation plan or code, verify the current codebase state for the following, and report exact findings (file paths, function/table names, existing patterns) before proposing anything.
+
+Verify these items first:
+
+Confirm whether a "doctor info" or similar field/table already exists anywhere in the schema, server routes, or client Profile page. Report the exact name if it exists, or confirm it does not exist.
+
+Identify the existing pattern used for the Health Markers card (e.g., HbA1c/Last blood test date) in client/src/pages/profile.tsx (or equivalent) — specifically the edit-state hooks, save mutation, and data-testid conventions — so any new "My Doctor" section reuses the same pattern rather than introducing a new one.
+
+Confirm whether any research/clinical-study data-export pipeline currently exists in the codebase (server-side). Report its file path and current field-inclusion/exclusion logic if it exists. If no such pipeline exists yet, state that explicitly.
+
+Confirm whether an existing field-exclusion list (e.g., for PostHog sanitization, JSON export, or anonymization) already exists anywhere in the server code. Report its file path, current contents, and whether it is schema-level or per-call.
+
+Confirm the exact locale files and key-naming convention used for existing Profile translations (en.json, zh-Hant.json, yue.json) so new doctor-info labels follow the same structure.
+
+Confirm whether the user-facing personal PDF/JSON export (the one a user generates for themselves) already includes or could include arbitrary profile fields, and whether it is implemented separately from any research-export path.
+
+Do not propose a design or write code yet. After verification, report:
+
+What already exists and can be reused.
+
+What does not exist and must be newly built.
+
+Any naming, schema, or pattern conflicts between what I've described and what the codebase currently does.
+
+Placement constraint: Do not decide, propose, or default to a specific page, route, or navigation location for the "My Doctor" section in the frontend. The exact page/location placement will be decided separately by me. Your plan should treat placement as an open input to be filled in later — build the component, schema, mutation, and export-exclusion logic in a way that is not hard-coupled to any single assumed screen, so it can be mounted wherever I ultimately decide.
+
+Only after this verification report is confirmed should a "What & Why / Done looks like / Out of scope / Steps" implementation plan for the "My Doctor" feature be drafted, incorporating: an optional doctor name/clinic/specialty/phone/address/last-visit/notes card matching the existing Health Markers UI pattern; a persistent "not for emergencies" disclaimer beside the phone field; a schema-level field-exclusion rule (not a per-account conditional check) that keeps all doctor-info fields out of any research/clinical-study export path, regardless of account type; and explicit placement left undecided pending my instruction.
