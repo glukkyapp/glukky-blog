@@ -888,6 +888,59 @@ export async function registerRoutes(
     }
   });
 
+  const doctorInfoSchema = z.object({
+    doctorName: z.string().max(200).nullable().optional(),
+    clinicName: z.string().max(200).nullable().optional(),
+    specialty: z.string().max(200).nullable().optional(),
+    officePhone: z.string().max(80).nullable().optional(),
+    address: z.string().max(1000).nullable().optional(),
+    lastVisitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format. Use YYYY-MM-DD.").nullable().optional(),
+    notes: z.string().max(3000).nullable().optional(),
+  }).strict();
+
+  const cleanDoctorText = (value: string | null | undefined): string | null => {
+    if (value == null) return null;
+    const cleaned = value.trim();
+    return cleaned || null;
+  };
+
+  app.get("/api/profile/doctor-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const doctor = await storage.getDoctorInfo(userId);
+      res.set("Cache-Control", "no-store");
+      return res.json(doctor ?? null);
+    } catch (error) {
+      console.error("Error fetching doctor info:", error);
+      return res.status(500).json({ message: "Failed to fetch doctor information" });
+    }
+  });
+
+  app.patch("/api/profile/doctor-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = doctorInfoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid doctor information", errors: parsed.error.errors });
+      }
+
+      const userId = req.user.claims.sub;
+      const saved = await storage.upsertDoctorInfo(userId, {
+        doctorName: cleanDoctorText(parsed.data.doctorName),
+        clinicName: cleanDoctorText(parsed.data.clinicName),
+        specialty: cleanDoctorText(parsed.data.specialty),
+        officePhone: cleanDoctorText(parsed.data.officePhone),
+        address: cleanDoctorText(parsed.data.address),
+        lastVisitDate: parsed.data.lastVisitDate ?? null,
+        notes: cleanDoctorText(parsed.data.notes),
+      });
+      res.set("Cache-Control", "no-store");
+      return res.json(saved);
+    } catch (error) {
+      console.error("Error updating doctor info:", error);
+      return res.status(500).json({ message: "Failed to save doctor information" });
+    }
+  });
+
   app.patch("/api/profile/name-goal", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

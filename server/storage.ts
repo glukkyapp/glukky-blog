@@ -11,7 +11,9 @@ import {
   type UserGlucoseThresholds,
   type CorrectionRequest, type InsertCorrectionRequest,
   type DeletionRequest,
+  type DoctorInfo, type InsertDoctorInfo,
   userProfiles,
+  doctorInfo,
   piggyBankEvents,
   ingredientVocabulary, foodLabels, foodAdviceCache, foodGiEntries,
   scheduledNotifications,
@@ -36,6 +38,8 @@ export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
   createProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateProfile(userId: string, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
+  getDoctorInfo(userId: string): Promise<DoctorInfo | undefined>;
+  upsertDoctorInfo(userId: string, data: Omit<InsertDoctorInfo, "userId">): Promise<DoctorInfo>;
   setRcCustomerId(userId: string, rcCustomerId: string): Promise<void>;
   getPiggyBankEvent(userId: string, achievementType: string): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
@@ -302,6 +306,32 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async getDoctorInfo(userId: string): Promise<DoctorInfo | undefined> {
+    const [doctor] = await db
+      .select()
+      .from(doctorInfo)
+      .where(eq(doctorInfo.userId, userId));
+    return doctor;
+  }
+
+  async upsertDoctorInfo(
+    userId: string,
+    data: Omit<InsertDoctorInfo, "userId">,
+  ): Promise<DoctorInfo> {
+    const [doctor] = await db
+      .insert(doctorInfo)
+      .values({ userId, ...data })
+      .onConflictDoUpdate({
+        target: doctorInfo.userId,
+        set: {
+          ...data,
+          updatedAt: sql`NOW()`,
+        },
+      })
+      .returning();
+    return doctor;
+  }
+
   // Idempotent setter for the bridge-reported RevenueCat customerId.
   // Reads first and skips the write when the value is unchanged so we
   // don't churn user_profiles on every login refresh. Trims and rejects
@@ -566,6 +596,9 @@ export class DatabaseStorage implements IStorage {
 
       const profiles = await tx.delete(userProfiles).where(eq(userProfiles.userId, userId)).returning({ id: userProfiles.id });
       counts.user_profiles = profiles.length;
+
+      const doctors = await tx.delete(doctorInfo).where(eq(doctorInfo.userId, userId)).returning({ id: doctorInfo.id });
+      counts.doctor_info = doctors.length;
 
       // Atomic session invalidation. connect-pg-simple stores the
       // session payload as JSON in `sess`; the userId is embedded

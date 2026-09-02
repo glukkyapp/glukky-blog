@@ -30,6 +30,22 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       WHERE used_at IS NULL`,
   },
   {
+    name: "doctor_info.create",
+    sql: `CREATE TABLE IF NOT EXISTS doctor_info (
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR NOT NULL UNIQUE,
+      doctor_name TEXT,
+      clinic_name TEXT,
+      specialty TEXT,
+      office_phone TEXT,
+      address TEXT,
+      last_visit_date DATE,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  },
+  {
     name: "profiles.backfill_glucose_group",
     sql: null,
     fn: async (client) => {

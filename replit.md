@@ -95,6 +95,8 @@ User health data — including glucose readings, post-meal symptoms, food logs, 
 
 These rules are enforced in code at the data-exit points (MCHK §6). Any proposed change that would send health data to a new destination, use stored records for model training, or enable population-level analysis must be explicitly approved by the product owner before implementation.
 
+Doctor contact details in `doctor_info` are private personal-reference data. They must remain outside personal JSON/PDF exports and any future research or clinical-study export. If such a research export is ever approved and built, exclusion must be enforced through a shared schema-level field-exclusion list, never by per-account conditional checks.
+
 ## Gotchas
 
 - **Paywall Price Hardcoding:** The paywall headline price is hardcoded in locale files (`en.json`, `zh-Hant.json`, `yue.json`). Changing the price requires editing these strings directly.

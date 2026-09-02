@@ -59,6 +59,26 @@ export const userProfiles = pgTable("user_profiles", {
   pilotEnrolledAt: timestamp("pilot_enrolled_at", { withTimezone: true }),
 });
 
+export const doctorInfo = pgTable("doctor_info", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().unique(),
+  doctorName: text("doctor_name"),
+  clinicName: text("clinic_name"),
+  specialty: text("specialty"),
+  officePhone: text("office_phone"),
+  address: text("address"),
+  lastVisitDate: date("last_visit_date", { mode: "string" }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type InsertDoctorInfo = Omit<
+  typeof doctorInfo.$inferInsert,
+  "id" | "createdAt" | "updatedAt"
+>;
+export type DoctorInfo = typeof doctorInfo.$inferSelect;
+
 // Pre-scheduling dedup table for OneSignal sends. One row per
 // (user, notification type, local-trigger calendar date in the
 // user's tz). The unique index is the on-disk guarantee that the

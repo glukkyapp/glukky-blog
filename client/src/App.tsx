@@ -51,6 +51,7 @@ const Landing = lazy(() => import("@/pages/landing"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
 const Home = lazy(() => import("@/pages/home"));
 const Profile = lazy(() => import("@/pages/profile"));
+const DoctorInfo = lazy(() => import("@/pages/doctor-info"));
 const Snap = lazy(() => import("@/pages/snap"));
 const HealthInfo = lazy(() => import("@/pages/health-info"));
 const AppIntro = lazy(() => import("@/pages/app-intro"));
@@ -1717,6 +1718,7 @@ function AuthenticatedApp() {
                 <Route path="/snap" component={Snap} />
                 <Route path="/health-info" component={HealthInfo} />
                 <Route path="/profile" component={Profile} />
+                <Route path="/doctor-info" component={DoctorInfo} />
                 <Route path="/dev" component={DevPanel} />
                 <Route path="/report" component={Report} />
                 <Route path="/food-reports" component={Report} />

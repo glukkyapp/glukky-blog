@@ -2,7 +2,7 @@ import { useState } from "react";
 import glukkyLogo from "@assets/Screenshot_2026-05-14_at_21.10.36_1778764249014.png";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp, Droplet, Utensils, Lightbulb } from "lucide-react";
+import { LogOut, Settings, Heart, Pencil, Globe, Smile, Type, Trash2, Shield, Download, AlertTriangle, ChevronDown, ChevronUp, Droplet, Utensils, Lightbulb, Stethoscope } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -455,11 +455,12 @@ function PersonalShortcuts() {
     { key: "glucose", path: "/hstix", icon: Droplet, label: t("profile.shortcut_glucose") },
     { key: "food", path: "/food-log", icon: Utensils, label: t("profile.shortcut_food_log") },
     { key: "health", path: "/health-info", icon: Lightbulb, label: t("profile.shortcut_health_info") },
+    { key: "doctor", path: "/doctor-info", icon: Stethoscope, label: t("profile.shortcut_doctor") },
   ];
 
   return (
     <section className="rounded-2xl border border-border bg-card p-3" data-testid="profile-personal-shortcuts">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {shortcuts.map(({ key, path, icon: Icon, label }) => (
           <button
             key={key}

@@ -25,6 +25,8 @@ const BLOCKED_KEYS = new Set([
   "disease", "medication", "symptom", "postmealsymptom",
   "struggle", "struggles", "sleeppattern",
   "email", "phone", "dob", "dateofbirth", "userid",
+  "doctorname", "clinicname", "specialty", "officephone",
+  "address", "lastvisitdate", "notes",
 ]);
 
 function sanitise(properties?: Record<string, unknown>): Record<string, unknown> | undefined {
