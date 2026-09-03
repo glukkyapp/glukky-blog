@@ -1,9 +1,24 @@
+import { useEffect, useState } from "react";
+import i18n from "@/i18n";
+
 interface LoadingScreenProps {
   visible: boolean;
 }
 
 export function LoadingScreen({ visible }: LoadingScreenProps) {
+  const [lang, setLang] = useState(() => i18n.language || "en");
+
+  useEffect(() => {
+    const handleLanguageChanged = (nextLang: string) => setLang(nextLang);
+    i18n.on("languageChanged", handleLanguageChanged);
+    return () => {
+      i18n.off("languageChanged", handleLanguageChanged);
+    };
+  }, []);
+
   if (!visible) return null;
+
+  const isChinese = lang === "zh-Hant" || lang === "yue" || lang.startsWith("zh");
 
   return (
     <>
@@ -87,11 +102,18 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
         style={{
           position: "fixed",
           inset: 0,
+          width: "100%",
+          height: "100dvh",
+          boxSizing: "border-box",
           zIndex: 9998,
           backgroundColor: "rgba(0, 0, 0, 0.3)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingRight: "env(safe-area-inset-right)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingLeft: "env(safe-area-inset-left)",
         }}
       >
         <div className="cube-loader-wrap">
@@ -147,6 +169,27 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
             <span className="cube-dot" />
             <span className="cube-dot" />
           </div>
+          <p
+            data-testid="loading-screen-label"
+            style={{
+              fontFamily: isChinese
+                ? '"LXGW WenKai TC", "PingFang TC", "Hiragino Sans GB", sans-serif'
+                : '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              fontSize: "1.25rem",
+              color: "#FFFFFF",
+              margin: 0,
+              letterSpacing: "0.02em",
+              lineHeight: 1.3,
+              textAlign: "center",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+            }}
+          >
+            {isChinese ? "載入中" : "Loading"}
+            <span aria-hidden="true">.</span>
+            <span aria-hidden="true">.</span>
+            <span aria-hidden="true">.</span>
+          </p>
         </div>
       </div>
     </>

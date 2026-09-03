@@ -5,7 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Glukky</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <style>html,body{background-color:#FDFBED;margin:0;padding:0;}#root{background-color:#FDFBED;min-height:100vh;}</style>
+    <style>
+      html, body { background-color: #FDFBED; margin: 0; padding: 0; }
+      #root { background-color: #FDFBED; }
+      #boot-caption {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: calc(2rem + env(safe-area-inset-top))
+          calc(2rem + env(safe-area-inset-right))
+          calc(2rem + env(safe-area-inset-bottom))
+          calc(2rem + env(safe-area-inset-left));
+        color: rgba(13, 43, 30, 0.5);
+        font: 1.5rem/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0.02em;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+    </style>
 
     <!-- Warm up the third-party origins we'll touch in the first second. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,28 +49,40 @@
       onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Karla:wght@400;700&display=swap"></noscript>
 
+    <!-- Real Natively SDK — async, no splash dependency on its onload anymore. -->
+    <script async src="https://cdn.jsdelivr.net/npm/natively@2.20.0/natively-frontend.min.js"></script>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-caption" data-testid="boot-loading-label" role="status" aria-live="polite">Loading</div>
+    </div>
+    <script>
+      (function(){
+        var preferred = "";
+        try { preferred = localStorage.getItem("glukky_preferred_lang") || ""; } catch(e){}
+        var lang = preferred || (navigator.language || "");
+        var caption = document.getElementById("boot-caption");
+        if (caption) {
+          var isChinese = lang === "zh-Hant" || lang.indexOf("zh") === 0;
+          var isCantonese = lang === "yue" || lang.indexOf("yue-") === 0;
+          caption.textContent = (isChinese || isCantonese) ? "載入中" : "Loading";
+        }
+      })();
+    </script>
     <!--
-      BN dismisses its splash when the page calls nativelyOnLoad(). Fire it
-      *immediately* from a tiny inline script so we don't wait for the
-      jsdelivr CDN. The real Natively SDK still loads async below for the
-      OneSignal/RevenueCat/haptics bridges; nativelyOnLoad is BN's "WebView
-      ready" ping, not a "SDK ready" ping. __bnLoadedAt is still stamped so
-      the dev-panel ColdLaunchTimingCard keeps working.
+      BN dismisses its splash when the page calls nativelyOnLoad(). Keep the
+      call after the static caption exists so the native-to-React handoff
+      never reveals an empty root. React replaces #root's contents on mount.
+      The real Natively SDK still loads async for its other bridges.
     -->
     <script>
       (function(){
         window.__bnLoadedAt = Date.now();
         try { if (typeof nativelyOnLoad === "function") nativelyOnLoad(); } catch(e){}
+        // Stub so anything else that calls nativelyOnLoad() later is a no-op.
+        if (typeof nativelyOnLoad === "undefined") { window.nativelyOnLoad = function(){}; }
       })();
-      // Stub so anything else that calls nativelyOnLoad() later is a no-op.
-      if (typeof nativelyOnLoad === "undefined") { window.nativelyOnLoad = function(){}; }
     </script>
-
-    <!-- Real Natively SDK — async, no splash dependency on its onload anymore. -->
-    <script async src="https://cdn.jsdelivr.net/npm/natively@2.20.0/natively-frontend.min.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
