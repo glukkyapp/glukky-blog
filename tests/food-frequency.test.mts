@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { extractAdviceFoodItems } from "../server/food-items";
 import {
   classifySweetCategory,
+  foodItemKey,
   prepareFoodItems,
 } from "../server/carb-subtypes";
 import {
   buildFoodFrequencySummary,
   FOOD_FREQUENCY_MEAL_THRESHOLD,
+  selectGeneralTopFoods,
 } from "../server/food-frequency";
+import { buildGeneralGlucosePatternComponents } from "../server/glucose-patterns";
 import type { FoodItemMetadata, MealSnap } from "../shared/schema";
 
 const rawItem = (names: Partial<Pick<FoodItemMetadata, "nameEn" | "nameZhHant" | "nameYue">>) => ({
@@ -30,7 +33,8 @@ const noodles = item({ nameEn: "Rice noodles", nameZhHant: "米粉", nameYue: "�
 const bread = item({ nameEn: "Toast", nameZhHant: "多士", nameYue: "多士" });
 const potatoes = item({ nameEn: "Sweet potato", nameZhHant: "番薯", nameYue: "番薯" });
 const otherCarb = item({ nameEn: "Oatmeal", nameZhHant: "燕麥", nameYue: "燕麥" });
-assert(milkTea && soda && rice && noodles && bread && potatoes && otherCarb);
+const broccoli = item({ nameEn: "Broccoli", nameZhHant: "西蘭花", nameYue: "西蘭花" });
+assert(milkTea && soda && rice && noodles && bread && potatoes && otherCarb && broccoli);
 
 assert.equal(classifySweetCategory(rawItem({ nameEn: "milk tea", nameZhHant: "奶茶", nameYue: "奶茶" })), "sweet_drink");
 assert.equal(classifySweetCategory(rawItem({ nameEn: "soda", nameZhHant: "汽水", nameYue: "汽水" })), "sweet_drink");
@@ -89,7 +93,7 @@ const legacyItem = {
   source: "claude" as const,
 };
 const legacySummary = buildFoodFrequencySummary([meal([legacyItem])]);
-assert.equal(legacySummary.foods[0].sweetCategory, undefined);
+assert.equal(legacySummary.foods.length, 0);
 assert.equal(legacySummary.sweetSubtypes.length, 0);
 assert.equal(legacySummary.carbCategories.length, 0);
 
@@ -113,5 +117,38 @@ const deletedMealSummary = buildFoodFrequencySummary([
 ]);
 assert.equal(deletedMealSummary.totalMeals, 1);
 assert.equal(deletedMealSummary.foods[0].mealCount, 1);
+
+const crossPathMeals = [
+  ...Array.from({ length: 7 }, () => meal([broccoli, rice])),
+  ...Array.from({ length: 6 }, () => meal([broccoli, milkTea])),
+  ...Array.from({ length: 5 }, () => meal([broccoli, soda])),
+  ...Array.from({ length: 4 }, () => meal([broccoli, noodles])),
+  ...Array.from({ length: 3 }, () => meal([broccoli, bread])),
+  ...Array.from({ length: 2 }, () => meal([broccoli, potatoes])),
+  ...Array.from({ length: 2 }, () => meal([broccoli, otherCarb])),
+];
+const generalTopList = buildGeneralGlucosePatternComponents(crossPathMeals)
+  .filter(food => food.mealCount > 1)
+  .slice(0, 5)
+  .map(food => food.foodNameEn);
+const foodFrequencySummary = buildFoodFrequencySummary(crossPathMeals);
+const foodFrequencyTopFive = selectGeneralTopFoods(foodFrequencySummary.foods)
+  .map(food => food.nameEn);
+assert.deepEqual(
+  foodFrequencyTopFive,
+  generalTopList,
+  "General topList and the five-card food-frequency path agree on the same fixture",
+);
+assert.equal(
+  foodFrequencySummary.foods.some(food => food.nameEn === broccoli.nameEn),
+  false,
+);
+assert.equal(foodFrequencyTopFive.length, 5);
+assert.equal(
+  new Set(foodFrequencyTopFive).has(
+    crossPathMeals[0].foodItems!.find(item => item.isCarb)?.nameEn ?? "",
+  ),
+  true,
+);
 
 console.log("food-frequency tests passed");

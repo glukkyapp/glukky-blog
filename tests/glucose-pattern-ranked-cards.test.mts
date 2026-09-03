@@ -347,9 +347,9 @@ check("Food-frequency category labels cover sweet and carb categories in every l
     .every(key => locale.includes(`"${key}"`)),
 ));
 check("Recurring-food titles and category-card copy are localized",
-  en.includes('"title": "Your favourite foods"') &&
-  zhHant.includes('"title": "你最喜歡的食物"') &&
-  yue.includes('"title": "你最鍾意嘅食物"') &&
+  en.includes('"title": "Your most frequently eaten blood sugar–raising foods"') &&
+  zhHant.includes('"title": "你最常吃的升糖飲食"') &&
+  yue.includes('"title": "你最常食嘅升糖飲食"') &&
   [en, zhHant, yue].every(locale => locale.includes('"favourite_category_title"')));
 check("Personalised glucose copy avoids threshold and colour-band wording",
   en.includes('"personalised_popup_title": "Personalised glucose values ready"') &&

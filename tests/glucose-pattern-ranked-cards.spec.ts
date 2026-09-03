@@ -237,12 +237,11 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     totalMeals: 25,
     eligible: true,
     foods: [
-      { nameEn: "Chicken breast", nameZhHant: "雞胸肉", nameYue: "雞胸肉", mealCount: 6, giRank: null, giStatus: "unavailable" },
-      { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 5, giRank: "high", giStatus: "resolved" },
-      { nameEn: "Vegetables", nameZhHant: "蔬菜", nameYue: "菜", mealCount: 4, giRank: null, giStatus: "pending" },
-      { nameEn: "Cake", nameZhHant: "蛋糕", nameYue: "蛋糕", mealCount: 3, giRank: "medium", giStatus: "resolved" },
-      { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 2, giRank: "low", giStatus: "resolved" },
-      { nameEn: "Oats", nameZhHant: "燕麥", nameYue: "燕麥", mealCount: 1 },
+      { nameEn: "Rice", nameZhHant: "白飯", nameYue: "白飯", mealCount: 6, giRank: "high", giStatus: "resolved" },
+      { nameEn: "Cake", nameZhHant: "蛋糕", nameYue: "蛋糕", mealCount: 5, giRank: "medium", giStatus: "resolved" },
+      { nameEn: "Noodles", nameZhHant: "麵條", nameYue: "麵條", mealCount: 4, giRank: "low", giStatus: "resolved" },
+      { nameEn: "Milk tea", nameZhHant: "奶茶", nameYue: "奶茶", mealCount: 3, giRank: "high", giStatus: "resolved" },
+      { nameEn: "Oats", nameZhHant: "燕麥", nameYue: "燕麥", mealCount: 2, giRank: "low", giStatus: "resolved" },
     ],
     sweetSubtypes: [{ sweetCategory: "sweet_drink", mealCount: 3 }],
     carbCategories: [
@@ -263,21 +262,22 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   await expect(page.getByTestId("glucose-mode-hstix")).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByTestId("glucose-impact-low")).toHaveCount(0);
   await expect(page.getByTestId("glucose-general-component-list")).toHaveCount(0);
-  await expect(page.getByTestId("card-recurring-foods")).toContainText("Your favourite foods");
+  await expect(page.getByTestId("card-recurring-foods")).toContainText("Your most frequently eaten blood sugar–raising foods");
   await expect(page.getByTestId("recurring-food-card")).toHaveCount(1);
-  await expect(page.getByTestId("recurring-food-card")).toContainText("Chicken breast");
-  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: Unavailable");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Rice");
+  await expect(page.getByTestId("recurring-food-card")).not.toContainText("Chicken");
+  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: High");
   await expect(page.getByTestId("pattern-swipe-cue")).toContainText("Swipe left to see the next food");
   await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
   await expect(page.getByTestId("pattern-position")).toHaveText("1 / 5");
   await page.getByTestId("pattern-next").click();
-  await expect(page.getByTestId("recurring-food-card")).toContainText("Rice");
-  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: High");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Cake");
+  await expect(page.getByTestId("general-food-gi-rank")).toHaveText("Glycemic index: Medium");
   await expect(page.getByTestId("recurring-food-card")).not.toContainText(/confidence/i);
   await expect(page.getByTestId("pattern-position")).toHaveText("2 / 5");
   await page.getByTestId("pattern-card-viewport").focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByTestId("recurring-food-card")).toContainText("Vegetables");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Noodles");
   await expect(page.getByTestId("pattern-position")).toHaveText("3 / 5");
   const viewportBox = await page.getByTestId("pattern-card-viewport").boundingBox();
   expect(viewportBox).not.toBeNull();
@@ -300,7 +300,7 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
     type: "touchEnd",
     touchPoints: [],
   });
-  await expect(page.getByTestId("recurring-food-card")).toContainText("Cake");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Milk tea");
   await expect(page.getByTestId("pattern-position")).toHaveText("4 / 5");
   await expect(page.getByTestId("card-favourite-category")).toBeVisible();
   await expect(page.getByTestId("card-favourite-category")).toContainText("Your favourite category");
@@ -311,7 +311,7 @@ test("Glucose Patterns opens on recorded cards and lets users browse food detail
   foodFrequencyResponse.carbCategories = [];
   await page.reload();
   await expect(page.getByTestId("recurring-food-card")).toHaveCount(1);
-  await expect(page.getByTestId("recurring-food-card")).toContainText("Chicken breast");
+  await expect(page.getByTestId("recurring-food-card")).toContainText("Rice");
   await expect(page.getByTestId("pattern-position")).toHaveText("1 / 5");
   await expect(page.getByTestId("card-favourite-category")).toHaveCount(0);
 

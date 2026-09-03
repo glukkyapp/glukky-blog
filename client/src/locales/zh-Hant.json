@@ -1190,7 +1190,7 @@
   "offline_body": "請檢查您的網絡連線，然後再試一次。",
   "offline_button": "重新載入",
   "food_frequency": {
-    "title": "你最喜歡的食物",
+    "title": "你最常吃的升糖飲食",
     "favourite_category_title": "你最喜歡的類別",
     "meals": "{{count}} 餐",
     "sweet_drink": "甜味飲料",

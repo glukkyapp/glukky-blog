@@ -1,5 +1,6 @@
 import type { FoodItemMetadata, MealSnap, SweetCategory } from "@shared/schema";
 import { foodItemKey, type CarbCategory } from "./carb-subtypes";
+import { isEligibleGlucosePatternComponent } from "./glucose-patterns";
 
 export const FOOD_FREQUENCY_MEAL_THRESHOLD = 25;
 
@@ -44,8 +45,8 @@ type FrequencySnap = Pick<MealSnap, "foodItems" | "isDeleted">;
  * Counts a component once per meal. Food identity uses all three canonical
  * names, while sweet subtype and carb-category identity are counted
  * independently, so one component can contribute to both without appearing
- * twice as a food.
- * Legacy items without sweet metadata stay unclassified.
+ * twice as a food. Only the same authoritative carb-or-sugar components used
+ * by Glucose Patterns are included in the food list.
  */
 export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequencySummary {
   const activeSnaps = snaps.filter(snap => snap.isDeleted !== true);
@@ -59,7 +60,7 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
     const seenCarbCategoriesThisMeal = new Set<Exclude<CarbCategory, null>>();
 
     for (const item of (snap.foodItems ?? [])) {
-      if (item.source === "derived") continue;
+      if (!isEligibleGlucosePatternComponent(item)) continue;
 
       const key = foodItemKey(item);
       if (!seenFoodsThisMeal.has(key)) {

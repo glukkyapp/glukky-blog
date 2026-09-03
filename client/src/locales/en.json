@@ -1186,7 +1186,7 @@
   "offline_body": "Please check your connection and try again.",
   "offline_button": "Reload",
   "food_frequency": {
-    "title": "Your favourite foods",
+    "title": "Your most frequently eaten blood sugar–raising foods",
     "favourite_category_title": "Your favourite category",
     "meals": "{{count}} meals",
     "sweet_drink": "Sweet drinks",
