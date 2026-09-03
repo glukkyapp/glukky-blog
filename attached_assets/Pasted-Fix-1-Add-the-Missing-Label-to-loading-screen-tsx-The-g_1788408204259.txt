@@ -1,0 +1,91 @@
+Fix 1: Add the Missing Label to loading-screen.tsx
+The global overlay's JSX has no text node at all. Mirror the exact pattern already working in cube-loading-screen.tsx:
+
+tsx
+<div className="cube-loader-wrap">
+  <div className="cube-circle-holder">{/* SVG cube */}</div>
+  <div className="cube-shadow" />
+  <div className="cube-dots-row">
+    <span className="cube-dot" />
+    <span className="cube-dot" />
+    <span className="cube-dot" />
+  </div>
+  <p
+    data-testid="loading-screen-label"
+    style={{
+      fontFamily: isZh ? '"LXGW WenKai TC", serif' : undefined,
+      fontSize: "1.25rem",
+      color: "#FFFFFF",
+      margin: 0,
+      marginTop: "0.75rem",
+      letterSpacing: "0.02em",
+      textAlign: "center",
+    }}
+  >
+    {isZh ? "載入中" : "Loading"}
+  </p>
+</div>
+Note the color needs to be white/light, not rgba(13, 43, 30, 0.5) like the cube screen — this overlay's background is rgba(0, 0, 0, 0.3), a dark semi-transparent scrim, so the cube screen's dark-on-cream color would be nearly invisible here. This is a detail the ticket didn't call out but matters for actual legibility.
+
+Fix 2: Safe-Area on Both Fixed Containers
+Both components use position: "fixed", inset: 0 with no inset compensation. Since these are plain inline styles (not CSS classes with env() already), add the safe-area padding directly as CSS-value strings — inline style objects accept env() as a literal value string:
+
+tsx
+style={{
+  position: "fixed",
+  inset: 0,
+  paddingTop: "env(safe-area-inset-top)",
+  paddingRight: "env(safe-area-inset-right)",
+  paddingBottom: "env(safe-area-inset-bottom)",
+  paddingLeft: "env(safe-area-inset-left)",
+  // ...existing properties
+}}
+Apply this to both cube-loading-screen.tsx's outer div and loading-screen.tsx's outer div. Since both already use display: flex, alignItems: center, justifyContent: center, the content stays centered within the safe area rather than being pushed toward an edge — this is a low-risk change that shouldn't require a visualViewport listener unless testing on-device shows it's still insufficient inside the Natively WebView.
+
+Fix 3: The index.html Gap
+This is the trickiest one, because it happens entirely outside React, before main.tsx even runs. The static page currently only sets a background color — no visible caption during the nativelyOnLoad() → createRoot().render() gap.
+
+The minimal fix is a static HTML fallback caption inside #root, rendered before React hydrates and overwrites it:
+
+xml
+<style>
+  html, body { background-color: #FDFBED; margin: 0; padding: 0; }
+  #root {
+    background-color: #FDFBED;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #root .boot-caption {
+    font-size: 1.5rem;
+    color: rgba(13, 43, 30, 0.5);
+    letter-spacing: 0.02em;
+  }
+</style>
+<div id="root">
+  <p class="boot-caption" id="boot-caption">Loading</p>
+</div>
+<script type="module" src="/src/main.tsx"></script>
+Because createRoot(document.getElementById("root")!).render(<App />) replaces the entire contents of #root, this static caption is automatically cleared the instant React mounts — no manual removal or duplication-guard code is needed for this specific handoff, since React's render call itself clears it.
+
+Locale caveat: this static text can't easily call the app's isZh logic since it runs before any JS module loads. A synchronous, pre-React locale read is possible if the locale is already stored in localStorage or document.documentElement.lang from a previous visit:
+
+xml
+<script>
+  var locale = localStorage.getItem("glukky_locale") || navigator.language || "";
+  document.getElementById("boot-caption").textContent =
+    locale.startsWith("zh") ? "載入中" : "Loading";
+</script>
+If no such value is reliably available synchronously, it's acceptable to default to English for this brief static-only interval, since CubeLoadingScreen takes over with the correct locale within moments.
+
+Fix 4: Duplicate-Caption Guard
+Given CubeLoadingScreen (zIndex: 9999) and LoadingScreen (zIndex: 9998) could theoretically both be mounted simultaneously — if showCube is true and a fetch/mutation also crosses the 2-second useDelayedLoading threshold before cubeDismissed fires — visually the cube screen fully covers the overlay underneath (correct z-order), so there's no double-caption visible to the user. But automated tests should assert this explicitly:
+
+ts
+test("no duplicate visible loading captions when both surfaces could mount", async ({ page }) => {
+  // trigger both showCube=true and a >2s pending fetch
+  const visibleCaptions = await page.locator('[data-testid$="-label"]:visible').count();
+  expect(visibleCaptions).toBeLessThanOrEqual(1);
+});
+This locks in the z-index-based visual guarantee rather than relying on it implicitly.

@@ -1,0 +1,19 @@
+What It Gets Right
+The ticket correctly avoids presuming a fix before diagnosis. Step 1 frames the investigation as "confirm which surface is missing its label" across three candidate layers — the static HTML/native-splash interval, the cold-launch cube, and the delayed global overlay — rather than jumping straight to a patch. That's the right instinct, since "works in Replit preview, fails on the real iPhone" almost always means the bug is in something the preview browser doesn't reproduce.
+
+The "Done looks like" constraint about not depending on "a remote font finishing or an animated state" is a reasonable defensive requirement even before the trace confirms it — text that fades in via animation or waits on a webfont is a classic cause of invisible-but-present text on real devices (iOS throttles animations differently, and slow network delays webfont loading in a way local preview never experiences).
+
+What It Likely Misses
+Viewport/safe-area clipping is the more common cause for this exact symptom, and it's not mentioned. "Visible in Replit preview, invisible on a real iPhone" is the textbook signature of a layout issue tied to the device's actual screen geometry — notch/status-bar safe-area insets, iOS Safari's collapsing toolbar changing 100vh behavior, or standalone/home-screen-installed mode rendering fixed-position elements differently than a browser tab. None of the three traced surfaces in Step 1 (native-splash interval, cube, global overlay) address whether the label is being rendered but positioned off-screen or under the status bar on that specific device. This is worth adding as a fourth thing to check during the trace, alongside font/animation timing.
+
+The Natively/BuildNatively exclusion may rule out the actual mechanism before diagnosis confirms it's unrelated. The ticket explicitly lists "Natively/BuildNatively bridge behavior" as out of scope, but the deployed iPhone app is almost certainly running inside that bridge/WebView wrapper (that's presumably why "the Replit preview" — a plain browser — behaves differently from "the deployed app" on a physical device). If the bridge's WebView handles safe-area insets, splash-screen dismissal timing, or content clipping differently than a bare browser, that's squarely inside the failure path being investigated, not a separate concern. Excluding it from scope before Step 1's trace is complete risks ruling out the real cause by definition rather than by evidence.
+
+Suggested Fix to the Ticket
+Add a fourth trace target to Step 1:
+
+"Check whether the label is present in the DOM but visually clipped or mispositioned due to iOS safe-area insets, standalone/WebView viewport height behavior, or bridge-layer content inset, in addition to the animation/font-dependency hypothesis."
+
+And soften the bridge exclusion to something like:
+
+"Changes to Natively/BuildNatively bridge configuration are out of scope, unless the trace in Step 1 shows the bridge's WebView layer is the direct cause of the missing label, in which case the minimal necessary adjustment is in scope."
+
