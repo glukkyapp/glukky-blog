@@ -1,0 +1,68 @@
+Bug: double acknowledgement call on button click
+onOpenChange={open => { if (!open && activeGuidance) void acknowledgeGuidance(...) }} and the Button onClick both call acknowledgeGuidance. When the user clicks "Got it," the button's onClick fires acknowledgeGuidance, and the Dialog's own close behavior will also fire onOpenChange(false), calling acknowledgeGuidance a second time. That produces two POST /api/user/glucose-guidance/:kind/seen calls per acknowledgement.
+
+Fix: add a lightweight in-flight guard so the request only fires once, and let the button simply close the dialog rather than acknowledging directly:
+
+ts
+const acknowledging = useRef(false);
+
+async function acknowledgeGuidance(kind: GuidanceKind) {
+  if (acknowledging.current) return;
+  acknowledging.current = true;
+  try {
+    await apiRequest("POST", `/api/user/glucose-guidance/${kind}/seen`, {});
+    queryClient.setQueryData(["/api/profile"], (profile) =>
+      profile ? { ...profile, [kindToProfileField(kind)]: true } : profile,
+    );
+  } finally {
+    acknowledging.current = false;
+    dismissGuidance();
+  }
+}
+Keep only the onOpenChange handler calling this; remove the duplicate call from the button's onClick (the button can just be type="button" inside the Dialog and let closing trigger the handler naturally, or call the same guarded function — either way, one call site should own the request).
+
+Bug: failure path leaves the modal in a broken state
+If apiRequest throws (network error), the finally block above still calls dismissGuidance(), which is correct — but as originally written (without the try/finally), a thrown error skips dismissGuidance() entirely, so activeGuidance stays non-null while the Dialog's open prop was already told to close by the user gesture. That's a state mismatch: the user closed it, but your controlled open remains true.
+
+Required behavior: always dismiss visually regardless of network outcome, but track "not yet confirmed seen" so a retry can happen later without re-showing the modal mid-visit. Concretely:
+
+Dismiss the modal unconditionally (finally block, as above).
+
+Keep shownThisVisit = true so it doesn't reopen this session even if the request failed.
+
+Let the next successful profile fetch or a background retry attempt the POST again, since the local optimistic update only fires on success — so failure naturally means profile.hstixMonitoringGuidanceSeen stays false and inline text won't render either. That's an acceptable degraded state (worse than showing nothing would be showing the modal twice), but log/report the failure so it's not silent.
+
+Gap: priority starvation can suppress a guidance message entirely for one visit
+shownThisVisit is scoped per screen mount, and only one guidance modal can win per visit. Consider this real sequence on the Glucose Patterns page: meal-pattern becomes eligible first and wins the slot. The user then opens a specific food's detail dialog in the same page visit, and food-pattern becomes eligible too — but shownThisVisit is already true, so the food-pattern modal never shows this visit.
+
+That's fine for the modal, but check the inline fallback: inline rendering is gated on profile.foodPatternGuidanceSeen, which is still false because the user never acknowledged it. Result: the food detail view shows no guidance text at all during this visit — not the modal, not the inline caution — because the inline branch only renders once seen is true.
+
+This is a real coverage gap for a medical-caution message, not just a polish issue. Two acceptable fixes, pick one and specify it in the ticket:
+
+Always render inline text as a fallback, regardless of seen state, and only use the modal as the special first-time treatment. I.e., inline copy shows whenever the modal isn't currently showing for that context, not only after seen === true. This guarantees the caution text is never silently missing.
+
+Queue the second guidance for the very next screen visit rather than dropping it — track it as "pending eligible" and let a fresh mount immediately win the slot. More complex to implement correctly and less necessary than option 1.
+
+I'd recommend option 1: simpler, and it matches the actual product requirement ("medical disclaimer/advice remain available" — Task #870's own "Done looks like" line). Missing the disclaimer because a different guidance modal happened to win the same visit's slot would violate that requirement.
+
+Missing implementation: kindToProfileField
+The acknowledgement function references kindToProfileField(kind) and a template-interpolated version inconsistently in the two snippets shown. Make this an explicit, exhaustive mapping so a typo can't silently write to the wrong profile field:
+
+ts
+const KIND_TO_PROFILE_FIELD: Record<GuidanceKind, keyof UserProfile> = {
+  hstix: "hstixMonitoringGuidanceSeen",
+  "meal-pattern": "mealPatternGuidanceSeen",
+  "food-pattern": "foodPatternGuidanceSeen",
+};
+Use this both in the optimistic cache update and, ideally, generate the same mapping server-side from a shared enum so the API route can't accept an arbitrary :kind value that doesn't map to a real column.
+
+Minor: candidate array identity
+candidates is a new array literal every render (each t() call and object literal creates new references), so the useEffect dependency technically changes every render. It's harmless today because of the early shownThisVisit || activeGuidance guard, but wrap it in useMemo keyed on the actual eligibility booleans and locale, so the effect only re-evaluates when something real changes — cleaner and avoids relying on the guard alone for correctness if the effect body is ever extended.
+
+Minor: visibility guard doesn't cover occlusion or aria-hidden
+isMeaningfullyVisible correctly checks display, visibility, opacity, viewport intersection, and document.visibilityState, but doesn't check whether an ancestor has aria-hidden="true" or inert (common in tab/accordion implementations that hide content without display: none) or whether another element visually occludes it (e.g., behind an open unrelated dialog). Since you already gate food-pattern on foodDetailDialogOpen explicitly, occlusion is unlikely in practice — but add an aria-hidden ancestor check for robustness, since it's a one-line addition and directly relevant to an accessibility-sensitive feature:
+
+ts
+if (element.closest('[aria-hidden="true"], [inert]')) return false;
+Acknowledgement semantics — confirm intent explicitly in the ticket
+Right now, closing via Escape or backdrop click counts as acknowledgement, identical to clicking "Got it." That's a reasonable, common pattern (similar to consent/disclaimer modals elsewhere in the app), but it should be a stated decision rather than an implicit side effect of reusing onOpenChange, since a reviewer could later ask why dismissing without reading counts the same as confirming. Add one line to the ticket: "Any method of closing the guidance modal (button, Escape, backdrop click) is treated as acknowledgement, consistent with existing disclaimer modal behavior in the app."
