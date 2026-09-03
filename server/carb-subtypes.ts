@@ -3,6 +3,15 @@ import type { SweetCategory } from "@shared/schema";
 
 export type CarbCategory = "rice" | "noodles" | "bread" | "potatoes" | "other" | null;
 export type CarbMatchType = "exact" | "substring_fallback" | "no_match";
+export type CanonicalCarbSubtype =
+  | "brown_rice"
+  | "basmati_rice"
+  | "wholegrain_noodles"
+  | "shirataki_noodles"
+  | "wholegrain_bread"
+  | "sourdough"
+  | "cooled_boiled_potato"
+  | "congee";
 
 export const SWEET_CATEGORY_ALIASES: Record<Exclude<SweetCategory, null>, string[]> = {
   sweet_drink: [
@@ -91,7 +100,7 @@ export const CARB_CATEGORY_ALIASES: Record<Exclude<CarbCategory, null>, string[]
     "薯仔", "土豆", "番薯", "地瓜", "蕃薯", "芋頭", "芋头",
   ],
   other: [
-    "congee", "porridge", "oats", "oatmeal", "corn", "polenta",
+    "congee", "rice porridge", "plain congee", "jook", "porridge", "oats", "oatmeal", "corn", "polenta",
     "粥", "白粥", "皮蛋瘦肉粥", "燕麥", "燕麦", "麥皮", "麦皮", "粟米", "玉米",
   ],
 };
@@ -109,6 +118,77 @@ export function normalize(text: string): string {
     .trim()
     .normalize("NFKC")
     .replace(/\s+/g, "");
+}
+
+const CANONICAL_CARB_SUBTYPE_ALIASES: Array<{
+  category: Exclude<CarbCategory, null>;
+  subtype: CanonicalCarbSubtype;
+  aliases: string[];
+}> = [
+  { category: "rice", subtype: "brown_rice", aliases: ["brown rice", "糙米"] },
+  { category: "rice", subtype: "basmati_rice", aliases: ["basmati", "basmati rice", "印度香米", "巴斯馬蒂米"] },
+  {
+    category: "noodles",
+    subtype: "wholegrain_noodles",
+    aliases: ["wholegrain noodles", "whole grain noodles", "wholewheat noodles", "whole wheat noodles", "全麥麵"],
+  },
+  {
+    category: "noodles",
+    subtype: "shirataki_noodles",
+    aliases: ["shirataki", "shirataki noodles", "konjac", "konjac noodles", "蒟蒻麵"],
+  },
+  {
+    category: "bread",
+    subtype: "wholegrain_bread",
+    aliases: ["wholegrain bread", "whole grain bread", "wholewheat bread", "whole wheat bread", "全麥麵包"],
+  },
+  { category: "bread", subtype: "sourdough", aliases: ["sourdough", "sourdough bread", "酸種麵包"] },
+  {
+    category: "potatoes",
+    subtype: "cooled_boiled_potato",
+    aliases: [
+      "boiled potato cooled before eating",
+      "cooled boiled potato",
+      "cold boiled potato",
+      "煮熟後放涼的薯仔",
+      "煮熟後放涼嘅薯仔",
+    ],
+  },
+  {
+    category: "other",
+    subtype: "congee",
+    aliases: ["congee", "rice porridge", "plain congee", "jook", "粥", "白粥", "米粥"],
+  },
+];
+
+/**
+ * Recognizes canonical prepared identities needed by existing downstream
+ * behavior. This is part of food-item preparation; consumers must use the
+ * prepared subtype rather than matching multilingual names again.
+ */
+export function classifyCanonicalCarbSubtype(
+  item: { nameEn: string; nameZhHant: string; nameYue: string },
+  category: CarbCategory,
+): CanonicalCarbSubtype | null {
+  if (!category) return null;
+  const names = [item.nameEn, item.nameZhHant, item.nameYue].map(normalize).filter(Boolean);
+  const candidates = CANONICAL_CARB_SUBTYPE_ALIASES.filter(entry => entry.category === category);
+
+  for (const candidate of candidates) {
+    const aliases = candidate.aliases.map(normalize);
+    if (names.some(name => aliases.includes(name))) return candidate.subtype;
+  }
+
+  let best: { subtype: CanonicalCarbSubtype; aliasLength: number } | null = null;
+  for (const candidate of candidates) {
+    for (const alias of candidate.aliases.map(normalize)) {
+      if (!alias) continue;
+      if (names.some(name => name.includes(alias)) && (!best || alias.length > best.aliasLength)) {
+        best = { subtype: candidate.subtype, aliasLength: alias.length };
+      }
+    }
+  }
+  return best?.subtype ?? null;
 }
 
 function logCarbMatch(
@@ -207,7 +287,9 @@ export function prepareFoodItems(
       };
       const carbCategory = classifyCarbCategory(names);
       const requestedSubtype = candidate.carbSubtype;
-      const carbSubtype = isValidCarbSubtype(carbCategory, requestedSubtype) ? requestedSubtype : null;
+      const canonicalSubtype = classifyCanonicalCarbSubtype(names, carbCategory);
+      const carbSubtype = canonicalSubtype ??
+        (isValidCarbSubtype(carbCategory, requestedSubtype) ? requestedSubtype : null);
       const sweetCategory = classifySweetCategory(names);
 
       return {

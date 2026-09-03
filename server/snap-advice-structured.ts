@@ -150,6 +150,8 @@ function legacyActionSelectors(body: string): number[] {
 /* ------------------------------------------------------------------ */
 
 interface VegEntry { en: string; "zh-Hant": string; yue: string; aliases: string[]; }
+type CarbSwapCategory = "rice" | "noodles" | "bread" | "potatoes" | "other";
+interface LocalizedSuggestion { en: string; "zh-Hant": string; yue: string; }
 
 /** Approved 13-item vegetable pool. */
 export const NEXT_TIME_VEGETABLES: VegEntry[] = [
@@ -168,11 +170,30 @@ export const NEXT_TIME_VEGETABLES: VegEntry[] = [
   { en: "bean sprouts", "zh-Hant": "芽菜", yue: "芽菜", aliases: ["bean sprout", "芽菜", "豆芽"] },
 ];
 
-/** Approved carb swaps. */
-export const NEXT_TIME_CARB_SWAPS: Record<Locale, string[]> = {
-  en: ["brown rice", "wholegrain noodles", "oats", "sweet potato"],
-  "zh-Hant": ["糙米", "全麥麵", "燕麥", "番薯"],
-  yue: ["糙米", "全麥麵", "燕麥", "番薯"],
+/** Approved carb swaps by canonical component category. */
+export const NEXT_TIME_CARB_SWAPS: Record<CarbSwapCategory, LocalizedSuggestion[]> = {
+  rice: [
+    { en: "brown rice", "zh-Hant": "糙米", yue: "糙米" },
+    { en: "basmati rice", "zh-Hant": "印度香米（巴斯馬蒂米）", yue: "印度香米（巴斯馬蒂米）" },
+  ],
+  noodles: [
+    { en: "wholegrain noodles", "zh-Hant": "全麥麵", yue: "全麥麵" },
+    { en: "shirataki (konjac) noodles", "zh-Hant": "蒟蒻麵", yue: "蒟蒻麵" },
+  ],
+  bread: [
+    { en: "wholegrain bread", "zh-Hant": "全麥麵包", yue: "全麥麵包" },
+    { en: "sourdough bread", "zh-Hant": "酸種麵包", yue: "酸種麵包" },
+  ],
+  potatoes: [
+    { en: "boiled potato, cooled before eating", "zh-Hant": "煮熟後放涼的薯仔", yue: "煮熟後放涼嘅薯仔" },
+  ],
+  other: [],
+};
+
+export const NEXT_TIME_CONGEE_SWAP: LocalizedSuggestion = {
+  en: "Try congee with barley, mung beans, or oats added, or make it with basmati rice instead of plain white rice.",
+  "zh-Hant": "白粥加入大麥、綠豆或燕麥片，或改用印度香米代替白米。",
+  yue: "白粥加大麥、綠豆或者燕麥片，或者改用印度香米代替白米。",
 };
 
 /** The six remaining approved fixed tips. */
@@ -210,20 +231,76 @@ const VEG_TEMPLATE: Record<Locale, (veg: string) => string> = {
 };
 
 const SWAP_TEMPLATE: Record<Locale, (swap: string) => string> = {
-  en: (s) => `Swap to a higher-fibre carb like ${s}.`,
-  "zh-Hant": (s) => `可以換成高纖維碳水化合物，例如${s}。`,
-  yue: (s) => `可以換成高纖碳水，例如${s}。`,
+  en: (s) => `Try swapping to ${s}.`,
+  "zh-Hant": (s) => `可以試試改為${s}。`,
+  yue: (s) => `可以試吓轉做${s}。`,
 };
+
+const RECOMMENDED_SUBTYPES: Partial<Record<CarbSwapCategory, Set<string>>> = {
+  rice: new Set(["brown_rice", "basmati_rice"]),
+  noodles: new Set(["wholegrain_noodles", "shirataki_noodles"]),
+  bread: new Set(["wholegrain_bread", "sourdough"]),
+  potatoes: new Set(["cooled_boiled_potato"]),
+};
+
+const NON_CARB_FIXED_TIP_INDEXES = [1, 3, 4, 5];
+
+function selectNonCarbNextTime(locale: Locale, rand: () => number): string {
+  const tips = NON_CARB_FIXED_TIP_INDEXES.map(index => NEXT_TIME_FIXED_TIPS[locale][index]);
+  return tips[Math.floor(rand() * tips.length)];
+}
+
+function selectCarbSwap(
+  locale: Locale,
+  foodItems: FoodItemMetadata[],
+  rand: () => number,
+): string | null {
+  const preparedCarbs = foodItems.filter(item =>
+    item.isCarb === true &&
+    (item.carbCategory === "rice" ||
+      item.carbCategory === "noodles" ||
+      item.carbCategory === "bread" ||
+      item.carbCategory === "potatoes" ||
+      item.carbCategory === "other"),
+  );
+
+  const hasCongee = preparedCarbs.some(item =>
+    item.carbCategory === "other" && item.carbSubtype === "congee",
+  );
+  if (hasCongee) return NEXT_TIME_CONGEE_SWAP[locale];
+
+  const categoriesAlreadyUsingRecommendedAlternative = new Set(
+    preparedCarbs
+      .filter(item =>
+        RECOMMENDED_SUBTYPES[item.carbCategory as CarbSwapCategory]?.has(item.carbSubtype ?? ""),
+      )
+      .map(item => item.carbCategory as CarbSwapCategory),
+  );
+  const eligibleCategories = Array.from(new Set(
+    preparedCarbs
+      .filter(item => item.carbCategory !== "other")
+      .filter(item => !categoriesAlreadyUsingRecommendedAlternative.has(item.carbCategory as CarbSwapCategory))
+      .map(item => item.carbCategory as CarbSwapCategory),
+  )).filter(category => NEXT_TIME_CARB_SWAPS[category].length > 0);
+
+  const candidates = eligibleCategories.flatMap(category => NEXT_TIME_CARB_SWAPS[category]);
+  if (candidates.length === 0) return null;
+
+  const selected = candidates[Math.floor(rand() * candidates.length)];
+  return SWAP_TEMPLATE[locale](selected[locale]);
+}
 
 /**
  * Select exactly one next-time item:
  * (a) random vegetable from the 13-item pool, excluding vegetables already
- *     in the meal description, (b) random approved carb swap, or
+ *     in the meal description, (b) category-specific carb swap when prepared
+ *     food metadata supports one, or
  * (c) one of the six fixed tips.
  */
 export function selectNextTime(
   locale: string,
   mealDescription: string,
+  foodItems: FoodItemMetadata[] = [],
   rand: () => number = Math.random,
 ): string {
   const loc = normalizeLocale(locale);
@@ -239,8 +316,7 @@ export function selectNextTime(
     }
     // Every vegetable already in the meal — fall through to fixed tips.
   } else if (roll < 2 / 3) {
-    const swaps = NEXT_TIME_CARB_SWAPS[loc];
-    return SWAP_TEMPLATE[loc](swaps[Math.floor(rand() * swaps.length)]);
+    return selectCarbSwap(loc, foodItems, rand) ?? selectNonCarbNextTime(loc, rand);
   }
   const tips = NEXT_TIME_FIXED_TIPS[loc];
   return tips[Math.floor(rand() * tips.length)];

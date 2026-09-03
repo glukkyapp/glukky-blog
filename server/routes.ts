@@ -2561,7 +2561,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             structuredAdvice: buildStructuredAdvice(
               cachedAdvice,
               lang,
-              selectNextTime(lang, [name, sauces, extras].filter(Boolean).join(" ")),
+              selectNextTime(
+                lang,
+                [name, sauces, extras].filter(Boolean).join(" "),
+                structuredFoodItems,
+              ),
             ),
             sources: pickSources(cachedAdvice),
             adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
@@ -2586,7 +2590,11 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
           structuredAdvice: buildStructuredAdvice(
             existingCachedAdvice,
             lang,
-            selectNextTime(lang, [name, sauces, extras].filter(Boolean).join(" ")),
+            selectNextTime(
+              lang,
+              [name, sauces, extras].filter(Boolean).join(" "),
+              structuredFoodItems,
+            ),
           ),
           sources: pickSources(existingCachedAdvice),
           adviceUsedToday: getDailyCount(snapLabelCount, adviceQuotaKey.key),
@@ -2812,7 +2820,11 @@ No explanation, just JSON.`,
       const userAdviceClaude = cleanedResults.find(r => r.locale === lang)?.advice ?? cleanedResults[0].advice;
       const userAdviceSources = pickSources(userAdviceClaude);
       // Server-selected "Next time" item — never cached, always fresh.
-      const nextTimeText = selectNextTime(lang, mealDescriptionForNextTime);
+      const nextTimeText = selectNextTime(
+        lang,
+        mealDescriptionForNextTime,
+        structuredFoodItems,
+      );
       const structuredAdvice = buildStructuredAdvice(userAdviceClaude, lang, nextTimeText);
       // Append and persist the rendered fixed next-time text after generation.
       const userAdvice = userAdviceClaude + "\n" + `${nextTimeLabel(lang)} ${nextTimeText}`;

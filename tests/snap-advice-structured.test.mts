@@ -5,6 +5,8 @@
  */
 
 import { strict as assert } from "assert";
+import { readFileSync } from "node:fs";
+import { getDefaultCarbSubtype, prepareFoodItems } from "../server/carb-subtypes";
 import {
   sanitizeEmoji,
   normalizeSelectors,
@@ -17,6 +19,7 @@ import {
   POSITIVE_LINE,
   NEXT_TIME_VEGETABLES,
   NEXT_TIME_CARB_SWAPS,
+  NEXT_TIME_CONGEE_SWAP,
   NEXT_TIME_FIXED_TIPS,
   nextTimeLabel,
 } from "../server/snap-advice-structured";
@@ -101,29 +104,97 @@ console.log("\nApproved Chinese action copy");
 
 console.log("\nNext-time selection");
 {
+  const prepared = (nameEn: string, nameZhHant = nameEn, nameYue = nameZhHant) =>
+    prepareFoodItems([{ nameEn, nameZhHant, nameYue }]);
   // rand sequence: first < 1/3 → vegetable branch
-  const veg = selectNextTime("zh-Hant", "白飯 叉燒", () => 0.1);
+  const veg = selectNextTime("zh-Hant", "白飯 叉燒", prepared("white rice", "白飯"), () => 0.1);
   check("vegetable branch returns a phrase", veg.length > 0);
   // Vegetable exclusion: meal containing 菜心 never suggests 菜心
   for (let i = 0; i < 30; i++) {
-    const r = selectNextTime("zh-Hant", "菜心炒牛肉", Math.random);
+    const r = selectNextTime("zh-Hant", "菜心炒牛肉", [], Math.random);
     if (r.includes("菜心")) {
       check("excludes vegetables already in the meal", false, r);
       break;
     }
     if (i === 29) check("excludes vegetables already in the meal", true);
   }
-  const swap = selectNextTime("en", "rice", () => 0.5);
-  check("carb-swap branch mentions an approved swap", NEXT_TIME_CARB_SWAPS.en.some((s) => swap.includes(s)));
-  const tip = selectNextTime("yue", "rice", () => 0.9);
+  const riceSwap = selectNextTime("en", "white rice", prepared("white rice", "白飯"), () => 0.5);
+  check("rice receives only a rice swap", NEXT_TIME_CARB_SWAPS.rice.some(option => riceSwap.includes(option.en)));
+  const noodleSwap = selectNextTime("zh-Hant", "wheat noodles", prepared("wheat noodles", "麵"), () => 0.5);
+  check("noodles receive only a noodle swap", NEXT_TIME_CARB_SWAPS.noodles.some(option => noodleSwap.includes(option["zh-Hant"])));
+  const breadSwap = selectNextTime("yue", "white bread", prepared("white bread", "白麵包"), () => 0.5);
+  check("bread receives only a bread swap", NEXT_TIME_CARB_SWAPS.bread.some(option => breadSwap.includes(option.yue)));
+  const potatoSwap = selectNextTime("en", "potato", prepared("potato", "薯仔"), () => 0.5);
+  check("potatoes receive the cooled boiled potato swap", potatoSwap.includes("boiled potato, cooled before eating"));
+  const tip = selectNextTime("yue", "rice", prepared("rice", "白飯"), () => 0.9);
   check("fixed-tip branch returns approved tip", NEXT_TIME_FIXED_TIPS.yue.includes(tip));
+  const noCarb = selectNextTime("en", "egg and broccoli", prepared("egg", "雞蛋"), () => 0.5);
+  check("no-carb meals skip the carb-swap branch", !noCarb.startsWith("Try swapping to"));
+  const malformedCarb = [{
+    nameEn: "mystery", nameZhHant: "未知", nameYue: "未知",
+    isCarb: true, carbCategory: null, carbSubtype: null,
+    subtypeConfirmed: false, source: "claude" as const,
+  }];
+  const malformedFallback = selectNextTime("en", "mystery", malformedCarb, () => 0.5);
+  check("isCarb without a supported category skips carb swaps", !malformedFallback.startsWith("Try swapping to"));
+  for (const alias of ["congee", "rice porridge", "plain congee", "jook", "粥", "白粥", "米粥"]) {
+    const congee = prepared(alias, alias, alias)[0];
+    check(`${alias} is centrally prepared as congee`,
+      congee?.carbCategory === "other" && congee.carbSubtype === "congee");
+  }
+  for (const locale of ["en", "zh-Hant", "yue"] as const) {
+    const congeeSwap = selectNextTime(locale, "白粥", prepared("plain congee", "白粥"), () => 0.5);
+    check(`actual congee receives the congee-only suggestion in ${locale}`,
+      congeeSwap === NEXT_TIME_CONGEE_SWAP[locale]);
+  }
+  const congeeMixedWithOtherSwappableCarbs = [
+    ...prepared("plain congee", "白粥"),
+    ...prepared("white rice", "白飯"),
+    ...prepared("wheat noodles", "麵"),
+  ];
+  check("congee keeps its dedicated suggestion when rice and noodles are also present",
+    selectNextTime("en", "congee with rice and noodles", congeeMixedWithOtherSwappableCarbs, () => 0.5) ===
+      NEXT_TIME_CONGEE_SWAP.en);
+  for (const other of ["oatmeal", "corn", "polenta"]) {
+    const item = prepared(other)[0];
+    check(`${other} remains a non-congee other carb`,
+      item?.carbCategory === "other" && item.carbSubtype === null && item.suggestedSubtype === null);
+    check(`${other} never receives congee advice`,
+      selectNextTime("en", other, [item], () => 0.5) !== NEXT_TIME_CONGEE_SWAP.en);
+  }
+  for (const alternative of [
+    prepared("brown rice", "糙米"),
+    prepared("basmati rice", "印度香米"),
+    prepared("wholegrain noodles", "全麥麵"),
+    prepared("shirataki noodles", "蒟蒻麵"),
+    prepared("wholegrain bread", "全麥麵包"),
+    prepared("sourdough bread", "酸種麵包"),
+    prepared("boiled potato, cooled before eating", "煮熟後放涼的薯仔"),
+  ]) {
+    check(`${alternative[0].nameEn} suppresses its category's carb swap`,
+      !selectNextTime("en", alternative[0].nameEn, alternative, () => 0.5).startsWith("Try swapping to"));
+  }
+  const mixedRice = [
+    ...prepared("white rice", "白飯"),
+    ...prepared("brown rice", "糙米"),
+  ];
+  check("a recommended alternative suppresses the whole category when standard rice is also present",
+    !selectNextTime("en", "white rice and brown rice", mixedRice, () => 0.5).startsWith("Try swapping to"));
+  check("congee is never the generic default for other carbs", getDefaultCarbSubtype("other") === null);
   // All vegetables in meal → falls back to fixed tips
   const allVeg = NEXT_TIME_VEGETABLES.map((v) => v.aliases[0]).join(" ");
-  const fallback = selectNextTime("en", allVeg, () => 0.1);
+  const fallback = selectNextTime("en", allVeg, [], () => 0.1);
   check("all-vegetables-present falls back to fixed tip", NEXT_TIME_FIXED_TIPS.en.includes(fallback));
   check("13 vegetables in pool", NEXT_TIME_VEGETABLES.length === 13);
   check("6 fixed tips per locale", NEXT_TIME_FIXED_TIPS.en.length === 6 && NEXT_TIME_FIXED_TIPS.yue.length === 6);
-  check("unknown locale falls back to en", NEXT_TIME_FIXED_TIPS.en.includes(selectNextTime("fr", "x", () => 0.9)));
+  check("unknown locale falls back to en", NEXT_TIME_FIXED_TIPS.en.includes(selectNextTime("fr", "x", [], () => 0.9)));
+}
+
+console.log("\nNext-time route metadata contract");
+{
+  const routes = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+  const selectorCalls = routes.match(/selectNextTime\([\s\S]*?structuredFoodItems[\s\S]*?\)/g) ?? [];
+  check("fresh and both cache response paths pass prepared components to Next time", selectorCalls.length === 3);
 }
 
 console.log("\nWatch-out row parsing");
