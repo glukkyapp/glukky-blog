@@ -1,0 +1,108 @@
+Make the changes in server/snap-advice-structured.ts, inside or immediately beside selectNextTime().
+
+1. Require a Supported Category
+Replace the broad carb guard:
+
+ts
+const carbs = foodItems.filter(item => item.isCarb);
+
+if (carbs.length === 0) {
+  // choose a non-carb Next time suggestion
+}
+with a supported-category guard:
+
+ts
+type CarbSwapCategory = "rice" | "noodles" | "bread" | "potatoes" | "other";
+
+const CARB_SWAP_CATEGORIES = new Set<CarbSwapCategory>([
+  "rice",
+  "noodles",
+  "bread",
+  "potatoes",
+  "other",
+]);
+
+const swappableCarbs = foodItems.filter(
+  (item) =>
+    item.isCarb === true &&
+    item.carbCategory != null &&
+    CARB_SWAP_CATEGORIES.has(item.carbCategory as CarbSwapCategory),
+);
+
+if (swappableCarbs.length === 0) {
+  return selectNonCarbNextTime(locale, mealDescription);
+}
+This means isCarb: true is not enough. The server must also know whether it is rice, noodles, bread, potatoes, or another supported category before it offers a category-specific swap.
+
+2. Split other from Congee
+Do not put the congee copy in the generic other option pool.
+
+ts
+const NEXT_TIME_CARB_SWAPS = {
+  rice: [
+    // existing brown-rice option
+    // new basmati-rice option
+  ],
+  noodles: [
+    // existing wholegrain-noodle option
+    // new shirataki-noodle option
+  ],
+  bread: [
+    // existing wholegrain-bread option
+    // new sourdough-bread option
+  ],
+  potatoes: [
+    // boiled potato, cooled and eaten cold
+  ],
+  // No congee option here.
+  other: [],
+} satisfies Record<CarbSwapCategory, NextTimeSuggestion[]>;
+Then define a separate, explicit congee test. Reuse an existing prepared subtype/canonical food identity if one is available; do not classify raw names inside this selector.
+
+ts
+function isRecognizedCongee(item: PreparedFoodItem): boolean {
+  return item.carbCategory === "other" &&
+    item.carbSubtype === "congee";
+}
+Add the congee option separately:
+
+ts
+const NEXT_TIME_CONGEE_SWAP: NextTimeSuggestion = {
+  en: "Try congee with barley, mung beans, or oats.",
+  zhHant: "可試白粥加入大麥、綠豆或燕麥片。",
+  yue: "下次可試白粥加大麥、綠豆或者燕麥片。",
+};
+Select it only if a confirmed component is congee:
+
+ts
+const congeeItems = swappableCarbs.filter(isRecognizedCongee);
+
+if (congeeItems.length > 0) {
+  return NEXT_TIME_CONGEE_SWAP[locale];
+}
+For any remaining other carb with no category-specific swap, fall back to a current non-carb suggestion:
+
+ts
+const categories = [...new Set(
+  swappableCarbs
+    .filter(item => !isRecognizedCongee(item))
+    .map(item => item.carbCategory as CarbSwapCategory),
+)];
+
+const eligibleCategories = categories.filter(
+  category => NEXT_TIME_CARB_SWAPS[category].length > 0,
+);
+
+if (eligibleCategories.length === 0) {
+  return selectNonCarbNextTime(locale, mealDescription);
+}
+Net Result
+Detected component	Outcome
+Egg, broccoli, fish	Non-carb “Next time” suggestion
+isCarb: true, but no valid category	Non-carb suggestion
+White rice	Brown rice or basmati-rice suggestion
+Standard noodles	Wholegrain noodles or shirataki suggestion
+White bread	Wholegrain bread or sourdough suggestion
+Potato	Boiled, cooled-and-eaten-cold potato suggestion
+Congee	Congee-with-barley/mung-beans/oats suggestion
+Bun, cheung fun, turnip cake, pastry in other	Non-carb suggestion, not a congee suggestion
