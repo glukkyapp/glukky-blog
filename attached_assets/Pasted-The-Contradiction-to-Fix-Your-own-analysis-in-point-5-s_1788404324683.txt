@@ -1,0 +1,35 @@
+The Contradiction to Fix
+Your own analysis in point 5 states clearly:
+
+"Search results should not be narrowed to carb-or-sugar items... leave buildRetainedFoodHistory() and the mode-specific food-search source unchanged."
+
+But the ticket's "Done looks like" section says:
+
+"Ordinary non-carb, non-sweet foods such as broccoli are excluded from General results, including frequency counts, ordering, search suggestions, and selected detail fallbacks..."
+
+And the Steps section repeats this:
+
+"Trace the General aggregation, search/detail, and UI consumers to find every path that currently admits ordinary non-carb foods..."
+
+These two statements directly conflict. Per your own code trace, buildRetainedFoodHistory() powers the search endpoint and is explicitly supposed to stay broad — a user typing "broccoli" into food search should still find it, since search is a general lookup tool, not a glucose-pattern insight. If an engineer implements the "Done looks like" bullet literally, they'll incorrectly narrow search and violate the design decision you made two sections earlier.
+
+Fix: remove "search suggestions" from that bullet, and change the Steps wording to explicitly exclude search from the audit scope:
+
+"Ordinary non-carb, non-sweet foods such as broccoli are excluded from General frequency counts, ordering, and selected detail fallbacks where the eligibility rule applies to a Glucose Pattern surface. Food search suggestions remain unaffected and continue returning all retained food history, matching existing HStix-mode search behavior."
+
+Confirm This Part Is Solid
+The core diagnosis is sound: two separate General aggregation implementations exist —
+
+buildGeneralGlucosePatternComponents() (used by topList) already applies isEligibleGlucosePatternComponent, correctly excluding broccoli.
+
+buildFoodFrequencySummary() + selectGeneralTopFoods() (used by /api/snap/food-frequency, which actually powers the five-card UI) applies no such filter — only mealCount > 1 and a derived-source check.
+
+That's the real bug: the UI's five recurring-food cards read from the unfiltered path, not the already-correct one. This is worth stating explicitly as a root-cause line in the ticket body, since right now it's buried in the technical notes rather than the "What & Why" section — an implementer skimming just the top might miss that there are two divergent code paths rather than one buggy filter.
+
+Two Gaps Worth Adding
+1. "Selected detail fallbacks" is undefined. The ticket references this in "Done looks like" without describing what code path it refers to — none of the six numbered technical notes mention a detail-fallback surface. Either cite the specific function/file it means, or drop the phrase if it's not represented in the trace above.
+
+2. Add a regression that locks the two paths together. Since the root cause is architectural drift between buildGeneralGlucosePatternComponents() and buildFoodFrequencySummary(), add a test asserting both paths return equivalent eligibility for the same fixture snaps — otherwise this exact bug (one path getting the filter, the other not) can silently reappear the next time either function is touched.
+
+Locale Strings for the Title Change
+The ticket doesn't supply the actual replacement copy — worth pinning down now rather than leaving it to translation guesswork:
