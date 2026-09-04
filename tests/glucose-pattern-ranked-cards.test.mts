@@ -335,6 +335,11 @@ check("General and HStix food cards are borderless and use the Profile elevation
   page.includes("glucose-pattern-card is-active min-h-40") &&
   styles.includes("border-radius: 28px !important") &&
   styles.includes("0 4px 14px rgba(13, 126, 143, 0.08) !important"));
+check("General copy is nudged right while the category card uses the Profile surface",
+  recurringFoods.includes('className="relative left-[3px] min-w-0" data-testid="general-food-copy"') &&
+  recurringFoods.includes('className="relative left-[3px] truncate text-sm font-medium text-[var(--brand-ink)]" data-testid="general-next-food-name"') &&
+  recurringFoods.includes('className="mb-5 border-0 bg-[var(--brand-cream-card)]" data-testid="card-favourite-category"') &&
+  !recurringFoods.includes('border-[var(--brand-teal-soft)] bg-[var(--brand-teal-wash)]'));
 check("HStix badge and supporting-text colours meet WCAG AA against every pale card surface",
   [
     ["#1F6B4B", "#DDF4E8"],
@@ -437,6 +442,8 @@ check("Navigation keeps exactly the five requested destinations",
   nav.includes('key: "profile"') &&
   !nav.includes("overflowX") &&
   nav.includes("flex-1"));
+check("Navigation uses the requested translucent blue-grey surface",
+  nav.includes('backgroundColor: "rgba(174,209,214,0.85)"'));
 check("Profile contains the three labeled personal shortcuts",
   profile.includes("profile-personal-shortcuts") &&
   profile.includes('path: "/hstix"') &&

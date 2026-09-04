@@ -85,7 +85,7 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   }));
   await page.route("**/api/snap/food-frequency", route => route.fulfill({
     contentType: "application/json",
-    body: JSON.stringify({ totalMeals: 10, eligible: true, foods, topFoods: foods, sweetSubtypes: [], carbCategories: [] }),
+    body: JSON.stringify({ totalMeals: 10, eligible: true, foods, topFoods: foods, sweetSubtypes: [], carbCategories: [{ carbCategory: "rice", mealCount: 5 }] }),
   }));
 
   await page.goto("/glucose-patterns");
@@ -94,6 +94,9 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   await expect(page.getByTestId("recurring-food-card")).toHaveCSS("border-width", "0px");
   await expect(page.getByTestId("recurring-food-card")).toHaveCSS("border-radius", "28px");
   await expect(page.getByTestId("recurring-food-card")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
+  await expect(page.getByTestId("general-food-copy")).toHaveCSS("left", "3px");
+  await expect(page.getByTestId("card-favourite-category")).toHaveCSS("background-color", "rgb(255, 248, 236)");
+  await expect(page.getByTestId("card-favourite-category")).toHaveCSS("border-width", "0px");
   const generalShadowRoom = await page.getByTestId("recurring-food-card").evaluate(element => {
     const card = element.getBoundingClientRect();
     const viewport = element.closest('[data-testid="pattern-card-viewport"]')!.getBoundingClientRect();
@@ -126,6 +129,7 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
   await expect(page.getByTestId("pattern-swipe-tutorial")).toBeVisible({ timeout: 600 });
   await expect(page.getByTestId("pattern-next-card-sliver")).toBeVisible();
+  await expect(page.getByTestId("general-next-food-name")).toHaveCSS("left", "3px");
   expect(await page.locator(".swipe-tutorial-nudge").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
   expect(tutorialSeen).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem("glukky_glucose_patterns_swipe_tutorial_seen"))).toBeNull();
@@ -372,6 +376,7 @@ test("Navigation fits five equal slots and Profile exposes the moved tools", asy
   await page.goto("/");
   const nav = page.getByTestId("nav-floating-bar");
   await expect(nav).toBeVisible();
+  await expect(nav.locator(":scope > div")).toHaveCSS("background-color", "rgba(174, 209, 214, 0.85)");
   await expect(nav.locator('button[data-testid^="nav-tab-"]')).toHaveCount(5);
   await expect(page.getByTestId("nav-tab-hstix")).toHaveCount(0);
   await expect(page.getByTestId("nav-tab-health_info")).toHaveCount(0);

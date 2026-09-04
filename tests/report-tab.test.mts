@@ -48,6 +48,7 @@ const migrationsSource = readFileSync("server/startup-migrations.ts", "utf8");
 console.log("\nReport UI contracts");
 check("Food nav item was replaced by Report", nav.includes('key: "report"') && !nav.includes('key: "food"'));
 check("Report navigation always resets to Daily", nav.includes('setLocation(key === "report" ? "/report" : path)'));
+check("Navigation keeps the requested translucent blue-grey surface", nav.includes('backgroundColor: "rgba(174,209,214,0.85)"'));
 check("Daily and Last-2-month panels are explicit", report.includes("report-panel-daily") && report.includes("report-panel-two-month"));
 check("Period switch uses native button semantics", report.includes("aria-pressed={tab === key}") && !report.includes('role="tab"'));
 check("Daily view does not duplicate the former Weekly report", !report.includes('variant="preview"') && !report.includes("button-open-weekly-report"));

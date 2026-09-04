@@ -97,7 +97,7 @@ export default function FloatingNavBar() {
       <div
         className="flex items-center w-full h-full px-2"
         style={{
-          backgroundColor: "rgba(187,222,214,0.85)",
+          backgroundColor: "rgba(174,209,214,0.85)",
           borderRadius: "160px",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
         }}

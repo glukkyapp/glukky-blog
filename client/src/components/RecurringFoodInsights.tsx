@@ -81,7 +81,7 @@ export function RecurringFoodInsights() {
               nextCard={activeIndex < topFoods.length - 1 ? (
                 <Card className="glucose-pattern-card border-0 bg-[var(--brand-cream-card)]">
                   <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
-                    <span className="truncate text-sm font-medium text-[var(--brand-ink)]">{displayName(topFoods[activeIndex + 1])}</span>
+                    <span className="relative left-[3px] truncate text-sm font-medium text-[var(--brand-ink)]" data-testid="general-next-food-name">{displayName(topFoods[activeIndex + 1])}</span>
                     <span className="shrink-0 text-xs text-[var(--brand-muted)]">
                       {t("food_frequency.meals", { count: topFoods[activeIndex + 1].mealCount })}
                     </span>
@@ -94,7 +94,7 @@ export function RecurringFoodInsights() {
                 data-testid="recurring-food-card"
               >
                 <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
-                  <div className="min-w-0">
+                  <div className="relative left-[3px] min-w-0" data-testid="general-food-copy">
                     <span className="block truncate text-sm font-medium text-[var(--brand-ink)]">{displayName(activeFood)}</span>
                     <p className="mt-1 text-xs text-[var(--brand-muted)]" data-testid="general-food-gi-rank">
                       <span className="font-medium">{t("glucose.gi_label")}:</span>{" "}
@@ -113,7 +113,7 @@ export function RecurringFoodInsights() {
         </section>
       )}
       {favouriteCategory && (
-        <Card className="mb-5 border-[var(--brand-teal-soft)] bg-[var(--brand-teal-wash)]" data-testid="card-favourite-category">
+        <Card className="mb-5 border-0 bg-[var(--brand-cream-card)]" data-testid="card-favourite-category">
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="text-base text-[var(--brand-ink)]">
               {t("food_frequency.favourite_category_title")}
