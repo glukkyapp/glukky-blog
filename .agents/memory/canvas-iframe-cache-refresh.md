@@ -7,4 +7,6 @@ Do not treat a successful live canvas API update as the only implementation of a
 
 **Why:** Live board updates are external to the ordinary source diff. A change can look correct during the session yet be absent from reviewable project state.
 
-**How to apply:** When changing an existing frame’s URL or presentation metadata, update the live board and preserve the resulting frame state as part of the artifact.
+Before diagnosing colored gutters around an iframe as a stale preview or CSS problem, check the canvas geometry for another iframe occupying nearly the same coordinates. A slightly offset underlying frame can appear as narrow colored side panels.
+
+**How to apply:** Inspect overlaps among canvas shapes first. When changing frame placement, update the live board and preserve the resulting frame state as part of the artifact.
