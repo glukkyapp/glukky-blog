@@ -1,0 +1,35 @@
+[
+  {
+    "route": "glucose/GlucosePattern",
+    "viewport": "1280x720",
+    "html": "rgb(254, 242, 224)",
+    "body": "rgb(254, 242, 224)",
+    "root": "rgb(254, 242, 224)",
+    "wrapper": "rgb(254, 242, 224)",
+    "rightEdge": "rgb(254, 242, 224)",
+    "edgeTag": "DIV",
+    "file": "screenshots/glucose-pattern-en-wide-cream.png"
+  },
+  {
+    "route": "glucose/GlucosePatternZhHant",
+    "viewport": "1280x720",
+    "html": "rgb(254, 242, 224)",
+    "body": "rgb(254, 242, 224)",
+    "root": "rgb(254, 242, 224)",
+    "wrapper": "rgb(254, 242, 224)",
+    "rightEdge": "rgb(254, 242, 224)",
+    "edgeTag": "DIV",
+    "file": "screenshots/glucose-pattern-zh-wide-cream.png"
+  },
+  {
+    "route": "glucose-patterns/NeedsMoreReadings",
+    "viewport": "1280x720",
+    "html": "rgb(254, 242, 224)",
+    "body": "rgb(254, 242, 224)",
+    "root": "rgb(254, 242, 224)",
+    "wrapper": "rgb(254, 242, 224)",
+    "rightEdge": "rgb(254, 242, 224)",
+    "edgeTag": "MAIN",
+    "file": "screenshots/needs-more-readings-wide-cream.png"
+  }
+]

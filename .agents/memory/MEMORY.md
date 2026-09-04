@@ -8,3 +8,4 @@
 - [Glucose pattern index vs partners](glucose-pattern-index-vs-partners.md) — carb/sweet-only index; ordinary foods remain eligible as explanatory meal partners.
 - [Native splash handoff](native-splash-handoff.md) — ensure static fallback content exists before dismissing the native splash; React should replace it on first paint.
 - [Launch media preload compatibility](launch-media-preload-compatibility.md) — keep the initial HTML video authoritative; Chromium may ignore `as="video"`, and CSS properties are not media features.
+- [Canvas state durability](canvas-iframe-cache-refresh.md) — canvas API updates alone are not reviewable; pair presentation changes with durable artifact state.

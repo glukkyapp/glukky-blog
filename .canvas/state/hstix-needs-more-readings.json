@@ -1,0 +1,12 @@
+{
+  "shapeId": "hstix-needs-more-readings",
+  "shapeType": "iframe",
+  "x": 765,
+  "y": 1854,
+  "w": 390,
+  "h": 844,
+  "url": "https://5322b358-f4bd-4c78-9be1-d8e103e57e4b-00-3ov5vcspa8o5o.riker.replit.dev/__mockup/preview/glucose-patterns/NeedsMoreReadings?surface=cream-20260904",
+  "componentPath": "artifacts/mockup-sandbox/src/components/mockups/glucose-patterns/NeedsMoreReadings.tsx",
+  "componentName": "HStix — Needs More Readings",
+  "state": "live"
+}
