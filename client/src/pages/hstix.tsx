@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock3, Droplet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearch } from "wouter";
 import PostMealCard from "@/components/PostMealCard";
+import { GlucoseGuidanceInline, GlucoseMonitoringGuidance } from "@/components/glucose-monitoring-guidance";
 import { useToast } from "@/hooks/use-toast";
 
 type HstixReading = {
@@ -42,6 +43,8 @@ export default function Hstix() {
   });
   const editingReading = validReadingId ? data?.readings.find(reading => reading.id === validReadingId) ?? null : null;
   const [correctionExpired, setCorrectionExpired] = useState(false);
+  const [entryElement, setEntryElement] = useState<HTMLElement | null>(null);
+  const [activeGuidance, setActiveGuidance] = useState<"hstix" | "meal-pattern" | "food-pattern" | null>(null);
   const handledExpiredReadingId = useRef<number | null>(null);
   const closeExpiredCorrection = useCallback((expiredReadingId?: number) => {
     const id = expiredReadingId ?? validReadingId;
@@ -75,6 +78,13 @@ export default function Hstix() {
     return () => window.clearTimeout(timer);
   }, [closeExpiredCorrection, editingReading?.id, editingReading?.correctionExpiresAt]);
   const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
+  const guidanceCandidates = useMemo(() => [{
+    kind: "hstix" as const,
+    // A meal-log link is contextual editing, not a voluntarily opened manual
+    // monitoring screen. Home and direct HStix visits remain eligible.
+    eligible: showEntryForm && !validMealSnapId,
+    element: entryElement,
+  }], [entryElement, i18n.language, showEntryForm, validMealSnapId]);
 
   return (
     <main className="mx-auto w-full max-w-md space-y-5 px-4 pb-28 pt-6">
@@ -91,18 +101,21 @@ export default function Hstix() {
       </header>
 
       {showEntryForm && (
-        <PostMealCard
-          standalone
-          mealSnapId={validMealSnapId}
-          hstixReadingId={validReadingId}
-          initialValue={editingReading?.glucoseMmol ?? null}
-          initialNote={editingReading?.note ?? null}
-          onDone={() => {
-            void refetch();
-            if (validMealSnapId) setLocation("/food-log");
-          }}
-          onHstixCorrectionExpired={closeExpiredCorrection}
-        />
+        <section ref={setEntryElement}>
+          <PostMealCard
+            standalone
+            mealSnapId={validMealSnapId}
+            hstixReadingId={validReadingId}
+            initialValue={editingReading?.glucoseMmol ?? null}
+            initialNote={editingReading?.note ?? null}
+            onDone={() => {
+              void refetch();
+              if (validMealSnapId) setLocation("/food-log");
+            }}
+            onHstixCorrectionExpired={closeExpiredCorrection}
+          />
+          {!validMealSnapId && <GlucoseGuidanceInline kind="hstix" hidden={activeGuidance === "hstix"} />}
+        </section>
       )}
 
       <section aria-labelledby="hstix-history-heading" className="space-y-3">
@@ -142,6 +155,7 @@ export default function Hstix() {
           </p>
         )}
       </section>
+      <GlucoseMonitoringGuidance candidates={guidanceCandidates} onActiveChange={setActiveGuidance} />
     </main>
   );
 }

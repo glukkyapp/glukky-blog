@@ -14,10 +14,7 @@ import { hapticTap } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 
 interface Props {
-  snapId?: number;
-  hasFastingBaseline?: boolean;
   onDone: (result?: { reading?: { id: number }; correctionExpiresAt?: string }) => void;
-  initialStep?: "ask" | "keypad";
   standalone?: boolean;
   initialValue?: number | null;
   initialNote?: string | null;
@@ -26,18 +23,9 @@ interface Props {
   onHstixCorrectionExpired?: (readingId?: number) => void;
 }
 
-type Step = "ask" | "keypad" | "symptom" | "walked";
-
 const INTEGER_RANGE = Array.from({ length: 19 }, (_, i) => i + 2);
 const DEFAULT_INT_IDX = 8;
 const DECIMAL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-const FASTING_OPTIONS = [4.5, 5.0, 5.5, 6.0, 6.5];
-const SYMPTOM_OPTIONS = [
-  { value: "normal",         labelKey: "glucose.symptom_normal"  },
-  { value: "tired",          labelKey: "glucose.symptom_tired"   },
-  { value: "blurred_vision", labelKey: "glucose.symptom_blurred" },
-  { value: "thirsty",        labelKey: "glucose.symptom_thirsty" },
-];
 
 function IntegerWheel({
   value,
@@ -160,10 +148,7 @@ function IntegerWheel({
 }
 
 export default function PostMealCard({
-  snapId,
-  hasFastingBaseline = false,
   onDone,
-  initialStep,
   standalone = false,
   initialValue = null,
   initialNote = null,
@@ -172,16 +157,11 @@ export default function PostMealCard({
   onHstixCorrectionExpired,
 }: Props) {
   const { t } = useTranslation();
-  const [step, setStep] = useState<Step>(standalone ? "keypad" : (initialStep ?? "ask"));
   const [intPart, setIntPart] = useState<number | null>(null);
   const [decPart, setDecPart] = useState<number | null>(null);
   const [note, setNote] = useState("");
-  const [symptom, setSymptom] = useState<string | null>(null);
-  const [selectedFasting, setSelectedFasting] = useState<number | null>(null);
-  const [fastingUnknown, setFastingUnknown] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [alertType, setAlertType] = useState<"low" | "high" | null>(null);
-  const [walkedAnswer, setWalkedAnswer] = useState<boolean | null>(null);
   const [submitError, setSubmitError] = useState(false);
 
   useEffect(() => {
@@ -199,8 +179,7 @@ export default function PostMealCard({
       ? parseFloat(`${intPart}.${decPart}`)
       : null;
 
-  const fastingSelected = hasFastingBaseline || selectedFasting !== null || fastingUnknown;
-  const canConfirmKeypad = glucoseValue !== null && (standalone || fastingSelected);
+  const canConfirmKeypad = glucoseValue !== null;
 
   const handleBackspace = () => {
     hapticTap("SOFT");
@@ -215,10 +194,6 @@ export default function PostMealCard({
     hapticTap("LIGHT");
     if (submitting) return;
     if (glucoseValue === null) return;
-    if (standalone) {
-      void submit(false);
-      return;
-    }
     if (glucoseValue < 4.0) {
       setAlertType("low");
       return;
@@ -227,13 +202,13 @@ export default function PostMealCard({
       setAlertType("high");
       return;
     }
-    setStep("walked");
+    void submit();
   };
 
   const handleAlertConfirm = () => {
     hapticTap("LIGHT");
     setAlertType(null);
-    setStep("walked");
+    void submit();
   };
 
   const handleAlertCancel = () => {
@@ -241,60 +216,26 @@ export default function PostMealCard({
     setAlertType(null);
   };
 
-  const submit = async (skip: boolean, walked: boolean | null = null) => {
+  const submit = async () => {
     setSubmitting(true);
     setSubmitError(false);
     try {
-      if (standalone) {
-        if (glucoseValue === null) return;
-        const response = await apiRequest(hstixReadingId ? "PATCH" : "POST", hstixReadingId ? `/api/hstix/readings/${hstixReadingId}` : "/api/hstix/readings", {
-          glucoseMmol: glucoseValue,
-          ...(mealSnapId != null ? { mealSnapId } : {}),
-          ...(note.trim() ? { note: note.trim() } : {}),
-        });
-        const result = await response.json();
-        queryClient.invalidateQueries({ queryKey: ["/api/hstix/readings"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
-        if (!hstixReadingId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
-        }
-        onDone(result);
-        return;
-      }
-      if (!snapId) {
-        setSubmitError(true);
-        return;
-      }
-      const isSymptomOnly = !skip && glucoseValue === null;
-      await apiRequest("POST", "/api/snap/post-meal", {
-        snapId,
-        ...(skip
-          ? { skip: true }
-          : isSymptomOnly
-          ? { symptom }
-          : {
-              glucoseMmol: glucoseValue,
-              ...(!hasFastingBaseline && !fastingUnknown && selectedFasting !== null
-                ? { fastingBaseline: selectedFasting, fastingBaselineEstimated: false }
-                : {}),
-              ...(walked !== null ? { postMealWalked: walked } : {}),
-            }),
+      if (glucoseValue === null) return;
+      const response = await apiRequest(hstixReadingId ? "PATCH" : "POST", hstixReadingId ? `/api/hstix/readings/${hstixReadingId}` : "/api/hstix/readings", {
+        glucoseMmol: glucoseValue,
+        ...(mealSnapId != null ? { mealSnapId } : {}),
+        ...(note.trim() ? { note: note.trim() } : {}),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
+      const result = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/hstix/readings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
-      if (!skip && glucoseValue !== null) {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
+      if (!hstixReadingId) {
         queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       }
-      if (!skip && !isSymptomOnly && glucoseValue !== null) {
-        track("glucose_completed", { recorded: true });
-      }
-      if (isSymptomOnly && symptom !== null) {
-        track("symptoms_checked", { recorded: true });
-      }
-      onDone();
+      track("glucose_completed", { recorded: true });
+      onDone(result);
     } catch (e) {
       console.error("[PostMealCard] submit error:", e);
       if (standalone && hstixReadingId && String(e).includes("HSTIX_CORRECTION_EXPIRED")) {
@@ -312,99 +253,19 @@ export default function PostMealCard({
     boxShadow: "0 4px 14px rgba(44,72,56,0.06)",
   };
 
-  if (step === "ask") {
-    return (
+  const alertTitleKey =
+    alertType === "low" ? "glucose.alert_low_title" : "glucose.alert_high_title";
+  const alertBodyKey =
+    alertType === "low" ? "glucose.alert_low_body" : "glucose.alert_high_body";
+  const alertBodyLines = alertType ? t(alertBodyKey).split("\n") : [];
+
+  return (
+    <>
       <div
         className="rounded-2xl p-5 flex flex-col gap-4"
         style={cardStyle}
-        data-testid="card-post-meal-ask"
+        data-testid="card-post-meal-keypad"
       >
-        <p className="text-sm font-medium text-foreground">{t("glucose.post_meal_question")}</p>
-        <div className="flex gap-2">
-          <Button
-            className="flex-1"
-            onClick={() => { hapticTap("LIGHT"); setStep("keypad"); }}
-            data-testid="button-post-meal-yes"
-          >
-            {t("glucose.post_meal_yes")}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => { hapticTap("SOFT"); setStep("symptom"); }}
-            disabled={submitting}
-            data-testid="button-post-meal-no"
-          >
-            {t("glucose.post_meal_no")}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
-          {t("disclaimer.hstix")}
-        </p>
-      </div>
-    );
-  }
-
-  if (step === "walked") {
-    return (
-      <div
-        className="rounded-2xl p-5 flex flex-col gap-4"
-        style={cardStyle}
-        data-testid="card-post-meal-walked"
-      >
-        <p className="text-sm font-medium text-foreground">{t("glucose.walked_title")}</p>
-        {submitError && (
-          <p className="text-xs text-destructive text-center">
-            Something went wrong.{" "}
-            <button
-              type="button"
-              className="underline"
-              onClick={() => { void submit(false, walkedAnswer); }}
-            >
-              Try again
-            </button>
-          </p>
-        )}
-        <div className="flex gap-2">
-          <Button
-            className="flex-1"
-            disabled={submitting}
-            onClick={() => { hapticTap("LIGHT"); setWalkedAnswer(true); void submit(false, true); }}
-            data-testid="button-post-meal-walked-yes"
-          >
-            {t("glucose.walked_yes")}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            disabled={submitting}
-            onClick={() => { hapticTap("SOFT"); setWalkedAnswer(false); void submit(false, false); }}
-            data-testid="button-post-meal-walked-no"
-          >
-            {t("glucose.walked_no")}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
-          {t("disclaimer.hstix")}
-        </p>
-      </div>
-    );
-  }
-
-  if (step === "keypad") {
-    const alertTitleKey =
-      alertType === "low" ? "glucose.alert_low_title" : "glucose.alert_high_title";
-    const alertBodyKey =
-      alertType === "low" ? "glucose.alert_low_body" : "glucose.alert_high_body";
-    const alertBodyLines = alertType ? t(alertBodyKey).split("\n") : [];
-
-    return (
-      <>
-        <div
-          className="rounded-2xl p-5 flex flex-col gap-4"
-          style={cardStyle}
-          data-testid="card-post-meal-keypad"
-        >
           <p className="text-sm font-medium text-foreground">{t("glucose.keypad_title")}</p>
 
           <div className="flex items-center justify-center gap-2">
@@ -452,49 +313,6 @@ export default function PostMealCard({
             ))}
           </div>
 
-          {!standalone && !hasFastingBaseline && (
-            <div className="flex flex-col gap-2 pt-1 border-t border-border/40">
-              <p className="text-xs text-muted-foreground">{t("glucose.fasting_question")}</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {FASTING_OPTIONS.map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => {
-                      hapticTap("SOFT");
-                      setSelectedFasting(f);
-                      setFastingUnknown(false);
-                    }}
-                    data-testid={`button-post-meal-fasting-${f}`}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      selectedFasting === f
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground hover:bg-muted/70"
-                    }`}
-                  >
-                    {f.toFixed(1)}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    hapticTap("SOFT");
-                    setFastingUnknown(true);
-                    setSelectedFasting(null);
-                  }}
-                  data-testid="button-post-meal-fasting-unknown"
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    fastingUnknown
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground hover:bg-muted/70"
-                  }`}
-                >
-                  {t("glucose.fasting_dont_know")}
-                </button>
-              </div>
-            </div>
-          )}
-
           {standalone && (
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">
@@ -512,94 +330,55 @@ export default function PostMealCard({
             </label>
           )}
 
-          <Button
-            onClick={handleConfirmKeypad}
-            disabled={!canConfirmKeypad || submitting}
-            data-testid="button-post-meal-confirm-keypad"
-          >
-            {t("glucose.keypad_confirm")}
-          </Button>
-          <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
-            {t("disclaimer.hstix")}
+        {submitError && (
+          <p className="text-xs text-destructive text-center">
+            {t("common.error")}{" "}
+            <button type="button" className="underline" onClick={() => void submit()}>
+              {t("common.retry", "Try again")}
+            </button>
           </p>
-        </div>
-
-        <Dialog open={alertType !== null} onOpenChange={(open) => { if (!open) setAlertType(null); }}>
-          <DialogContent data-testid={`dialog-glucose-alert-${alertType ?? "none"}`}>
-            <DialogHeader>
-              <DialogTitle className="text-base">
-                {alertType ? t(alertTitleKey) : ""}
-              </DialogTitle>
-              <DialogDescription asChild>
-                <div className="flex flex-col gap-1.5 mt-1">
-                  {alertBodyLines.map((line, i) => (
-                    <p key={i} className="text-sm text-foreground/80 leading-snug">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-2 mt-2">
-              <Button
-                onClick={handleAlertConfirm}
-                data-testid="button-glucose-alert-confirm"
-              >
-                {t("glucose.alert_confirm")}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleAlertCancel}
-                data-testid="button-glucose-alert-cancel"
-              >
-                {alertType === "low"
-                  ? t("glucose.alert_cancel_record")
-                  : t("glucose.alert_cancel")}
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground/60 text-center mt-1 leading-relaxed">
-              {t("glucose.alert_disclaimer")}
-            </p>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  return (
-    <div
-      className="rounded-2xl p-5 flex flex-col gap-4"
-      style={cardStyle}
-      data-testid="card-post-meal-symptom"
-    >
-      <p className="text-sm font-medium text-foreground">{t("glucose.symptom_title")}</p>
-      <div className="flex flex-col gap-2">
-        {SYMPTOM_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => { hapticTap("SOFT"); setSymptom(opt.value); }}
-            data-testid={`button-post-meal-symptom-${opt.value}`}
-            className={`text-left px-4 py-3 rounded-xl text-sm transition-colors ${
-              symptom === opt.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground hover:bg-muted/70"
-            }`}
-          >
-            {t(opt.labelKey)}
-          </button>
-        ))}
+        )}
+        <Button
+          onClick={handleConfirmKeypad}
+          disabled={!canConfirmKeypad || submitting}
+          data-testid="button-post-meal-confirm-keypad"
+        >
+          {t("glucose.keypad_confirm")}
+        </Button>
+        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+          {t("disclaimer.hstix")}
+        </p>
       </div>
-      <Button
-        onClick={() => { hapticTap("MEDIUM"); void submit(false); }}
-        disabled={!symptom || submitting}
-        data-testid="button-post-meal-confirm-symptom"
-      >
-        {t("glucose.keypad_confirm")}
-      </Button>
-      <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
-        {t("disclaimer.hstix")}
-      </p>
-    </div>
+
+      <Dialog open={alertType !== null} onOpenChange={(open) => { if (!open) setAlertType(null); }}>
+        <DialogContent data-testid={`dialog-glucose-alert-${alertType ?? "none"}`}>
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {alertType ? t(alertTitleKey) : ""}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="flex flex-col gap-1.5 mt-1">
+                {alertBodyLines.map((line, i) => (
+                  <p key={i} className="text-sm text-foreground/80 leading-snug">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-2">
+            <Button onClick={handleAlertConfirm} data-testid="button-glucose-alert-confirm">
+              {t("glucose.alert_confirm")}
+            </Button>
+            <Button variant="outline" onClick={handleAlertCancel} data-testid="button-glucose-alert-cancel">
+              {alertType === "low" ? t("glucose.alert_cancel_record") : t("glucose.alert_cancel")}
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground/60 text-center mt-1 leading-relaxed">
+            {t("glucose.alert_disclaimer")}
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

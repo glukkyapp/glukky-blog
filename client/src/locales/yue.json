@@ -144,7 +144,7 @@
     "dinner_no": "唔可以",
     "greeting_with_name": "你好，{{name}}！",
     "greeting_no_name": "你好！",
-    "goal_reminder": "記住你嘅目標 — {{goal}}！繼續加油！",
+    "goal_reminder": "記住你嘅目標 — {{goal}}！繼續努力！",
     "meal_suggestion_button_breakfast": "今日早餐食咩好？",
     "meal_suggestion_button_lunch": "今日午餐食咩好？",
     "meal_suggestion_button_dinner": "今日晚餐食咩好？",
@@ -1202,10 +1202,7 @@
     "other": "其他澱粉類"
   },
   "glucose": {
-    "post_meal_question": "你這餐飯後會量血糖嗎？",
-    "post_meal_yes": "會",
-    "post_meal_no": "唔會 / 冇血糖機",
-    "keypad_title": "輸入飯後血糖值",
+    "keypad_title": "輸入你嘅血糖讀數",
     "keypad_unit": "mmol/L",
     "keypad_confirm": "確認記錄",
     "hstix_heading": "血糖記錄",
@@ -1222,8 +1219,6 @@
     "hstix_delayed": "遲過餐後記錄時段",
     "hstix_unrelated": "未連結近期餐點",
     "hstix_minutes_after_meal": "餐後 {{minutes}} 分鐘 · {{timing}}",
-    "fasting_question": "你平時空肚血糖大概幾多？（用作計算上升幅度）",
-    "fasting_dont_know": "唔知",
     "symptom_title": "你而家感覺點？",
     "symptom_normal": "😊 正常，精神好",
     "symptom_tired": "😴 有點攰、想睡",
@@ -1245,13 +1240,10 @@
     "prediction_state_a": "你嘅平均餐後血糖：{{mmol}} mmol/L（{{count}} 次記錄）",
     "prediction_state_b": "初步平均餐後血糖：{{mmol}} mmol/L（{{count}} 次，仍在累積）",
     "prediction_state_c_title": "未有呢款食物嘅記錄",
-    "prediction_state_c_body": "記錄飯後血糖，就可以睇到呢款食物對你嘅個人影響。",
-    "nudge_title": "💡 小貼士",
-    "nudge_body": "使用家用血糖機，記錄飯後血糖，可以令預測更準確。",
     "personalised_popup_title": "個人化血糖值已設定",
     "personalised_popup_body": "你已累積 {{count}} 次記錄，血糖值已經按你嘅個人規律設定。",
     "personalised_popup_dismiss": "明白喇",
-    "personalised_progress_label": "即刻開始記錄你嘅飯後血糖！再記錄 {{remaining}} 次就可以獲得個人化建議，知道咩食物對你最好/最差喇",
+    "personalised_progress_label": "本應用程式需要更多讀數，才可顯示你的用餐模式。只在有助回答與你的餐點或生活方式改變有關的具體問題時記錄血糖。",
     "impact_high": "高影響",
     "impact_medium": "中影響",
     "impact_low": "低影響",
@@ -1288,7 +1280,7 @@
     "pattern_partner_comparison": "食 {{indexFood}} 嗰陣，配 <food>{{higherPartner}}</food> 嘅平均餐後血糖讀數較高；配 <food>{{lowerPartner}}</food> 嘅較低。",
     "pattern_partner_disclaimer": "呢個只係你記錄入面嘅規律，唔可以證明係其中一種食物造成差異。份量、其他食物、活動同量度時間都會影響讀數。",
     "pattern_needs_more_readings_heading": "需要更多讀數",
-    "pattern_needs_more_readings_description": "繼續記錄呢款食物，了解佢嘅實測影響。",
+    "pattern_needs_more_readings_description": "本應用程式需要更多讀數，才可顯示此食物的模式。只在與你的個人監測計劃相關時才考慮記錄。",
     "pattern_needs_more_readings_count": "{{total}} 次合資格讀數 · 仲需要 {{remaining}} 次",
     "pattern_needs_more_readings_placeholder": "揀一款食物",
     "pattern_general_heading": "已記錄嘅食物成分",
@@ -1320,8 +1312,6 @@
     "pattern_impact_unassessed": "未評估",
     "pattern_reading_history": "餐後血糖讀數",
     "pattern_no_readings": "呢款食物暫未有已記錄嘅餐後血糖讀數。",
-    "nudge_learn": "了解更多",
-    "nudge_skip": "唔需要，繼續",
     "alert_scroll_hint": "上下滑動揀數值",
     "alert_low_title": "⚠️ 血糖偏低",
     "alert_low_body": "即刻食 15 克快速碳水化合物：蜜糖、果汁或方糖。\n等 15 分鐘後再度血糖。\n如果症狀持續或冇改善，請立即求醫。",
@@ -1333,7 +1323,12 @@
     "alert_cancel": "取消",
     "walked_title": "食完飯之後你有冇散步？",
     "walked_yes": "有",
-    "walked_no": "冇"
+    "walked_no": "冇",
+    "guidance_title": "關於血糖監測",
+    "guidance_hstix_body": "並非每個人都需要常規監測血糖。監測的時間和頻率應按你的需要和目標而定。",
+    "guidance_meal-pattern_body": "本應用程式需要更多讀數，才可顯示你的用餐模式。只在有助回答與你的餐點或生活方式改變有關的具體問題時記錄血糖。",
+    "guidance_food-pattern_body": "本應用程式需要更多讀數，才可顯示此食物的模式。只在與你的個人監測計劃相關時才考慮記錄。",
+    "guidance_got_it": "知道了"
   },
   "food_log": {
     "overlap_tooltip": "同上一餐相隔唔夠兩個鐘，血糖讀數可能受影響。"
@@ -1359,7 +1354,7 @@
   },
   "disclaimer": {
     "onboarding": "Glukky 會根據你記錄嘅資料,建立屬於你個人嘅飲食同血糖反應模式。結果反映係長期趨勢,唔係醫療診斷。每次血糖讀數可能受壓力、睡眠、身體唔適等因素影響,而呢啲因素未必會被記錄。如需調整藥物或治療方案,請務必先諮詢你嘅醫生。",
-    "hstix": "讀數可能由多種原因造成,例如壓力、身體唔適或用餐時間差異。累積更多記錄會令你嘅個人模式更清晰。",
+    "hstix": "讀數可能由多種原因造成,例如壓力、身體不適或用餐時間差異。並非每個人都需要常規監測血糖。監測的時間和頻率應按你的需要和目標而定。",
     "footer": "此應用程式嘅資訊唔能取代醫療建議。"
   }
 }

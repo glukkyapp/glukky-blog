@@ -765,7 +765,6 @@ export default function Snap() {
       setAdvicePopupOpen(true);
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/snap/pending-post-meal"] });
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
     } catch (err) {

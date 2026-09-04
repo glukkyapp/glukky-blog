@@ -33,7 +33,6 @@ import { prefetchUserData, resetPrefetchUserData } from "@/lib/prefetch-user-dat
 import CubeLoadingScreen from "@/components/cube-loading-screen";
 import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
-import GlucometerNudge from "@/components/glucometer-nudge";
 import { identifyUser, resetUser, track, initPostHog, optOut, optIn } from "@/lib/posthog";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
 import MainFontToggle from "@/components/main-font-toggle";
@@ -1733,7 +1732,6 @@ function AuthenticatedApp() {
         </div>
         <FloatingNavBar />
         <MainFontToggle />
-        <GlucometerNudge />
         <GlobalPiggyBankPopup />
         {unlockingOverlay && <UnlockingOverlay />}
         {exitWarningBackdropOpen && createPortal(

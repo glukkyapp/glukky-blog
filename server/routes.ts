@@ -12,8 +12,8 @@ import { userProfiles, mealSnaps } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
-import { CONTENTS, DEV_TEST_TEMPLATES } from "./notifications";
+import { sendPushNotification } from "./onesignal";
+import { DEV_TEST_TEMPLATES } from "./notifications";
 import { type InsertUserProfile } from "@shared/schema";
 import { pickSources } from "./advice-sources";
 import {
@@ -75,6 +75,24 @@ type SnapRow = {
   localDate: string;
   foodName: string | null;
 };
+
+// Guidance is intentionally not an open-ended client string. Adding a new
+// guidance surface requires adding both its allowed public kind and its
+// dedicated profile field here, preventing a caller from acknowledging an
+// unrelated profile flag.
+const GUIDANCE_SEEN_FIELD_BY_KIND = {
+  hstix: "hstixMonitoringGuidanceSeen",
+  "meal-pattern": "mealPatternGuidanceSeen",
+  "food-pattern": "foodPatternGuidanceSeen",
+} as const;
+
+type GuidanceKind = keyof typeof GUIDANCE_SEEN_FIELD_BY_KIND;
+type GuidanceSeenField = typeof GUIDANCE_SEEN_FIELD_BY_KIND[GuidanceKind];
+const guidanceKindSchema = z.enum([
+  "hstix",
+  "meal-pattern",
+  "food-pattern",
+]);
 
 function isIrregularSnap(snap: { mealType: string | null; snapTime: Date | string }, tz?: string | null): boolean {
   if (!snap.mealType || snap.mealType === "snack") return false;
@@ -216,6 +234,58 @@ export async function registerRoutes(
   app.get("/api/build-info", (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(BUILD_INFO);
+  });
+
+  const readGuidance = async (req: any, res: any) => {
+    const parsed = guidanceKindSchema.safeParse(req.params.kind);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid guidance kind" });
+    }
+    const userId: string = req.user.claims.sub;
+    const profile = await storage.getProfile(userId);
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+    const kind: GuidanceKind = parsed.data;
+    const field: GuidanceSeenField = GUIDANCE_SEEN_FIELD_BY_KIND[kind];
+    res.set("Cache-Control", "no-store");
+    return res.json({ kind, seen: profile[field] === true });
+  };
+
+  const acknowledgeGuidance = async (req: any, res: any) => {
+    const parsed = guidanceKindSchema.safeParse(req.params.kind);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid guidance kind" });
+    }
+    const userId: string = req.user.claims.sub;
+    const kind: GuidanceKind = parsed.data;
+    const field: GuidanceSeenField = GUIDANCE_SEEN_FIELD_BY_KIND[kind];
+    const profile = await storage.getProfile(userId);
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+    // Idempotent acknowledgement: do not churn profile state/history once it
+    // has already been acknowledged, and always report the final state.
+    if (profile[field] !== true) {
+      const updated = await storage.updateProfile(userId, { [field]: true });
+      if (!updated) return res.status(404).json({ message: "Profile not found" });
+    }
+    res.set("Cache-Control", "no-store");
+    return res.json({ kind, seen: true });
+  };
+
+  app.get("/api/user/glucose-guidance/:kind", isAuthenticated, async (req: any, res) => {
+    try {
+      return await readGuidance(req, res);
+    } catch (error: any) {
+      console.error("guidance read error:", error);
+      return res.status(500).json({ message: "Failed to fetch guidance acknowledgement" });
+    }
+  });
+  app.post("/api/user/glucose-guidance/:kind/seen", isAuthenticated, async (req: any, res) => {
+    try {
+      return await acknowledgeGuidance(req, res);
+    } catch (error: any) {
+      console.error("guidance acknowledgement error:", error);
+      return res.status(500).json({ message: "Failed to acknowledge guidance" });
+    }
   });
 
   app.get("/api/health", (_req, res) => {
@@ -1795,8 +1865,8 @@ export async function registerRoutes(
   //     Admin-secret gated; no cross-user data exposure possible.
   //
   // ✓ Snap read routes  (daily-summary, weekly-summary, monthly-summary,
-  //     meal-log, pending-post-meal, glucose-patterns, monthly-symptoms,
-  //     nudge-status, glucose-thresholds)
+  //     meal-log, glucose-patterns, monthly-symptoms,
+  //     glucose-thresholds)
   //     All storage calls include userId as the primary filter.
   //
   // ✓ Snap write routes  (label, advice, disambiguate, post-meal,
@@ -2465,37 +2535,6 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
             foodItems: structuredFoodItems,
           });
           await awardSnapCoin(userId, snap.id);
-
-          // Fire-and-forget: schedule HStix reminder 55 min from now.
-          // Cancels any pending reminder from a previous snap first.
-          void (async () => {
-            try {
-              const p = await storage.getProfile(userId);
-              if (p?.hstixReminderNotificationId) {
-                await cancelOneSignalNotification(p.hstixReminderNotificationId);
-              }
-              const useAlias = !!p?.onesignalExternalId;
-              if (!useAlias && !p?.onesignalPlayerId) return;
-              const hstixContent = CONTENTS["hstix_reminder"];
-              const result = await sendPushNotification({
-                title:    { en: hstixContent.en.title,    "zh-Hant": hstixContent.zhHant.title },
-                subtitle: { en: hstixContent.en.subtitle, "zh-Hant": hstixContent.zhHant.subtitle },
-                message:  { en: hstixContent.en.message,  "zh-Hant": hstixContent.zhHant.message },
-                // The notification always lands on the context-free rolling
-                // wheel. The save route determines whether the latest meal
-                // can be safely associated with the reading.
-                deepLink: "/hstix",
-                send_after: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
-                externalIds: useAlias ? [p!.onesignalExternalId as string] : undefined,
-                playerIds: useAlias ? undefined : [p!.onesignalPlayerId as string],
-              });
-              if (result.notificationId) {
-                await storage.updateProfile(userId, { hstixReminderNotificationId: result.notificationId });
-              }
-            } catch (e: any) {
-              console.warn("[snap/hstix-reminder] scheduling failed:", e?.message ?? e);
-            }
-          })();
 
           // Fire-and-forget: flag overlap if logged within 2 hrs of a prior different-type meal.
           // MEAL_GAP_LOOKBACK_MS = 2 * 60 * 60 * 1000 — distinct from the 90-min HsTix recordable window.
@@ -3385,7 +3424,7 @@ No explanation, just JSON.`,
   app.post("/api/snap/post-meal", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { snapId, glucoseMmol, symptom, skip, fastingBaseline, fastingBaselineEstimated, postMealWalked } = req.body;
+      const { snapId, glucoseMmol, symptom, skip, postMealWalked } = req.body;
       if (!snapId || typeof snapId !== "number") return res.status(400).json({ message: "snapId required" });
       if (glucoseMmol !== undefined && (typeof glucoseMmol !== "number" || glucoseMmol < 2.0 || glucoseMmol > 30.0)) {
         return res.status(400).json({ message: "glucoseMmol must be a number between 2.0 and 30.0" });
@@ -3441,20 +3480,6 @@ No explanation, just JSON.`,
         await storage.updateProfile(userId, { consecutiveSkippedMeals: 0 });
       }
 
-      if (glucoseMmol !== undefined) {
-        const profile = await storage.getProfile(userId);
-        if (profile && profile.fastingBaselineMmol === null) {
-          if (fastingBaseline !== undefined) {
-            await storage.updateProfile(userId, {
-              fastingBaselineMmol: fastingBaseline,
-              fastingBaselineEstimated: fastingBaselineEstimated === true,
-              fastingQuestionSeen: true,
-            });
-          } else if (!profile.fastingQuestionSeen) {
-            await storage.updateProfile(userId, { fastingQuestionSeen: true });
-          }
-        }
-      }
       res.json({ ok: true });
     } catch (error: any) {
       console.error("post-meal error:", error);
@@ -3658,17 +3683,6 @@ No explanation, just JSON.`,
     }
   });
 
-  app.get("/api/snap/pending-post-meal", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const snap = await storage.getPendingPostMealSnap(userId);
-      res.json({ snap });
-    } catch (error: any) {
-      console.error("pending-post-meal error:", error);
-      res.status(500).json({ message: "Failed to fetch pending snap." });
-    }
-  });
-
   app.get("/api/snap/glucose-patterns", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -3838,22 +3852,6 @@ No explanation, just JSON.`,
     } catch (error: any) {
       console.error("monthly-symptoms error:", error);
       res.status(500).json({ message: "Failed to fetch monthly symptoms." });
-    }
-  });
-
-  app.get("/api/snap/nudge-status", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
-      if (!profile) return res.json({ showNudge: false });
-      const shouldShow = (profile.consecutiveSkippedMeals ?? 0) >= 5 && !profile.glucometerNudgeShown;
-      if (shouldShow) {
-        await storage.updateProfile(userId, { glucometerNudgeShown: true });
-      }
-      res.json({ showNudge: shouldShow });
-    } catch (error: any) {
-      console.error("nudge-status error:", error);
-      res.status(500).json({ message: "Failed to fetch nudge status." });
     }
   });
 

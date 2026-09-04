@@ -1,7 +1,7 @@
 import { log } from "./index";
 import { db, pool } from "./db";
 import { userProfiles } from "@shared/schema";
-import { isNotNull, inArray, sql } from "drizzle-orm";
+import { and, eq, isNotNull, inArray, sql } from "drizzle-orm";
 
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
@@ -402,6 +402,64 @@ export async function cancelOneSignalNotification(
     log(`OneSignal cancel ${notificationId} failed: ${e?.message ?? e}`, "onesignal");
     return { ok: false, status: null };
   }
+}
+
+// HStix reminders were retired. On each startup, retry cancellation for every
+// saved legacy id. We clear the field only after OneSignal confirms the
+// cancellation; retaining it on failure makes the next startup retry safe.
+// The id is included in the UPDATE predicate so a concurrent writer can never
+// have a newer notification id accidentally cleared.
+export async function cleanupRetiredHstixReminderNotifications(): Promise<void> {
+  let profiles: Array<{ userId: string; notificationId: string | null }>;
+  try {
+    profiles = await db
+      .select({
+        userId: userProfiles.userId,
+        notificationId: userProfiles.hstixReminderNotificationId,
+      })
+      .from(userProfiles)
+      .where(isNotNull(userProfiles.hstixReminderNotificationId));
+  } catch (e: any) {
+    log(`HStix reminder cleanup list failed: ${e?.message ?? e}`, "onesignal");
+    return;
+  }
+
+  let cancelled = 0;
+  let retainedForRetry = 0;
+  for (const profile of profiles) {
+    const notificationId = profile.notificationId;
+    if (!notificationId) continue;
+    const result = await cancelOneSignalNotification(notificationId);
+    // A 404 means OneSignal has no remaining notification to deliver (for
+    // example, a prior cancellation succeeded but this process crashed before
+    // clearing the profile field), so it is also safe to acknowledge locally.
+    if (!result.ok && result.status !== 404) {
+      retainedForRetry++;
+      continue;
+    }
+    try {
+      const cleared = await db
+        .update(userProfiles)
+        .set({ hstixReminderNotificationId: null })
+        .where(and(
+          eq(userProfiles.userId, profile.userId),
+          eq(userProfiles.hstixReminderNotificationId, notificationId),
+        ))
+        .returning({ userId: userProfiles.userId });
+      if (cleared.length > 0) cancelled++;
+    } catch (e: any) {
+      // The external send is gone, but retain a loud signal if the local
+      // acknowledgement could not be persisted. A repeat cancellation is safe.
+      retainedForRetry++;
+      log(`HStix reminder cleanup clear failed user=${profile.userId}: ${e?.message ?? e}`, "onesignal");
+    }
+    // Avoid a startup backlog exceeding OneSignal's cancellation rate limit.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  log(
+    `HStix reminder cleanup complete stored=${profiles.length} cancelled_and_cleared=${cancelled} retained_for_retry=${retainedForRetry}`,
+    "onesignal",
+  );
 }
 
 // Best-effort delete of a user from OneSignal. Called from the

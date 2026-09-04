@@ -407,9 +407,9 @@ check("Partner insights render inside the measured HStix card branch",
     locale.includes("<food>{{lowerPartner}}</food>")));
 check("Reliability calculations remain server-only and statistics-free in the UI",
   !/(reliability|standard error|variance|confidence interval)/i.test(page));
-check("Meal and HStix writes invalidate the live Glucose Patterns query",
+check("Meal and the retained manual HStix write invalidate the live Glucose Patterns query",
   snap.includes('invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] })') &&
-  (postMeal.match(/invalidateQueries\(\{ queryKey: \["\/api\/snap\/glucose-patterns"\] \}\)/g)?.length ?? 0) === 2);
+  (postMeal.match(/invalidateQueries\(\{ queryKey: \["\/api\/snap\/glucose-patterns"\] \}\)/g)?.length ?? 0) === 1);
 check("Both pattern groups are request-time reads with no server result cache",
   routes.includes("getMealSnapsForGlucosePatterns") &&
   routes.includes("getMealSnapsForHstixCards") &&

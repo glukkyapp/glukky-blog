@@ -15,7 +15,6 @@ interface MealLogItem {
   postMealGlucoseMmol: number | null;
   hstixReadingId: number | null;
   postMealSymptom: string | null;
-  postMealSkipped: boolean | null;
   previousMealOverlap: boolean;
   overlapDismissed: boolean;
 }
@@ -66,11 +65,6 @@ function formatTime(snapTime: string): string {
   }
 }
 
-function isWithin90min(snapTime: string): boolean {
-  const diff = Date.now() - new Date(snapTime).getTime();
-  return diff >= 0 && diff < 90 * 60 * 1000;
-}
-
 const MEAL_TYPE_LABEL: Record<string, string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",
@@ -119,8 +113,6 @@ const SYMPTOM_LABEL_ZH: Record<string, string> = {
 };
 
 interface ProfileData {
-  fastingBaselineMmol: number | null;
-  fastingQuestionSeen: boolean;
   glucoseGroup?: string | null;
 }
 
@@ -276,8 +268,6 @@ export default function FoodLog() {
                       ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600")
                       : null;
                     const hasPostMeal = item.postMealGlucoseMmol !== null && item.postMealGlucoseMmol !== undefined;
-                    const withinWindow = isWithin90min(item.snapTime);
-                    const needsGlucoseLog = withinWindow && !hasPostMeal && !item.postMealSkipped;
                     const showOverlapWarning = item.previousMealOverlap && !item.overlapDismissed;
                     const overlapExpanded = expandedOverlap.has(item.id);
 
@@ -393,16 +383,6 @@ export default function FoodLog() {
                           </div>
                         )}
 
-                        {needsGlucoseLog && (
-                          <button
-                            type="button"
-                            data-testid={`button-food-log-record-glucose-${item.id}`}
-                            onClick={() => setLocation(hstixPathFor(item))}
-                            className="self-start text-xs font-medium text-primary hover:underline transition-colors"
-                          >
-                            {t("glucose.log_button")}
-                          </button>
-                        )}
                       </div>
                     );
                   })}

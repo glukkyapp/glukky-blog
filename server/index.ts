@@ -5,7 +5,7 @@ import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { startNotificationScheduler } from "./notifications";
-import { cleanupDuplicatePlayerIds } from "./onesignal";
+import { cleanupDuplicatePlayerIds, cleanupRetiredHstixReminderNotifications } from "./onesignal";
 import { captureException, getPosthogConsent, shutdownPostHog } from "./posthog";
 import { runStartupMigrations } from "./startup-migrations";
 
@@ -154,6 +154,7 @@ app.use((req, res, next) => {
     async () => {
       log(`serving on port ${port}`);
       await cleanupDuplicatePlayerIds();
+      await cleanupRetiredHstixReminderNotifications();
       startNotificationScheduler();
     },
   );

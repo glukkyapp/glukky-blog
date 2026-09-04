@@ -222,6 +222,13 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     sql: "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS glucose_patterns_swipe_tutorial_seen boolean NOT NULL DEFAULT false",
   },
   {
+    name: "user_profiles.guidance_seen_fields",
+    sql: `ALTER TABLE user_profiles
+      ADD COLUMN IF NOT EXISTS hstix_monitoring_guidance_seen boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS meal_pattern_guidance_seen boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS food_pattern_guidance_seen boolean NOT NULL DEFAULT false`,
+  },
+  {
     name: "meal_snaps.previous_meal_overlap",
     sql: "ALTER TABLE meal_snaps ADD COLUMN IF NOT EXISTS previous_meal_overlap boolean NOT NULL DEFAULT false",
   },

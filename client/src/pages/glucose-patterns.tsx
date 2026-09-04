@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RecurringFoodInsights } from "@/components/RecurringFoodInsights";
 import { SwipeableFoodCard } from "@/components/SwipeableFoodCard";
+import { GlucoseGuidanceInline, GlucoseMonitoringGuidance } from "@/components/glucose-monitoring-guidance";
 import {
   Dialog,
   DialogContent,
@@ -171,6 +172,9 @@ export default function GlucosePatterns() {
   const [search, setSearch] = useState("");
   const [selectedFood, setSelectedFood] = useState<string | null>(null);
   const [selectedNeedsMoreFood, setSelectedNeedsMoreFood] = useState<string | null>(null);
+  const [mealPatternElement, setMealPatternElement] = useState<HTMLElement | null>(null);
+  const [foodPatternElement, setFoodPatternElement] = useState<HTMLElement | null>(null);
+  const [activeGuidance, setActiveGuidance] = useState<"hstix" | "meal-pattern" | "food-pattern" | null>(null);
 
   const { data, isLoading } = useQuery<PatternsData>({
     queryKey: ["/api/snap/glucose-patterns"],
@@ -261,6 +265,30 @@ export default function GlucosePatterns() {
   const isPersonalised = thresholdsData?.isPersonalised ?? false;
   const showPersonalisedPopup = !isHstixMode && isPersonalised && thresholdsData?.glucosePersonalisedSeen === false;
   const showPersonalisedProgress = !isHstixMode && !isPersonalised && readingCount < PERSONALISED_THRESHOLD;
+  const hasInsufficientFoodDetail = !detailLoading && !!detailData?.detail && (
+    detailData.detail.kind !== "hstix" || detailData.detail.readings.length < 25
+  );
+  const guidanceCandidates = useMemo(() => [
+    {
+      kind: "meal-pattern" as const,
+      eligible: !isLoading && !isLocked && showPersonalisedProgress,
+      element: mealPatternElement,
+    },
+    {
+      kind: "food-pattern" as const,
+      eligible: !!selectedFood && hasInsufficientFoodDetail,
+      element: foodPatternElement,
+    },
+  ], [
+    foodPatternElement,
+    hasInsufficientFoodDetail,
+    i18n.language,
+    isLoading,
+    isLocked,
+    mealPatternElement,
+    selectedFood,
+    showPersonalisedProgress,
+  ]);
 
   useEffect(() => {
     if (hasMeasuredList && firstMeasuredImpact) {
@@ -377,7 +405,14 @@ export default function GlucosePatterns() {
               )}
             </div>
 
-            {showPersonalisedProgress && <p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground" data-testid="text-personalised-progress">{t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}</p>}
+            {showPersonalisedProgress && (
+              <div ref={setMealPatternElement} data-testid="meal-pattern-guidance-context">
+                <p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground" data-testid="text-personalised-progress">
+                  {t("glucose.personalised_progress_label", { remaining: PERSONALISED_THRESHOLD - readingCount })}
+                </p>
+                <GlucoseGuidanceInline kind="meal-pattern" hidden={activeGuidance === "meal-pattern"} />
+              </div>
+            )}
 
             {isHstixMode ? (
               <>
@@ -503,7 +538,7 @@ export default function GlucosePatterns() {
       </div>
 
       <Dialog open={!!selectedFood} onOpenChange={open => !open && setSelectedFood(null)}>
-        <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto rounded-2xl" data-testid="glucose-food-detail-dialog">
+        <DialogContent ref={setFoodPatternElement} className="max-h-[85vh] max-w-sm overflow-y-auto rounded-2xl" data-testid="glucose-food-detail-dialog">
           {detailLoading && <div className="space-y-3"><div className="h-6 w-2/3 animate-pulse rounded bg-muted" /><div className="h-20 animate-pulse rounded-xl bg-muted" /></div>}
           {!detailLoading && detailData?.detail && (
             <>
@@ -553,10 +588,12 @@ export default function GlucosePatterns() {
                   ) : <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{t("glucose.pattern_no_readings")}</p>}
                 </>
               )}
+              {hasInsufficientFoodDetail && <GlucoseGuidanceInline kind="food-pattern" hidden={activeGuidance === "food-pattern"} />}
             </>
           )}
         </DialogContent>
       </Dialog>
+      <GlucoseMonitoringGuidance candidates={guidanceCandidates} onActiveChange={setActiveGuidance} />
     </main>
   );
 }

@@ -24,10 +24,8 @@ const PASS_INTERVAL_MS = 60 * 60 * 1000;
 
 type NotificationType =
   | "foodsnap_reminder" // 7 PM local — conditional: no dinner snap today
-  | "hstix_reminder"    // event-triggered — 55 min after snap (not pre-scheduled)
   | "reengagement";     // 6 PM local — inactive ≥ 3 days, max once per 14 days
 
-// hstix_reminder is excluded — event-triggered from the snap route.
 const ALL_TYPES: NotificationType[] = [
   "foodsnap_reminder",
   "reengagement",
@@ -62,11 +60,6 @@ export const CONTENTS: Record<NotificationType, NotificationContent> = {
     zhHant: { title: t("Glukky"), subtitle: t(""), message: t("記錄今晚晚餐的時間到了！") },
     deepLink: "/",
   },
-  hstix_reminder: {
-    en:     { title: t("Glukky"), subtitle: t(""), message: t("Ready to log your HStix reading?") },
-    zhHant: { title: t("Glukky"), subtitle: t(""), message: t("準備好量度你的血糖了嗎？") },
-    deepLink: "/hstix",
-  },
   reengagement: {
     en:     { title: t("Glukky"), subtitle: t(""), message: t("We miss you — come back when you are ready.") },
     zhHant: { title: t("Glukky"), subtitle: t(""), message: t("我們想念你——準備好時再回來吧。") },
@@ -92,7 +85,6 @@ const TRIGGER_HOUR_LOCAL: Partial<Record<NotificationType, number>> = {
 // Web/webview redirect URL sent as the OneSignal `url` field for each
 // pre-scheduled type. Overrides deepLink for the tap destination while
 // deepLink continues as the in-app navigator path (data.deepLink).
-// hstix_reminder is event-triggered at the send site in routes.ts.
 const REDIRECT_URL: Partial<Record<NotificationType, string>> = {
   foodsnap_reminder: "/snap",
 };
@@ -327,10 +319,6 @@ async function isEligible(ctx: EligibilityContext): Promise<EligibilityResult> {
       }
       return { eligible: true };
     }
-
-    case "hstix_reminder":
-      // Never reaches isEligible — excluded from ALL_TYPES.
-      return { eligible: false, reason: "event_triggered_only" };
 
   }
 }

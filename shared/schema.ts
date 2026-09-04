@@ -52,6 +52,11 @@ export const userProfiles = pgTable("user_profiles", {
   glucoseGroup: text("glucose_group"),
   glucosePersonalisedSeen: boolean("glucose_personalised_seen").notNull().default(true),
   glucosePatternsSwipeTutorialSeen: boolean("glucose_patterns_swipe_tutorial_seen").notNull().default(false),
+  // Per-guidance acknowledgement flags. These are deliberately separate so
+  // acknowledging one educational surface never suppresses another.
+  hstixMonitoringGuidanceSeen: boolean("hstix_monitoring_guidance_seen").notNull().default(false),
+  mealPatternGuidanceSeen: boolean("meal_pattern_guidance_seen").notNull().default(false),
+  foodPatternGuidanceSeen: boolean("food_pattern_guidance_seen").notNull().default(false),
   diabetesMedication: text("diabetes_medication"),
   // Clinical pilot fields — set manually by a clinician after face-to-face enrollment.
   // Never touched by onboarding or any user-facing flow.

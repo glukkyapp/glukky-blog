@@ -1198,10 +1198,7 @@
     "other": "Other starches"
   },
   "glucose": {
-    "post_meal_question": "Will you check your blood glucose after this meal?",
-    "post_meal_yes": "Yes",
-    "post_meal_no": "No / No glucometer",
-    "keypad_title": "Enter your post-meal reading",
+    "keypad_title": "Enter your glucose reading",
     "keypad_unit": "mmol/L",
     "keypad_confirm": "Save reading",
     "hstix_heading": "HStix",
@@ -1218,8 +1215,6 @@
     "hstix_delayed": "Later than the post-meal window",
     "hstix_unrelated": "No recent meal linked",
     "hstix_minutes_after_meal": "{{minutes}} min after a meal · {{timing}}",
-    "fasting_question": "What's your usual fasting blood glucose? (used to calculate your rise)",
-    "fasting_dont_know": "Don't know",
     "symptom_title": "How do you feel right now?",
     "symptom_normal": "😊 Normal, feeling good",
     "symptom_tired": "😴 A bit tired / sleepy",
@@ -1241,13 +1236,10 @@
     "prediction_state_a": "Your avg post-meal glucose: {{mmol}} mmol/L ({{count}} readings)",
     "prediction_state_b": "Early avg post-meal: {{mmol}} mmol/L ({{count}} readings, still growing)",
     "prediction_state_c_title": "No data for this food yet",
-    "prediction_state_c_body": "Log post-meal glucose after eating this to build your personal pattern.",
-    "nudge_title": "💡 Tip",
-    "nudge_body": "Using a home glucometer to record post-meal glucose makes your predictions more accurate.",
     "personalised_popup_title": "Personalised glucose values ready",
     "personalised_popup_body": "Your {{count}} readings now shape glucose values personalised to your own patterns.",
     "personalised_popup_dismiss": "Got it",
-    "personalised_progress_label": "Start recording your post-meal blood sugar now! Record {{remaining}} more times to unlock personalised insights — discover which foods are best and worst for you.",
+    "personalised_progress_label": "More readings are needed before this app can show a pattern for your meals. Record glucose only when it helps answer a specific question about your meals or lifestyle changes.",
     "impact_high": "High",
     "impact_medium": "Medium",
     "impact_low": "Low",
@@ -1284,7 +1276,7 @@
     "pattern_partner_comparison": "After eating {{indexFood}}, your average reading was higher with <food>{{higherPartner}}</food> and lower with <food>{{lowerPartner}}</food>.",
     "pattern_partner_disclaimer": "This is a pattern in your records. It does not prove that either food caused the difference. Portion size, other foods, activity, and timing can also affect readings.",
     "pattern_needs_more_readings_heading": "Needs more readings",
-    "pattern_needs_more_readings_description": "Keep recording this food to see its measured impact.",
+    "pattern_needs_more_readings_description": "More readings are needed before this app can show a pattern for this food. Consider recording only when it is relevant to your personal monitoring plan.",
     "pattern_needs_more_readings_count": "{{total}} eligible readings · {{remaining}} more needed",
     "pattern_needs_more_readings_placeholder": "Select a food",
     "pattern_general_heading": "Recorded components",
@@ -1316,8 +1308,6 @@
     "pattern_impact_unassessed": "Not assessed yet",
     "pattern_reading_history": "Post-meal readings",
     "pattern_no_readings": "There are no recorded post-meal glucose readings for this food.",
-    "nudge_learn": "Learn more",
-    "nudge_skip": "No thanks, continue",
     "alert_scroll_hint": "Scroll up or down to select",
     "alert_low_title": "⚠️ Low Blood Glucose",
     "alert_low_body": "Take 15 g of fast-acting carbs right now: honey, fruit juice, or sugar cubes.\nWait 15 minutes, then check your glucose again.\nIf symptoms persist or do not improve, seek medical attention immediately.",
@@ -1329,7 +1319,12 @@
     "alert_cancel": "Cancel",
     "walked_title": "Did you walk after this meal?",
     "walked_yes": "Yes",
-    "walked_no": "No"
+    "walked_no": "No",
+    "guidance_title": "About glucose monitoring",
+    "guidance_hstix_body": "Blood-glucose monitoring is not needed routinely for everyone. The timing and frequency of monitoring should be individualised to your needs and goals.",
+    "guidance_meal-pattern_body": "More readings are needed before this app can show a pattern for your meals. Record glucose only when it helps answer a specific question about your meals or lifestyle changes.",
+    "guidance_food-pattern_body": "More readings are needed before this app can show a pattern for this food. Consider recording only when it is relevant to your personal monitoring plan.",
+    "guidance_got_it": "Got it"
   },
   "food_log": {
     "overlap_tooltip": "Logged within 2 hrs of your previous meal — glucose reading may be affected."
@@ -1355,7 +1350,7 @@
   },
   "disclaimer": {
     "onboarding": "Glukky builds a personalised picture of your dietary and blood sugar patterns based on the data you log. Results reflect long-term trends, not medical diagnoses. Individual readings can be affected by stress, sleep, illness, and other factors that may not always be recorded. Please consult your doctor before making any changes to your medication or treatment plan.",
-    "hstix": "Readings can be affected by many factors, such as stress, illness, or differences in meal timing. The more you log, the clearer your personal pattern becomes.",
+    "hstix": "Readings can be affected by many factors, such as stress, illness, or differences in meal timing. Blood-glucose monitoring is not needed routinely for everyone. The timing and frequency of monitoring should be individualised to your needs and goals.",
     "footer": "The information in this app is not a substitute for medical advice."
   }
 }
