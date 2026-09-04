@@ -7,3 +7,4 @@
 - [Development seed guards](development-seed-guards.md) — this workspace's REPLIT_ENVIRONMENT label is not a safe production discriminator; require explicit NODE_ENV.
 - [Glucose pattern index vs partners](glucose-pattern-index-vs-partners.md) — carb/sweet-only index; ordinary foods remain eligible as explanatory meal partners.
 - [Native splash handoff](native-splash-handoff.md) — ensure static fallback content exists before dismissing the native splash; React should replace it on first paint.
+- [Launch media preload compatibility](launch-media-preload-compatibility.md) — keep the initial HTML video authoritative; Chromium may ignore `as="video"`, and CSS properties are not media features.

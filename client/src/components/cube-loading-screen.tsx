@@ -22,6 +22,10 @@ export default function CubeLoadingScreen({
 }: CubeLoadingScreenProps) {
   const [lang] = useState(() => i18n.language || "en");
   const isZh = isChineseLang(lang);
+  const [isChineseFontReady, setIsChineseFontReady] = useState(() =>
+    typeof document !== "undefined" &&
+    Boolean(document.fonts?.check('24px "Glukky Loading Chinese"', "載入中")),
+  );
 
   const [minElapsed, setMinElapsed] = useState(false);
   const startedAtRef = useRef<number>(Date.now());
@@ -35,6 +39,19 @@ export default function CubeLoadingScreen({
     const timer = setTimeout(() => setMinElapsed(true), remaining);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isZh || isChineseFontReady || !document.fonts) return;
+    let active = true;
+    void document.fonts
+      .load('24px "Glukky Loading Chinese"', "載入中")
+      .then(() => {
+        if (active) setIsChineseFontReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isZh, isChineseFontReady]);
 
   // Dismiss when all three gates are true.
   useEffect(() => {
@@ -111,7 +128,10 @@ export default function CubeLoadingScreen({
         <p
           data-testid="cube-loading-label"
           style={{
-            fontFamily: isZh ? '"Glukky Loading Chinese", serif' : undefined,
+            fontFamily:
+              isZh && isChineseFontReady
+                ? '"Glukky Loading Chinese", serif'
+                : undefined,
             fontSize: "1.5rem",
             color: "#FEF2E0",
             margin: 0,

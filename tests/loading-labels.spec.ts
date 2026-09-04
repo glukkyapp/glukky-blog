@@ -16,7 +16,6 @@ test.describe("loading labels", () => {
       '<link rel="preload" href="/launch/har-gow-launch.mp4"',
     );
     expect(html).toContain('as="video" type="video/mp4"');
-    expect(html).toContain('media="(-webkit-touch-callout: none)"');
     expect(html).toContain(
       'src: url("/fonts/loading-label-zh-subset.woff2") format("woff2")',
     );
@@ -71,6 +70,32 @@ test.describe("loading labels", () => {
           ).length,
       )
       .toBe(1);
+  });
+
+  test("keeps Chinese text visible while the cold-cache font is delayed", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("glukky_preferred_lang", "zh-Hant");
+    });
+    await page.route("**/*", async (route) => {
+      const request = route.request();
+      if (request.resourceType() === "script") {
+        return route.abort();
+      }
+      if (
+        new URL(request.url()).pathname ===
+        "/fonts/loading-label-zh-subset.woff2"
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 1_500));
+      }
+      return route.continue();
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const label = page.getByTestId("boot-loading-label");
+    await expect(label).toBeVisible();
+    await expect(label).toHaveText("載入中...");
+    await expect(label).not.toHaveClass(/is-chinese/);
+    await expect(label).toHaveClass(/is-chinese/, { timeout: 5_000 });
   });
 
   test("shows the localized cold-launch label and keeps it in the viewport", async ({ page }) => {

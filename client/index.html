@@ -8,7 +8,7 @@
     <link rel="preload" href="/fonts/loading-label-zh-subset.woff2"
       as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/launch/har-gow-launch.mp4"
-      as="video" type="video/mp4" media="(-webkit-touch-callout: none)">
+      as="video" type="video/mp4">
     <style>
       @font-face {
         font-family: "Glukky Loading Chinese";
@@ -126,7 +126,11 @@
           var isCantonese = lang === "yue" || lang.indexOf("yue-") === 0;
           var localizedLabel = (isChinese || isCantonese) ? "載入中" : "Loading";
           label.firstChild.nodeValue = localizedLabel;
-          if (isChinese || isCantonese) label.classList.add("is-chinese");
+          if ((isChinese || isCantonese) && document.fonts) {
+            document.fonts
+              .load('24px "Glukky Loading Chinese"', localizedLabel)
+              .then(function() { label.classList.add("is-chinese"); });
+          }
           if (video) video.setAttribute("aria-label", localizedLabel);
         }
       })();
