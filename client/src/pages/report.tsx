@@ -32,12 +32,12 @@ export default function Report() {
     <main className="app-page-v2 min-h-[100dvh] px-4 pb-32 pt-6" data-testid="page-report">
       <div className="mx-auto max-w-sm">
         <header className="mb-6 pr-10">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6E8477]">Glukky</p>
-          <h1 className="text-[29px] font-bold tracking-tight text-[#214B36]" data-testid="report-heading">{copy.title}</h1>
-          <p className="mt-1 text-sm text-[#6E8477]">{copy.intro}</p>
+           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-muted)]">Glukky</p>
+           <h1 className="text-[29px] font-bold tracking-tight text-[var(--brand-ink)]" data-testid="report-heading">{copy.title}</h1>
+           <p className="mt-1 text-sm text-[var(--brand-muted)]">{copy.intro}</p>
         </header>
 
-        <nav className="mb-5 grid grid-cols-2 rounded-2xl bg-[#EAF2E7] p-1" aria-label="Report period">
+           <nav className="mb-5 grid grid-cols-2 rounded-2xl bg-[var(--brand-teal-soft)] p-1" aria-label="Report period">
           {(Object.keys(labels) as ReportView[]).map(key => (
             <button
               key={key}
@@ -45,7 +45,7 @@ export default function Report() {
               aria-pressed={tab === key}
               onClick={() => selectTab(key)}
               className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-all active:scale-[.97] ${
-                tab === key ? "bg-[#214B36] text-[#FDFBED] shadow-sm" : "text-[#6E8477]"
+                 tab === key ? "bg-[var(--brand-teal)] text-[var(--brand-cream)] shadow-sm" : "text-[var(--brand-muted)]"
               }`}
               data-testid={`report-tab-${key}`}
             >{labels[key]}</button>
@@ -55,7 +55,7 @@ export default function Report() {
         {tab === "daily" ? (
           <section className="animate-[slide-in-from-right_.28s_ease-out]" data-testid="report-panel-daily">
             <div>
-              <div className="mb-2 flex items-center gap-2 px-1 text-[#2F6B43]">
+               <div className="mb-2 flex items-center gap-2 px-1 text-[var(--brand-teal-deep)]">
                 <Leaf size={17} />
                 <span className="text-xs font-bold uppercase tracking-[.14em]">{copy.finding}</span>
               </div>

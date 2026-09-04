@@ -193,7 +193,7 @@ function LanguageCard({ currentLang }: { currentLang: string }) {
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
                 currentLang === code
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
+                  : "bg-[var(--brand-cream-muted)] text-muted-foreground border-border hover:border-primary/50"
               }`}
             >
               {label}
@@ -236,7 +236,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "small"
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
+                : "bg-[var(--brand-cream-muted)] text-muted-foreground border-border hover:border-primary/50"
             }`}
           >
             {t("profile.font_small")}
@@ -247,7 +247,7 @@ function FontSizeCard({ currentSize }: { currentSize: string }) {
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
               currentSize === "large"
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-[#F4EBE4] text-muted-foreground border-border hover:border-primary/50"
+                : "bg-[var(--brand-cream-muted)] text-muted-foreground border-border hover:border-primary/50"
             }`}
           >
             {t("profile.font_large")}
@@ -337,7 +337,7 @@ function PrivacyCard() {
                 onClick={() => handleToggle(key, value)}
                 data-testid={`toggle-consent-${key}`}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
-                  value ? "bg-[#214B36]" : "bg-gray-200"
+                   value ? "bg-[var(--brand-teal)]" : "bg-gray-200"
                 }`}
               >
                 <span
@@ -466,7 +466,7 @@ function PersonalShortcuts() {
             key={key}
             type="button"
             onClick={() => setLocation(path)}
-            className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 py-3 text-center text-[#0D5E4F] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                   className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 py-3 text-center text-[var(--brand-teal-deep)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid={`profile-shortcut-${key}`}
           >
             <Icon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />

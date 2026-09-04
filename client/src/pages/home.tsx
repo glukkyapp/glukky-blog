@@ -150,13 +150,13 @@ export default function Home() {
       transition={{ duration: 0.2 }}
     >
       <header className="space-y-0.5">
-        <h1 className="text-[26px] font-normal" style={{ color: "#214B36" }} data-testid="text-week-header">
+         <h1 className="text-[26px] font-normal" style={{ color: "var(--brand-ink)" }} data-testid="text-week-header">
           {weekdayLabel}
         </h1>
         <div className="-mt-2">
           <p
             className="text-[50px] font-bold leading-none min-w-0"
-            style={{ color: "#214B36" }}
+             style={{ color: "var(--brand-ink)" }}
             data-testid="text-greeting"
           >
             {profile?.name
@@ -169,14 +169,14 @@ export default function Home() {
       {profile?.goal && (
         <div className="goal-bubble-wrap">
           <div className="min-w-0 goal-bubble" data-testid="text-goal-reminder">
-            <p className="text-[18px] leading-snug" style={{ color: "#214B36" }}>
+             <p className="text-[18px] leading-snug" style={{ color: "var(--brand-ink)" }}>
               {(() => {
                 const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
                 const parts = full.split("{{GOAL}}");
                 return (
                   <>
                     {parts[0]}
-                    <strong style={{ color: "#214B36" }}>{profile.goal}</strong>
+                     <strong style={{ color: "var(--brand-ink)" }}>{profile.goal}</strong>
                     {parts[1]}
                   </>
                 );
@@ -215,10 +215,10 @@ export default function Home() {
             data-testid="button-meal-suggestion"
             className="w-full text-left font-semibold text-[17px] px-5 py-4 rounded-2xl transition-colors active:opacity-80"
             style={{
-              background: "#EEF5EF",
-              color: "#214B36",
+               background: "var(--brand-teal-wash)",
+               color: "var(--brand-ink)",
               opacity: mealSuggestion ? 0.7 : 1,
-              boxShadow: "0 2px 8px rgba(44, 72, 56, 0.13)",
+              boxShadow: "0 2px 8px rgba(13, 126, 143, 0.13)",
             }}
           >
             {mealSuggestionLoading ? "…" : t(`home.meal_suggestion_button_${mealWindow}`)}
@@ -229,13 +229,13 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
               className="mt-2 rounded-2xl px-5 py-4 space-y-1"
-              style={{ background: "#F5FAF6" }}
+               style={{ background: "var(--brand-cream-card)" }}
               data-testid="card-meal-suggestion-result"
             >
-              <p className="text-[18px] font-semibold leading-snug" style={{ color: "#214B36" }} data-testid="text-meal-suggestion-name">
+               <p className="text-[18px] font-semibold leading-snug" style={{ color: "var(--brand-ink)" }} data-testid="text-meal-suggestion-name">
                 {mealSuggestion.name}
               </p>
-              <p className="text-[14px] leading-snug" style={{ color: "#6E8477" }} data-testid="text-meal-suggestion-reason">
+               <p className="text-[14px] leading-snug" style={{ color: "var(--brand-muted)" }} data-testid="text-meal-suggestion-reason">
                 {mealSuggestion.source === "user"
                   ? t("home.meal_suggestion_your_pick")
                   : t(`home.meal_suggestion_list_${mealWindow}`)}

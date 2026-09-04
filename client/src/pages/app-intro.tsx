@@ -96,7 +96,7 @@ export default function AppIntro() {
             exit="exit"
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="w-full rounded-[28px] p-5 space-y-3"
-            style={{ backgroundColor: "#fbfbf3", boxShadow: "0 4px 14px rgba(44,72,56,0.06)" }}
+            style={{ backgroundColor: "#FFF8EC", boxShadow: "0 4px 14px rgba(13,126,143,0.08)" }}
           >
             {currentItems.map((item, idx) => {
               const Icon = item.icon;
@@ -106,7 +106,7 @@ export default function AppIntro() {
                     <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
                       <Icon className={`w-5 h-5 ${item.color}`} />
                     </div>
-                    <p className="text-[21px] font-bold" style={{ color: "#214B36" }}>{t(item.textKey)}</p>
+                    <p className="text-[21px] font-bold" style={{ color: "var(--brand-ink)" }}>{t(item.textKey)}</p>
                   </div>
                 );
               }

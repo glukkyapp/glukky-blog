@@ -260,7 +260,7 @@ export default function Landing() {
     return (
       <div
         className="flex flex-col items-center justify-center h-dvh overflow-hidden px-8 gap-6"
-        style={{ backgroundColor: "#fdfbee" }}
+         style={{ backgroundColor: "var(--brand-cream)" }}
         data-testid="landing-lang-screen"
       >
         <div className="flex flex-col items-center gap-3">
@@ -277,7 +277,7 @@ export default function Landing() {
               type="button"
               data-testid={`button-lang-${lang.code}`}
               onClick={() => handleSelectLanguage(lang.code)}
-              className="w-full text-left px-5 py-4 rounded-2xl border border-border hover:border-[#127843] hover:bg-[#127843]/5 transition-colors flex flex-col gap-0.5"
+               className="w-full text-left px-5 py-4 rounded-2xl border border-border hover:border-[var(--brand-teal)] hover:bg-[var(--brand-teal)]/5 transition-colors flex flex-col gap-0.5"
             >
               <span className="font-semibold text-base text-foreground">{lang.label}</span>
               <span className="text-xs text-muted-foreground">{lang.sub}</span>
@@ -294,8 +294,8 @@ export default function Landing() {
   }
 
   if (step === "slides") {
-    const ACCENT = "#127843";
-    const HEADLINE = "#214B36";
+     const ACCENT = "var(--brand-teal)";
+     const HEADLINE = "var(--brand-ink)";
     // Peek layout math:
     //   left margin = 20px, gap between cards = 12px, right peek = 20px
     //   cardWidth = calc(100vw - 52px)   (20 + 12 + 20 = 52)
@@ -304,7 +304,7 @@ export default function Landing() {
     return (
       <div
         className="relative h-dvh w-full flex flex-col"
-        style={{ background: "#fdfbee", fontFamily: "'Inter', system-ui, sans-serif" }}
+         style={{ background: "var(--brand-cream)", fontFamily: "'Inter', system-ui, sans-serif" }}
         data-testid="landing-slides-screen"
         onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
         onTouchEnd={(e) => {
@@ -496,7 +496,7 @@ export default function Landing() {
     return (
       <div
         className="flex flex-col h-dvh px-6"
-        style={{ backgroundColor: "#fdfbee" }}
+         style={{ backgroundColor: "var(--brand-cream)" }}
         data-testid="landing-auth-screen"
       >
         <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
@@ -561,7 +561,7 @@ export default function Landing() {
   return (
     <div
       className="flex flex-col min-h-screen px-6 pt-3 pb-3"
-      style={{ backgroundColor: "#fdfbee" }}
+         style={{ backgroundColor: "var(--brand-cream)" }}
       data-testid="landing-auth-screen"
     >
       <div aria-hidden className="absolute w-0 h-0 overflow-hidden pointer-events-none">
@@ -598,7 +598,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "login" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "login" ? { backgroundColor: "#214B36" } : undefined}
+           style={tab === "login" ? { backgroundColor: "var(--brand-teal)" } : undefined}
           data-testid="tab-login"
         >
           {t("landing.log_in")}
@@ -609,7 +609,7 @@ export default function Landing() {
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
             tab === "register" ? "text-white" : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
-          style={tab === "register" ? { backgroundColor: "#214B36" } : undefined}
+           style={tab === "register" ? { backgroundColor: "var(--brand-teal)" } : undefined}
           data-testid="tab-register"
         >
           {t("landing.register")}
@@ -620,7 +620,7 @@ export default function Landing() {
       {forgotPassword ? (
         <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
           <div className="text-center space-y-1 mb-1">
-            <h1 className="text-lg font-semibold text-[#214B36]">{t("landing.forgot_password_title")}</h1>
+             <h1 className="text-lg font-semibold text-[var(--brand-ink)]">{t("landing.forgot_password_title")}</h1>
             <p className="text-sm text-muted-foreground">{t("landing.forgot_password_body")}</p>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -634,13 +634,13 @@ export default function Landing() {
               data-testid="input-forgot-email"
             />
           </div>
-          {forgotMessage && <p className="text-sm text-[#127843]" data-testid="text-forgot-message">{forgotMessage}</p>}
+           {forgotMessage && <p className="text-sm text-[var(--brand-teal-deep)]" data-testid="text-forgot-message">{forgotMessage}</p>}
           {error && <p className="text-sm text-red-500" data-testid="text-error">{error}</p>}
           <Button
             type="submit"
             disabled={isLoading}
             className="w-full text-white mt-1 btn-pop"
-            style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
+             style={{ backgroundColor: "var(--brand-teal)", borderColor: "var(--brand-teal)" }}
             data-testid="button-forgot-submit"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("landing.send_reset_link")}
@@ -688,7 +688,7 @@ export default function Landing() {
                 setError("");
                 setForgotMessage("");
               }}
-              className="self-end text-xs text-[#127843] hover:underline underline-offset-2"
+               className="self-end text-xs text-[var(--brand-teal-deep)] hover:underline underline-offset-2"
               data-testid="button-forgot-password"
             >
               {t("landing.forgot_password")}
@@ -718,7 +718,7 @@ export default function Landing() {
           type="submit"
           disabled={isLoading}
           className="w-full text-white mt-1 btn-pop"
-          style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
+           style={{ backgroundColor: "var(--brand-teal)", borderColor: "var(--brand-teal)" }}
           data-testid="button-submit"
         >
           {isLoading ? (

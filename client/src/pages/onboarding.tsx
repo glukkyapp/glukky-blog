@@ -42,7 +42,7 @@ import whyImg from "@assets/generated-image_(18)_1776601559534.png";
 // Hidden: 3 (goal/why), 4 (questions intro), 5 (after-dinner walk), 6 (dinner time), 8 (referral)
 const VISIBLE_STEPS = [1, 2, 7] as const;
 const TOTAL_STEPS = VISIBLE_STEPS.length; // 3
-const GREEN_DARK = "#214B36";
+const GREEN_DARK = "var(--brand-teal)";
 
 const CONSENT_SERVICE_KEYS: ConsentService[] = ["posthog", "onesignal", "claude"];
 
@@ -314,7 +314,7 @@ export default function Onboarding() {
                   onClick={() => setConsentChoices((prev) => ({ ...prev, [key]: !prev[key] }))}
                   data-testid={`toggle-consent-${key}`}
                   className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors mt-0.5 ${
-                    consentChoices[key] ? "bg-[#214B36]" : "bg-gray-200"
+                    consentChoices[key] ? "bg-[var(--brand-teal)]" : "bg-gray-200"
                   }`}
                 >
                   <span
@@ -568,7 +568,7 @@ export default function Onboarding() {
                   () => setDinnerTime("before_9pm"),
                   "option-before-9pm",
                 )}
-                <div style={{ width: 1, background: "rgba(33,75,54,0.18)", margin: "12px 0" }} />
+                <div style={{ width: 1, background: "rgba(13,126,143,0.18)", margin: "12px 0" }} />
                 {renderDinnerTile(
                   dinnerTime === "after_9pm",
                   <Moon size={32} style={{ color: "#5b7a8a" }} />,

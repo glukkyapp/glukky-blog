@@ -1066,7 +1066,7 @@ export default function Snap() {
                   onChange={(e) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name: e.target.value })); }}
                   placeholder={t("snap.field_placeholder_name")}
                   rows={2}
-                  style={{ backgroundColor: "#fbfbf3" }}
+                  style={{ backgroundColor: "#FFF8EC" }}
                   className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
                   data-testid="input-snap-name"
                 />
@@ -1098,7 +1098,7 @@ export default function Snap() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                           isActive
                             ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                            : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
                         }`}
                         data-testid={`chip-portion-${opt.key}`}
                       >
@@ -1150,7 +1150,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                              : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
                           }`}
                           data-testid={`chip-sauce-${opt.id}`}
                         >
@@ -1178,7 +1178,7 @@ export default function Snap() {
                     onChange={(e) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_sauces")}
                     rows={2}
-                    style={{ backgroundColor: "#fbfbf3" }}
+                    style={{ backgroundColor: "#FFF8EC" }}
                     className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
                     data-testid="input-snap-sauces"
                   />
@@ -1208,7 +1208,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-[#F4EBE4] text-muted-foreground border-input hover:bg-muted"
+                              : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
                           }`}
                           data-testid={`chip-topping-${opt.id}`}
                         >
@@ -1236,7 +1236,7 @@ export default function Snap() {
                     onChange={(e) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_extras")}
                     rows={2}
-                    style={{ backgroundColor: "#fbfbf3" }}
+                    style={{ backgroundColor: "#FFF8EC" }}
                     className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
                     data-testid="input-snap-extras"
                   />
@@ -1267,7 +1267,7 @@ export default function Snap() {
                   <button
                     key={m.internalId ?? `none-${i}`}
                     onClick={() => handleDisambigSelect(m.internalId)}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#F4EBE4] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--brand-cream-muted)] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
                     data-testid={`chip-disambig-${m.internalId ?? "none"}`}
                   >
                     {m.label}

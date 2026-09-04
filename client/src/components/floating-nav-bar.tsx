@@ -114,7 +114,7 @@ export default function FloatingNavBar() {
               className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none"
               style={{
                 height: "100%",
-                color: locked ? "#9CA3AF" : "#0D5E4F",
+                color: locked ? "#9CA3AF" : "var(--brand-teal-deep)",
                 opacity: locked ? 0.6 : 1,
                 background: "transparent",
                 border: "none",
@@ -127,7 +127,7 @@ export default function FloatingNavBar() {
                 animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
                 transition={{ duration: 0.2 }}
                 className="text-xs font-medium overflow-hidden leading-tight"
-                style={{ color: locked ? "#9CA3AF" : "#0D5E4F" }}
+                style={{ color: locked ? "#9CA3AF" : "var(--brand-teal-deep)" }}
               >
                 {label}
               </motion.span>

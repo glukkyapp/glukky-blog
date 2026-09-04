@@ -13,7 +13,7 @@ export default function UnlockingOverlay() {
           position: "fixed",
           inset: 0,
           zIndex: 10000,
-          backgroundColor: "rgba(243, 234, 229, 0.96)",
+          backgroundColor: "rgba(254, 242, 224, 0.96)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -38,7 +38,7 @@ export default function UnlockingOverlay() {
                    L16.7 20.3
                    C16.1 19.9, 16.2 19.3, 16.8 19.0
                    C22 16.5, 27.4 14.9, 33 14.2 Z"
-                fill="#A8C8BC"
+                fill="#73B9C2"
               />
               <path
                 d="M16.7 20.3
@@ -50,7 +50,7 @@ export default function UnlockingOverlay() {
                    L33 28.5
                    C33 28.35, 32.8 28.2, 32.4 28.0
                    L16.7 20.3 Z"
-                fill="#9BBFB1"
+                fill="#58AAB5"
               />
               <path
                 d="M49.3 20.3
@@ -62,7 +62,7 @@ export default function UnlockingOverlay() {
                    L33 28.5
                    C33 28.35, 33.2 28.2, 33.6 28.0
                    L49.3 20.3 Z"
-                fill="#88B4A5"
+                fill="#3D96A3"
               />
             </svg>
           </div>

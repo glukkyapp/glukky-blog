@@ -85,7 +85,7 @@ export default function CubeLoadingScreen({
           width: "100%",
           height: "100dvh",
           boxSizing: "border-box",
-          backgroundColor: "#FAF8EF",
+          backgroundColor: "#0D7E8F",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -94,7 +94,7 @@ export default function CubeLoadingScreen({
           paddingRight: "calc(2rem + env(safe-area-inset-right))",
           paddingBottom: "calc(2rem + env(safe-area-inset-bottom))",
           paddingLeft: "calc(2rem + env(safe-area-inset-left))",
-          color: "#0D2B1E",
+          color: "#FEF2E0",
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           zIndex: 9999,
@@ -115,7 +115,8 @@ export default function CubeLoadingScreen({
           height: "auto",
           aspectRatio: "1 / 1",
           objectFit: "cover",
-          backgroundColor: "#0D7D89",
+          clipPath: "circle(40% at 50% 50%)",
+          backgroundColor: "#0D7E8F",
           display: "block",
           marginBottom: "0.75rem",
         }}
@@ -127,7 +128,7 @@ export default function CubeLoadingScreen({
           style={{
             fontFamily: isZh ? '"LXGW WenKai TC", serif' : undefined,
             fontSize: "1.5rem",
-            color: "rgba(13, 43, 30, 0.5)",
+            color: "#FEF2E0",
             margin: 0,
             letterSpacing: "0.02em",
             userSelect: "none",

@@ -1,13 +1,13 @@
 import { ReactNode } from "react";
 import { Check } from "lucide-react";
 
-const GREEN_DARK = "#214B36";
-const GREEN_DEEP = "#1f4a35";
-const GREEN_DEEP_2 = "#163a28";
-const LIME = "#d0f38f";
-const LIME_SOFT = "#eef9d7";
-const CARD_LIGHT = "#fbfbf3";
-const TILE_LIGHT = "#f1f8de";
+const GREEN_DARK = "var(--brand-teal)";
+const GREEN_DEEP = "var(--brand-teal-deep)";
+const GREEN_DEEP_2 = "var(--brand-ink)";
+const LIME = "var(--brand-teal-soft)";
+const LIME_SOFT = "var(--brand-teal-wash)";
+const CARD_LIGHT = "var(--brand-cream-card)";
+const TILE_LIGHT = "var(--brand-cream-muted)";
 
 type Variant = "light" | "dark";
 
@@ -42,7 +42,7 @@ export function OnboardingCard({
         borderRadius: 28,
         background: background ?? (isDark ? GREEN_DEEP : CARD_LIGHT),
         color: isDark ? "#fff" : GREEN_DARK,
-        boxShadow: "0 8px 24px rgba(33,75,54,0.10)",
+        boxShadow: "0 8px 24px rgba(13,126,143,0.10)",
         padding: 22,
         display: "flex",
         flexDirection: "column",
@@ -114,7 +114,7 @@ export function PillOption({
         fontSize: 15,
         background: selected ? LIME : "transparent",
         color: GREEN_DARK,
-        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(33,75,54,0.25)"}`,
+        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(13,126,143,0.25)"}`,
       }}
     >
       {label}
@@ -150,7 +150,7 @@ export function RowOption({
       style={{
         borderRadius: ROW_RADIUS,
         background: selected ? LIME : CARD_LIGHT,
-        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(33,75,54,0.15)"}`,
+        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(13,126,143,0.15)"}`,
         color: GREEN_DARK,
         minHeight: image ? THUMB_SIZE : undefined,
       }}
@@ -175,7 +175,7 @@ export function RowOption({
             height: 36,
             borderRadius: 10,
             background: "#fff",
-            border: "1px solid rgba(33,75,54,0.10)",
+            border: "1px solid rgba(13,126,143,0.10)",
           }}
         >
           {icon}
@@ -189,7 +189,7 @@ export function RowOption({
           height: 22,
           borderRadius: 6,
           background: selected ? GREEN_DARK : "#fff",
-          border: `1.5px solid ${selected ? GREEN_DARK : "rgba(33,75,54,0.25)"}`,
+          border: `1.5px solid ${selected ? GREEN_DARK : "rgba(13,126,143,0.25)"}`,
         }}
       >
         {selected && <Check className="w-3.5 h-3.5" style={{ color: LIME }} />}
@@ -284,7 +284,7 @@ export function PairedTile({
       style={{
         borderRadius: 18,
         background: selected ? LIME : "#fff",
-        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(33,75,54,0.12)"}`,
+        border: `1.5px solid ${selected ? GREEN_DARK : "rgba(13,126,143,0.12)"}`,
         color: GREEN_DARK,
         minHeight: 110,
       }}
@@ -356,7 +356,7 @@ export function DarkInsetTile({
           className="px-3 py-1 text-sm font-bold flex items-center gap-1.5"
           style={{
             borderRadius: 10,
-            background: selected ? "rgba(33,75,54,0.15)" : "rgba(0,0,0,0.25)",
+            background: selected ? "rgba(13,126,143,0.15)" : "rgba(0,0,0,0.25)",
             color: selected ? GREEN_DARK : "#fff",
           }}
         >

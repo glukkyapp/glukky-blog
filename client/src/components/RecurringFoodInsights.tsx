@@ -69,7 +69,7 @@ export function RecurringFoodInsights() {
     <>
       {topFoods.length > 0 && (
         <section className="mb-5" data-testid="card-recurring-foods">
-          <h2 className="mb-3 text-base font-semibold text-[#214B36]">
+          <h2 className="mb-3 text-base font-semibold text-[var(--brand-ink)]">
             {t("food_frequency.title")}
           </h2>
           <div aria-label={t("food_frequency.title")}>
@@ -79,10 +79,10 @@ export function RecurringFoodInsights() {
               onPrevious={() => setFoodIndex(current => Math.max(0, current - 1))}
               onNext={() => setFoodIndex(current => Math.min(topFoods.length - 1, current + 1))}
               nextCard={activeIndex < topFoods.length - 1 ? (
-                <Card className="glucose-pattern-card border-[#DCE9D7] bg-[#F8FBF5]">
+                <Card className="glucose-pattern-card border-[var(--brand-teal-soft)] bg-[var(--brand-teal-wash)]">
                   <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
-                    <span className="truncate text-sm font-medium text-[#214B36]">{displayName(topFoods[activeIndex + 1])}</span>
-                    <span className="shrink-0 text-xs text-[#6E8477]">
+                    <span className="truncate text-sm font-medium text-[var(--brand-ink)]">{displayName(topFoods[activeIndex + 1])}</span>
+                    <span className="shrink-0 text-xs text-[var(--brand-muted)]">
                       {t("food_frequency.meals", { count: topFoods[activeIndex + 1].mealCount })}
                     </span>
                   </CardContent>
@@ -90,20 +90,20 @@ export function RecurringFoodInsights() {
               ) : undefined}
             >
               <Card
-                className="glucose-pattern-card is-active border-[#DCE9D7] bg-[#F8FBF5]"
+                className="glucose-pattern-card is-active border-[var(--brand-teal-soft)] bg-[var(--brand-teal-wash)]"
                 data-testid="recurring-food-card"
               >
                 <CardContent className="flex items-center justify-between gap-3 px-3 py-3">
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-[#214B36]">{displayName(activeFood)}</span>
-                    <p className="mt-1 text-xs text-[#53685C]" data-testid="general-food-gi-rank">
+                    <span className="block truncate text-sm font-medium text-[var(--brand-ink)]">{displayName(activeFood)}</span>
+                    <p className="mt-1 text-xs text-[var(--brand-muted)]" data-testid="general-food-gi-rank">
                       <span className="font-medium">{t("glucose.gi_label")}:</span>{" "}
                       {activeFood.giRank
                         ? t(`glucose.gi_rank_${activeFood.giRank}`)
                         : t(activeFood.giStatus === "pending" ? "glucose.gi_pending" : "glucose.gi_unavailable")}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-[#6E8477]">
+                  <span className="shrink-0 text-xs text-[var(--brand-muted)]">
                     {t("food_frequency.meals", { count: activeFood.mealCount })}
                   </span>
                 </CardContent>
@@ -113,14 +113,14 @@ export function RecurringFoodInsights() {
         </section>
       )}
       {favouriteCategory && (
-        <Card className="mb-5 border-[#DCE9D7] bg-[#F8FBF5]" data-testid="card-favourite-category">
+        <Card className="mb-5 border-[var(--brand-teal-soft)] bg-[var(--brand-teal-wash)]" data-testid="card-favourite-category">
           <CardHeader className="pb-2 pt-4">
-            <CardTitle className="text-base text-[#214B36]">
+            <CardTitle className="text-base text-[var(--brand-ink)]">
               {t("food_frequency.favourite_category_title")}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
-            <p className="text-sm text-[#355C43]" data-testid="food-frequency-favourite-category">
+            <p className="text-sm text-[var(--brand-ink)]" data-testid="food-frequency-favourite-category">
               {favouriteCategory}
             </p>
           </CardContent>

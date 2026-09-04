@@ -77,7 +77,7 @@ export default function MainFontToggle() {
       data-font-size={current}
       aria-pressed={current === "large"}
       disabled={mutation.isPending}
-      className="fixed right-4 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[#28634F] bg-[#FDFBED]/95 text-[#174E43] shadow-sm backdrop-blur transition-transform active:scale-90 disabled:opacity-60"
+      className="fixed right-4 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[var(--brand-teal)] bg-[var(--brand-cream)]/95 text-[var(--brand-ink)] shadow-sm backdrop-blur transition-transform active:scale-90 disabled:opacity-60"
     >
       <span className="font-toggle-glyph font-bold leading-none" aria-hidden="true">{glyph}</span>
     </button>

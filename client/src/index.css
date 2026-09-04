@@ -58,6 +58,15 @@ textarea,
 }
 
 :root {
+  --brand-teal: #0D7E8F;
+  --brand-teal-deep: #086574;
+  --brand-teal-soft: #D7EEF0;
+  --brand-teal-wash: #E8F5F3;
+  --brand-cream: #FEF2E0;
+  --brand-cream-card: #FFF8EC;
+  --brand-cream-muted: #F7E8D2;
+  --brand-ink: #173F46;
+  --brand-muted: #5C7477;
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
 
@@ -66,36 +75,36 @@ textarea,
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 53 80% 96%;
-  --foreground: 168 30% 12%;
-  --border: 160 15% 85%;
-  --card: 52 79% 96%;
-  --card-foreground: 168 45% 8%;
-  --card-border: 160 15% 88%;
-  --sidebar: 150 18% 94%;
-  --sidebar-foreground: 168 30% 15%;
-  --sidebar-border: 160 15% 85%;
-  --sidebar-primary: 166 48% 35%;
+  --background: 36 93.75% 93.725%;
+  --foreground: 188.936 50.538% 18.235%;
+  --border: 31 39% 82%;
+  --card: 37.895 100% 96.275%;
+  --card-foreground: 188.936 50.538% 18.235%;
+  --card-border: 31 39% 84%;
+  --sidebar: 37 75% 91%;
+  --sidebar-foreground: 188.936 50.538% 18.235%;
+  --sidebar-border: 31 39% 82%;
+  --sidebar-primary: 187.846 83.333% 30.588%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 150 20% 90%;
-  --sidebar-accent-foreground: 168 30% 15%;
-  --sidebar-ring: 166 48% 35%;
-  --popover: 52 79% 96%;
-  --popover-foreground: 168 45% 8%;
-  --popover-border: 160 15% 85%;
-  --primary: 166 48% 35%;
+  --sidebar-accent: 187 45% 87%;
+  --sidebar-accent-foreground: 188.936 50.538% 18.235%;
+  --sidebar-ring: 187.846 83.333% 30.588%;
+  --popover: 37.895 100% 96.275%;
+  --popover-foreground: 188.936 50.538% 18.235%;
+  --popover-border: 31 39% 82%;
+  --primary: 187.846 83.333% 30.588%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 150 18% 90%;
-  --secondary-foreground: 168 30% 15%;
-  --muted: 150 15% 92%;
-  --muted-foreground: 168 10% 45%;
+  --secondary: 187 38% 88%;
+  --secondary-foreground: 188.936 50.538% 18.235%;
+  --muted: 37 55% 89%;
+  --muted-foreground: 186.667 12.796% 41.373%;
   --accent: 38 78% 56%;
   --accent-foreground: 30 60% 15%;
   --destructive: 0 65% 55%;
   --destructive-foreground: 0 0% 100%;
-  --input: 160 15% 82%;
-  --ring: 166 48% 35%;
-  --chart-1: 166 48% 35%;
+  --input: 31 39% 78%;
+  --ring: 187.846 83.333% 30.588%;
+  --chart-1: 187.846 83.333% 30.588%;
   --chart-2: 38 78% 56%;
   --chart-3: 145 55% 42%;
   --chart-4: 0 65% 55%;
@@ -158,36 +167,36 @@ textarea,
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 170 25% 8%;
-  --foreground: 150 15% 90%;
-  --border: 168 15% 18%;
-  --card: 170 20% 12%;
-  --card-foreground: 150 15% 90%;
-  --card-border: 168 15% 20%;
-  --sidebar: 170 22% 10%;
-  --sidebar-foreground: 150 15% 88%;
-  --sidebar-border: 168 15% 18%;
-  --sidebar-primary: 166 48% 42%;
+  --background: 187 28% 9%;
+  --foreground: 37 65% 91%;
+  --border: 187 22% 22%;
+  --card: 187 25% 13%;
+  --card-foreground: 37 65% 91%;
+  --card-border: 187 22% 24%;
+  --sidebar: 187 27% 11%;
+  --sidebar-foreground: 37 60% 89%;
+  --sidebar-border: 187 22% 22%;
+  --sidebar-primary: 187 83% 38%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 170 20% 16%;
-  --sidebar-accent-foreground: 150 15% 88%;
-  --sidebar-ring: 166 48% 42%;
-  --popover: 170 20% 12%;
-  --popover-foreground: 150 15% 90%;
-  --popover-border: 168 15% 20%;
-  --primary: 166 48% 42%;
+  --sidebar-accent: 187 24% 17%;
+  --sidebar-accent-foreground: 37 60% 89%;
+  --sidebar-ring: 187 83% 38%;
+  --popover: 187 25% 13%;
+  --popover-foreground: 37 65% 91%;
+  --popover-border: 187 22% 24%;
+  --primary: 187 83% 38%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 170 18% 18%;
-  --secondary-foreground: 150 15% 88%;
-  --muted: 170 15% 16%;
-  --muted-foreground: 160 10% 55%;
+  --secondary: 187 24% 19%;
+  --secondary-foreground: 37 60% 89%;
+  --muted: 187 22% 17%;
+  --muted-foreground: 187 16% 64%;
   --accent: 38 70% 50%;
   --accent-foreground: 38 10% 95%;
   --destructive: 0 60% 50%;
   --destructive-foreground: 0 0% 100%;
-  --input: 168 15% 25%;
-  --ring: 166 48% 42%;
-  --chart-1: 166 48% 42%;
+  --input: 187 22% 28%;
+  --ring: 187 83% 38%;
+  --chart-1: 187 83% 38%;
   --chart-2: 38 70% 50%;
   --chart-3: 145 50% 45%;
   --chart-4: 0 60% 50%;
@@ -367,18 +376,18 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
 }
 
 /* === Glukky shared page design tokens (lifted from Home) === */
-.app-page-v2 { background: #fdfbee; min-height: 100vh; color: #214B36; }
+.app-page-v2 { background: var(--brand-cream); min-height: 100vh; color: var(--brand-ink); }
 .app-page-v2 [data-testid="text-greeting"] {
   font-family: 'Playfair Display', serif !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
 }
 .app-page-v2 h1 { letter-spacing: -0.01em; }
-.app-page-v2 .text-muted-foreground { color: #6E8477; }
+.app-page-v2 .text-muted-foreground { color: var(--brand-muted); }
 /* Goal speech bubble */
 .app-page-v2 .goal-bubble {
   position: relative;
-  background: #eef9d7;
+  background: var(--brand-teal-wash);
   border-radius: 20px;
   padding: 16px 18px;
 }
@@ -391,19 +400,19 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 10px solid #eef9d7;
-  filter: drop-shadow(0 2px 1px rgba(44, 72, 56, 0.05));
+  border-top: 10px solid var(--brand-teal-wash);
+  filter: drop-shadow(0 2px 1px rgba(13, 126, 143, 0.05));
 }
 .app-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
 /* Cards */
 .app-page-v2 .shadcn-card {
-  background-color: #fdfbee !important;
+  background-color: var(--brand-cream) !important;
   border: 0 !important;
   border-radius: 28px !important;
-  box-shadow: 0 4px 14px rgba(44, 72, 56, 0.06) !important;
+  box-shadow: 0 4px 14px rgba(13, 126, 143, 0.08) !important;
 }
 .app-page-v2:not(.home-page-v2) .shadcn-card {
-  background-color: #fbfbf3 !important;
+  background-color: var(--brand-cream-card) !important;
 }
 .app-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
 .app-page-v2:not(.home-page-v2) .shadcn-card > div:first-child { padding: 22px 22px 6px 22px !important; }
@@ -415,12 +424,12 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
 }
 /* Emphasis card */
 .app-page-v2 .shadcn-card.is-emphasis {
-  background-color: #d8f3ae !important;
+  background-color: var(--brand-teal-soft) !important;
   border: 0 !important;
 }
 /* Calendar card */
 .app-page-v2 .shadcn-card.is-calendar {
-  background-color: #e0f8ac !important;
+  background-color: var(--brand-teal-soft) !important;
   border: 0 !important;
 }
 /* Strip card child borders */
@@ -430,20 +439,20 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
 .app-page-v2 button { border-radius: 22px; }
 .app-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
 /* Day chip / muted overrides */
-.app-page-v2 .bg-muted { background-color: #d0f38f !important; }
-.app-page-v2 .bg-muted\/50 { background-color: #F1F4ED !important; }
-.app-page-v2 .bg-muted\/30 { background-color: #F5F2EC !important; }
-.app-page-v2 .bg-green-100 { background-color: #d0f38f !important; color: #2F6B43 !important; }
-.app-page-v2 .text-green-600 { color: #2F6B43 !important; }
+.app-page-v2 .bg-muted { background-color: var(--brand-teal-soft) !important; }
+.app-page-v2 .bg-muted\/50 { background-color: var(--brand-cream-muted) !important; }
+.app-page-v2 .bg-muted\/30 { background-color: var(--brand-cream-card) !important; }
+.app-page-v2 .bg-green-100 { background-color: var(--brand-teal-soft) !important; color: var(--brand-teal-deep) !important; }
+.app-page-v2 .text-green-600 { color: var(--brand-teal-deep) !important; }
 /* === Popup / modal / sheet surfaces use the cream app background === */
 /* Targets Radix Dialog, AlertDialog, Sheet, and Vaul Drawer content. They */
 /* render in a portal outside .app-page-v2, so we match by ARIA role. */
 [role="dialog"],
 [role="alertdialog"] {
-  background-color: #fdfbee !important;
+  background-color: var(--brand-cream) !important;
 }
 /* Inner surfaces inside popups: nudge off-white tokens to a slightly */
-/* off-cream tone so cards / inputs / fills still read against #fdfbee. */
+/* off-cream tone so cards / inputs / fills still read against the app cream. */
 [role="dialog"] .bg-card,
 [role="dialog"] .bg-background,
 [role="dialog"] .bg-popover,
@@ -452,13 +461,13 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
 [role="alertdialog"] .bg-background,
 [role="alertdialog"] .bg-popover,
 [role="alertdialog"] .bg-white {
-  background-color: #fbfbf3 !important;
+  background-color: var(--brand-cream-card) !important;
 }
 [role="dialog"] .bg-muted\/50,
 [role="alertdialog"] .bg-muted\/50 {
-  background-color: #F1F4ED !important;
+  background-color: var(--brand-cream-muted) !important;
 }
 [role="dialog"] .bg-muted\/30,
 [role="alertdialog"] .bg-muted\/30 {
-  background-color: #F5F2EC !important;
+  background-color: var(--brand-cream-card) !important;
 }

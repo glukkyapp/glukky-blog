@@ -30,7 +30,7 @@
 .unlock-cube-circle-holder {
   width: 120px;
   height: 120px;
-  background: #F5EFE6;
+  background: #D7EEF0;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -55,7 +55,7 @@
 .unlock-cube-dot {
   width: 7px;
   height: 7px;
-  background: #A8C8BC;
+  background: #73B9C2;
   border-radius: 50%;
   animation: unlock-cube-dot-bounce 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   will-change: transform, opacity;
@@ -65,7 +65,7 @@
 .unlock-caption {
   font-size: 14px;
   font-weight: 500;
-  color: #0D2B1E;
+  color: #173F46;
   text-align: center;
   max-width: 240px;
   line-height: 1.4;

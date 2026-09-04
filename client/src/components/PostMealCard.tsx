@@ -249,8 +249,8 @@ export default function PostMealCard({
   };
 
   const cardStyle: React.CSSProperties = {
-    background: "#fbfbf3",
-    boxShadow: "0 4px 14px rgba(44,72,56,0.06)",
+    background: "#FFF8EC",
+    boxShadow: "0 4px 14px rgba(13,126,143,0.08)",
   };
 
   const alertTitleKey =

@@ -13,13 +13,13 @@ export default function OfflineScreen() {
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "#FDFBED",
+        backgroundColor: "var(--brand-cream)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         padding: "2rem",
-        color: "#0D2B1E",
+        color: "#173F46",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         zIndex: 2147483000,
@@ -46,7 +46,7 @@ export default function OfflineScreen() {
           margin: 0,
           marginBottom: "0.75rem",
           textAlign: "center",
-          color: "#0D2B1E",
+          color: "#173F46",
         }}
       >
         {t("offline_title")}
@@ -60,7 +60,7 @@ export default function OfflineScreen() {
           marginBottom: "2rem",
           textAlign: "center",
           maxWidth: 320,
-          color: "#0D2B1E",
+          color: "#173F46",
         }}
       >
         {t("offline_body")}
@@ -70,7 +70,7 @@ export default function OfflineScreen() {
         data-testid="button-offline-reload"
         onClick={() => window.location.reload()}
         style={{
-          backgroundColor: "#0D2B1E",
+          backgroundColor: "#0D7E8F",
           color: "#F3EAE5",
           border: "none",
           borderRadius: 999,

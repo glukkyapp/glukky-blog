@@ -440,30 +440,30 @@ export default function GlucosePatterns() {
                       onPrevious={() => moveCard(-1)}
                       onNext={() => moveCard(1)}
                       nextCard={activeIndex < activeFoods.length - 1 ? (
-                        <article className={`glucose-pattern-card min-h-40 rounded-2xl border p-4 text-[#153126] ${IMPACT_CARD_STYLES[impact]}`}>
+                        <article className={`glucose-pattern-card min-h-40 rounded-2xl border p-4 text-[var(--brand-ink)] ${IMPACT_CARD_STYLES[impact]}`}>
                           <h2 className="text-lg font-bold">{activeFoods[activeIndex + 1].foodName}</h2>
                         </article>
                       ) : undefined}
                     >
-                      <article className={`glucose-pattern-card is-active min-h-40 rounded-2xl border p-4 text-[#153126] ${IMPACT_CARD_STYLES[impact]}`} data-testid={`glucose-ranking-card-${activeIndex}`}>
+                      <article className={`glucose-pattern-card is-active min-h-40 rounded-2xl border p-4 text-[var(--brand-ink)] ${IMPACT_CARD_STYLES[impact]}`} data-testid={`glucose-ranking-card-${activeIndex}`}>
                         <div className="mb-5 flex items-start justify-between gap-3">
                           <div>
                             {impact !== "medium" && (
-                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#53685C]" data-testid="glucose-card-rank">
+                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--brand-muted)]" data-testid="glucose-card-rank">
                                 {t(`glucose.pattern_rank_${activeIndex + 1}`)}
                               </p>
                             )}
                             <h2 className="text-lg font-bold">{activeFood.foodName}</h2>
-                            <p className="mt-1 text-sm text-[#53685C]">{t("glucose.pattern_hstix_reading")}</p>
-                            <p className="mt-1 text-xs font-medium text-[#53685C]" data-testid="glucose-component-type">
+                            <p className="mt-1 text-sm text-[var(--brand-muted)]">{t("glucose.pattern_hstix_reading")}</p>
+                            <p className="mt-1 text-xs font-medium text-[var(--brand-muted)]" data-testid="glucose-component-type">
                               {t(`glucose.pattern_component_type_${activeFood.componentType}`)}
                             </p>
                           </div>
                           <ImpactBadge impact={impact} measured />
                         </div>
                         <div>
-                          <p className="mb-3 text-sm text-[#43594D]">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
-                          <p className="text-sm text-[#43594D]">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
+                          <p className="mb-3 text-sm text-[var(--brand-muted)]">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
+                          <p className="text-sm text-[var(--brand-muted)]">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
                           {activeFood.partnerInsight?.kind === "dominant" && (
                             <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
                               <Trans
@@ -478,7 +478,7 @@ export default function GlucosePatterns() {
                           )}
                           {activeFood.partnerInsight?.kind === "comparison" && (
                             <div className="mt-4 space-y-1.5" data-testid="glucose-partner-comparison">
-                              <p className="text-sm leading-5 text-[#43594D]">
+                              <p className="text-sm leading-5 text-[var(--brand-muted)]">
                                 <Trans
                                   i18nKey="glucose.pattern_partner_comparison"
                                   values={{
@@ -486,10 +486,10 @@ export default function GlucosePatterns() {
                                     higherPartner: localizedPartnerName(activeFood.partnerInsight.higherPartner),
                                     lowerPartner: localizedPartnerName(activeFood.partnerInsight.lowerPartner),
                                   }}
-                                  components={{ food: <strong className="font-semibold text-[#153126]" /> }}
+                                  components={{ food: <strong className="font-semibold text-[var(--brand-ink)]" /> }}
                                 />
                               </p>
-                              <p className="text-xs leading-5 text-[#43594D]" data-testid="glucose-partner-disclaimer">
+                              <p className="text-xs leading-5 text-[var(--brand-muted)]" data-testid="glucose-partner-disclaimer">
                                 {t("glucose.pattern_partner_disclaimer")}
                               </p>
                             </div>

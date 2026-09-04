@@ -55,7 +55,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
         .cube-circle-holder {
           width: 120px;
           height: 120px;
-          background: #F5EFE6;
+          background: #D7EEF0;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -80,7 +80,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
         .cube-dot {
           width: 7px;
           height: 7px;
-          background: #A8C8BC;
+          background: #73B9C2;
           border-radius: 50%;
           animation: cube-dot-bounce 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
           will-change: transform, opacity;
@@ -106,7 +106,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
           height: "100dvh",
           boxSizing: "border-box",
           zIndex: 9998,
-          backgroundColor: "rgba(0, 0, 0, 0.3)",
+          backgroundColor: "rgba(13, 126, 143, 0.32)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -135,7 +135,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
                    L16.7 20.3
                    C16.1 19.9, 16.2 19.3, 16.8 19.0
                    C22 16.5, 27.4 14.9, 33 14.2 Z"
-                fill="#A8C8BC"
+                fill="#73B9C2"
               />
               <path
                 d="M16.7 20.3
@@ -147,7 +147,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
                    L33 28.5
                    C33 28.35, 32.8 28.2, 32.4 28.0
                    L16.7 20.3 Z"
-                fill="#9BBFB1"
+                fill="#58AAB5"
               />
               <path
                 d="M49.3 20.3
@@ -159,7 +159,7 @@ export function LoadingScreen({ visible }: LoadingScreenProps) {
                    L33 28.5
                    C33 28.35, 33.2 28.2, 33.6 28.0
                    L49.3 20.3 Z"
-                fill="#88B4A5"
+                fill="#3D96A3"
               />
             </svg>
           </div>

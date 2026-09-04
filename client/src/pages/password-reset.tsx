@@ -75,11 +75,11 @@ export default function PasswordReset() {
   if (success) {
     return (
       <PageShell>
-        <h1 className="text-xl font-semibold text-[#214B36]">{t("password_reset.success_title")}</h1>
+         <h1 className="text-xl font-semibold text-[var(--brand-ink)]">{t("password_reset.success_title")}</h1>
         <p className="text-sm text-muted-foreground text-center">{t("password_reset.success_body")}</p>
         <Button
           className="w-full text-white btn-pop"
-          style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
+           style={{ backgroundColor: "var(--brand-teal)", borderColor: "var(--brand-teal)" }}
           onClick={() => { window.location.assign("/?tab=login"); }}
           data-testid="button-reset-back-to-login"
         >
@@ -92,7 +92,7 @@ export default function PasswordReset() {
   return (
     <PageShell>
       <div className="text-center space-y-2">
-        <h1 className="text-xl font-semibold text-[#214B36]">{t("password_reset.title")}</h1>
+         <h1 className="text-xl font-semibold text-[var(--brand-ink)]">{t("password_reset.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("password_reset.body")}</p>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
@@ -132,7 +132,7 @@ export default function PasswordReset() {
           type="submit"
           disabled={isLoading}
           className="w-full text-white btn-pop"
-          style={{ backgroundColor: "#214B36", borderColor: "#214B36" }}
+           style={{ backgroundColor: "var(--brand-teal)", borderColor: "var(--brand-teal)" }}
           data-testid="button-reset-password"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("password_reset.submit")}
@@ -146,7 +146,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <main
       className="min-h-dvh flex flex-col items-center justify-center px-6 py-8 gap-6"
-      style={{ backgroundColor: "#fdfbee" }}
+       style={{ backgroundColor: "var(--brand-cream)" }}
       data-testid="password-reset-page"
     >
       <img src={glukkyLogo} alt="Glukky" style={{ width: 240 }} />

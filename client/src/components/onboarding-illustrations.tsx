@@ -25,8 +25,8 @@ import noButHealthImg from "@assets/generated-image_(16)_1776598029736.png";
 import couchImg from "@assets/generated-image_(19)_1776605605132.png";
 import walkImg from "@assets/generated-image_(20)_1776605612073.png";
 
-const GREEN = "#214B36";
-const LIME = "#d0f38f";
+const GREEN = "#0D7E8F";
+const LIME = "#D7EEF0";
 const LEAF = "#7cc26b";
 const SOFT = "#b8e489";
 
@@ -152,7 +152,7 @@ export function DinnerIllustration() {
         <Sunset size={56} style={{ color: "#e0a458" }} />
         <span className="text-[11px] mt-1 font-semibold" style={{ color: GREEN }}>Before</span>
       </div>
-      <div style={{ width: 1, height: 80, background: "rgba(33,75,54,0.2)" }} />
+      <div style={{ width: 1, height: 80, background: "rgba(13,126,143,0.2)" }} />
       <div className="flex flex-col items-center">
         <Moon size={56} style={{ color: "#5b7a8a" }} />
         <span className="text-[11px] mt-1 font-semibold" style={{ color: GREEN }}>After</span>
