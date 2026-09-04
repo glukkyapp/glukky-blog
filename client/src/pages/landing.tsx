@@ -4,7 +4,7 @@ import { isAppleSignInAvailable, triggerAppleSignIn } from "@/lib/natively-apple
 import { Loader2 } from "lucide-react";
 import { SiApple } from "react-icons/si";
 import { useTranslation } from "react-i18next";
-import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
+import preLoginBrandMark from "@assets/generated-image_(5)_copy_1788506043742.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -264,7 +264,11 @@ export default function Landing() {
         data-testid="landing-lang-screen"
       >
         <div className="flex flex-col items-center gap-3">
-          <img src={glukkyLogo} alt="Glukky" style={{ width: "min(200px, 55vw)" }} />
+          <img
+            src={preLoginBrandMark}
+            alt="Glukky"
+            style={{ width: "min(96px, 26vw)", display: "block" }}
+          />
           <p className="text-sm text-muted-foreground text-center">
             {t("landing.choose_language")}
           </p>
@@ -321,7 +325,11 @@ export default function Landing() {
       >
         {/* Logo */}
         <div style={{ paddingTop: 28, paddingBottom: 20, textAlign: "center", flexShrink: 0 }}>
-          <img src={glukkyLogo} alt="Glukky" style={{ width: 140, display: "inline-block" }} />
+          <img
+            src={preLoginBrandMark}
+            alt="Glukky"
+            style={{ width: 64, display: "inline-block" }}
+          />
         </div>
 
         {/* Photo card strip — overflow hidden clips the track, second card peeks from right */}
@@ -507,12 +515,14 @@ export default function Landing() {
         {/* Top spacer — pushes centre block to vertical midpoint */}
         <div className="flex-1" />
 
-        {/* Logo + subtitle + Apple button — centred block */}
+        {/* Brand mark + Apple button — centred block */}
         <div className="flex flex-col items-center w-full" style={{ gap: 12 }}>
-          <img src={glukkyLogo} alt="Glukky" style={{ width: 280 }} data-testid="text-app-title" />
-          <p className="text-xs text-muted-foreground" style={{ margin: 0 }} data-testid="text-description">
-            {t("landing.slogan")}
-          </p>
+          <img
+            src={preLoginBrandMark}
+            alt="Glukky"
+            style={{ width: "min(112px, 30vw)", display: "block" }}
+            data-testid="text-app-title"
+          />
           <button
             type="button"
             onClick={handleAppleSignIn}
@@ -583,11 +593,12 @@ export default function Landing() {
 
       <div className="flex flex-col items-center gap-1 mb-2">
         <div className="flex items-center gap-2" data-testid="text-app-title">
-          <img src={glukkyLogo} alt="Glukky" style={{ width: 320 }} />
+          <img
+            src={preLoginBrandMark}
+            alt="Glukky"
+            style={{ width: "min(96px, 26vw)", display: "block" }}
+          />
         </div>
-        <p className="text-xs text-muted-foreground" data-testid="text-description">
-          {t("landing.slogan")}
-        </p>
       </div>
 
       {!forgotPassword && (
