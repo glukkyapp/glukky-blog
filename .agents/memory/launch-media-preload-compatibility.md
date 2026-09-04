@@ -14,3 +14,9 @@ When a required font uses `font-display: block`, keep localized text on a visibl
 **Why:** Applying a blocked face before it is ready can make first-paint text invisible on a cold cache.
 
 **How to apply:** Preload the small subset, but only opt the visible label into that family after the Font Loading API confirms readiness.
+
+Keep the base document and root backgrounds cream for post-launch desktop gutters, while the launch overlay itself remains explicitly teal.
+
+**Why:** A fixed-width cream app surface exposes the base document at wide preview sizes; using the launch color on the document creates teal side panels after launch.
+
+**How to apply:** Treat the launch overlay color separately from the document background, and verify both the launch state and post-launch desktop edge pixels.
