@@ -321,26 +321,19 @@ check("Only the exact development test account can reset its swipe tutorial",
   !canResetGlucosePatternsSwipeTutorial(GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL, undefined) &&
   routes.includes('app.post("/api/dev/glucose-patterns/swipe-tutorial/reset"') &&
   routes.indexOf("canResetGlucosePatternsSwipeTutorial") < routes.indexOf("{ glucosePatternsSwipeTutorialSeen: false }"));
-check("HStix cards use pale semantic surfaces, gentle borders, and soft shadows without a thick left stripe",
-  page.includes('low: "border border-[#55B98A] bg-[#F2FBF6]"') &&
-  page.includes('medium: "border border-[#D49A22] bg-[#FFFBEA]"') &&
-  page.includes('high: "border border-[#E85A5A] bg-[#FFF4F3]"') &&
-  styles.includes('.glucose-pattern-card[data-impact="low"]') &&
-  styles.includes("0 10px 28px rgba(45, 122, 84, 0.10) !important") &&
-  styles.includes('.glucose-pattern-card[data-impact="medium"]') &&
-  styles.includes("0 10px 28px rgba(163, 112, 20, 0.10) !important") &&
-  styles.includes('.glucose-pattern-card[data-impact="high"]') &&
-  styles.includes("0 10px 28px rgba(181, 67, 67, 0.10) !important") &&
+check("HStix cards use borderless pale semantic surfaces with the Profile shadow",
+  page.includes('low: "border-0 bg-[#F2FBF6]"') &&
+  page.includes('medium: "border-0 bg-[#FFFBEA]"') &&
+  page.includes('high: "border-0 bg-[#FFF4F3]"') &&
   page.includes("glucose-pattern-card is-active min-h-40 rounded-[32px]") &&
   swipeableFoodCard.includes("touch-pan-y overflow-hidden rounded-[32px]") &&
   !page.includes("border-l-4"));
-check("General and HStix cards use the requested base and active elevations",
-  recurringFoods.includes('className="glucose-pattern-card border') &&
-  recurringFoods.includes('className="glucose-pattern-card is-active border') &&
+check("General and HStix food cards are borderless and use the Profile elevation",
+  recurringFoods.includes('className="glucose-pattern-card border-0 bg-background"') &&
+  recurringFoods.includes('className="glucose-pattern-card is-active border-0 bg-background"') &&
   page.includes("glucose-pattern-card min-h-40") &&
   page.includes("glucose-pattern-card is-active min-h-40") &&
-  styles.includes("0 4px 10px rgba(35, 54, 49, 0.07), 0 14px 28px rgba(35, 54, 49, 0.08)") &&
-  styles.includes("0 6px 14px rgba(35, 54, 49, 0.10), 0 18px 36px rgba(35, 54, 49, 0.10)"));
+  styles.includes("0 4px 14px rgba(13, 126, 143, 0.08) !important"));
 check("HStix badge and supporting-text colours meet WCAG AA against every pale card surface",
   [
     ["#1F6B4B", "#DDF4E8"],

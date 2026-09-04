@@ -90,6 +90,9 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
 
   await page.goto("/glucose-patterns");
   await expect(page.getByTestId("recurring-food-card")).toBeVisible();
+  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("background-color", "rgb(254, 242, 224)");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("border-width", "0px");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await page.waitForTimeout(850);
   await expect(page.getByTestId("pattern-swipe-cue")).toHaveCount(0);
   await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
@@ -125,6 +128,8 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
 
   await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("pattern-swipe-cue")).toBeVisible();
   await page.waitForTimeout(850);
   await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
@@ -501,18 +506,18 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(242, 251, 246)");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(85, 185, 138)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(45, 122, 84, 0.1) 0px 10px 28px 0px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("glucose-partner-comparison").locator("strong")).toHaveText(["Milk", "Berries"]);
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
   await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
 
   await page.getByTestId("glucose-impact-high").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(255, 244, 243)");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(232, 90, 90)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(181, 67, 67, 0.1) 0px 10px 28px 0px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
   await expect(page.getByTestId("glucose-partner-dominant").locator("strong")).toHaveText("Roast pork");
   await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
@@ -566,18 +571,16 @@ test("Medium HStix keeps five sampled cards without ordinal text", async ({ cont
     const style = getComputedStyle(element);
     return {
       backgroundColor: style.backgroundColor,
-      borderLeftColor: style.borderLeftColor,
-      borderLeftWidth: style.borderLeftWidth,
+      borderWidth: style.borderWidth,
       borderRadius: style.borderRadius,
       boxShadow: style.boxShadow,
     };
   });
   expect(mediumCardStyle).toEqual({
     backgroundColor: "rgb(255, 251, 234)",
-    borderLeftColor: "rgb(212, 154, 34)",
-    borderLeftWidth: "1px",
+    borderWidth: "0px",
     borderRadius: "32px",
-    boxShadow: "rgba(163, 112, 20, 0.1) 0px 10px 28px 0px",
+    boxShadow: "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px",
   });
 
   const badgeStyle = await page.getByTestId("glucose-impact-badge-medium").evaluate(element => {

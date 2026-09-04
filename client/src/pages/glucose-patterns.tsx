@@ -157,9 +157,9 @@ const IMPACT_BUTTON_COLORS: Record<string, { selected: string; unselected: strin
 };
 
 const IMPACT_CARD_STYLES: Record<GlucoseImpactLevel, string> = {
-  low: "border border-[#55B98A] bg-[#F2FBF6]",
-  medium: "border border-[#D49A22] bg-[#FFFBEA]",
-  high: "border border-[#E85A5A] bg-[#FFF4F3]",
+  low: "border-0 bg-[#F2FBF6]",
+  medium: "border-0 bg-[#FFFBEA]",
+  high: "border-0 bg-[#FFF4F3]",
 };
 
 export default function GlucosePatterns() {

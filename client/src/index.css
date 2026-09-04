@@ -29,20 +29,11 @@
 }
 
 .glucose-pattern-card {
-  box-shadow: 0 4px 10px rgba(35, 54, 49, 0.07), 0 14px 28px rgba(35, 54, 49, 0.08) !important;
+  box-shadow: 0 4px 14px rgba(13, 126, 143, 0.08) !important;
 }
 .glucose-pattern-card.is-active,
 .glucose-pattern-card:active {
-  box-shadow: 0 6px 14px rgba(35, 54, 49, 0.10), 0 18px 36px rgba(35, 54, 49, 0.10) !important;
-}
-.glucose-pattern-card[data-impact="low"] {
-  box-shadow: 0 10px 28px rgba(45, 122, 84, 0.10) !important;
-}
-.glucose-pattern-card[data-impact="medium"] {
-  box-shadow: 0 10px 28px rgba(163, 112, 20, 0.10) !important;
-}
-.glucose-pattern-card[data-impact="high"] {
-  box-shadow: 0 10px 28px rgba(181, 67, 67, 0.10) !important;
+  box-shadow: 0 4px 14px rgba(13, 126, 143, 0.08) !important;
 }
 
 *,
