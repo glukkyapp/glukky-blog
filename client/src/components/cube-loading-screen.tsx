@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import i18n from "@/i18n";
-import cubeGif from "@assets/gif_new_v2_1777639983811.gif";
+import loadingAnimation from "@assets/loading_animation_1788501069963.mp4";
 
 // Preserve the existing minimum cold-launch duration after removing the tips.
 const MIN_DURATION_MS = 14_000;
@@ -100,17 +100,26 @@ export default function CubeLoadingScreen({
           zIndex: 9999,
         }}
       >
-      <img
-        src={cubeGif}
-        alt="Glukky"
+      <video
+        src={loadingAnimation}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-label="Glukky"
         style={{
-          width: "20vw",
-          maxWidth: 120,
+          width: "18vw",
+          maxWidth: 112,
           minWidth: 64,
           height: "auto",
-          marginBottom: "1rem",
+          aspectRatio: "1 / 1",
+          objectFit: "cover",
+          backgroundColor: "#0D7D89",
+          display: "block",
+          marginBottom: "0.75rem",
         }}
-        data-testid="cube-loading-gif"
+        data-testid="cube-loading-video"
       />
       <div style={{ maxWidth: 360, width: "100%", textAlign: "center" }}>
         <p
