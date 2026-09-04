@@ -1,0 +1,113 @@
+Exact code direction
+1. Replace the impact card styles
+Change this:
+
+ts
+const IMPACT_CARD_STYLES: Record<GlucoseImpactLevel, string> = {
+  low: "border-[#55B98A] border-l-4 bg-[#F2FBF6]",
+  medium: "border-[#D49A22] border-l-4 bg-[#FFFBEA]",
+  high: "border-[#E85A5A] border-l-4 bg-[#FFF4F3]",
+};
+To this:
+
+ts
+const IMPACT_CARD_STYLES: Record<GlucoseImpactLevel, string> = {
+  low: "",
+  medium: "",
+  high: "",
+};
+Or remove IMPACT_CARD_STYLES entirely if it is used only on the outer ranking cards.
+
+This is the crucial change: no colored background, no colored full border, and no thick border-l-4 on the large card.
+
+2. Make both articles match Profile’s card shell
+Replace the active card’s class list with:
+
+tsx
+<article
+  className="
+    glucose-pattern-card
+    is-active
+    min-h-40
+    rounded-xl
+    border
+    border-card-border
+    bg-card
+    p-4
+    text-card-foreground
+    shadow-sm
+  "
+  data-testid={`glucose-ranking-card-${activeIndex}`}
+>
+Use the same shell for the stacked next-card preview:
+
+tsx
+<article
+  className="
+    glucose-pattern-card
+    min-h-40
+    rounded-xl
+    border
+    border-card-border
+    bg-card
+    p-4
+    text-card-foreground
+    shadow-sm
+  "
+>
+That gives both cards the same visual foundation as the Profile components:
+
+text
+rounded-xl + border + border-card-border + bg-card + text-card-foreground + shadow-sm
+Keep colour only in status UI
+Keep the impact classification visible through small, contained elements rather than the entire card.
+
+For example:
+
+tsx
+const IMPACT_BADGE_STYLES = {
+  low: "border-[#55B98A] bg-[#F2FBF6] text-[#26734F]",
+  medium: "border-[#D49A22] bg-[#FFFBEA] text-[#9A6908]",
+  high: "border-[#E85A5A] bg-[#FFF4F3] text-[#B93D3D]",
+};
+Then apply it only to the status pill:
+
+tsx
+<span
+  className={cn(
+    "rounded-full border px-3 py-1 text-sm font-semibold",
+    IMPACT_BADGE_STYLES[impact]
+  )}
+>
+  {impactLabel}
+</span>
+The same principle applies to your existing three filter controls: preserve their green/yellow/red styling, but do not let those semantic colors take over the full information card.
+
+Important safeguard
+Do not change this wrapper:
+
+tsx
+<div
+  className="
+    touch-pan-y
+    overflow-hidden
+    rounded-xl
+    outline-none
+    focus-visible:ring-2
+    focus-visible:ring-ring
+    focus-visible:ring-offset-2
+  "
+  data-testid="pattern-card-viewport"
+>
+It already matches the Profile corner radius and controls clipping during the swipe transition. Changing it risks creating clipped corners or visible background gaps during card movement.
+
+Suggested task wording
+Restyle glucose-pattern cards to use the shared Profile card shell
+
+Replace the large ranked-food cards’ impact-tinted backgrounds, colored borders, and border-l-4 accent stripe with the same visual shell used by the Profile Card component: rounded-xl border border-card-border bg-card text-card-foreground shadow-sm.
+
+Preserve all existing glucose-pattern card content, hierarchy, dimensions, padding, swipe behavior, active/next-card behavior, tabs, search controls, and accessibility/test IDs.
+
+Retain green/yellow/red semantic styling only in the existing impact filter group and small impact-status badge. Do not use green/yellow/red as the large card’s background, full border, or left-side border stripe.
+
+That would make the glucose screen feel like it belongs to the same app as the Profile screen: calm, cream, spacious, and structured—with risk color present only where the user needs to interpret the result.
