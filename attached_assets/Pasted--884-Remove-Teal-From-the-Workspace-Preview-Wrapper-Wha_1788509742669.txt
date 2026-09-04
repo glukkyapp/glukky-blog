@@ -1,0 +1,27 @@
+#884 - Remove Teal From the Workspace Preview Wrapper
+What & Why
+The direct mockup preview is already warm cream across its entire document and wide viewport. The remaining teal is outside the application document, in the workspace/Replit embedding or presentation layer. Fix that outer layer so the workspace presentation matches the app instead of changing the app screen again.
+
+Done looks like
+The affected mockups remain unchanged inside their iframe documents
+In the actual Replit workspace presentation, the entire user-visible preview area outside and around each portrait iframe is #FEF2E0
+No teal, blue, white, transparent, or fallback-colored gutters remain in the parent presentation surface
+The fix survives a workspace reload and reopening the canvas/preview
+The iframe content and the parent presentation surface meet without a visible color boundary
+Direct preview routes continue to render exactly as they do now
+Out of scope
+Changing html, body, #root, preview-wrapper, or mockup-component backgrounds inside the application iframe
+Recoloring semantic teal/blue elements within the mockup UI
+Changing mockup layout, copy, dimensions, or interactions
+Implementing the separate visual regression task
+Steps
+Inspect outside the iframe — In the actual Replit workspace presentation, inspect the iframe element, its parent and ancestor containers, canvas/preview host surface, and any Replit-specific frame configuration. Determine which first painted ancestor outside the iframe produces the visible teal.
+Confirm the boundary — Verify the iframe document itself remains #FEF2E0 at its edges while the sampled teal belongs to a parent/host surface outside that document.
+Fix the source layer — Change the real presentation or frame configuration that paints the teal. Do not cover it with another application-level element and do not modify the already-correct mockup CSS.
+Persist the presentation fix — Store the corrected Replit/canvas frame configuration in the durable source used to reconstruct the workspace presentation, not only in transient live canvas state.
+Verify in the workspace — Reload or reopen the actual Replit workspace canvas/preview and check every affected frame at both portrait and wide workspace sizes. Capture evidence that includes space outside the iframe, not merely a screenshot of the direct preview URL.
+Relevant areas
+Replit workspace preview host document and iframe ancestors outside the application document
+Canvas/preview wrapper configuration for the affected iframe shapes
+Durable Replit-specific frame state under .canvas/, if that state is the source used to reconstruct the presentation
+Existing affected shapes: hstix-needs-more-readings, m384-glucose-en, and m384-glucose-zh
