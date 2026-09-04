@@ -502,6 +502,8 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(242, 251, 246)");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(85, 185, 138)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(45, 122, 84, 0.1) 0px 10px 28px 0px");
   await expect(page.getByTestId("glucose-partner-comparison").locator("strong")).toHaveText(["Milk", "Berries"]);
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
   await expect(page.getByTestId("glucose-partner-dominant")).toHaveCount(0);
@@ -509,6 +511,8 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await page.getByTestId("glucose-impact-high").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(255, 244, 243)");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-left-color", "rgb(232, 90, 90)");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(181, 67, 67, 0.1) 0px 10px 28px 0px");
   await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
   await expect(page.getByTestId("glucose-partner-dominant").locator("strong")).toHaveText("Roast pork");
   await expect(page.getByTestId("glucose-partner-comparison")).toHaveCount(0);
@@ -564,12 +568,16 @@ test("Medium HStix keeps five sampled cards without ordinal text", async ({ cont
       backgroundColor: style.backgroundColor,
       borderLeftColor: style.borderLeftColor,
       borderLeftWidth: style.borderLeftWidth,
+      borderRadius: style.borderRadius,
+      boxShadow: style.boxShadow,
     };
   });
   expect(mediumCardStyle).toEqual({
     backgroundColor: "rgb(255, 251, 234)",
     borderLeftColor: "rgb(212, 154, 34)",
-    borderLeftWidth: "4px",
+    borderLeftWidth: "1px",
+    borderRadius: "32px",
+    boxShadow: "rgba(163, 112, 20, 0.1) 0px 10px 28px 0px",
   });
 
   const badgeStyle = await page.getByTestId("glucose-impact-badge-medium").evaluate(element => {

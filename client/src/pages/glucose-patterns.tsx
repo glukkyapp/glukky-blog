@@ -156,6 +156,12 @@ const IMPACT_BUTTON_COLORS: Record<string, { selected: string; unselected: strin
   high:   { selected: "border-red-500 bg-red-500 text-white",         unselected: "border-red-200 text-red-700 hover:bg-red-50" },
 };
 
+const IMPACT_CARD_STYLES: Record<GlucoseImpactLevel, string> = {
+  low: "border border-[#55B98A] bg-[#F2FBF6]",
+  medium: "border border-[#D49A22] bg-[#FFFBEA]",
+  high: "border border-[#E85A5A] bg-[#FFF4F3]",
+};
+
 export default function GlucosePatterns() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
@@ -434,12 +440,12 @@ export default function GlucosePatterns() {
                       onPrevious={() => moveCard(-1)}
                       onNext={() => moveCard(1)}
                       nextCard={activeIndex < activeFoods.length - 1 ? (
-                        <article className="glucose-pattern-card min-h-40 rounded-xl border border-card-border bg-card p-4 text-card-foreground shadow-sm">
+                        <article className={`glucose-pattern-card min-h-40 rounded-[32px] p-4 text-[var(--brand-ink)] ${IMPACT_CARD_STYLES[impact]}`} data-impact={impact}>
                           <h2 className="text-lg font-bold">{activeFoods[activeIndex + 1].foodName}</h2>
                         </article>
                       ) : undefined}
                     >
-                      <article className="glucose-pattern-card is-active min-h-40 rounded-xl border border-card-border bg-card p-4 text-card-foreground shadow-sm" data-testid={`glucose-ranking-card-${activeIndex}`}>
+                      <article className={`glucose-pattern-card is-active min-h-40 rounded-[32px] p-4 text-[var(--brand-ink)] ${IMPACT_CARD_STYLES[impact]}`} data-impact={impact} data-testid={`glucose-ranking-card-${activeIndex}`}>
                         <div className="mb-5 flex items-start justify-between gap-3">
                           <div>
                             {impact !== "medium" && (

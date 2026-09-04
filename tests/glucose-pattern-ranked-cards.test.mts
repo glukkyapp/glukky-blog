@@ -321,11 +321,19 @@ check("Only the exact development test account can reset its swipe tutorial",
   !canResetGlucosePatternsSwipeTutorial(GLUCOSE_PATTERNS_SWIPE_TUTORIAL_TEST_EMAIL, undefined) &&
   routes.includes('app.post("/api/dev/glucose-patterns/swipe-tutorial/reset"') &&
   routes.indexOf("canResetGlucosePatternsSwipeTutorial") < routes.indexOf("{ glucosePatternsSwipeTutorialSeen: false }"));
-check("HStix cards use the requested pale surfaces and accent colours",
-  page.includes('low: "border-[#55B98A] border-l-4 bg-[#F2FBF6]"') &&
-  page.includes('medium: "border-[#D49A22] border-l-4 bg-[#FFFBEA]"') &&
-  page.includes('high: "border-[#E85A5A] border-l-4 bg-[#FFF4F3]"') &&
-  page.includes("glucose-pattern-card is-active"));
+check("HStix cards use pale semantic surfaces, gentle borders, and soft shadows without a thick left stripe",
+  page.includes('low: "border border-[#55B98A] bg-[#F2FBF6]"') &&
+  page.includes('medium: "border border-[#D49A22] bg-[#FFFBEA]"') &&
+  page.includes('high: "border border-[#E85A5A] bg-[#FFF4F3]"') &&
+  styles.includes('.glucose-pattern-card[data-impact="low"]') &&
+  styles.includes("0 10px 28px rgba(45, 122, 84, 0.10) !important") &&
+  styles.includes('.glucose-pattern-card[data-impact="medium"]') &&
+  styles.includes("0 10px 28px rgba(163, 112, 20, 0.10) !important") &&
+  styles.includes('.glucose-pattern-card[data-impact="high"]') &&
+  styles.includes("0 10px 28px rgba(181, 67, 67, 0.10) !important") &&
+  page.includes("glucose-pattern-card is-active min-h-40 rounded-[32px]") &&
+  swipeableFoodCard.includes("touch-pan-y overflow-hidden rounded-[32px]") &&
+  !page.includes("border-l-4"));
 check("General and HStix cards use the requested base and active elevations",
   recurringFoods.includes('className="glucose-pattern-card border') &&
   recurringFoods.includes('className="glucose-pattern-card is-active border') &&
