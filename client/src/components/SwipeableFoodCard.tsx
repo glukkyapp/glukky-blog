@@ -148,7 +148,7 @@ export function SwipeableFoodCard({
         </div>
       )}
       <div
-        className="touch-pan-y overflow-hidden rounded-[32px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="touch-pan-y -m-[14px] overflow-hidden rounded-[42px] p-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         tabIndex={isMultiCard ? 0 : undefined}
         onKeyDown={isMultiCard ? handleKeyDown : undefined}
         onPointerDown={isMultiCard ? handlePointerDown : undefined}

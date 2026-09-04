@@ -90,9 +90,22 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
 
   await page.goto("/glucose-patterns");
   await expect(page.getByTestId("recurring-food-card")).toBeVisible();
-  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("background-color", "rgb(254, 242, 224)");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("background-color", "rgb(255, 248, 236)");
   await expect(page.getByTestId("recurring-food-card")).toHaveCSS("border-width", "0px");
+  await expect(page.getByTestId("recurring-food-card")).toHaveCSS("border-radius", "28px");
   await expect(page.getByTestId("recurring-food-card")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
+  const generalShadowRoom = await page.getByTestId("recurring-food-card").evaluate(element => {
+    const card = element.getBoundingClientRect();
+    const viewport = element.closest('[data-testid="pattern-card-viewport"]')!.getBoundingClientRect();
+    return {
+      top: card.top - viewport.top,
+      bottom: viewport.bottom - card.bottom,
+      left: card.left - viewport.left,
+    };
+  });
+  expect(generalShadowRoom.top).toBeGreaterThanOrEqual(14);
+  expect(generalShadowRoom.bottom).toBeGreaterThanOrEqual(14);
+  expect(generalShadowRoom.left).toBeGreaterThanOrEqual(14);
   await page.waitForTimeout(850);
   await expect(page.getByTestId("pattern-swipe-cue")).toHaveCount(0);
   await expect(page.getByTestId("pattern-swipe-tutorial")).toHaveCount(0);
@@ -129,6 +142,7 @@ test("Swipe tutorial waits for a multi-card group, respects reduced motion, and 
   await page.getByTestId("glucose-mode-hstix").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toBeVisible();
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "28px");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("pattern-swipe-cue")).toBeVisible();
   await page.waitForTimeout(850);
@@ -507,7 +521,7 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await expect(page.getByTestId("glucose-partner-comparison")).toContainText("higher with Milk and lower with Berries");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(242, 251, 246)");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "28px");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("glucose-partner-comparison").locator("strong")).toHaveText(["Milk", "Berries"]);
   await expect(page.getByTestId("glucose-partner-disclaimer")).toContainText("does not prove");
@@ -516,7 +530,7 @@ test("Partner messages appear only on qualified measured cards", async ({ contex
   await page.getByTestId("glucose-impact-high").click();
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("background-color", "rgb(255, 244, 243)");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-width", "0px");
-  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "32px");
+  await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("border-radius", "28px");
   await expect(page.getByTestId("glucose-ranking-card-0")).toHaveCSS("box-shadow", "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px");
   await expect(page.getByTestId("glucose-partner-dominant")).toContainText("Most times you eat Rice, you also eat Roast pork");
   await expect(page.getByTestId("glucose-partner-dominant").locator("strong")).toHaveText("Roast pork");
@@ -579,7 +593,7 @@ test("Medium HStix keeps five sampled cards without ordinal text", async ({ cont
   expect(mediumCardStyle).toEqual({
     backgroundColor: "rgb(255, 251, 234)",
     borderWidth: "0px",
-    borderRadius: "32px",
+    borderRadius: "28px",
     boxShadow: "rgba(13, 126, 143, 0.08) 0px 4px 14px 0px",
   });
 

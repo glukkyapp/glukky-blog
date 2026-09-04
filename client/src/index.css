@@ -29,6 +29,8 @@
 }
 
 .glucose-pattern-card {
+  border: 0 !important;
+  border-radius: 28px !important;
   box-shadow: 0 4px 14px rgba(13, 126, 143, 0.08) !important;
 }
 .glucose-pattern-card.is-active,

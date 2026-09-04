@@ -325,14 +325,15 @@ check("HStix cards use borderless pale semantic surfaces with the Profile shadow
   page.includes('low: "border-0 bg-[#F2FBF6]"') &&
   page.includes('medium: "border-0 bg-[#FFFBEA]"') &&
   page.includes('high: "border-0 bg-[#FFF4F3]"') &&
-  page.includes("glucose-pattern-card is-active min-h-40 rounded-[32px]") &&
-  swipeableFoodCard.includes("touch-pan-y overflow-hidden rounded-[32px]") &&
+  page.includes("glucose-pattern-card is-active min-h-40") &&
+  swipeableFoodCard.includes("touch-pan-y -m-[14px] overflow-hidden rounded-[42px] p-[14px]") &&
   !page.includes("border-l-4"));
 check("General and HStix food cards are borderless and use the Profile elevation",
-  recurringFoods.includes('className="glucose-pattern-card border-0 bg-background"') &&
-  recurringFoods.includes('className="glucose-pattern-card is-active border-0 bg-background"') &&
+  recurringFoods.includes('className="glucose-pattern-card border-0 bg-[var(--brand-cream-card)]"') &&
+  recurringFoods.includes('className="glucose-pattern-card is-active border-0 bg-[var(--brand-cream-card)]"') &&
   page.includes("glucose-pattern-card min-h-40") &&
   page.includes("glucose-pattern-card is-active min-h-40") &&
+  styles.includes("border-radius: 28px !important") &&
   styles.includes("0 4px 14px rgba(13, 126, 143, 0.08) !important"));
 check("HStix badge and supporting-text colours meet WCAG AA against every pale card surface",
   [
