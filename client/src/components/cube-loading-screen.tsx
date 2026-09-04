@@ -1,26 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import i18n from "@/i18n";
-import loadingAnimation from "@assets/loading_animation_1788501069963.mp4";
 
 // Preserve the existing minimum cold-launch duration after removing the tips.
 const MIN_DURATION_MS = 14_000;
-
-const FONT_LINK_ID = "lxgw-wenkai-tc-subset";
-
-function ensureChineseFontLoaded(): void {
-  if (typeof document === "undefined") return;
-  if (document.getElementById(FONT_LINK_ID)) return;
-  const subsetText = "載入中";
-  const url =
-    "https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&text=" +
-    encodeURIComponent(subsetText) +
-    "&display=swap";
-  const link = document.createElement("link");
-  link.id = FONT_LINK_ID;
-  link.rel = "stylesheet";
-  link.href = url;
-  document.head.appendChild(link);
-}
+const LOADING_ANIMATION_URL = "/launch/har-gow-launch.mp4";
 
 function isChineseLang(lang: string): boolean {
   return lang === "zh-Hant" || lang === "yue" || lang.startsWith("zh");
@@ -42,11 +25,6 @@ export default function CubeLoadingScreen({
 
   const [minElapsed, setMinElapsed] = useState(false);
   const startedAtRef = useRef<number>(Date.now());
-
-  // Keep the Chinese font for the translated loading label.
-  useEffect(() => {
-    if (isZh) ensureChineseFontLoaded();
-  }, [isZh]);
 
   // Minimum-duration gate.
   useEffect(() => {
@@ -101,13 +79,20 @@ export default function CubeLoadingScreen({
         }}
       >
       <video
-        src={loadingAnimation}
+        src={LOADING_ANIMATION_URL}
         autoPlay
         loop
         muted
         playsInline
         preload="auto"
-        aria-label="Glukky"
+        aria-label={isZh ? "載入中" : "Loading"}
+        onLoadedMetadata={(event) => {
+          const handoffTime = window.__launchVideoCurrentTime;
+          if (typeof handoffTime === "number" && Number.isFinite(handoffTime)) {
+            event.currentTarget.currentTime = handoffTime;
+            delete window.__launchVideoCurrentTime;
+          }
+        }}
         style={{
           width: "18vw",
           maxWidth: 112,
@@ -126,7 +111,7 @@ export default function CubeLoadingScreen({
         <p
           data-testid="cube-loading-label"
           style={{
-            fontFamily: isZh ? '"LXGW WenKai TC", serif' : undefined,
+            fontFamily: isZh ? '"Glukky Loading Chinese", serif' : undefined,
             fontSize: "1.5rem",
             color: "#FEF2E0",
             margin: 0,

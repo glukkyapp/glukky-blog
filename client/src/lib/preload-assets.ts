@@ -20,7 +20,6 @@ import glukkyLogo from "@assets/high-resolution-color-logo_1776593969022.png";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
-import loadingAnimation from "@assets/loading_animation_1788501069963.mp4";
 
 // Stage 2 — onboarding question illustrations
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
@@ -110,19 +109,6 @@ function loadAllTracked(srcs: string[]): Promise<void> {
   return Promise.all(perImage).then(() => {});
 }
 
-function loadVideoTracked(src: string): Promise<void> {
-  if (typeof document === "undefined") return Promise.resolve();
-  return new Promise<void>((resolve) => {
-    const video = document.createElement("video");
-    video.preload = "auto";
-    video.muted = true;
-    video.onloadeddata = () => resolve();
-    video.onerror = () => resolve();
-    video.src = src;
-    video.load();
-  });
-}
-
 let stage1Promise: Promise<void> | null = null;
 let stage2Promise: Promise<void> | null = null;
 let didStage3 = false;
@@ -130,10 +116,7 @@ let stage4Promise: Promise<void> | null = null;
 
 export function preloadStage1Launch(): Promise<void> {
   if (stage1Promise) return stage1Promise;
-  stage1Promise = Promise.all([
-    loadAllTracked(STAGE_1),
-    loadVideoTracked(loadingAnimation),
-  ]).then(() => {});
+  stage1Promise = loadAllTracked(STAGE_1);
   return stage1Promise;
 }
 

@@ -42,6 +42,7 @@ declare global {
     __bnLoadedAt?: number;
     __cubeMountedAt?: number;
     __stage1ReadyAt?: number;
+    __launchVideoCurrentTime?: number;
   }
 }
 
@@ -1797,7 +1798,7 @@ function Router() {
 
 function App() {
   // Cube cold-launch overlay shown only on logged-out boot; captured once at mount and gated by stage1+auth+min 14s.
-  // Rendered immediately so first paint is the cube (not a cream placeholder); Stage 1 preload fires from its mount effect.
+  // The static HTML boot screen starts the launch media before React; this overlay reuses the same URLs during handoff.
   const [showCube] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SESSION_HINT_KEY) == null;

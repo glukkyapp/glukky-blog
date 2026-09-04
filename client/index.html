@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Glukky</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" href="/fonts/loading-label-zh-subset.woff2"
+      as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/launch/har-gow-launch.mp4"
+      as="video" type="video/mp4" media="(-webkit-touch-callout: none)">
     <style>
+      @font-face {
+        font-family: "Glukky Loading Chinese";
+        src: url("/fonts/loading-label-zh-subset.woff2") format("woff2");
+        font-display: block;
+      }
       html, body { background-color: #0D7E8F; margin: 0; padding: 0; }
       #root { background-color: #0D7E8F; }
       #boot-caption {
@@ -16,17 +25,52 @@
         height: 100dvh;
         box-sizing: border-box;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         padding: calc(2rem + env(safe-area-inset-top))
           calc(2rem + env(safe-area-inset-right))
           calc(2rem + env(safe-area-inset-bottom))
           calc(2rem + env(safe-area-inset-left));
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #boot-loading-video {
+        width: 18vw;
+        max-width: 112px;
+        min-width: 64px;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        clip-path: circle(40% at 50% 50%);
+        background-color: #0D7E8F;
+        display: block;
+        margin-bottom: 0.75rem;
+        opacity: 0;
+      }
+      #boot-loading-video[data-frame-ready="true"] { opacity: 1; }
+      #boot-loading-label {
         color: #FEF2E0;
         font: 1.5rem/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         letter-spacing: 0.02em;
-        user-select: none;
-        -webkit-user-select: none;
+        margin: 0;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+      }
+      #boot-loading-label.is-chinese {
+        font-family: "Glukky Loading Chinese", serif;
+      }
+      @keyframes boot-ell-dot {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+      }
+      .boot-ell-dot { animation: boot-ell-dot 1.2s ease-in-out infinite; }
+      .boot-ell-dot-1 { animation-delay: 0s; }
+      .boot-ell-dot-2 { animation-delay: 0.4s; }
+      .boot-ell-dot-3 { animation-delay: 0.8s; }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-ell-dot { animation: none; }
       }
     </style>
 
@@ -54,18 +98,36 @@
   </head>
   <body>
     <div id="root">
-      <div id="boot-caption" data-testid="boot-loading-label" role="status" aria-live="polite">Loading</div>
+      <div id="boot-caption" role="status" aria-live="polite">
+        <video
+          id="boot-loading-video"
+          data-testid="boot-loading-video"
+          src="/launch/har-gow-launch.mp4"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="auto"
+          aria-label="Loading"
+          onloadeddata="this.dataset.frameReady='true'"
+        ></video>
+        <p id="boot-loading-label" data-testid="boot-loading-label">Loading<span class="boot-ell-dot boot-ell-dot-1">.</span><span class="boot-ell-dot boot-ell-dot-2">.</span><span class="boot-ell-dot boot-ell-dot-3">.</span></p>
+      </div>
     </div>
     <script>
       (function(){
         var preferred = "";
         try { preferred = localStorage.getItem("glukky_preferred_lang") || ""; } catch(e){}
         var lang = preferred || (navigator.language || "");
-        var caption = document.getElementById("boot-caption");
-        if (caption) {
+        var label = document.getElementById("boot-loading-label");
+        var video = document.getElementById("boot-loading-video");
+        if (label) {
           var isChinese = lang === "zh-Hant" || lang.indexOf("zh") === 0;
           var isCantonese = lang === "yue" || lang.indexOf("yue-") === 0;
-          caption.textContent = (isChinese || isCantonese) ? "載入中" : "Loading";
+          var localizedLabel = (isChinese || isCantonese) ? "載入中" : "Loading";
+          label.firstChild.nodeValue = localizedLabel;
+          if (isChinese || isCantonese) label.classList.add("is-chinese");
+          if (video) video.setAttribute("aria-label", localizedLabel);
         }
       })();
     </script>
