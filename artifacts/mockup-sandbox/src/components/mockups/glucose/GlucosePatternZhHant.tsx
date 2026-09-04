@@ -1,7 +1,7 @@
 import { TrendingUp } from "lucide-react";
 
 const COLORS = {
-  bg: "#fdfbee",
+  bg: "#fef2e0",
   ink: "#214B36",
   muted: "#6E8477",
   card: "#ffffff",

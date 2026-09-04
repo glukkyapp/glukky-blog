@@ -141,8 +141,15 @@
   * {
     @apply border-border;
   }
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: #fef2e0;
+  }
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
+    margin: 0;
   }
 }
 

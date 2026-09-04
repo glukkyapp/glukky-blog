@@ -71,7 +71,7 @@ export function NeedsMoreReadings() {
   const food = foods[activeFood];
 
   return (
-    <main className="foodsnap-glucose-patterns min-h-[100dvh] bg-background pb-10 pt-5 text-foreground">
+    <main className="foodsnap-glucose-patterns min-h-[100dvh] bg-[#fef2e0] pb-10 pt-5 text-foreground">
       <div className="mx-auto max-w-sm px-4">
         <button
           type="button"
