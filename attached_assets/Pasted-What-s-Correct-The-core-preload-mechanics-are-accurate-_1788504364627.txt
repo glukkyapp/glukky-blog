@@ -1,0 +1,27 @@
+What's Correct
+The core preload mechanics are accurate and follow established web performance practice:
+
+Declaring <link rel="preload" as="video" type="video/mp4"> in the document head to start the MP4 fetch before the JS bundle parses is a valid, documented technique.
+
+Moving font discovery into <link rel="preload"> in the head does eliminate the ~300ms discovery delay that otherwise happens only after CSS parsing finds the @font-face rule.
+
+Subsetting the Chinese font to just the loading-label characters instead of the full family is the right call — full CJK fonts are enormous, and this is explicitly the recommended pattern for above-fold custom fonts.
+
+The static-boot-to-React handoff goal (no restart, no layout shift, no duplicate media) is the correct framing for avoiding a second network request when React mounts.
+
+One Correction Needed
+Your steps don't mention crossorigin, but it's mandatory for font preloads — including same-origin ones. Multiple independent sources confirm the preload is silently ignored without it, which would cause exactly the late font-swap bug you're trying to fix. Add this explicitly to "Put launch assets on the initial critical path":
+
+xml
+<link rel="preload" href="/fonts/loading-label-zh-subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/launch/har-gow-launch.mp4" as="video" type="video/mp4">
+Also specify href must match the eventual @font-face src byte-for-byte, or the browser fetches it twice and logs a "preloaded but not used" warning — worth adding as an explicit check in "Lock in startup behavior".
+
+Gaps to Add
+Preload order and count. You preload two assets (MP4 + font subset), which is within the safe range — page performance guides caution against preloading more than 2–3 critical resources since preload contention can starve the actual LCP content. Worth stating this constraint explicitly so nobody later adds more preloads to this same boot path without re-evaluating.
+
+font-display strategy. The ticket doesn't say what happens if the font preload is slow. Specify font-display: block (short invisible period, then swap) or optional for the Chinese label so there's a defined fallback behavior rather than an implicit FOIT/FOUT — this belongs in "Upgrade the static boot fallback".
+
+Video preload doesn't guarantee playback readiness. rel=preload as=video starts the byte fetch but doesn't guarantee decode-ready state at the moment "the animated launch artwork is visible." Your "Done looks like" line says "visible as soon as media data is available" — this is good phrasing, but the steps should specify listening for loadeddata (first frame decoded) rather than canplay/canplaythrough, since you want the first frame visible, not full buffering, especially with mobile autoplay constraints (muted, playsinline, autoplay still required on the static HTML <video> tag, same as your earlier React implementation).
+
+Missing acceptance criterion for cache/CDN behavior. "Stable production URLs" is mentioned once but never tested. Add to "Verify both build modes": confirm the preloaded URL and the React-rendered <video src> / @font-face src are byte-identical between dev and prod builds (common regression when a bundler content-hashes filenames differently in each mode).
