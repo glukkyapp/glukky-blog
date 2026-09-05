@@ -1,0 +1,49 @@
+Fix — Unlink Device From OneSignal on Sign-Out
+What & Why
+A prior investigation found that no sign-out path currently unlinks a device's OneSignal association before the next account signs in on the same device, causing old accounts to keep receiving push notifications. Fix this by ensuring every sign-out path releases the device's OneSignal/notification-bridge association, and that this release completes before a new account's association is established.
+
+Do not assume the investigation's file names, line numbers, function names, or bridge method names are still accurate — re-verify all of them directly in the current codebase before making any change.
+
+Done looks like
+Every path that ends a user's session (however many such paths currently exist in the codebase — do not assume a fixed list) releases that device's notification-service association as part of signing out.
+
+The release step completes (is awaited/confirmed) before any new account's association is established on that same device.
+
+No other push-notification behavior changes: existing sign-in association behavior, notification content, scheduling/trigger logic, targeting/deduplication logic, and any database read/write related to notifications behave identically to today for all cases not involving sign-out.
+
+No API keys, secrets, environment variables, or credentials of any kind are changed, added, or removed.
+
+No changes to any database schema.
+
+A test demonstrating: sign in as Account A on a device, sign out, sign in as Account B on the same device — verify only Account B's association remains active for that device afterward.
+
+Out of scope
+Any change to how notifications are scheduled, targeted, or sent, beyond what is strictly necessary to stop targeting a signed-out account.
+
+Any change to third-party API keys or credentials.
+
+Deleting historical data for old accounts — old accounts may keep existing notification-service records; they simply must not remain targetable through the device they are no longer signed into.
+
+Any UI/UX changes beyond what's needed to trigger the fix.
+
+Any change to unrelated features.
+
+Steps
+Investigate independently — Before writing any fix, identify for yourself (do not rely on prior investigation notes as ground truth) every current sign-out path in the codebase, how each currently ends a session, and whether and how each currently interacts with the notification bridge/service. Report findings before proceeding.
+
+Identify the correct release mechanism — Determine what the actual, currently-integrated notification service/bridge in this codebase provides for releasing a device's association (its real method name and calling convention), rather than assuming one.
+
+Implement the release step on every sign-out path found in step 1, ensuring it completes before the next sign-in's association step runs for that device.
+
+Confirm no unrelated code changes — Produce a diff and confirm it touches only the sign-out/session-transition code paths and the association-release step, with no changes to notification scheduling, targeting, database schema, or credentials.
+
+Verify using the test scenario described in "Done looks like," using real or simulated sign-out/sign-in sequences on a device or test environment.
+
+Verification checklist for you to confirm before publishing
+Diff touches only sign-out/session-transition logic and the new release step — nothing in server-side notification scheduling, targeting, or credentials.
+
+Agent's own investigation (not assumptions) identified the actual sign-out paths and actual bridge/service method used.
+
+The release step is confirmed/awaited, not fire-and-forget.
+
+Existing sign-in association behavior is unchanged for a fresh login with no prior session on that device.
