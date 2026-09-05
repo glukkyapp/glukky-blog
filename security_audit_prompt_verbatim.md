@@ -1,6 +1,8 @@
-# Verbatim Active FoodSnap Prompts
+# Verbatim FoodSnap Prompts at Audit Time
 
-The following blocks are copied verbatim from the active template strings in `server/routes.ts`. Runtime substitutions remain in `${...}` form.
+The following blocks preserve the template strings that were active during the 5 September 2026 audit. Runtime substitutions remain in `${...}` form.
+
+**Post-audit status:** These snapshots were superseded by the prompt-isolation remediation documented in `security_audit_prompt_isolation_evidence.md`. Consult `server/routes.ts` for active prompt text; the historical strings below are intentionally retained as audit evidence.
 
 ## `nameOnlyBaseSystem`
 

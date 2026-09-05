@@ -68,3 +68,17 @@ mtime_ms = 1788569296105
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/6421a7cf-eea5-409a-a951-98a17eeb021f/82532cba-700f-4015-a552-9ba21d2d57cf"
 storage_version_token = "1788569307923352"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "L0b6O2xnodZS_-WKeqge2"
+uri = "file://security_audit_prompt_isolation_evidence.md"
+type = "text"
+title = "FoodSnap Prompt-Isolation Verification"
+description = "Sanitized evidence for seven adversarial placements, including translated shared-label persistence, strict output validation, and complete cleanup."
+logical_id = "86df78b0-79b2-45dc-bd7e-89bf52e094b5"
+content_hash = "sha256:d76fa05574c9bef8d1b57938124b12ed541229ce51262cc563f053608bff7267"
+size = 7551
+mtime_ms = 1788573137883
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/86df78b0-79b2-45dc-bd7e-89bf52e094b5/8e8c7665-090b-473a-99cd-f850a642eed1"
+storage_version_token = "1788573191978038"
+content_type = "text/markdown"

@@ -1,0 +1,40 @@
+Fix the misleading success response for the existing owner-scoped meal-type update only.
+
+Scope:
+- File: server/routes.ts
+- Route: PATCH /api/snap/:snapId/meal-type
+- Current area: approximately lines 2903–2917
+- Do not modify any other route, database schema, ownership query, authentication logic, FoodSnap logic, frontend UI, dependencies, or configuration.
+
+Required code change:
+1. Keep the existing session-based ownership scoping exactly as it is.
+2. After the owner-scoped database update executes, inspect its affected-row count (or returned updated-row result, depending on the current Drizzle/storage method).
+3. If zero rows were updated, return HTTP 404 and a safe generic response such as:
+   { "message": "Meal record not found" }
+4. Return HTTP 200 with the existing successful response only when the authenticated owner’s meal record was actually updated.
+5. Do not reveal whether a record exists but belongs to a different account.
+
+Required verification after the change:
+1. Use two fresh disposable development-only accounts, Account A and Account B. Do not use production accounts, production data, production URLs, or real-user records.
+2. Create a meal snap under Account A with mealType set to "breakfast".
+3. Authenticate as Account B and send:
+   PATCH /api/snap/[ACCOUNT_A_SNAP_ID]/meal-type
+   with:
+   { "mealType": "dinner" }
+4. Confirm all of the following:
+   - The HTTP response is 404, not 200.
+   - The response body is the safe generic not-found response and does not disclose ownership or account information.
+   - Direct development-database verification confirms Account A's mealType remains "breakfast".
+5. Authenticate as Account A and submit the same update to its own snap.
+6. Confirm all of the following:
+   - The HTTP response is 200.
+   - The success response retains its existing shape unless a minimal safe change is necessary.
+   - Direct development-database verification confirms Account A's mealType changed to "dinner".
+7. Run the focused existing FoodSnap/meal-type route tests and the production build. Report any failures; do not make unrelated fixes.
+8. Delete both disposable development accounts and all data they created, then confirm cleanup.
+
+Deliverables:
+- Show the exact changed code diff.
+- Provide sanitized verification evidence: request method/path template, HTTP status, safe response body, and before/after database values.
+- Confirm that no production system, real account, analytics event, notification, or third-party service was used.
+- Do not make any changes beyond the narrowly scoped route fix and any necessary focused regression test.

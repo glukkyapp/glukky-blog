@@ -24,7 +24,8 @@ The following appendices are part of this report:
 - [`security_audit_external_identity_billing_email.md`](security_audit_external_identity_billing_email.md) — every RevenueCat, Apple, and password-reset email outbound operation, callsites, returned fields, retention/logging, and tracked PII-literal triage.
 - [`security_audit_sql_xss_evidence.md`](security_audit_sql_xss_evidence.md) — every tagged Drizzle SQL template and `sql.raw` occurrence with full statement text, plus exact XSS sink code.
 - [`security_audit_prompt_evidence.md`](security_audit_prompt_evidence.md) — prompt rules and exact request-construction evidence for all four Anthropic flows, including the GI resolver.
-- [`security_audit_prompt_verbatim.md`](security_audit_prompt_verbatim.md) — verbatim active `labelsOnlySystem` and `advicePromptSystem` source strings, preserving every output and safety rule.
+- [`security_audit_prompt_verbatim.md`](security_audit_prompt_verbatim.md) — verbatim point-in-time prompt snapshots from the original audit, retained as historical evidence and explicitly marked as superseded.
+- [`security_audit_prompt_isolation_evidence.md`](security_audit_prompt_isolation_evidence.md) — post-audit remediation verification across image text, model-derived names, and each advice field, including sanitized responses and cleanup attestation.
 
 ## Prioritized findings
 
@@ -42,6 +43,10 @@ The following appendices are part of this report:
 | Medium | `dangerouslySetInnerHTML` constructs CSS from chart configuration | `client/src/components/ui/chart.tsx:70-100`; sandbox equivalent | Keep IDs, keys, and colors trusted or validate them before interpolation. No user- or AI-controlled source currently reaches this component. |
 | Low | Browser PostHog project key is stored as a tracked literal | `.replit:114` (value intentionally redacted); consumed by `client/src/lib/posthog.ts:94-117` | Treat it as public configuration and avoid duplicate tracked literals. This is not a server secret and is expected to be browser-visible. |
 | Low | Blog path-traversal scanner result is a false positive after manual review | `blog-site/serve.mjs:71-92` resolves and verifies `distResolved + "/"` containment before reading | No change required; retain the containment check. |
+
+### Post-audit remediation update
+
+The FoodSnap prompt-injection finding above was remediated after the point-in-time audit. Label, advice, and food-name translation prompts now mark image-derived text and food fields as untrusted data, delimit interpolated values, escape delimiter-closing characters, and repeat the isolation rule at prompt boundaries. Seven development-only adversarial probes passed across image text, model-derived food name, advice name, portion, sauces, extras, and translated shared-label persistence. See the prompt-isolation evidence appendix for sanitized request/response records and cleanup verification.
 
 ## Automated scanner results
 
