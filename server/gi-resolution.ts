@@ -9,6 +9,27 @@ export const GI_REFERENCE_SOURCE =
 export const GI_NO_MATCH_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 export const GI_AI_TIMEOUT_MS = 45_000;
 export const GI_CLAIM_LEASE_MS = 15 * 60 * 1000;
+export const DEFAULT_GI_AI_MODEL = "claude-sonnet-4-6";
+export const GI_AI_MODEL_ENV = "GI_AI_MODEL";
+
+export function getGiAiModel(
+  env: Record<string, string | undefined> = process.env,
+): string {
+  return env[GI_AI_MODEL_ENV]?.trim() || DEFAULT_GI_AI_MODEL;
+}
+
+export function addGiAiModelErrorContext(error: unknown, model: string): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  const unsupportedModel =
+    /(?:unsupported|not supported|unknown|invalid)[^\n]*model|model[^\n]*(?:unsupported|not supported|unknown|invalid)/i;
+  if (!unsupportedModel.test(message)) {
+    return error instanceof Error ? error : new Error(message);
+  }
+  return new Error(
+    `GI AI model "${model}" is not supported by the configured gateway. ` +
+      `Set ${GI_AI_MODEL_ENV} to a supported Anthropic model. Provider error: ${message}`,
+  );
+}
 
 export async function withTimeout<T>(
   operation: (signal: AbortSignal) => Promise<T>,

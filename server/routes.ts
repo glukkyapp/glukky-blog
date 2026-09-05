@@ -46,7 +46,9 @@ import {
   GI_NO_MATCH_RETRY_MS,
   GI_AI_TIMEOUT_MS,
   GI_CLAIM_LEASE_MS,
+  addGiAiModelErrorContext,
   createGuardedJob,
+  getGiAiModel,
   getGiCandidatesForFood,
   getPublicGiState,
   giFoodKey,
@@ -1332,6 +1334,7 @@ export async function registerRoutes(
     apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
+  const giAiModel = getGiAiModel();
 
   type GiMatchRequest = {
     inputIndex: number;
@@ -1343,36 +1346,41 @@ export async function registerRoutes(
 
   async function resolveGiMatchBatch(requests: GiMatchRequest[]): Promise<Map<number, string>> {
     if (requests.length === 0) return new Map();
-    const response = await withTimeout(signal => anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 400,
-      temperature: 0,
-      system: [
-        "You match each input food to one supplied reference-table candidate.",
-        "Return JSON only: {\"matches\":[{\"inputIndex\":0,\"referenceId\":\"...\"}]}",
-        "Use only the inputIndex and referenceId values supplied for that input.",
-        "Omit an input when none of its candidates is a defensible match.",
-        "Do not estimate or return a GI value, GI range, rank, confidence, rationale, or any extra fields.",
-      ].join(" "),
-      messages: [{
-        role: "user",
-        content: JSON.stringify({
-          inputs: requests.map(request => ({
-            inputIndex: request.inputIndex,
-            names: {
-              en: request.food.nameEn,
-              zhHant: request.food.nameZhHant,
-              yue: request.food.nameYue,
-            },
-            candidates: request.candidates.map(candidate => ({
-              referenceId: candidate.referenceId,
-              canonicalName: candidate.canonicalName,
-              aliases: candidate.aliases,
+    let response;
+    try {
+      response = await withTimeout(signal => anthropic.messages.create({
+        model: giAiModel,
+        max_tokens: 400,
+        temperature: 0,
+        system: [
+          "You match each input food to one supplied reference-table candidate.",
+          "Return JSON only: {\"matches\":[{\"inputIndex\":0,\"referenceId\":\"...\"}]}",
+          "Use only the inputIndex and referenceId values supplied for that input.",
+          "Omit an input when none of its candidates is a defensible match.",
+          "Do not estimate or return a GI value, GI range, rank, confidence, rationale, or any extra fields.",
+        ].join(" "),
+        messages: [{
+          role: "user",
+          content: JSON.stringify({
+            inputs: requests.map(request => ({
+              inputIndex: request.inputIndex,
+              names: {
+                en: request.food.nameEn,
+                zhHant: request.food.nameZhHant,
+                yue: request.food.nameYue,
+              },
+              candidates: request.candidates.map(candidate => ({
+                referenceId: candidate.referenceId,
+                canonicalName: candidate.canonicalName,
+                aliases: candidate.aliases,
+              })),
             })),
-          })),
-        }),
-      }],
-    }, { signal }), GI_AI_TIMEOUT_MS, "GI AI matching request");
+          }),
+        }],
+      }, { signal }), GI_AI_TIMEOUT_MS, "GI AI matching request");
+    } catch (error) {
+      throw addGiAiModelErrorContext(error, giAiModel);
+    }
     const text = response.content.find(block => block.type === "text")?.text ?? "";
     const parsed = extractJsonObject(text);
     const rawMatches = Array.isArray(parsed?.matches) ? parsed.matches : [];

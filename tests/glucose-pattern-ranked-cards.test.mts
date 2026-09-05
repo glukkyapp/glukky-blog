@@ -17,10 +17,13 @@ import {
 import { selectGeneralTopFoods } from "../server/food-frequency";
 import {
   createGuardedJob,
+  DEFAULT_GI_AI_MODEL,
   deriveGiRank,
   GI_AI_TIMEOUT_MS,
   GI_CLAIM_LEASE_MS,
   getPublicGiState,
+  getGiAiModel,
+  addGiAiModelErrorContext,
   isRecentNoMatch,
   startGiResolutionSchedule,
   startObservedBackgroundJob,
@@ -120,6 +123,18 @@ check("A candidate ID valid for one input is rejected when returned for another 
 console.log("\nGI background resolution resilience");
 check("The production AI deadline is bounded between 30 and 60 seconds",
   GI_AI_TIMEOUT_MS >= 30_000 && GI_AI_TIMEOUT_MS <= 60_000);
+check("GI matching defaults to a gateway-supported model and accepts a configuration override",
+  DEFAULT_GI_AI_MODEL === "claude-sonnet-4-6" &&
+  getGiAiModel({}) === DEFAULT_GI_AI_MODEL &&
+  getGiAiModel({ GI_AI_MODEL: " custom-supported-model " }) === "custom-supported-model");
+const unsupportedModelError = addGiAiModelErrorContext(
+  new Error("model claude-old is not supported"),
+  "claude-old",
+);
+check("Unsupported-model responses identify the GI model override needed to recover",
+  unsupportedModelError.message.includes('GI AI model "claude-old"') &&
+  unsupportedModelError.message.includes("GI_AI_MODEL") &&
+  unsupportedModelError.message.includes("not supported"));
 let guardedRuns = 0;
 let releaseFirstRun!: () => void;
 const firstRunBlocker = new Promise<void>(resolve => { releaseFirstRun = resolve; });
@@ -354,6 +369,10 @@ check("GI resolution runs once at startup and keeps its hourly background schedu
   routes.includes('source === "startup" ? "Startup" : "Scheduler"') &&
   giResolution.includes("60 * 60 * 1000") &&
   serverIndex.indexOf("await runStartupMigrations()") < serverIndex.indexOf("await registerRoutes(httpServer, app)"));
+check("GI matching has no stale hardcoded model and uses the configurable selector",
+  routes.includes("model: giAiModel") &&
+  routes.includes("getGiAiModel()") &&
+  !routes.includes("claude-sonnet-4-20250514"));
 check("GI labels and ranks are localized with the exact Traditional Chinese label",
   [en, zhHant, yue].every(locale =>
     ["gi_label", "gi_rank_low", "gi_rank_medium", "gi_rank_high", "gi_pending", "gi_unavailable"]
