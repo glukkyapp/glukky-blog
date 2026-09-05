@@ -16,10 +16,16 @@ import {
 } from "../server/glucose-patterns";
 import { selectGeneralTopFoods } from "../server/food-frequency";
 import {
+  createGuardedJob,
   deriveGiRank,
+  GI_AI_TIMEOUT_MS,
+  GI_CLAIM_LEASE_MS,
   getPublicGiState,
   isRecentNoMatch,
+  startGiResolutionSchedule,
+  startObservedBackgroundJob,
   validateGiMatches,
+  withTimeout,
 } from "../server/gi-resolution";
 import {
   canResetGlucosePatternsSwipeTutorial,
@@ -111,12 +117,85 @@ const validatedMatches = validateGiMatches([
 check("A candidate ID valid for one input is rejected when returned for another input",
   validatedMatches.get(0) === "rice-white" && validatedMatches.has(1) === false);
 
+console.log("\nGI background resolution resilience");
+check("The production AI deadline is bounded between 30 and 60 seconds",
+  GI_AI_TIMEOUT_MS >= 30_000 && GI_AI_TIMEOUT_MS <= 60_000);
+let guardedRuns = 0;
+let releaseFirstRun!: () => void;
+const firstRunBlocker = new Promise<void>(resolve => { releaseFirstRun = resolve; });
+const guardedJob = createGuardedJob(async () => {
+  guardedRuns += 1;
+  if (guardedRuns === 1) await firstRunBlocker;
+});
+const firstGuardedRun = guardedJob();
+await guardedJob();
+check("Concurrent same-process GI runs collapse into one execution", guardedRuns === 1);
+releaseFirstRun();
+await firstGuardedRun;
+await guardedJob();
+check("The running guard is released after a successful execution", guardedRuns === 2);
+let failingRuns = 0;
+const failingGuardedJob = createGuardedJob(async () => {
+  failingRuns += 1;
+  if (failingRuns === 1) throw new Error("provider failed");
+});
+await assert.rejects(failingGuardedJob(), /provider failed/);
+await failingGuardedJob();
+check("The running guard is released after a thrown provider error", failingRuns === 2);
+let timeoutAborted = false;
+await assert.rejects(withTimeout(signal => new Promise<void>(() => {
+  signal.addEventListener("abort", () => { timeoutAborted = true; });
+}), 5, "test lookup"), /timed out/);
+check("A timed-out AI request is actively aborted", timeoutAborted);
+let timeoutRecoveryRuns = 0;
+const timeoutGuardedJob = createGuardedJob(async () => {
+  timeoutRecoveryRuns += 1;
+  if (timeoutRecoveryRuns === 1) {
+    await withTimeout(() => new Promise<void>(() => {}), 5, "test lookup");
+  }
+});
+await assert.rejects(timeoutGuardedJob(), /timed out/);
+await timeoutGuardedJob();
+check("An AI timeout releases the guard so the hourly job can run again", timeoutRecoveryRuns === 2);
+let observedStartupError: unknown;
+startObservedBackgroundJob(
+  async () => { throw new Error("startup failed"); },
+  error => { observedStartupError = error; },
+);
+await new Promise(resolve => setImmediate(resolve));
+check("A rejected startup run is observed by its attached handler",
+  observedStartupError instanceof Error && observedStartupError.message === "startup failed");
+let scheduledCallback: (() => void) | undefined;
+let scheduledInterval = 0;
+let scheduledRuns = 0;
+const scheduleErrors: string[] = [];
+startGiResolutionSchedule(
+  async () => {
+    scheduledRuns += 1;
+    if (scheduledRuns > 1) throw new Error("hourly failed");
+  },
+  (source, error) => scheduleErrors.push(`${source}:${error instanceof Error ? error.message : error}`),
+  (callback, intervalMs) => {
+    scheduledCallback = callback;
+    scheduledInterval = intervalMs;
+    return 1;
+  },
+);
+await new Promise(resolve => setImmediate(resolve));
+check("Scheduling invokes one observed startup run without waiting an hour",
+  scheduledRuns === 1 && scheduledInterval === 60 * 60 * 1000);
+scheduledCallback!();
+await new Promise(resolve => setImmediate(resolve));
+check("The hourly callback remains observed after startup",
+  scheduledRuns === 2 && scheduleErrors.join("|") === "scheduler:hourly failed");
+
 console.log("\nPage and API contracts");
 const page = readFileSync("client/src/pages/glucose-patterns.tsx", "utf8");
 const nav = readFileSync("client/src/components/floating-nav-bar.tsx", "utf8");
 const profile = readFileSync("client/src/pages/profile.tsx", "utf8");
 const routes = readFileSync("server/routes.ts", "utf8");
 const storage = readFileSync("server/storage.ts", "utf8");
+const giResolutionStorage = readFileSync("server/gi-resolution-storage.ts", "utf8");
 const glucosePatterns = readFileSync("server/glucose-patterns.ts", "utf8");
 const snap = readFileSync("client/src/pages/snap.tsx", "utf8");
 const postMeal = readFileSync("client/src/components/PostMealCard.tsx", "utf8");
@@ -126,6 +205,7 @@ const styles = readFileSync("client/src/index.css", "utf8");
 const schema = readFileSync("shared/schema.ts", "utf8");
 const startupMigrations = readFileSync("server/startup-migrations.ts", "utf8");
 const giResolution = readFileSync("server/gi-resolution.ts", "utf8");
+const serverIndex = readFileSync("server/index.ts", "utf8");
 const report = readFileSync("client/src/pages/report.tsx", "utf8");
 const twoMonth = readFileSync("server/two-month-report.ts", "utf8");
 const en = readFileSync("client/src/locales/en.json", "utf8");
@@ -245,14 +325,19 @@ check("GI is server-resolved only for the shared General top-five selection",
   giResolution.includes("GI_NO_MATCH_RETRY_MS"));
 check("Each unresolved food requires an atomic expiring database claim before Claude",
   storage.includes("async claimFoodGiEntry") &&
-  storage.includes("ON CONFLICT (normalized_food_name) DO UPDATE") &&
-  storage.includes("RETURNING normalized_food_name") &&
+  giResolutionStorage.includes("ON CONFLICT (normalized_food_name) DO UPDATE") &&
+  giResolutionStorage.includes("RETURNING normalized_food_name") &&
   routes.includes("if (wonClaim) claimed.push({ ...request, claimToken })") &&
   routes.includes("const matchable = claimed.filter"));
+check("An unexpired claim suppresses restart-like duplicate work while an expired claim is retryable",
+  giResolutionStorage.includes("food_gi_entries.claim_expires_at <= ${entry.now}") &&
+  giResolutionStorage.includes("food_gi_entries.status = 'pending'") &&
+  routes.includes("GI_CLAIM_LEASE_MS") &&
+  GI_CLAIM_LEASE_MS === 15 * 60 * 1000);
 check("Only the current claim owner can finalize a GI result",
   storage.includes("async completeFoodGiEntry") &&
-  storage.includes("AND status = 'pending'") &&
-  storage.includes("AND claim_token = ${entry.claimToken}") &&
+  giResolutionStorage.includes("AND status = 'pending'") &&
+  giResolutionStorage.includes("AND claim_token = ${entry.claimToken}") &&
   routes.includes("claimToken: request.claimToken!"));
 check("Claude may only choose a supplied per-food reference ID and never returns GI or confidence",
   giResolution.includes("candidateIdsByIndex.get(inputIndex)?.has(referenceId)") &&
@@ -264,10 +349,11 @@ check("The public General card payload and UI never expose numeric GI values",
   recurringFoods.includes('data-testid="general-food-gi-rank"') &&
   !recurringFoods.includes("giValue") &&
   !recurringFoods.includes("referenceId"));
-check("GI resolution is hourly background work, not meal-log work",
-  routes.includes("runGiResolutionJob().catch") &&
-  routes.includes("}, 60 * 60 * 1000)") &&
-  (routes.match(/runGiResolutionJob\(/g)?.length ?? 0) === 2);
+check("GI resolution runs once at startup and keeps its hourly background schedule",
+  routes.includes("startGiResolutionSchedule(runGiResolutionJob") &&
+  routes.includes('source === "startup" ? "Startup" : "Scheduler"') &&
+  giResolution.includes("60 * 60 * 1000") &&
+  serverIndex.indexOf("await runStartupMigrations()") < serverIndex.indexOf("await registerRoutes(httpServer, app)"));
 check("GI labels and ranks are localized with the exact Traditional Chinese label",
   [en, zhHant, yue].every(locale =>
     ["gi_label", "gi_rank_low", "gi_rank_medium", "gi_rank_high", "gi_pending", "gi_unavailable"]

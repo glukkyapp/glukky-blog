@@ -7,6 +7,60 @@ export type GiEntryStatus = "resolved" | "no_match" | "pending";
 export const GI_REFERENCE_SOURCE =
   "International tables of glycemic index and glycemic load values 2008";
 export const GI_NO_MATCH_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+export const GI_AI_TIMEOUT_MS = 45_000;
+export const GI_CLAIM_LEASE_MS = 15 * 60 * 1000;
+
+export async function withTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([operation(controller.signal), deadline]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+export function createGuardedJob(job: () => Promise<void>): () => Promise<void> {
+  let running = false;
+  return async () => {
+    if (running) return;
+    running = true;
+    try {
+      await job();
+    } finally {
+      running = false;
+    }
+  };
+}
+
+export function startObservedBackgroundJob(
+  job: () => Promise<void>,
+  onError: (error: unknown) => void,
+): void {
+  void job().catch(onError);
+}
+
+export function startGiResolutionSchedule(
+  job: () => Promise<void>,
+  onError: (source: "startup" | "scheduler", error: unknown) => void,
+  schedule: (callback: () => void, intervalMs: number) => unknown = setInterval,
+): unknown {
+  startObservedBackgroundJob(job, error => onError("startup", error));
+  return schedule(
+    () => startObservedBackgroundJob(job, error => onError("scheduler", error)),
+    60 * 60 * 1000,
+  );
+}
 
 export type GiReferenceCandidate = {
   referenceId: string;

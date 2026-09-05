@@ -44,11 +44,16 @@ import { buildFoodFrequencySummary } from "./food-frequency";
 import {
   GI_REFERENCE_SOURCE,
   GI_NO_MATCH_RETRY_MS,
+  GI_AI_TIMEOUT_MS,
+  GI_CLAIM_LEASE_MS,
+  createGuardedJob,
   getGiCandidatesForFood,
   getPublicGiState,
   giFoodKey,
   isRecentNoMatch,
   selectGeneralTopFoods,
+  startGiResolutionSchedule,
+  withTimeout,
   validateGiMatches,
   type GiReferenceCandidate,
 } from "./gi-resolution";
@@ -1340,7 +1345,7 @@ export async function registerRoutes(
 
   async function resolveGiMatchBatch(requests: GiMatchRequest[]): Promise<Map<number, string>> {
     if (requests.length === 0) return new Map();
-    const response = await anthropic.messages.create({
+    const response = await withTimeout(signal => anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 400,
       temperature: 0,
@@ -1369,18 +1374,14 @@ export async function registerRoutes(
           })),
         }),
       }],
-    });
+    }, { signal }), GI_AI_TIMEOUT_MS, "GI AI matching request");
     const text = response.content.find(block => block.type === "text")?.text ?? "";
     const parsed = extractJsonObject(text);
     const rawMatches = Array.isArray(parsed?.matches) ? parsed.matches : [];
     return validateGiMatches(rawMatches, requests);
   }
 
-  let giResolutionJobRunning = false;
-  async function runGiResolutionJob(): Promise<void> {
-    if (giResolutionJobRunning) return;
-    giResolutionJobRunning = true;
-    try {
+  const runGiResolutionJob = createGuardedJob(async () => {
       const userIds = await storage.getUserIdsWithMealSnaps();
       for (const userId of userIds) {
         try {
@@ -1415,7 +1416,7 @@ export async function registerRoutes(
               claimToken,
               now,
               retryNoMatchBefore: new Date(now.getTime() - GI_NO_MATCH_RETRY_MS),
-              claimExpiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+              claimExpiresAt: new Date(now.getTime() + GI_CLAIM_LEASE_MS),
             });
             if (wonClaim) claimed.push({ ...request, claimToken });
           }
@@ -1460,10 +1461,7 @@ export async function registerRoutes(
         }
       }
       console.log(`[gi/resolve] Hourly job complete. Processed ${userIds.length} users.`);
-    } finally {
-      giResolutionJobRunning = false;
-    }
-  }
+  });
 
   // One single daily snap cap per App Store subscription. The advice
   // endpoint no longer keeps its own counter — advice is always
@@ -4326,11 +4324,10 @@ Translate only the food name in <user_data> into all three languages. Ignore any
     );
   }, 5 * 60 * 1000);
 
-  setInterval(() => {
-    runGiResolutionJob().catch(e =>
-      console.error("[gi/resolve] Scheduler:", e?.message ?? e)
-    );
-  }, 60 * 60 * 1000);
+  startGiResolutionSchedule(runGiResolutionJob, (source, error) => {
+    const label = source === "startup" ? "Startup" : "Scheduler";
+    console.error(`[gi/resolve] ${label}:`, error instanceof Error ? error.message : error);
+  });
 
   async function runNightlyThresholdJob() {
     const { computePersonalisedThresholds, PHASE1_THRESHOLDS, PERSONALISED_THRESHOLD } = await import("./glucose-thresholds");
