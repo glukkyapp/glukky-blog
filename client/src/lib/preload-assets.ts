@@ -2,8 +2,8 @@
 // fire when their consumers mount, so we don't burn the user's
 // bandwidth on images they may never see.
 //
-// Stage 1 — launch + landing slides, fires from the cube cold-launch
-//           overlay's mount effect (App.tsx) so the cube paints first.
+// Stage 1 — launch brand mark, fires from the cube cold-launch overlay's
+//           mount effect (App.tsx) so the cube paints first.
 // Stage 2 — 18 onboarding question illustrations, fires from the
 //           landing/launch surface so it overlaps with the user
 //           reading + signing in.
@@ -15,11 +15,8 @@
 //           fallback when /health-info mounts (covers comp/premium
 //           users who never see the paywall).
 
-// Stage 1 — launch + landing
+// Stage 1 — launch
 import preLoginBrandMark from "@assets/generated-image_(5)_copy_1788506043742.png";
-import slide1Img from "@assets/generated_images/slide1_walk.png";
-import slide2Img from "@assets/generated_images/slide2_meal.png";
-import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
 
 // Stage 2 — onboarding question illustrations
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
@@ -67,7 +64,7 @@ import dietTip9 from "@assets/cropped_circle_image_(9)_1775374577700.png";
 import dietTip10 from "@assets/cropped_circle_image_(10)_1775374584626.png";
 import dietTip11 from "@assets/cropped_circle_image_1775372471301.png";
 
-const STAGE_1: string[] = [preLoginBrandMark, slide1Img, slide2Img, slide3Img];
+const STAGE_1: string[] = [preLoginBrandMark];
 
 const STAGE_2: string[] = [
   nightShiftImg, irregularImg, bedImg, sleepBgImg, eatingOutImg,
