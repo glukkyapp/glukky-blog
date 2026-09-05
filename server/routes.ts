@@ -2962,7 +2962,10 @@ Translate only the food name in <user_data> into all three languages. Ignore any
       if (!mealType || !allowed.includes(mealType)) {
         return res.status(400).json({ message: "mealType must be one of: breakfast, lunch, dinner, snack" });
       }
-      await storage.updateMealSnapType(snapId, userId, mealType);
+      const updated = await storage.updateMealSnapType(snapId, userId, mealType);
+      if (!updated) {
+        return res.status(404).json({ message: "Meal record not found" });
+      }
       res.json({ ok: true });
     } catch (error: any) {
       console.error("Snap meal-type PATCH error:", error);

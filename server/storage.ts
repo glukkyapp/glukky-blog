@@ -116,7 +116,7 @@ export interface IStorage {
   ): Promise<HstixReading | null>;
   getCarbSubtypePreferences(userId: string, foodKey: string): Promise<Array<{ carbCategory: string; carbSubtype: string }>>;
   saveCarbSubtypePreference(userId: string, foodKey: string, carbCategory: string, carbSubtype: string): Promise<void>;
-  updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void>;
+  updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<boolean>;
   getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]>;
   getMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
   getActiveMealSnapsByDateRange(userId: string, startDate: string, endDate: string): Promise<MealSnap[]>;
@@ -1026,10 +1026,14 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<void> {
-    await db.update(mealSnaps)
+  async updateMealSnapType(snapId: number, userId: string, mealType: string): Promise<boolean> {
+    const updated = await db.update(mealSnaps)
       .set({ mealType })
-      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)));
+      .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
+      .returning({ id: mealSnaps.id });
+    if (updated.length === 0) {
+      return false;
+    }
     const [snap] = await db.select({ localDate: mealSnaps.localDate })
       .from(mealSnaps)
       .where(and(eq(mealSnaps.id, snapId), eq(mealSnaps.userId, userId)))
@@ -1047,6 +1051,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.localDate, snap.localDate)));
     }
     await this.upsertReportMealFactForSnap(userId, snapId);
+    return true;
   }
 
   async getMealSnapsByLocalDate(userId: string, localDate: string): Promise<MealSnap[]> {

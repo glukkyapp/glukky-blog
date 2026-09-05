@@ -46,8 +46,23 @@ assert.match(schema, /hstix_readings_meal_unique_idx/, "the schema permits only 
 assert.match(migrations, /hstix_readings\.one_canonical_reading_per_meal/, "existing duplicate linked readings are deduplicated before the unique index");
 assert.match(migrations, /CREATE UNIQUE INDEX IF NOT EXISTS hstix_readings_meal_unique_idx/, "the database enforces the canonical meal-to-reading cardinality");
 
+const mealTypeRoute = routes.slice(
+  routes.indexOf('app.patch("/api/snap/:snapId/meal-type"'),
+  routes.indexOf('app.get("/api/snap/daily-summary"'),
+);
+const mealTypeUpdate = storage.slice(
+  storage.indexOf("async updateMealSnapType"),
+  storage.indexOf("async getMealSnapsByLocalDate"),
+);
+assert.match(mealTypeUpdate, /eq\(mealSnaps\.id, snapId\)/, "meal-type updates remain scoped to the requested snap");
+assert.match(mealTypeUpdate, /eq\(mealSnaps\.userId, userId\)/, "meal-type updates remain scoped to the authenticated owner");
+assert.match(mealTypeUpdate, /\.returning\(\{ id: mealSnaps\.id \}\)/, "meal-type updates expose whether a row matched");
+assert.match(mealTypeRoute, /const updated = await storage\.updateMealSnapType\(snapId, userId, mealType\)/, "the meal-type route checks the owner-scoped update result");
+assert.match(mealTypeRoute, /if \(!updated\)[\s\S]*?status\(404\)\.json\(\{ message: "Meal record not found" \}\)/, "zero-row meal-type updates return the safe generic 404");
+assert.match(mealTypeRoute, /res\.json\(\{ ok: true \}\)/, "successful owner meal-type updates retain the exact success body");
+
 for (const locale of [en, zhHant, yue]) {
   assert.match(locale, /"hstix_correction_expired":\s*"[^"]+"/, "expired correction feedback is localized");
 }
 
-console.log("22 HStix correction API/UI contracts passed");
+console.log("28 HStix correction and meal-type API/UI contracts passed");
