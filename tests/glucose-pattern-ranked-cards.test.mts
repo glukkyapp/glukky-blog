@@ -17,7 +17,6 @@ import {
 import { selectGeneralTopFoods } from "../server/food-frequency";
 import {
   createGuardedJob,
-  DEFAULT_GI_AI_MODEL,
   deriveGiRank,
   GI_AI_TIMEOUT_MS,
   GI_CLAIM_LEASE_MS,
@@ -123,10 +122,11 @@ check("A candidate ID valid for one input is rejected when returned for another 
 console.log("\nGI background resolution resilience");
 check("The production AI deadline is bounded between 30 and 60 seconds",
   GI_AI_TIMEOUT_MS >= 30_000 && GI_AI_TIMEOUT_MS <= 60_000);
-check("GI matching defaults to a gateway-supported model and accepts a configuration override",
-  DEFAULT_GI_AI_MODEL === "claude-sonnet-4-6" &&
-  getGiAiModel({}) === DEFAULT_GI_AI_MODEL &&
-  getGiAiModel({ GI_AI_MODEL: " custom-supported-model " }) === "custom-supported-model");
+check("GI matching forwards the required configured model without a source-code fallback",
+  getGiAiModel({ GI_AI_MODEL: " claude-haiku-4-5 " }) === "claude-haiku-4-5");
+assert.throws(() => getGiAiModel({}), /GI_AI_MODEL must be configured/);
+assert.throws(() => getGiAiModel({ GI_AI_MODEL: "   " }), /GI_AI_MODEL must be configured/);
+check("Missing or blank GI model configuration fails clearly before a request", true);
 const unsupportedModelError = addGiAiModelErrorContext(
   new Error("model claude-old is not supported"),
   "claude-old",
@@ -372,6 +372,9 @@ check("GI resolution runs once at startup and keeps its hourly background schedu
 check("GI matching has no stale hardcoded model and uses the configurable selector",
   routes.includes("model: giAiModel") &&
   routes.includes("getGiAiModel()") &&
+  !giResolution.includes("DEFAULT_GI_AI_MODEL") &&
+  !giResolution.includes('claude-haiku-4-5') &&
+  !giResolution.includes('claude-sonnet-4-6') &&
   !routes.includes("claude-sonnet-4-20250514"));
 check("GI labels and ranks are localized with the exact Traditional Chinese label",
   [en, zhHant, yue].every(locale =>

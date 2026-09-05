@@ -9,13 +9,16 @@ export const GI_REFERENCE_SOURCE =
 export const GI_NO_MATCH_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 export const GI_AI_TIMEOUT_MS = 45_000;
 export const GI_CLAIM_LEASE_MS = 15 * 60 * 1000;
-export const DEFAULT_GI_AI_MODEL = "claude-sonnet-4-6";
 export const GI_AI_MODEL_ENV = "GI_AI_MODEL";
 
 export function getGiAiModel(
   env: Record<string, string | undefined> = process.env,
 ): string {
-  return env[GI_AI_MODEL_ENV]?.trim() || DEFAULT_GI_AI_MODEL;
+  const model = env[GI_AI_MODEL_ENV]?.trim();
+  if (!model) {
+    throw new Error(`${GI_AI_MODEL_ENV} must be configured with a non-empty supported model ID`);
+  }
+  return model;
 }
 
 export function addGiAiModelErrorContext(error: unknown, model: string): Error {

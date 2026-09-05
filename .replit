@@ -113,6 +113,7 @@ timeoutMs = 120000
 [userenv.shared]
 POSTHOG_API_KEY = "phc_qkCN6RruzAijf52kVtWqf4aWBrf7Ar5NawNC5PBiTAyq"
 GATE_MODE = "off"
+GI_AI_MODEL = "claude-haiku-4-5"
 
 [userenv.development]
 PASSWORD_RESET_FROM_EMAIL = "Glukky <noreply@glukky.com>"
