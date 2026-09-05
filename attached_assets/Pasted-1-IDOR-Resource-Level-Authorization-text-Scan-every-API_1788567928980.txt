@@ -1,0 +1,51 @@
+1. IDOR / Resource-Level Authorization
+text
+Scan every API route in server/routes.ts (and any other route files) that accepts a resource ID, user ID, or profile ID as a parameter — in the URL, query string, or request body.
+
+For each one, tell me:
+1. The route path and HTTP method
+2. Whether it derives the user identity from the authenticated session (e.g. req.session.userId) or from a client-supplied value (e.g. req.body.userId, req.params.userId)
+3. Whether the database query is filtered by the session user's ID (e.g. .where(eq(table.userId, sessionUserId)))
+4. Flag any route where a client-supplied ID is used directly in a query WITHOUT checking it matches the session user
+
+Output as a table: Route | Method | Source of user ID | Query scoped to session user? (Yes/No) | Risk flag
+2. Secrets / API Key Exposure
+text
+Search the entire repository for hardcoded secrets, API keys, or tokens — including partial matches like "sk-ant", "sk-", API key patterns, database connection strings, and OneSignal/PostHog keys.
+
+Then separately: list every environment variable used anywhere in the client/ or frontend source directory, and tell me which ones are prefixed VITE_ (or the equivalent bundler prefix) since those get shipped into the public browser bundle.
+
+Flag anything that looks like a server-only secret (Anthropic key, database URL, OneSignal REST API key) that is referenced in any client-side file or any VITE_-prefixed variable.
+3. Server-Side Auth Enforcement
+text
+List every API route in this project. For each one, tell me:
+1. Whether it requires authentication (checks req.session or equivalent before processing)
+2. Whether that check happens via shared middleware or is written individually in the route
+3. Whether any route that returns or modifies personal data (glucose logs, profile, meal plans, HbA1c, snap history) is MISSING an authentication check
+
+Output as a table: Route | Requires auth? | How enforced | Risk flag if missing
+4. Third-Party Data Leakage (PostHog/OneSignal/Anthropic)
+text
+Find every call to posthog.capture(), any OneSignal push-notification send function, and every anthropic.messages.create() (or equivalent Claude API call) in this codebase.
+
+For each call, list exactly what data is included in the payload — every property, field, or variable being sent. Flag any call that includes: raw glucose values, food names, HbA1c, email address, full user profile objects, session tokens, or any other user's data.
+5. SQL Injection via Drizzle ORM
+text
+Search the codebase for every use of sql.raw() and every tagged template using sql`...` from Drizzle ORM.
+
+For each occurrence, show the full statement and tell me whether any variable is concatenated directly into the raw SQL string (unsafe) versus interpolated through Drizzle's tagged-template parameterization (safe). Flag any instance where user input reaches sql.raw() without sanitization.
+6. Prompt Injection Defenses (FoodSnap)
+text
+Show me the full system prompt and request-construction code for the /api/snap/label and /api/snap/advice endpoints.
+
+1. Does the system prompt instruct the model to ignore any instructions found inside the image content or user-supplied text?
+2. Does the code validate the model's response against an expected structure/schema before returning it to the user?
+3. What data is included in the prompt sent to Claude — list every field/variable?
+4. Is there any code path where the model's raw output could trigger an action (email, push, webhook, database write beyond storing the advice text) rather than just being displayed?
+
+Flag anything missing from #1 and #2.
+7. XSS
+text
+Search the entire client/frontend codebase for dangerouslySetInnerHTML and any direct use of innerHTML.
+
+For each occurrence, show the surrounding code and tell me where the rendered content originates from (hardcoded string, user input, API response, AI-generated text). Flag any instance where the source is user input or AI-generated content.
