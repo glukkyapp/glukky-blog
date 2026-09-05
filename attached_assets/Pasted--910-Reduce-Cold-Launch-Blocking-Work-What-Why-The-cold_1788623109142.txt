@@ -1,0 +1,61 @@
+#910 — Reduce Cold-Launch Blocking Work
+
+What & Why
+The cold-launch investigation found that several visual resources that are
+not required for the first visible, usable screen are included in the
+startup-readiness condition. This delays the BuildNatively native Loading
+Screen, especially on slower connections.
+
+Make the smallest possible change so only resources genuinely necessary for
+the first visible usable state can block that state. Resources not initially
+visible must no longer delay initial readiness, while continuing to load in
+time for normal user navigation.
+
+Do not assume prior investigation file paths, component names, image names,
+screen structure, loading mechanisms, or timing implementation are current.
+Verify them in the current codebase before changing anything.
+
+Done looks like
+- The first visible usable app state is not held up by visual resources that
+  are not needed to render that state.
+- All initially non-visible visual content remains available and works
+  normally when the user reaches it.
+- The initial visible design, content, ordering, interactions, and
+  accessibility are unchanged.
+- No image, font, video, or other asset file is modified, replaced,
+  recompressed, renamed, or removed.
+- No BuildNatively configuration or native loading-screen bridge behavior
+  changes.
+- No authentication, routing, API, analytics, push, payment, consent,
+  database, secret, or credential behavior changes.
+- The final diff is limited to the minimum startup-readiness/loading logic
+  necessary to achieve this result.
+- A focused test or verification demonstrates that initial readiness does not
+  wait for a non-initially-visible resource, while that resource remains
+  available when needed.
+- Report the exact diff and test/build results. Do not publish.
+
+Out of scope
+- Any change to visual assets themselves.
+- Any redesign or change to user-visible content, interactions, or navigation.
+- Any authentication or API timing change.
+- Any BuildNatively dashboard, wrapper, launch-screen, or SDK change.
+- Any change to notifications, AI, analytics, payments, database schema,
+  secrets, or credentials.
+- Broad preload/lazy-loading refactors beyond resources proven not to be
+  necessary for initial usable rendering.
+- Publishing or republishing.
+
+Steps
+1. Independently inspect the current cold-launch/startup implementation.
+   Identify the actual condition that defines the first usable app state and
+   every visual resource it waits for.
+2. Confirm which resources are visibly required for that first usable state
+   versus which are not initially visible.
+3. Change only the unnecessary readiness dependency/dependencies so that
+   non-required resources no longer block initial readiness. Preserve their
+   later loading and normal user experience.
+4. Add focused verification that proves the changed dependency no longer
+   blocks initial readiness and that the deferred resource remains usable.
+5. Run the relevant focused checks and production build. Return the diff and
+   results for review; do not publish.
