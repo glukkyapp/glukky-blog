@@ -21,18 +21,20 @@ assert.match(schema, /export const doctorInfo = pgTable\("doctor_info"/);
 for (const field of [
   "doctorName",
   "clinicName",
-  "specialty",
   "officePhone",
   "address",
-  "lastVisitDate",
+  "nextVisitDate",
   "notes",
 ]) {
   assert.ok(schema.includes(field), `schema includes ${field}`);
 }
-for (const forbidden of ["doctorEmail", "mobilePhone", "emergencyNumber"]) {
+for (const forbidden of ["specialty", "lastVisitDate", "doctorEmail", "mobilePhone", "emergencyNumber"]) {
   assert.ok(!schema.includes(forbidden), `schema excludes ${forbidden}`);
 }
 assert.ok(migrations.includes('name: "doctor_info.create"'), "startup migration creates doctor_info");
+assert.ok(migrations.includes("ADD COLUMN IF NOT EXISTS next_visit_date DATE"), "startup migration adds next visit");
+assert.ok(migrations.includes("DROP COLUMN IF EXISTS specialty"), "startup migration removes specialty");
+assert.ok(migrations.includes("DROP COLUMN IF EXISTS last_visit_date"), "startup migration removes last visit");
 
 assert.ok(routes.includes('app.get("/api/profile/doctor-info"'), "dedicated GET route exists");
 assert.ok(routes.includes('app.patch("/api/profile/doctor-info"'), "dedicated PATCH route exists");
@@ -60,7 +62,7 @@ const pdfExport = routes.slice(
   routes.indexOf('app.post("/api/user/correction-request"'),
 );
 for (const exportSource of [jsonExport, pdfExport]) {
-  assert.ok(!/doctorName|clinicName|officePhone|lastVisitDate|doctor_info/.test(exportSource), "export omits doctor info");
+  assert.ok(!/doctorName|clinicName|officePhone|nextVisitDate|lastVisitDate|doctor_info/.test(exportSource), "export omits doctor info");
 }
 
 assert.ok(profile.includes('path: "/doctor-info"'), "Profile includes My Doctor shortcut");
@@ -71,25 +73,28 @@ assert.ok(app.includes('<Route path="/doctor-info" component={DoctorInfo} />'), 
 for (const testId of [
   "input-doctor-name",
   "input-clinic-name",
-  "input-doctor-specialty",
   "input-office-phone",
   "textarea-doctor-address",
-  "input-last-visit-date",
+  "input-next-visit-date",
   "textarea-doctor-notes",
 ]) {
   assert.ok(page.includes(testId), `page renders ${testId}`);
 }
-for (const forbidden of ["input-doctor-email", "input-mobile-phone", "input-emergency-number"]) {
+for (const forbidden of ["input-doctor-specialty", "input-last-visit-date", "input-doctor-email", "input-mobile-phone", "input-emergency-number"]) {
   assert.ok(!page.includes(forbidden), `page excludes ${forbidden}`);
 }
 assert.ok(page.includes('form="doctor-info-form"'), "page uses explicit Save action");
 assert.ok(page.includes('data-testid="text-doctor-emergency-disclaimer"'), "standalone disclaimer is rendered");
+assert.match(page, /pl-7 text-sm text-muted-foreground" data-testid="text-doctor-emergency-disclaimer"/, "disclaimer uses readable text-sm styling");
 
 for (const locale of locales) {
   assert.equal(typeof locale.profile.shortcut_doctor, "string");
   assert.equal(typeof locale.profile.doctor_title, "string");
   assert.equal(typeof locale.profile.doctor_instruction, "string");
   assert.equal(typeof locale.profile.doctor_emergency_disclaimer, "string");
+  assert.equal(typeof locale.profile.next_visit, "string");
+  assert.equal(locale.profile.specialty, undefined);
+  assert.equal(locale.profile.last_visit, undefined);
   assert.ok(locale.profile.doctor_emergency_disclaimer.length > 0);
   assert.ok(!/\d/.test(locale.profile.doctor_emergency_disclaimer), "disclaimer contains no emergency number");
 }
@@ -104,6 +109,7 @@ for (const source of [clientPosthog, serverPosthog]) {
     "officephone",
     "address",
     "lastvisitdate",
+    "nextvisitdate",
     "notes",
   ]) {
     assert.ok(source.includes(`"${key}"`), `PostHog blocks ${key}`);

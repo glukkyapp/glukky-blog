@@ -36,14 +36,19 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       user_id VARCHAR NOT NULL UNIQUE,
       doctor_name TEXT,
       clinic_name TEXT,
-      specialty TEXT,
       office_phone TEXT,
       address TEXT,
-      last_visit_date DATE,
+      next_visit_date DATE,
       notes TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+  },
+  {
+    name: "doctor_info.replace_obsolete_fields",
+    sql: `ALTER TABLE doctor_info ADD COLUMN IF NOT EXISTS next_visit_date DATE;
+          ALTER TABLE doctor_info DROP COLUMN IF EXISTS specialty;
+          ALTER TABLE doctor_info DROP COLUMN IF EXISTS last_visit_date`,
   },
   {
     name: "profiles.backfill_glucose_group",

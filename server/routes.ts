@@ -973,10 +973,9 @@ export async function registerRoutes(
   const doctorInfoSchema = z.object({
     doctorName: z.string().max(200).nullable().optional(),
     clinicName: z.string().max(200).nullable().optional(),
-    specialty: z.string().max(200).nullable().optional(),
     officePhone: z.string().max(80).nullable().optional(),
     address: z.string().max(1000).nullable().optional(),
-    lastVisitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format. Use YYYY-MM-DD.").nullable().optional(),
+    nextVisitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format. Use YYYY-MM-DD.").nullable().optional(),
     notes: z.string().max(3000).nullable().optional(),
   }).strict();
 
@@ -1009,10 +1008,9 @@ export async function registerRoutes(
       const saved = await storage.upsertDoctorInfo(userId, {
         doctorName: cleanDoctorText(parsed.data.doctorName),
         clinicName: cleanDoctorText(parsed.data.clinicName),
-        specialty: cleanDoctorText(parsed.data.specialty),
         officePhone: cleanDoctorText(parsed.data.officePhone),
         address: cleanDoctorText(parsed.data.address),
-        lastVisitDate: parsed.data.lastVisitDate ?? null,
+        nextVisitDate: parsed.data.nextVisitDate ?? null,
         notes: cleanDoctorText(parsed.data.notes),
       });
       res.set("Cache-Control", "no-store");

@@ -13,30 +13,27 @@ import { hapticNotify } from "@/lib/haptics";
 interface DoctorInfo {
   doctorName: string | null;
   clinicName: string | null;
-  specialty: string | null;
   officePhone: string | null;
   address: string | null;
-  lastVisitDate: string | null;
+  nextVisitDate: string | null;
   notes: string | null;
 }
 
 type DoctorInfoForm = {
   doctorName: string;
   clinicName: string;
-  specialty: string;
   officePhone: string;
   address: string;
-  lastVisitDate: string;
+  nextVisitDate: string;
   notes: string;
 };
 
 const EMPTY_FORM: DoctorInfoForm = {
   doctorName: "",
   clinicName: "",
-  specialty: "",
   officePhone: "",
   address: "",
-  lastVisitDate: "",
+  nextVisitDate: "",
   notes: "",
 };
 
@@ -44,10 +41,9 @@ function formFromDoctorInfo(info: DoctorInfo | null | undefined): DoctorInfoForm
   return {
     doctorName: info?.doctorName ?? "",
     clinicName: info?.clinicName ?? "",
-    specialty: info?.specialty ?? "",
     officePhone: info?.officePhone ?? "",
     address: info?.address ?? "",
-    lastVisitDate: info?.lastVisitDate ?? "",
+    nextVisitDate: info?.nextVisitDate ?? "",
     notes: info?.notes ?? "",
   };
 }
@@ -71,10 +67,9 @@ export default function DoctorInfoPage() {
       const res = await apiRequest("PATCH", "/api/profile/doctor-info", {
         doctorName: data.doctorName.trim() || null,
         clinicName: data.clinicName.trim() || null,
-        specialty: data.specialty.trim() || null,
         officePhone: data.officePhone.trim() || null,
         address: data.address.trim() || null,
-        lastVisitDate: data.lastVisitDate || null,
+        nextVisitDate: data.nextVisitDate || null,
         notes: data.notes.trim() || null,
       });
       return res.json();
@@ -160,13 +155,6 @@ export default function DoctorInfoPage() {
                 testId="input-clinic-name"
                 autoComplete="organization"
               />
-              <Field
-                id="specialty"
-                label={t("profile.specialty")}
-                value={form.specialty}
-                onChange={(value) => updateField("specialty", value)}
-                testId="input-doctor-specialty"
-              />
             </div>
           </div>
 
@@ -181,7 +169,7 @@ export default function DoctorInfoPage() {
               type="tel"
               autoComplete="tel"
             />
-            <p className="mt-2 pl-7 text-xs text-muted-foreground" data-testid="text-doctor-emergency-disclaimer">
+            <p className="mt-2 pl-7 text-sm text-muted-foreground" data-testid="text-doctor-emergency-disclaimer">
               {t("profile.doctor_emergency_disclaimer")}
             </p>
           </div>
@@ -200,12 +188,12 @@ export default function DoctorInfoPage() {
                 autoComplete="street-address"
               />
               <Field
-                id="last-visit-date"
-                label={t("profile.last_visit")}
-                value={form.lastVisitDate}
-                onChange={(value) => updateField("lastVisitDate", value)}
+                id="next-visit-date"
+                label={t("profile.next_visit")}
+                value={form.nextVisitDate}
+                onChange={(value) => updateField("nextVisitDate", value)}
                 icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-                testId="input-last-visit-date"
+                testId="input-next-visit-date"
                 type="date"
               />
               <Field

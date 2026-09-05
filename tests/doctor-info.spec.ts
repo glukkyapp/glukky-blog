@@ -40,10 +40,9 @@ test.describe("My Doctor", () => {
     const populated = {
       doctorName: "Dr Chan",
       clinicName: "Central Family Clinic",
-      specialty: "Family medicine",
       officePhone: "2123 4567",
       address: "1 Queen's Road Central",
-      lastVisitDate: "2026-08-20",
+      nextVisitDate: "2026-10-20",
       notes: "Weekday appointments",
     };
 
@@ -63,9 +62,14 @@ test.describe("My Doctor", () => {
     );
 
     const invalidDate = await api.patch(`${BASE}/api/profile/doctor-info`, {
-      data: { lastVisitDate: "20/08/2026" },
+      data: { nextVisitDate: "20/10/2026" },
     });
     expect(invalidDate.status()).toBe(400);
+
+    const obsoleteFields = await api.patch(`${BASE}/api/profile/doctor-info`, {
+      data: { specialty: "Family medicine", lastVisitDate: "2026-08-20" },
+    });
+    expect(obsoleteFields.status()).toBe(400);
   });
 
   test("shows four aligned shortcuts and the number-free localized form", async ({ page }) => {
@@ -92,8 +96,24 @@ test.describe("My Doctor", () => {
     await expect(page.getByTestId("text-doctor-emergency-disclaimer")).toHaveText(
       "Not for emergencies.",
     );
+    await expect(page.getByText("Next visit", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("input-doctor-specialty")).toHaveCount(0);
+    await expect(page.getByTestId("input-last-visit-date")).toHaveCount(0);
+    await expect(page.getByTestId("text-doctor-emergency-disclaimer")).toHaveClass(/text-sm/);
     await expect(page.locator('input[type="email"]')).toHaveCount(0);
     await expect(page.getByTestId("input-mobile-phone")).toHaveCount(0);
     await expect(page.getByTestId("input-emergency-number")).toHaveCount(0);
+  });
+
+  test("persists next visit after leaving and reopening the page", async ({ page }) => {
+    await page.goto("/doctor-info");
+    await page.getByTestId("input-doctor-name").fill("Dr Persist");
+    await page.getByTestId("input-next-visit-date").fill("2026-11-12");
+    await page.getByTestId("button-save-doctor-info").click();
+    await expect(page).toHaveURL(/\/profile$/);
+
+    await page.getByTestId("profile-shortcut-doctor").click();
+    await expect(page.getByTestId("input-doctor-name")).toHaveValue("Dr Persist");
+    await expect(page.getByTestId("input-next-visit-date")).toHaveValue("2026-11-12");
   });
 });
