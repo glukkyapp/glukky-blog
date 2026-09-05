@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { hapticNotify } from "@/lib/haptics";
 import { syncOneSignalLanguage } from "@/lib/onesignal-language";
+import { endOneSignalSession, releaseOneSignalIdentity } from "@/lib/onesignal-identity";
 import { isNativelyAvailable } from "@/lib/natively-purchases";
 import { useAuth } from "@/hooks/use-auth";
 import { useConsent, type ConsentService } from "@/contexts/consent-context";
@@ -716,6 +717,7 @@ export default function ProfilePage() {
 
   const immediateDeleteMutation = useMutation({
     mutationFn: async () => {
+      await releaseOneSignalIdentity("immediate_account_deletion");
       const res = await apiRequest("POST", "/api/user/account/delete-immediately");
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -848,7 +850,9 @@ export default function ProfilePage() {
           className="w-full"
           data-testid="button-logout"
           onClick={async () => {
-            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+            await endOneSignalSession("manual_logout", async () => {
+              await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+            });
             window.location.href = "/";
           }}
         >

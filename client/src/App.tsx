@@ -35,6 +35,10 @@ import UnlockingOverlay from "@/components/unlocking-overlay";
 import PaywallExitWarning from "@/components/paywall-exit-warning";
 import { identifyUser, resetUser, track, initPostHog, optOut, optIn } from "@/lib/posthog";
 import { SESSION_HINT_KEY } from "@/hooks/use-auth";
+import {
+  associateOneSignalIdentity,
+  prepareOneSignalIdentityForUser,
+} from "@/lib/onesignal-identity";
 import MainFontToggle from "@/components/main-font-toggle";
 
 declare global {
@@ -1174,8 +1178,6 @@ function AuthenticatedApp() {
         }
       } catch {}
     };
-    window.addEventListener("message", onMessage);
-
     // Persist the wrapper-confirmed external_id (= app user id) on
     // the server profile. The pre-scheduler prefers the alias path
     // over the player_id path so OneSignal can deliver sends even
@@ -1606,12 +1608,26 @@ function AuthenticatedApp() {
     //   • extractedId present but register 400 → case (d) drop in
     //     transit (the strict server log shows what we tried to send)
     const run = async () => {
+      // Nothing may establish delivery routing for this profile until a
+      // previous account's native identity has been confirmed removed.
+      // This gates both external-id association and player-id registration.
+      const identityReady = await prepareOneSignalIdentityForUser(userId);
+      if (cancelled) return;
+      if (!identityReady) {
+        console.warn(`[onesignal] all registration blocked until prior identity releases user=${userId}`);
+        return;
+      }
+      // Do not accept bridge-message player IDs until the previous account's
+      // identity is gone. The probe loop below recovers messages sent earlier.
+      window.addEventListener("message", onMessage);
+
       // Fire-and-forget: associate the external_id (= user id)
       // with the OneSignal subscription on the wrapper, then
       // persist server-side. Independent of the player_id loop
       // below — both paths can succeed; the server prefers the
       // alias when present.
-      void trySetExternalIdOnBridge();
+      await associateOneSignalIdentity(userId, trySetExternalIdOnBridge);
+      if (cancelled) return;
 
       let probeResultForReport: Awaited<ReturnType<typeof probeBridge>> | null = null;
       for (let attempt = 0; attempt < 15; attempt++) {

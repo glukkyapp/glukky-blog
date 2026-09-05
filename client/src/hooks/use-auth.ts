@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { endOneSignalSession, releaseOneSignalIdentity } from "@/lib/onesignal-identity";
 
 interface AuthUser {
   id: string;
@@ -14,6 +15,7 @@ async function fetchUser(): Promise<AuthUser | null> {
   });
 
   if (response.status === 401) {
+    await releaseOneSignalIdentity("auth_401");
     return null;
   }
 
@@ -47,9 +49,11 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
+      await endOneSignalSession("logout_mutation", async () => {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        });
       });
     },
     onSuccess: () => {

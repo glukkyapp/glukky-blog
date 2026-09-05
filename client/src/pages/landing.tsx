@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { hapticTap, hapticNotify } from "@/lib/haptics";
 import { useGlobalLoading } from "@/components/global-loading-overlay";
+import { prepareOneSignalIdentityForUser } from "@/lib/onesignal-identity";
 import slide1Img from "@assets/generated_images/slide1_walk.png";
 import slide2Img from "@assets/generated_images/slide2_meal.png";
 import slide3Img from "@assets/cyucyu_A_subtly_smiling_Asian_person_holding_a_smartphone_loo__1773936364915.png";
@@ -142,6 +143,7 @@ export default function Landing() {
       }
 
       const user = await res.json();
+      await prepareOneSignalIdentityForUser(user.id);
       // Pre-populate the profile cache before AuthenticatedApp mounts.
       // This avoids any skeleton flash: the app knows immediately whether
       // a profile exists (null for new users, real data for returning users).
@@ -196,6 +198,8 @@ export default function Landing() {
                   reject(new Error(data.message || t("landing.error_generic")));
                   return;
                 }
+                const user = await res.json();
+                await prepareOneSignalIdentityForUser(user.id);
                 // Pre-populate the profile cache before AuthenticatedApp mounts.
                 try {
                   const profileRes = await fetch("/api/profile", { credentials: "include" });
