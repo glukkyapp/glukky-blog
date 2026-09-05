@@ -23,18 +23,21 @@ id = "mpNz07bO-Fx7Ki1u0o_bh"
 uri = "file://glukky-source.tar.gz"
 type = "unspecified"
 title = "Glukky App — Full Source Code"
+logical_id = "3935f7c8-f837-456f-8ba5-7db3c0ae3ddf"
 
 [[outputs]]
 id = "ZEEMyI2jcWw8BJVkYtSsQ"
 uri = "file://attached_assets/screenshots/paywall_en.png"
 type = "image"
 title = "Glukky Paywall — EN mockup"
+logical_id = "782e8104-4ddf-426c-af4c-3a370b734694"
 
 [[outputs]]
 id = "hwGTU9xgHkErepioQeqDJ"
 uri = "file://downloads/glukky-source-20260428-043446.zip"
 type = "unspecified"
 title = "Glukky full source (April 28, 2026)"
+logical_id = "189840d0-e7a4-4df3-ad2d-e5a29a7f3510"
 
 [[outputs]]
 id = "7u0GjijaYJ5XCok2ZJoA3"
@@ -42,6 +45,7 @@ uri = "file://exports/pre-removal-glukky-2026-08-26.zip"
 type = "unspecified"
 title = "Glukky pre-removal source archive"
 description = "Verified pre-removal source snapshots and removal manifest. Application source was not deleted or edited; removal will wait for your confirmation that this ZIP opens correctly. SHA-256 checksum is included beside the archive."
+logical_id = "9281c080-053b-4969-9428-d444aacb07c6"
 
 [[outputs]]
 id = "QpmvdmZhMV9k6RjK5YRZf"
@@ -49,3 +53,18 @@ uri = "file://exports/glukky-project-source-2026-08-27.zip"
 type = "unspecified"
 title = "Glukky Project Source — 2026-08-27"
 description = "Verified, restorable ZIP of the current Glukky source tree. It includes all current tracked application code, tests, migrations, configuration, documentation, canvas assets, screenshots, and source assets, plus an embedded file manifest. A secret-bearing attachment and prior historical export/archive material are intentionally excluded."
+logical_id = "8885f020-5529-4717-a020-03ffd291e151"
+
+[[outputs]]
+id = "hqL_0k7Bbaj2ad5EwSuIK"
+uri = "file://security_audit.md"
+type = "text"
+title = "Glukky Application Security Audit"
+description = "Read-only source-reconciled audit, including corrected automatic PostHog page-event, URL metadata, and browser-persistence evidence."
+logical_id = "6421a7cf-eea5-409a-a951-98a17eeb021f"
+content_hash = "sha256:67a557a5b03e8c9c2d02d9892e67643d0425a652a240a35ba255483ab84f42f8"
+size = 26127
+mtime_ms = 1788569296105
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/6421a7cf-eea5-409a-a951-98a17eeb021f/82532cba-700f-4015-a552-9ba21d2d57cf"
+storage_version_token = "1788569307923352"
+content_type = "text/markdown"
