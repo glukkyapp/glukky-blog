@@ -1,0 +1,38 @@
+Confirmed: the sweetened/unsweetened rule applies to all applicable drinks, not only milk tea.
+
+For any drink that may normally contain sugar, if no explicit sugar modifier is present in the confirmed food/extras text, classify and identify it as the canonical sweetened version.
+
+Examples:
+- 奶茶 / milk tea → naai_cha_sweetened
+- 檸茶 / lemon tea → ning_mung_cha_sweetened
+- 珍珠奶茶 / bubble tea → bubble_tea_sweetened
+- 可樂 / cola → cola_sweetened
+- 阿華田 / Ovaltine → ovaltine_sweetened, where the controlled catalog supports that default
+
+Only explicit no-sugar wording changes it to an unsweetened or zero-sugar component:
+- 無糖
+- 走糖
+- 無加糖
+- no sugar
+- unsweetened
+- sugar-free
+- zero sugar
+- 0 sugar
+- 零糖
+- diet / zero, where the controlled catalog explicitly maps that product variant
+
+There must be no “unknown sugar” state for normal unqualified drinks. No qualifier means sweetened.
+
+Use separate stable IDs for sweetened versus explicitly unsweetened/zero-sugar drink variants. Explicitly unsweetened drinks must not inherit the GI value of the sweetened equivalent. If no dedicated GI reference exists for the unsweetened version, mark GI as unavailable.
+
+Please apply this rule consistently in the component vocabulary, model-output validation, classification, GI mapping, recurring-food grouping, General patterns, HStix grouping, and HStix partner/co-occurrence insights.
+
+I agree that HStix pairing is in scope. Ensure all pairing logic, partner self-exclusion, co-occurrence counts, and partner comparisons use the canonical component identity rather than localized labels.
+
+Before coding, send me the final list of remaining decisions, especially:
+1. Your recommended single carbohydrate subtype vocabulary.
+2. Whether API food keys should use `component:<internalId>` format.
+3. The initial controlled component catalog and the initial drink-variant catalog.
+4. How unresolved historical components should appear and behave in reports.
+5. Whether an explicitly unsweetened drink with no GI reference should show “GI unavailable” or no GI section.
+6. The food-library conflict rule that prevents validated component lists from being overwritten by lower-quality lists.
