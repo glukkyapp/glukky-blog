@@ -1,0 +1,329 @@
+Please review the current codebase before changing anything. I want to implement two related changes:
+
+1. Stable internal IDs for individual food components
+2. Direct GI lookup based on those component IDs
+
+Important: do not start implementation until you have inspected the affected code paths, identified conflicts or required migrations, and asked me any material design questions.
+
+============================================================
+PRODUCT RULES
+============================================================
+
+1. Every individual food component must have a stable internal ID.
+
+Examples:
+
+- 米線 / Rice noodles / mai sin → `maisin`
+- 河粉 / Ho fun → `ho_fun`
+- 腸粉 / Rice noodle rolls → `cheung_fun`
+- Default milk tea / 奶茶 → `naai_cha_sweetened`
+- Explicitly unsweetened milk tea / 無糖奶茶 / 走糖奶茶 → `naai_cha_unsweetened`
+
+The internal ID is an app-owned canonical identifier. It may use a fixed Cantonese romanisation convention, but it is not a user-facing label and must remain stable over time.
+
+2. English, Traditional Chinese, and Cantonese names are display/search labels only.
+
+The app must continue storing and returning:
+
+- `nameEn`
+- `nameZhHant`
+- `nameYue`
+
+The UI must continue displaying the appropriate localized label according to the active app language.
+
+3. Food identity must not depend on translated names.
+
+The same food must remain one food even if the model later outputs different English wording, simplified-vs-traditional variants, spelling differences, punctuation differences, or another valid translation.
+
+For example, all of these should resolve to the same component ID:
+
+- Rice noodles
+- Rice vermicelli
+- 米線
+- 米线
+- mai sin
+- maisin
+
+They should not become separate frequency, HStix, pairing, or GI entities.
+
+4. Milk tea default rule: unspecified sugar means sweetened.
+
+Do NOT create an “unknown sugar” state that prevents GI resolution.
+
+Required behaviour:
+
+- `奶茶`, “milk tea”, or a milk tea with no sugar qualifier
+  → `naai_cha_sweetened`
+  → treated as a sweet drink
+  → resolves to the sweetened milk tea GI reference
+
+- `無糖奶茶`, `走糖`, “no sugar”, “sugar-free”, or “unsweetened”
+  → `naai_cha_unsweetened`
+  → not classified as a sweet drink under the existing explicit-no-sugar rule
+  → use the appropriate unsweetened handling/mapping decided by the controlled vocabulary
+
+============================================================
+CHANGE 1 — COMPONENT-LEVEL INTERNAL ID
+============================================================
+
+Add a stable component identifier to `FoodItemMetadata`.
+
+Target shape:
+
+```ts
+export type FoodItemMetadata = {
+  internalId: string | null;
+  nameEn: string;
+  nameZhHant: string;
+  nameYue: string;
+  isCarb: boolean;
+  carbCategory: string | null;
+  carbSubtype: string | null;
+  sweetCategory?: SweetCategory;
+  isSweet?: boolean;
+  suggestedSubtype?: string | null;
+  subtypeConfirmed: boolean;
+  source: "claude" | "derived";
+};
+```
+
+Please assess whether `internalId` should be nullable during migration or mandatory for newly created records. Do not decide silently—report the migration implications.
+
+Create or extend a server-owned controlled component vocabulary that maps:
+
+- canonical component `internalId`
+- English display label
+- Traditional Chinese display label
+- Cantonese display label
+- aliases and accepted input variants
+- carbohydrate category
+- carbohydrate subtype, where applicable
+- sweet category, where applicable
+- sugar-status/default-sugar behaviour where relevant
+- direct GI reference mapping, if available
+
+The model may suggest a component ID, but the server must validate it against the controlled vocabulary. Do not store AI-invented IDs without server-side validation.
+
+Review the current component-generation prompt and parser:
+
+- `foodItemsInstruction`
+- `extractAdviceFoodItems()`
+- `prepareFoodItems()`
+- `applyConfirmedCarbSubtypes()`
+- `foodItemKey()`
+- food-name/translation parsing and fallback behaviour
+
+Propose the safest output/validation design. For example, the model can return labels plus a candidate `internalId`, but the server should resolve/validate that candidate using the vocabulary.
+
+============================================================
+CHANGE 2 — DIRECT GI LOOKUP BY COMPONENT ID
+============================================================
+
+GI lookup must stop using translated-name concatenations as its primary identity.
+
+The current GI identity appears to use multilingual name fields and fuzzy/alias/category matching. Replace the normal runtime path with:
+
+```text
+component internalId → controlled GI reference mapping → GI value/rank
+```
+
+Examples:
+
+```text
+maisin                   → noodles-rice GI reference
+ho_fun                   → noodles-rice GI reference
+cheung_fun               → noodles-rice GI reference
+naai_cha_sweetened       → sweet-drink-milk-tea GI reference
+```
+
+Several canonical component IDs may intentionally map to the same GI reference. That is allowed and expected when the best available reference is shared.
+
+Please inspect and report on the impact to:
+
+- `giFoodKey()`
+- `normalizeGiFoodIdentity()`
+- `getGiCandidatesForFood()`
+- `food_gi_entries.normalizedFoodName`
+- GI cache uniqueness and existing cache entries
+- GI resolution jobs/claims/statuses
+- GI candidate tables
+- any Claude-powered GI candidate-selection workflow
+- `/api/snap/food-frequency` GI annotations
+- GI display states: resolved, pending, unavailable
+
+The intended end state is:
+
+- Known controlled component ID with a mapped GI reference → resolve directly.
+- Known controlled component ID with no supported GI reference → unavailable.
+- Unknown/unmapped component → unavailable or pending only if there is an explicit curation workflow.
+- Do not use broad substring matching or category-only matching to silently assign a GI value at runtime.
+- Do not create an “unknown sugar” exception for unqualified milk tea; default it to sweetened.
+
+Please advise whether the GI database column should be renamed later from `normalizedFoodName` to something clearer such as `componentInternalId` or `foodComponentId`, and whether that should be one migration or a backward-compatible staged migration.
+
+============================================================
+REQUIRED CODE-PATH AUDIT
+============================================================
+
+Before proposing implementation, trace all usages of food component identity and report every affected place.
+
+At minimum inspect:
+
+### Component creation and storage
+
+- `FoodItemMetadata`
+- `foodItemsInstruction`
+- `extractAdviceFoodItems()`
+- `stripAdviceFoodItems()`
+- `prepareFoodItems()`
+- `classifyCarbCategory()`
+- `classifyCanonicalCarbSubtype()`
+- `classifySweetCategory()`
+- `applyConfirmedCarbSubtypes()`
+- `foodItemKey()`
+- meal snap `foodItems` storage
+- food-library `foodItems` storage and re-use
+- historical meals that lack an internal component ID
+
+### Food frequency and recurring food
+
+- `buildFoodFrequencySummary()`
+- `selectGeneralTopFoods()`
+- `giFoodKey()`
+- `/api/snap/food-frequency`
+- top-food GI entry lookup
+- client rendering and locale-specific display labels
+
+### Glucose patterns and HStix
+
+Inspect all general-history and HStix logic that uses `foodItemKey()` or compares components.
+
+This includes:
+
+- `isEligibleGlucosePatternComponent()`
+- `glucosePatternComponentType()`
+- `buildGeneralGlucosePatternComponents()`
+- `buildHstixFoodCards()`
+- `buildHstixFoodsNeedingMoreReadings()`
+- food search via `buildRetainedFoodHistory()`
+- HStix card selection
+- HStix detail response filtering
+- raw retained-name HStix fallback
+- HStix evidence/reliability calculation
+- ranking and client-side tie-breaking
+
+### HStix food pairing / partner insights — mandatory review
+
+Food pairing is definitely in scope if it uses `foodItemKey()`, component matching, component co-occurrence, or `foodKey`.
+
+Please specifically locate and trace the code that produces:
+
+- `HstixFoodPartnerInsight`
+- `partnerInsight.kind === "dominant"`
+- `partnerInsight.kind === "comparison"`
+- dominant partner calculation
+- higher/lower partner comparison calculation
+- food co-occurrence grouping
+- partner labels and client rendering
+
+Confirm whether changing `foodItemKey()` to use `internalId` automatically fixes pairing identity, or whether there are direct name-based comparisons, legacy fallbacks, caches, API contracts, or client assumptions that also need updating.
+
+The desired outcome is that pairing works by canonical component ID too. For example, meals containing “米線” and “Rice noodles” must count as the same component in HStix co-occurrence and partner analysis.
+
+### API and client contracts
+
+Audit response types and UI code, especially:
+
+- `GeneralGlucosePatternEntry`
+- `HstixFoodEntry`
+- `HstixNeedsMoreReadingsEntry`
+- `HstixFoodDetail`
+- `FoodSuggestion`
+- `foodKey` semantics
+- search result selection
+- URL/query parameter behavior, if `foodKey` is sent from client to server
+- localized display-name selection
+- any code that assumes `foodKey` is a normalized concatenation of display names
+
+============================================================
+NON-GOALS / DO NOT BREAK
+============================================================
+
+Do not replace or reuse meal-combination identity as the component identity.
+
+These are different concepts:
+
+```text
+foodLabels.internalId / mealSnaps.comboKey
+= a full meal configuration, including meal name, portion, sauces, and toppings.
+
+FoodItemMetadata.internalId
+= one individual food component shared across meals.
+```
+
+For example:
+
+```text
+wonton_noodles__medium__chili_oil
+```
+
+is a meal-combination ID, while:
+
+```text
+wonton_noodles
+egg_noodles
+choi_sum
+```
+
+would be individual component IDs.
+
+Keep the existing multilingual labels. Do not show internal IDs to users.
+
+Do not silently merge historical records with an unsafe fuzzy match. If backfilling legacy records requires a matching strategy, propose it clearly and identify records that should remain unresolved rather than guessed.
+
+============================================================
+DELIVERABLE BEFORE IMPLEMENTATION
+============================================================
+
+Do not implement yet.
+
+Return a structured technical assessment containing:
+
+1. A concise summary of the current identity flow, from image recognition through component storage, frequency, GI, HStix, and pairing.
+
+2. Every file/function/schema/API/client type that needs changes, grouped by:
+   - required changes;
+   - likely changes;
+   - migration/backward-compatibility changes;
+   - no change needed.
+
+3. A specific answer on HStix pairing:
+   - Is it currently based on `foodItemKey()`?
+   - Are there any direct name-based comparisons?
+   - What must change so pairing and partner insights group by component `internalId`?
+
+4. Conflicts, risks, and design inconsistencies you find in the present code. In particular, identify:
+   - any mismatch between carb subtype types and allowed subtype options;
+   - any milk-tea/no-sugar edge cases;
+   - any food-library path that could overwrite or lose component IDs;
+   - any old records, cache keys, or API fields tied to translated-name identities;
+   - any use of random selection or fuzzy matching that could produce inconsistent identity.
+
+5. A proposed target schema/data model for:
+   - the component vocabulary;
+   - `FoodItemMetadata`;
+   - GI mapping/cache storage;
+   - legacy component handling.
+
+6. A staged migration plan, including:
+   - schema migration;
+   - new-write behavior;
+   - old-record compatibility;
+   - optional safe backfill;
+   - GI-cache invalidation/rebuild;
+   - API/client rollout;
+   - test coverage.
+
+7. A list of specific questions that need my decision before implementation. Do not make product-policy assumptions silently.
+
+Use concrete references to the existing functions and code paths you find. Do not begin coding until I answer the questions.
