@@ -136,7 +136,10 @@ function footer(locale) {
     </div>
   </div>
   <div class="container site-footer-foot">
-    <p class="muted small">${escapeHtml(t.footer.disclaimer)}</p>
+    <div>
+      <p class="muted small">${escapeHtml(t.footer.disclaimer)}</p>
+      <p class="muted small">${escapeHtml(t.footer.operator)}</p>
+    </div>
     <p class="muted small">${escapeHtml(t.footer.copyright)} ${year}.</p>
   </div>
 </footer>`;

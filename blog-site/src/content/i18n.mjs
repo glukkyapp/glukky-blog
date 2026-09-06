@@ -32,6 +32,7 @@ export const ui = {
       contact: "reach us by hello@glukky.com",
       disclaimer:
         "Glukky's articles are educational and lifestyle-focused. They are not medical advice, diagnosis, or treatment. Talk to your doctor about your own situation.",
+      operator: "Glukky is operated by Security Health Limited.",
       copyright: "© Glukky",
       privacy: "Privacy",
     },
@@ -178,6 +179,7 @@ export const ui = {
       contact: "電郵hello@glukky.com了解更多",
       disclaimer:
         "Glukky 文章只屬生活及健康資訊參考，並非醫療建議、診斷或治療。如有疑問，請諮詢醫生。",
+      operator: "Glukky 由 Security Health Limited 營運。",
       copyright: "© Glukky",
       privacy: "私隱政策",
     },
