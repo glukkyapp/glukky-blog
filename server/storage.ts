@@ -5,6 +5,7 @@ import {
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
   type FoodGiEntry,
+  type FoodComponent,
   type ScheduledNotification,
   type MealSnap, type InsertMealSnap, type FoodItemMetadata,
   type HstixReading, type InsertHstixReading, type MealTimingConfidence,
@@ -15,7 +16,7 @@ import {
   userProfiles,
   doctorInfo,
   piggyBankEvents,
-  ingredientVocabulary, foodLabels, foodAdviceCache, foodGiEntries,
+  ingredientVocabulary, foodLabels, foodAdviceCache, foodGiEntries, foodComponents, foodComponentTerms,
   scheduledNotifications,
   mealSnaps, hstixReadings, snapReportMealFacts, snapReportUserMetadata,
   snapDailyGlucose, snapMonthlyArchive,
@@ -26,6 +27,7 @@ import {
   users, sessions,
 } from "@shared/schema";
 import { db } from "./db";
+import { randomUUID } from "node:crypto";
 import { eq, and, desc, gte, lte, sql, inArray, gt, or, lt, isNull } from "drizzle-orm";
 import { deleteOneSignalUser } from "./onesignal";
 import { deleteSubscriber as deleteRevenueCatSubscriber } from "./revenuecat";
@@ -36,7 +38,10 @@ import { getMonthlyReportFinalLabel } from "./two-month-report";
 import {
   claimFoodGiEntry as claimFoodGiEntryWithDb,
   completeFoodGiEntry as completeFoodGiEntryWithDb,
+  approveFoodGiSuggestion as approveFoodGiSuggestionWithDb,
+  markFoodGiUnavailable as markFoodGiUnavailableWithDb,
 } from "./gi-resolution-storage";
+import { createFoodComponentId, normalizeFoodTerm, unresolvedFoodComponent } from "./food-catalog";
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -63,6 +68,8 @@ export interface IStorage {
   getFoodLabelByName(name: string): Promise<FoodLabel | null>;
   getFoodLabelByCombo(name: string, portionId: string, sauceIds: string[], toppingIds: string[]): Promise<FoodLabel | null>;
   saveFoodLabel(label: InsertFoodLabel): Promise<void>;
+  resolveOrCreateFoodItems(items: FoodItemMetadata[]): Promise<FoodItemMetadata[]>;
+  hydrateFoodItems(items: unknown): Promise<FoodItemMetadata[]>;
 
   // Pre-scheduling dedup (task #500). Used by the OneSignal
   // pre-scheduler to record (and check) whether a given
@@ -136,15 +143,26 @@ export interface IStorage {
     normalizedFoodName: string;
     claimToken: string;
     now: Date;
-    retryNoMatchBefore: Date;
     claimExpiresAt: Date;
   }): Promise<boolean>;
   completeFoodGiEntry(entry: {
     normalizedFoodName: string;
     claimToken: string;
-    status: "resolved" | "no_match";
+    status: "suggested" | "no_match";
     referenceId: string | null;
     giValue: number | null;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean>;
+  approveFoodGiSuggestion(entry: {
+    normalizedFoodName: string;
+    referenceId: string;
+    giValue: number;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean>;
+  markFoodGiUnavailable(entry: {
+    normalizedFoodName: string;
     source: string;
     resolvedAt: Date;
   }): Promise<boolean>;
@@ -753,16 +771,255 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveFoodLabel(label: InsertFoodLabel): Promise<void> {
-    const foodItems = Array.isArray(label.foodItems)
-      ? label.foodItems as FoodItemMetadata[]
-      : null;
+    const incoming = this.compactFoodItems(label.foodItems);
+    const [existing] = await db.select({ foodItems: foodLabels.foodItems })
+      .from(foodLabels).where(eq(foodLabels.internalId, label.internalId)).limit(1);
+    const current = this.compactFoodItems(existing?.foodItems);
+    const currentIds = new Set(current.flatMap(item => "id" in item ? [item.id] : []));
+    const incomingIds = new Set(incoming.flatMap(item => "id" in item ? [item.id] : []));
+    const losesCoverage = currentIds.size > 0 && incomingIds.size < currentIds.size;
+    const automaticConflict = currentIds.size > 0
+      && incomingIds.size > 0
+      && Array.from(currentIds).some(id => !incomingIds.has(id));
+    const foodItems = losesCoverage || automaticConflict ? current : incoming;
     await db.insert(foodLabels).values({
       ...label,
-      foodItems,
+      foodItems: foodItems as any,
     } as typeof foodLabels.$inferInsert).onConflictDoUpdate({
       target: foodLabels.internalId,
-      set: { foodItems },
+      set: { foodItems: foodItems as any },
     });
+  }
+
+  private compactFoodItems(items: unknown): Array<
+    { id: string; source: "catalog_match" | "catalog_created" }
+    | { history: ReturnType<typeof unresolvedFoodComponent> }
+  > {
+    if (!Array.isArray(items)) return [];
+    const compact: Array<
+      { id: string; source: "catalog_match" | "catalog_created" }
+      | { history: ReturnType<typeof unresolvedFoodComponent> }
+    > = [];
+    for (const item of items as any[]) {
+      const id = typeof item?.id === "string"
+        ? item.id
+        : typeof item?.componentRef?.id === "string"
+          ? item.componentRef.id
+          : null;
+      if (!id) {
+        if (item?.unresolvedComponent && typeof item.unresolvedComponent.rawText === "string") {
+          compact.push({ history: item.unresolvedComponent });
+        } else {
+          const rawText = [item?.nameEn, item?.nameZhHant, item?.nameYue]
+            .find(value => typeof value === "string" && value.trim().length > 0);
+          if (rawText) compact.push({ history: unresolvedFoodComponent(rawText, "no_match") });
+        }
+        continue;
+      }
+      compact.push({
+        id,
+        source: item.source === "catalog_created" ? "catalog_created" as const : "catalog_match" as const,
+      });
+    }
+    return compact;
+  }
+
+  async hydrateFoodItems(items: unknown): Promise<FoodItemMetadata[]> {
+    const stored = this.compactFoodItems(items);
+    const refs = stored.filter((item): item is { id: string; source: "catalog_match" | "catalog_created" } => "id" in item);
+    const histories = stored.filter((item): item is { history: ReturnType<typeof unresolvedFoodComponent> } => "history" in item);
+    if (stored.length === 0) {
+      return Array.isArray(items)
+        ? (items as FoodItemMetadata[]).filter(item => item && typeof item.nameEn === "string")
+        : [];
+    }
+    const rows = await db.select().from(foodComponents)
+      .where(and(inArray(foodComponents.id, refs.map(ref => ref.id)), eq(foodComponents.active, true)));
+    const byId = new Map(rows.map(row => [row.id, row]));
+    const hydrated = refs.flatMap(ref => {
+      const row = byId.get(ref.id);
+      if (!row) return [];
+      return [{
+        id: row.id,
+        nameEn: row.labelEn,
+        nameZhHant: row.labelZhHant,
+        nameYue: row.labelYue,
+        isCarb: row.isCarb,
+        carbCategory: row.carbCategory,
+        carbSubtype: row.carbSubtype,
+        sweetCategory: row.sweetCategory as FoodItemMetadata["sweetCategory"],
+        isSweet: row.sweetCategory !== null,
+        suggestedSubtype: null,
+        subtypeConfirmed: row.verified,
+        source: ref.source,
+      }];
+    });
+    return [
+      ...hydrated,
+      ...histories.map(({ history }) => ({
+        nameEn: history.rawText,
+        nameZhHant: history.rawText,
+        nameYue: history.rawText,
+        isCarb: false,
+        carbCategory: null,
+        carbSubtype: null,
+        sweetCategory: null,
+        isSweet: false,
+        suggestedSubtype: null,
+        subtypeConfirmed: false,
+        source: "derived" as const,
+        unresolvedComponent: history,
+      })),
+    ];
+  }
+
+  async resolveOrCreateFoodItems(items: FoodItemMetadata[]): Promise<FoodItemMetadata[]> {
+    const resolved: FoodItemMetadata[] = [];
+    for (const item of items.slice(0, 12)) {
+      const normalizedByLocale = {
+        en: normalizeFoodTerm(item.nameEn),
+        "zh-Hant": normalizeFoodTerm(item.nameZhHant),
+        yue: normalizeFoodTerm(item.nameYue),
+      };
+      const names = Object.values(normalizedByLocale).filter(Boolean);
+      const labelsAreSpecific = names.every(name =>
+        name.length >= 2
+        && name.length <= 160
+        && /[A-Za-z0-9\u3400-\u9fff]/.test(name)
+        && !/(?:https?:\/\/|www\.|<|>|\{|\})/i.test(name)
+      );
+      if (names.length !== 3 || !labelsAreSpecific) {
+        resolved.push({
+          ...item,
+          source: "derived",
+          unresolvedComponent: unresolvedFoodComponent(item.nameEn || item.nameZhHant || item.nameYue, "invalid_candidate"),
+        });
+        continue;
+      }
+      let matches = await db.select({ component: foodComponents })
+        .from(foodComponentTerms)
+        .innerJoin(foodComponents, eq(foodComponentTerms.foodComponentId, foodComponents.id))
+        .where(and(
+          or(
+            and(eq(foodComponentTerms.locale, "en"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.en)),
+            and(eq(foodComponentTerms.locale, "zh-Hant"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale["zh-Hant"])),
+            and(eq(foodComponentTerms.locale, "yue"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.yue)),
+            and(eq(foodComponentTerms.locale, "und"), inArray(foodComponentTerms.normalizedTerm, names)),
+          ),
+          eq(foodComponents.active, true),
+        ));
+      const unique = new Map(matches.map(match => [match.component.id, match.component]));
+      if (unique.size > 1) {
+        resolved.push({
+          ...item,
+          source: "derived",
+          unresolvedComponent: unresolvedFoodComponent(item.nameEn, "ambiguous", Array.from(unique.keys())),
+        });
+        continue;
+      }
+      let component: FoodComponent | undefined = unique.values().next().value;
+      let source: "catalog_match" | "catalog_created" = "catalog_match";
+      if (!component) {
+        source = "catalog_created";
+        const id = createFoodComponentId();
+        try {
+          await db.transaction(async tx => {
+            const identityFingerprint = [
+              normalizedByLocale.en,
+              normalizedByLocale["zh-Hant"],
+              normalizedByLocale.yue,
+            ].join("\u001f");
+            await tx.execute(sql`
+              SELECT pg_advisory_xact_lock(hashtextextended(${identityFingerprint}, 0))
+            `);
+            const insideMatches = await tx.select({ component: foodComponents })
+              .from(foodComponentTerms)
+              .innerJoin(foodComponents, eq(foodComponentTerms.foodComponentId, foodComponents.id))
+              .where(and(
+                or(
+                  and(eq(foodComponentTerms.locale, "en"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.en)),
+                  and(eq(foodComponentTerms.locale, "zh-Hant"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale["zh-Hant"])),
+                  and(eq(foodComponentTerms.locale, "yue"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.yue)),
+                  and(eq(foodComponentTerms.locale, "und"), inArray(foodComponentTerms.normalizedTerm, names)),
+                ),
+                eq(foodComponents.active, true),
+              ));
+            if (insideMatches.length > 0) return;
+            await tx.insert(foodComponents).values({
+              id,
+              internalId: id,
+              labelEn: item.nameEn,
+              labelZhHant: item.nameZhHant,
+              labelYue: item.nameYue,
+              carbCategory: item.isCarb ? item.carbCategory : null,
+              carbSubtype: item.isCarb ? item.carbSubtype : null,
+              isCarb: item.isCarb,
+              sweetCategory: item.sweetCategory ?? null,
+              sugarStatus: item.sweetCategory ? "unknown" : "not_applicable",
+              defaultSugarStatus: item.sweetCategory ? "unknown" : "not_applicable",
+              verified: false,
+              active: true,
+            });
+            const official = [
+              ["en", item.nameEn],
+              ["zh-Hant", item.nameZhHant],
+              ["yue", item.nameYue],
+            ] as const;
+            for (const [locale, term] of official) {
+              await tx.insert(foodComponentTerms).values({
+                id: randomUUID(),
+                foodComponentId: id,
+                locale,
+                term,
+                normalizedTerm: normalizeFoodTerm(term),
+                termType: "official",
+              });
+            }
+          });
+        } catch (error: any) {
+          if (error?.code !== "23505") throw error;
+        }
+        matches = await db.select({ component: foodComponents })
+          .from(foodComponentTerms)
+          .innerJoin(foodComponents, eq(foodComponentTerms.foodComponentId, foodComponents.id))
+          .where(and(
+            or(
+              and(eq(foodComponentTerms.locale, "en"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.en)),
+              and(eq(foodComponentTerms.locale, "zh-Hant"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale["zh-Hant"])),
+              and(eq(foodComponentTerms.locale, "yue"), eq(foodComponentTerms.normalizedTerm, normalizedByLocale.yue)),
+              and(eq(foodComponentTerms.locale, "und"), inArray(foodComponentTerms.normalizedTerm, names)),
+            ),
+            eq(foodComponents.active, true),
+          ));
+        const winners = new Map(matches.map(match => [match.component.id, match.component]));
+        if (winners.size !== 1) {
+          resolved.push({
+            ...item,
+            source: "derived",
+            unresolvedComponent: unresolvedFoodComponent(item.nameEn, winners.size > 1 ? "ambiguous" : "no_match", Array.from(winners.keys())),
+          });
+          continue;
+        }
+        component = winners.values().next().value;
+        if (component?.id !== id) source = "catalog_match";
+      }
+      if (!component) continue;
+      resolved.push({
+        id: component.id,
+        nameEn: component.labelEn,
+        nameZhHant: component.labelZhHant,
+        nameYue: component.labelYue,
+        isCarb: component.isCarb,
+        carbCategory: component.carbCategory,
+        carbSubtype: component.carbSubtype,
+        sweetCategory: component.sweetCategory as FoodItemMetadata["sweetCategory"],
+        isSweet: component.sweetCategory !== null,
+        suggestedSubtype: null,
+        subtypeConfirmed: component.verified,
+        source,
+      });
+    }
+    return resolved;
   }
 
   async getScheduledNotification(
@@ -853,7 +1110,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async insertMealSnap(snap: InsertMealSnap): Promise<MealSnap> {
-    const [inserted] = await db.insert(mealSnaps).values(snap as typeof mealSnaps.$inferInsert).returning();
+    const storedSnap = { ...snap, foodItems: this.compactFoodItems(snap.foodItems) as any };
+    const [inserted] = await db.insert(mealSnaps).values(storedSnap as typeof mealSnaps.$inferInsert).returning();
     const daySnaps = await db.select({ mealType: mealSnaps.mealType })
       .from(mealSnaps)
       .where(and(eq(mealSnaps.userId, snap.userId), eq(mealSnaps.localDate, snap.localDate)));
@@ -892,14 +1150,14 @@ export class DatabaseStorage implements IStorage {
         eq(hstixReadings.mealTimingConfidence, "on_time"),
         eq(mealSnaps.isDeleted, false),
       ));
-    return canonicalRows.map(row => ({
+    return Promise.all(canonicalRows.map(async row => ({
       postMealGlucoseMmol: row.postMealGlucoseMmol,
       foodName: row.foodName ?? null,
-      foodItems: row.foodItems ?? null,
+      foodItems: await this.hydrateFoodItems(row.foodItems),
       recordedAt: row.recordedAt,
       mealTimingConfidence: "on_time" as const,
       isCanonicalHstix: true,
-    }));
+    })));
   }
 
   async getLatestMealSnap(userId: string, before: Date): Promise<{ id: number; snapTime: Date } | null> {
@@ -1169,9 +1427,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMealSnapsForFoodFrequency(userId: string): Promise<MealSnap[]> {
-    return db.select().from(mealSnaps)
+    const rows = await db.select().from(mealSnaps)
       .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.isDeleted, false)))
       .orderBy(desc(mealSnaps.snapTime));
+    return Promise.all(rows.map(async row => ({
+      ...row,
+      foodItems: await this.hydrateFoodItems(row.foodItems),
+    })));
   }
 
   async getUserIdsWithMealSnaps(): Promise<string[]> {
@@ -1191,7 +1453,6 @@ export class DatabaseStorage implements IStorage {
     normalizedFoodName: string;
     claimToken: string;
     now: Date;
-    retryNoMatchBefore: Date;
     claimExpiresAt: Date;
   }): Promise<boolean> {
     return claimFoodGiEntryWithDb(entry);
@@ -1200,13 +1461,31 @@ export class DatabaseStorage implements IStorage {
   async completeFoodGiEntry(entry: {
     normalizedFoodName: string;
     claimToken: string;
-    status: "resolved" | "no_match";
+    status: "suggested" | "no_match";
     referenceId: string | null;
     giValue: number | null;
     source: string;
     resolvedAt: Date;
   }): Promise<boolean> {
     return completeFoodGiEntryWithDb(entry);
+  }
+
+  async approveFoodGiSuggestion(entry: {
+    normalizedFoodName: string;
+    referenceId: string;
+    giValue: number;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean> {
+    return approveFoodGiSuggestionWithDb(entry);
+  }
+
+  async markFoodGiUnavailable(entry: {
+    normalizedFoodName: string;
+    source: string;
+    resolvedAt: Date;
+  }): Promise<boolean> {
+    return markFoodGiUnavailableWithDb(entry);
   }
 
   async upsertDailyGlucose(userId: string, localDate: string, counts: { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }): Promise<void> {
@@ -1503,12 +1782,16 @@ export class DatabaseStorage implements IStorage {
     foodItems: FoodItemMetadata[] | null;
     isDeleted: boolean;
   }>> {
-    return db.select({
+    const rows = await db.select({
       foodName: mealSnaps.foodName,
       foodItems: mealSnaps.foodItems,
       isDeleted: mealSnaps.isDeleted,
     }).from(mealSnaps)
       .where(and(eq(mealSnaps.userId, userId), eq(mealSnaps.isDeleted, false)));
+    return Promise.all(rows.map(async row => ({
+      ...row,
+      foodItems: await this.hydrateFoodItems(row.foodItems),
+    })));
   }
 
   async expireStalePostMealWindows(): Promise<{ expired: number }> {

@@ -1,6 +1,6 @@
 import type { FoodItemMetadata, SweetCategory } from "@shared/schema";
+import { createHash } from "node:crypto";
 import {
-  foodItemKey,
   type CarbCategory,
 } from "./carb-subtypes";
 import {
@@ -94,6 +94,34 @@ type NamedPatternFood = {
   foodNameYue: string;
 };
 
+/**
+ * Pattern aggregation has a deliberately narrower identity contract than the
+ * old name-based FoodSnap records. A catalog-resolved component has a durable
+ * ID; labels are presentation data and must never be used to merge evidence.
+ *
+ * Keep this structural so old serialized rows remain readable while the
+ * schema rollout makes `id` available on FoodItemMetadata.
+ */
+type PossiblyResolvedFoodItem = FoodItemMetadata & { id?: unknown };
+
+export function canonicalGlucosePatternFoodKey(item: FoodItemMetadata): string | null {
+  const id = (item as PossiblyResolvedFoodItem).id;
+  if (typeof id === "string" && id.trim().length > 0) return `component:${id.trim()}`;
+  if (typeof id === "number" && Number.isFinite(id)) return `component:${id}`;
+  return null;
+}
+
+function retainedHistoryKey(value: string): string {
+  return `history:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function retainedHistoryKeyForItem(item: FoodItemMetadata): string {
+  const normalizedLabels = [item.nameEn, item.nameZhHant, item.nameYue]
+    .map(name => name.trim().toLocaleLowerCase())
+    .join("\u001f");
+  return retainedHistoryKey(normalizedLabels);
+}
+
 export interface RetainedFoodHistoryEntry extends NamedPatternFood {
   mealCount: number;
 }
@@ -110,9 +138,7 @@ export function findGlucosePatternFoodForMode<
   | { kind: "general"; food: GeneralFood }
   | { kind: "hstix"; food: HstixFood }
   | null {
-  const matches = (candidate: NamedPatternFood) =>
-    food === candidate.foodKey ||
-    [candidate.foodNameEn, candidate.foodNameZhHant, candidate.foodNameYue].includes(food);
+  const matches = (candidate: NamedPatternFood) => food === candidate.foodKey;
 
   if (mode !== "general") {
     const hstixFood = hstixFoods.find(matches);
@@ -168,8 +194,8 @@ export function buildRetainedFoodHistory(
           .some(name => name.trim().toLocaleLowerCase() === normalizedRawName),
       );
       const rawKey = matchingItem
-        ? foodItemKey(matchingItem)
-        : `history:${normalizedRawName}`;
+        ? canonicalGlucosePatternFoodKey(matchingItem) ?? retainedHistoryKeyForItem(matchingItem)
+        : retainedHistoryKey(normalizedRawName);
       seenThisMeal.add(rawKey);
       if (matchingItem) {
         addEntry(rawKey, matchingItem.nameEn, matchingItem.nameZhHant, matchingItem.nameYue);
@@ -179,7 +205,7 @@ export function buildRetainedFoodHistory(
     }
 
     for (const item of items) {
-      const foodKey = foodItemKey(item);
+      const foodKey = canonicalGlucosePatternFoodKey(item) ?? retainedHistoryKeyForItem(item);
       if (seenThisMeal.has(foodKey)) continue;
       seenThisMeal.add(foodKey);
       addEntry(foodKey, item.nameEn, item.nameZhHant, item.nameYue);
@@ -194,12 +220,7 @@ export function findRetainedFoodHistoryEntry(
   food: string,
   history: RetainedFoodHistoryEntry[],
 ): RetainedFoodHistoryEntry | null {
-  const normalizedFood = food.toLocaleLowerCase();
-  return history.find(entry =>
-    entry.foodKey === food ||
-    [entry.foodNameEn, entry.foodNameZhHant, entry.foodNameYue]
-      .some(name => name.toLocaleLowerCase() === normalizedFood),
-  ) ?? null;
+  return history.find(entry => entry.foodKey === food) ?? null;
 }
 
 type FoodStats = {
@@ -297,7 +318,7 @@ function validatedSweetCategory(item: FoodItemMetadata): SweetCategory {
  * sweet classifications.
  */
 export function isEligibleGlucosePatternComponent(item: FoodItemMetadata): boolean {
-  return item.source !== "derived" && (
+  return canonicalGlucosePatternFoodKey(item) !== null && item.source !== "derived" && (
     validatedGlucosePatternCarbCategory(item) !== null ||
     validatedSweetCategory(item) !== null
   );
@@ -318,7 +339,7 @@ export function buildGeneralGlucosePatternComponents(
     const seenThisMeal = new Set<string>();
     for (const item of meal.foodItems ?? []) {
       if (!isEligibleGlucosePatternComponent(item)) continue;
-      const foodKey = foodItemKey(item);
+      const foodKey = canonicalGlucosePatternFoodKey(item)!;
       if (seenThisMeal.has(foodKey)) continue;
       seenThisMeal.add(foodKey);
       const current = components.get(foodKey);
@@ -378,7 +399,7 @@ export function buildHstixFoodCards(
       foodKeys: new Set(
         (snap.foodItems ?? [])
           .filter(isEligibleGlucosePatternComponent)
-          .map(item => foodItemKey(item)),
+          .map(item => canonicalGlucosePatternFoodKey(item)!),
       ),
     };
   });
@@ -399,7 +420,7 @@ export function buildHstixFoodCards(
     const { snap, impact } = row;
     const seenThisMeal = new Set<string>();
     for (const item of (snap.foodItems ?? []).filter(isEligibleGlucosePatternComponent)) {
-      const key = foodItemKey(item);
+       const key = canonicalGlucosePatternFoodKey(item)!;
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
       const current = stats.get(key) ?? {
@@ -428,7 +449,7 @@ export function buildHstixFoodCards(
       const lift = expectedFoodRank / expectedBaselineRank;
       const impactLevel: HstixFoodCard["impactLevel"] = lift > 1.2 ? "high" : lift < 0.8 ? "low" : "medium";
       if (impactLevel !== "medium") {
-        const foodKey = foodItemKey(food.item);
+        const foodKey = canonicalGlucosePatternFoodKey(food.item)!;
         const absentScores = classified
           .filter(row => !row.foodKeys.has(foodKey))
           .map(row => row.score);
@@ -437,7 +458,7 @@ export function buildHstixFoodCards(
         }
       }
       return {
-        foodKey: foodItemKey(food.item),
+        foodKey: canonicalGlucosePatternFoodKey(food.item)!,
         foodNameEn: food.item.nameEn,
         foodNameZhHant: food.item.nameZhHant,
         foodNameYue: food.item.nameYue,
@@ -479,7 +500,7 @@ export function buildHstixFoodCards(
 
 function partnerFromItem(item: FoodItemMetadata): HstixPartnerFood {
   return {
-    foodKey: foodItemKey(item),
+    foodKey: canonicalGlucosePatternFoodKey(item)!,
     foodNameEn: item.nameEn,
     foodNameZhHant: item.nameZhHant,
     foodNameYue: item.nameYue,
@@ -525,9 +546,11 @@ export function buildHstixPartnerInsights(
       // The index food must pass the carb/sweet analysis gate, but its meal
       // partners may be any authoritative component. This lets truthful foods
       // such as char siu explain a rice pattern without becoming index cards.
-      const mealItems = (meal.foodItems ?? []).filter(item => item.source !== "derived");
+      const mealItems = (meal.foodItems ?? []).filter(item =>
+        item.source !== "derived" && canonicalGlucosePatternFoodKey(item) !== null,
+      );
       const uniqueItems = new Map<string, FoodItemMetadata>();
-      for (const item of mealItems) uniqueItems.set(foodItemKey(item), item);
+      for (const item of mealItems) uniqueItems.set(canonicalGlucosePatternFoodKey(item)!, item);
       if (!uniqueItems.has(candidate.foodKey)) continue;
       indexMealCount += 1;
 
@@ -601,7 +624,7 @@ export function buildHstixFoodsNeedingMoreReadings(
 
     const seenThisMeal = new Set<string>();
     for (const item of (snap.foodItems ?? []).filter(isEligibleGlucosePatternComponent)) {
-      const key = foodItemKey(item);
+       const key = canonicalGlucosePatternFoodKey(item)!;
       if (seenThisMeal.has(key)) continue;
       seenThisMeal.add(key);
       const current = foods.get(key) ?? { item, totalMeals: 0 };
@@ -613,7 +636,7 @@ export function buildHstixFoodsNeedingMoreReadings(
   return Array.from(foods.values())
     .filter(food => food.totalMeals < MIN_HSTIX_FOOD_MEALS_FOR_CARD)
     .map(food => ({
-      foodKey: foodItemKey(food.item),
+        foodKey: canonicalGlucosePatternFoodKey(food.item)!,
       foodNameEn: food.item.nameEn,
       foodNameZhHant: food.item.nameZhHant,
       foodNameYue: food.item.nameYue,

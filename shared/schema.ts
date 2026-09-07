@@ -154,6 +154,83 @@ export const foodLabels = pgTable("food_labels", {
   useCount: integer("use_count").notNull().default(0),
 });
 
+/**
+ * Stable, curated food identities. `id` is an application-owned immutable
+ * string (`food_<ULID>`), rather than a sequence, so references remain safe
+ * when catalogues are imported between environments.
+ */
+export const foodComponents = pgTable("food_components", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  internalId: varchar("internal_id", { length: 96 }).notNull().unique(),
+  labelEn: text("label_en").notNull(),
+  labelZhHant: text("label_zh_hant").notNull(),
+  labelYue: text("label_yue").notNull(),
+  carbCategory: varchar("carb_category", { length: 32 }),
+  carbSubtype: varchar("carb_subtype", { length: 48 }),
+  isCarb: boolean("is_carb").notNull(),
+  sweetCategory: varchar("sweet_category", { length: 32 }),
+  sugarStatus: varchar("sugar_status", { length: 32 }).notNull(),
+  defaultSugarStatus: varchar("default_sugar_status", { length: 32 }),
+  verified: boolean("verified").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  region: varchar("region", { length: 32 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  activeInternalIdIdx: index("food_components_active_internal_id_idx").on(table.active, table.internalId),
+}));
+
+/**
+ * Normalized official identity terms and aliases. A term can legitimately be
+ * shared (for example “rice noodles”), therefore exact lookup deliberately
+ * returns candidates and never guesses between ambiguous identities.
+ */
+export const foodComponentTerms = pgTable("food_component_terms", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  foodComponentId: varchar("food_component_id", { length: 96 })
+    .notNull()
+    .references(() => foodComponents.id, { onDelete: "cascade" }),
+  locale: varchar("locale", { length: 16 }).notNull(),
+  term: text("term").notNull(),
+  normalizedTerm: text("normalized_term").notNull(),
+  termType: varchar("term_type", { length: 16 }).$type<"official" | "alias">().notNull(),
+}, (table) => ({
+  componentTermUniq: uniqueIndex("food_component_terms_component_locale_normalized_uniq").on(
+    table.foodComponentId,
+    table.locale,
+    table.normalizedTerm,
+  ),
+  officialTermUniq: uniqueIndex("food_component_terms_official_locale_normalized_uniq")
+    .on(table.locale, table.normalizedTerm)
+    .where(sql`${table.termType} = 'official'`),
+  lookupIdx: index("food_component_terms_lookup_idx").on(table.locale, table.normalizedTerm),
+}));
+
+export const insertFoodComponentSchema = createInsertSchema(foodComponents).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertFoodComponentTermSchema = createInsertSchema(foodComponentTerms);
+export type FoodComponent = typeof foodComponents.$inferSelect;
+export type InsertFoodComponent = z.infer<typeof insertFoodComponentSchema>;
+export type FoodComponentTerm = typeof foodComponentTerms.$inferSelect;
+export type InsertFoodComponentTerm = z.infer<typeof insertFoodComponentTermSchema>;
+
+/** Compact, durable reference for newly resolved component observations. */
+export type ResolvedFoodComponentRef = {
+  id: string;
+  source: "catalog_match" | "catalog_created";
+};
+
+/** Raw observations deliberately retained when no safe exact identity exists. */
+export type UnresolvedFoodComponentHistory = {
+  rawText: string;
+  normalizedText: string;
+  reason: "no_match" | "ambiguous" | "invalid_candidate";
+  candidateComponentIds?: string[];
+};
+
 export const foodAdviceCache = pgTable("food_advice_cache", {
   id: serial("id").primaryKey(),
   foodName: text("food_name").notNull(),
@@ -180,7 +257,7 @@ export type InsertFoodAdviceCache = z.infer<typeof insertFoodAdviceCacheSchema>;
 export const foodGiEntries = pgTable("food_gi_entries", {
   id: serial("id").primaryKey(),
   normalizedFoodName: text("normalized_food_name").notNull().unique(),
-  status: varchar("status", { length: 16 }).$type<"resolved" | "no_match" | "pending">().notNull(),
+  status: varchar("status", { length: 16 }).$type<"resolved" | "suggested" | "no_match" | "pending" | "unavailable">().notNull(),
   referenceId: text("reference_id"),
   giValue: real("gi_value"),
   source: text("source").notNull(),
@@ -193,6 +270,8 @@ export type FoodGiEntry = typeof foodGiEntries.$inferSelect;
 export type InsertFoodGiEntry = typeof foodGiEntries.$inferInsert;
 
 export type FoodItemMetadata = {
+  /** Stable catalog identity. Missing only on legacy/history-only values. */
+  id?: string;
   nameEn: string;
   nameZhHant: string;
   nameYue: string;
@@ -205,7 +284,11 @@ export type FoodItemMetadata = {
   isSweet?: boolean;
   suggestedSubtype?: string | null;
   subtypeConfirmed: boolean;
-  source: "claude" | "derived";
+  source: "claude" | "derived" | "catalog_match" | "catalog_created";
+  // Optional for old meal_snap / food_labels JSON written before the catalog.
+  // Legacy readers keep using the multilingual labels above when absent.
+  componentRef?: ResolvedFoodComponentRef;
+  unresolvedComponent?: UnresolvedFoodComponentHistory;
 };
 
 export type SweetCategory = "sweet_drink" | "sweet_food" | null;

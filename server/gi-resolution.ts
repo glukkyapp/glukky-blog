@@ -2,11 +2,14 @@ import { normalize } from "./carb-subtypes";
 import { selectGeneralTopFoods, type FoodFrequencyFood } from "./food-frequency";
 
 export type GiRank = "low" | "medium" | "high";
-export type GiEntryStatus = "resolved" | "no_match" | "pending";
+/**
+ * Only a curator may move an entry from `suggested` to `resolved`, or mark it
+ * `unavailable`. Automated matching is deliberately not a live GI source.
+ */
+export type GiEntryStatus = "resolved" | "suggested" | "no_match" | "pending" | "unavailable";
 
 export const GI_REFERENCE_SOURCE =
   "International tables of glycemic index and glycemic load values 2008";
-export const GI_NO_MATCH_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 export const GI_AI_TIMEOUT_MS = 45_000;
 export const GI_CLAIM_LEASE_MS = 15 * 60 * 1000;
 export const GI_AI_MODEL_ENV = "GI_AI_MODEL";
@@ -106,7 +109,7 @@ export type GiReferenceCandidate = {
 export const GI_REFERENCE_CANDIDATES: GiReferenceCandidate[] = [
   { referenceId: "rice-white", canonicalName: "White rice", aliases: ["rice", "white rice", "白飯", "白米", "白米飯", "米飯"], giValue: 73, category: "rice" },
   { referenceId: "rice-basmati", canonicalName: "Basmati rice", aliases: ["basmati rice", "印度香米", "巴斯馬蒂米"], giValue: 50, category: "rice" },
-  { referenceId: "rice-brown", canonicalName: "Brown rice", aliases: ["brown rice", "糙米", "紅米飯"], giValue: 50, category: "rice" },
+  { referenceId: "rice-brown", canonicalName: "Brown rice", aliases: ["brown rice", "糙米"], giValue: 50, category: "rice" },
   { referenceId: "rice-sticky", canonicalName: "Sticky rice", aliases: ["sticky rice", "glutinous rice", "糯米", "糯米飯"], giValue: 87, category: "rice" },
   { referenceId: "noodles-rice", canonicalName: "Rice noodles", aliases: ["rice noodles", "米粉", "米線", "河粉"], giValue: 53, category: "noodles" },
   { referenceId: "noodles-egg", canonicalName: "Egg noodles", aliases: ["egg noodles", "蛋麵", "雞蛋麵"], giValue: 40, category: "noodles" },
@@ -127,10 +130,7 @@ export const GI_REFERENCE_CANDIDATES: GiReferenceCandidate[] = [
   { referenceId: "sweet-drink-soda", canonicalName: "Soda", aliases: ["soda", "soft drink", "cola", "汽水", "可樂", "可乐"], giValue: 63, category: "sweet_drink" },
 ];
 
-export type GiFoodForLookup = Pick<FoodFrequencyFood, "nameEn" | "nameZhHant" | "nameYue"> & {
-  carbCategory?: string | null;
-  sweetCategory?: string | null;
-};
+export type GiFoodForLookup = Pick<FoodFrequencyFood, "nameEn" | "nameZhHant" | "nameYue">;
 
 export type GiEntryLike = {
   status: GiEntryStatus;
@@ -144,11 +144,13 @@ export type GiCandidateRequest = {
 };
 
 export function normalizeGiFoodIdentity(value: string): string {
-  return normalize(value).toLocaleLowerCase();
+  return normalize(value);
 }
 
 export function giFoodKey(food: Pick<GiFoodForLookup, "nameEn" | "nameZhHant" | "nameYue">): string {
-  return normalizeGiFoodIdentity(`${food.nameEn}|${food.nameZhHant}|${food.nameYue}`);
+  // This is intentionally neither a multilingual composite nor a fuzzy key.
+  // Traditional Chinese is the canonical food identity presented to curators.
+  return normalizeGiFoodIdentity(food.nameZhHant);
 }
 
 export function deriveGiRank(giValue: number): GiRank | null {
@@ -167,29 +169,22 @@ export function getGiCandidatesForFood(food: GiFoodForLookup): GiReferenceCandid
   const names = [food.nameEn, food.nameZhHant, food.nameYue]
     .map(normalizeGiFoodIdentity)
     .filter(Boolean);
-  const categories = new Set(
-    [food.carbCategory, food.sweetCategory].filter(
-      (value): value is string => typeof value === "string" && value.length > 0,
-    ),
+  // Candidates are a bounded review suggestion pool, not category inference.
+  // Require an exact normalized label; substring matching would silently
+  // suggest a reference table value for a different prepared food.
+  return GI_REFERENCE_CANDIDATES.filter(candidate =>
+    candidate.aliases.some(alias => names.includes(normalizeGiFoodIdentity(alias))),
   );
-  const lexical = GI_REFERENCE_CANDIDATES.filter(candidate =>
-    candidate.aliases.some(alias => names.includes(normalizeGiFoodIdentity(alias))) ||
-    names.some(name => candidate.aliases.some(alias => {
-      const normalizedAlias = normalizeGiFoodIdentity(alias);
-      return name.includes(normalizedAlias) || normalizedAlias.includes(name);
-    })),
-  );
-  const categoryMatches = GI_REFERENCE_CANDIDATES.filter(candidate => categories.has(candidate.category));
-  const combined = new Map<string, GiReferenceCandidate>();
-  for (const candidate of [...lexical, ...categoryMatches]) combined.set(candidate.referenceId, candidate);
-  return Array.from(combined.values());
 }
 
 export function getPublicGiState(
   entry: GiEntryLike | undefined,
 ): { giRank: GiRank | null; giStatus: "resolved" | "pending" | "unavailable" } {
   if (!entry) return { giRank: null, giStatus: "pending" };
-  if (entry.status === "pending") return { giRank: null, giStatus: "pending" };
+  if (entry.status === "pending" || entry.status === "no_match" || entry.status === "suggested") {
+    return { giRank: null, giStatus: "pending" };
+  }
+  if (entry.status === "unavailable") return { giRank: null, giStatus: "unavailable" };
   if (entry.status !== "resolved" || entry.giValue == null) {
     return { giRank: null, giStatus: "unavailable" };
   }
@@ -197,12 +192,6 @@ export function getPublicGiState(
   return giRank
     ? { giRank, giStatus: "resolved" }
     : { giRank: null, giStatus: "unavailable" };
-}
-
-export function isRecentNoMatch(entry: GiEntryLike | undefined, now = new Date()): boolean {
-  if (!entry || entry.status !== "no_match") return false;
-  const resolvedAt = new Date(entry.resolvedAt).getTime();
-  return Number.isFinite(resolvedAt) && now.getTime() - resolvedAt < GI_NO_MATCH_RETRY_MS;
 }
 
 export function validateGiMatches(

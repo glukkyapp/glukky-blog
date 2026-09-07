@@ -4,7 +4,7 @@ import { eq, and, isNotNull, sql, desc, gt } from "drizzle-orm";
 import { sendPushNotification, cancelOneSignalNotification } from "./onesignal";
 import { storage } from "./storage";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { log } from "./index";
+import { log } from "./logger";
 
 // Forward window: every pre-scheduling pass queues every eligible
 // (user, type) whose next local trigger falls within this many

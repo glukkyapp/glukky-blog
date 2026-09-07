@@ -8,6 +8,7 @@ import { startNotificationScheduler } from "./notifications";
 import { cleanupDuplicatePlayerIds, cleanupRetiredHstixReminderNotifications } from "./onesignal";
 import { captureException, getPosthogConsent, shutdownPostHog } from "./posthog";
 import { runStartupMigrations } from "./startup-migrations";
+import { log } from "./logger";
 
 const app = express();
 const httpServer = createServer(app);
@@ -28,17 +29,6 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
-
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
 
 app.use((req, res, next) => {
   const start = Date.now();

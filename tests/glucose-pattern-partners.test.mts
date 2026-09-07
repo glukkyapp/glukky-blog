@@ -1,14 +1,17 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import type { FoodItemMetadata } from "../shared/schema";
-import { foodItemKey } from "../server/carb-subtypes";
 import {
   buildHstixFoodCards,
+  buildHstixFoodsNeedingMoreReadings,
   buildHstixPartnerInsights,
+  canonicalGlucosePatternFoodKey,
   filterEligibleHstixMeals,
   type HstixFoodCard,
   type HstixMealForCards,
 } from "../server/glucose-patterns";
+
+const foodItemKey = (item: FoodItemMetadata) => canonicalGlucosePatternFoodKey(item)!;
 
 let passed = 0;
 function check(label: string, condition: boolean) {
@@ -17,11 +20,12 @@ function check(label: string, condition: boolean) {
   passed += 1;
 }
 
-function food(name: string): FoodItemMetadata {
+function food(name: string): FoodItemMetadata & { id: string } {
   return {
     nameEn: name,
     nameZhHant: name,
     nameYue: name,
+    id: `catalog-${name}`,
     isCarb: false,
     carbCategory: null,
     carbSubtype: null,
@@ -85,21 +89,27 @@ const greens = ordinaryFood("greens");
 
 console.log("Eligible measured-food evidence");
 const derivedRice = { ...rice, source: "derived" as const };
+const legacyRice = { ...rice, id: undefined };
 const eligible = filterEligibleHstixMeals([
   meal(7, [rice]),
   meal(8, [rice], "delayed"),
   meal(8, [rice], "unrelated"),
   meal(8, [derivedRice]),
+  meal(8, [legacyRice]),
   { postMealGlucoseMmol: 8, foodItems: [rice], mealTimingConfidence: "on_time", isCanonicalHstix: false },
   { postMealGlucoseMmol: Number.NaN, foodItems: [rice], mealTimingConfidence: "on_time", isCanonicalHstix: true },
 ]);
-check("only canonical, finite, on-time, non-derived meals enter partner analysis", eligible.length === 1 && eligible[0].postMealGlucoseMmol === 7);
+check("only resolved canonical, finite, on-time, non-derived meals enter partner analysis", eligible.length === 1 && eligible[0].postMealGlucoseMmol === 7);
 check(
   "legacy meal-row measurements cannot create measured cards or partner advice",
   buildHstixFoodCards(
     Array.from({ length: 25 }, () => ({ postMealGlucoseMmol: 8, foodItems: [rice, roastPork], mealTimingConfidence: "on_time" as const, isCanonicalHstix: false })),
     "healthy",
   ).length === 0,
+);
+check(
+  "legacy name-only components remain out of needs-more-readings evidence",
+  buildHstixFoodsNeedingMoreReadings([meal(8, [legacyRice])]).length === 0,
 );
 const storageSource = readFileSync("server/storage.ts", "utf8");
 const hstixCardStorage = storageSource.slice(

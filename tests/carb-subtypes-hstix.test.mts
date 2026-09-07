@@ -25,6 +25,7 @@ function check(label: string, condition: boolean) {
 }
 
 const rice: FoodItemMetadata = {
+  id: "white_rice",
   nameEn: "white rice",
   nameZhHant: "白飯",
   nameYue: "白飯",
@@ -32,9 +33,10 @@ const rice: FoodItemMetadata = {
   carbCategory: "rice",
   carbSubtype: null,
   subtypeConfirmed: false,
-  source: "claude",
+  source: "catalog_match",
 };
 const chicken: FoodItemMetadata = {
+  id: "hainanese_chicken",
   nameEn: "Hainanese chicken",
   nameZhHant: "海南雞",
   nameYue: "海南雞",
@@ -42,10 +44,11 @@ const chicken: FoodItemMetadata = {
   carbCategory: null,
   carbSubtype: null,
   subtypeConfirmed: false,
-  source: "claude",
+  source: "catalog_match",
 };
 const milkTea: FoodItemMetadata = {
   ...chicken,
+  id: "milk_tea",
   nameEn: "milk tea",
   nameZhHant: "奶茶",
   nameYue: "奶茶",
@@ -54,6 +57,7 @@ const milkTea: FoodItemMetadata = {
 };
 const cake: FoodItemMetadata = {
   ...chicken,
+  id: "cake",
   nameEn: "cake",
   nameZhHant: "蛋糕",
   nameYue: "蛋糕",
@@ -89,6 +93,7 @@ check("machine-readable food items are removed before advice is stored or shown"
 console.log("\nGlucose Patterns component eligibility");
 const unsupportedCarb: FoodItemMetadata = {
   ...rice,
+  id: "unsupported_carb",
   nameEn: "unsupported carb",
   nameZhHant: "未支援碳水",
   nameYue: "未支援碳水",
@@ -193,18 +198,21 @@ check(
 console.log("\nExpected-rank HStix impact");
 const mediumStaple: FoodItemMetadata = {
   ...rice,
+  id: "medium_staple",
   nameEn: "medium staple",
   nameZhHant: "中等主食",
   nameYue: "中等主食",
 };
 const lowExtra: FoodItemMetadata = {
   ...rice,
+  id: "low_extra",
   nameEn: "low extra",
   nameZhHant: "低額外食物",
   nameYue: "低額外食物",
 };
 const highExtra: FoodItemMetadata = {
   ...rice,
+  id: "high_extra",
   nameEn: "high extra",
   nameZhHant: "高額外食物",
   nameYue: "高額外食物",
@@ -332,6 +340,7 @@ check(
 );
 const highRankFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
   ...rice,
+  id: `high_rank_${index}`,
   nameEn: `high rank ${index}`,
   nameZhHant: `高排名${index}`,
   nameYue: `高排名${index}`,
@@ -351,6 +360,7 @@ check(
 );
 const distinctHighFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
   ...rice,
+  id: `distinct_high_${index}`,
   nameEn: `distinct high ${index}`,
   nameZhHant: `不同高排名${index}`,
   nameYue: `不同高排名${index}`,
@@ -373,6 +383,7 @@ check(
 );
 const lowRankFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
   ...rice,
+  id: `low_rank_${index}`,
   nameEn: `low rank ${index}`,
   nameZhHant: `低排名${index}`,
   nameYue: `低排名${index}`,
@@ -392,6 +403,7 @@ check(
 );
 const distinctLowFoods = Array.from({ length: 6 }, (_, index): FoodItemMetadata => ({
   ...rice,
+  id: `distinct_low_${index}`,
   nameEn: `distinct low ${index}`,
   nameZhHant: `不同低排名${index}`,
   nameYue: `不同低排名${index}`,
@@ -456,18 +468,18 @@ check("advice generates canonical items from confirmed labels and excludes sauce
   adviceRoute.includes("Identify items only from the user-confirmed Food and Extras / toppings fields") &&
   adviceRoute.includes("Exclude sauces, condiments, spices, seasoning, herbs, and decorative garnishes"));
 check("an exact combo logs its own stored items without client subtype input",
-  adviceRoute.includes("prepareFoodItems(label?.foodItems)") &&
+  adviceRoute.includes("await storage.hydrateFoodItems(label.foodItems)") &&
   adviceRoute.includes("foodItems: structuredFoodItems") &&
   !adviceRoute.includes("applyConfirmedCarbSubtypes"));
 check("a legacy cached combo backfills canonical items before logging a meal",
-  adviceRoute.includes("const needsFoodItemsBackfill = !!label && structuredFoodItems.length === 0") &&
+  adviceRoute.includes("structuredFoodItems.some(item => typeof item.id !== \"string\"") &&
   adviceRoute.includes("if (cachedAdvice && !needsFoodItemsBackfill)") &&
   adviceRoute.includes("needsFoodItemsBackfill && locale === backfillLocale") &&
   adviceRoute.includes("await storage.saveFoodLabel({ ...labelValues, foodItems: structuredFoodItems })"));
 check("food items persist on the exact library combo, not a global meal name",
   schema.includes('foodItems: jsonb("food_items")') &&
   storage.includes("target: foodLabels.internalId") &&
-  storage.includes("set: { foodItems }"));
+  storage.includes("set: { foodItems: foodItems as any }"));
 check("the legacy directional explanation remains localized without changing result counts", en.includes("After eating {{food}}, your blood sugar tends to run higher than usual.") &&
   zhHant.includes("你吃{{food}}之後，血糖比平時容易偏高。") &&
   yue.includes("你食{{food}}之後，血糖比平時容易偏高。"));

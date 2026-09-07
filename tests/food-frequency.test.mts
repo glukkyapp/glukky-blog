@@ -23,7 +23,11 @@ const meal = (foodItems: FoodItemMetadata[], isDeleted = false) =>
   ({ foodItems, isDeleted } as Pick<MealSnap, "foodItems" | "isDeleted">);
 
 function item(names: Parameters<typeof rawItem>[0], source: "claude" | "derived" = "claude") {
-  return prepareFoodItems([{ ...rawItem(names), source }])[0];
+  const prepared = prepareFoodItems([{ ...rawItem(names), source }])[0];
+  assert(prepared);
+  // Catalog resolution supplies IDs in production. Keep fixtures explicit so
+  // the legacy no-ID case below continues to cover its exclusion.
+  return { ...prepared, id: `catalog-${prepared.nameEn.toLocaleLowerCase()}` };
 }
 
 const milkTea = item({ nameEn: "Hong Kong milk tea", nameZhHant: "港式奶茶", nameYue: "奶茶" });
@@ -96,6 +100,23 @@ const legacySummary = buildFoodFrequencySummary([meal([legacyItem])]);
 assert.equal(legacySummary.foods.length, 0);
 assert.equal(legacySummary.sweetSubtypes.length, 0);
 assert.equal(legacySummary.carbCategories.length, 0);
+assert.equal(buildGeneralGlucosePatternComponents([meal([legacyItem])]).length, 0);
+
+const sameCatalogRiceDifferentLabels = {
+  ...rice,
+  id: rice.id,
+  nameEn: "Steamed white rice",
+  nameZhHant: "白米飯",
+};
+const canonicalIdSummary = buildFoodFrequencySummary([
+  meal([rice]),
+  meal([sameCatalogRiceDifferentLabels]),
+  // A formerly readable, name-only classified item must not inflate stats.
+  meal([{ ...rice, id: undefined }]),
+]);
+assert.equal(canonicalIdSummary.foods.length, 1);
+assert.equal(canonicalIdSummary.foods[0].foodKey, `component:${rice.id}`);
+assert.equal(canonicalIdSummary.foods[0].mealCount, 2);
 
 const derivedSummary = buildFoodFrequencySummary([
   meal([milkTea, { ...soda, source: "derived" }]),

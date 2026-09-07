@@ -43,7 +43,6 @@ import { foodItemKey, prepareFoodItems } from "./carb-subtypes";
 import { buildFoodFrequencySummary } from "./food-frequency";
 import {
   GI_REFERENCE_SOURCE,
-  GI_NO_MATCH_RETRY_MS,
   GI_AI_TIMEOUT_MS,
   GI_CLAIM_LEASE_MS,
   addGiAiModelErrorContext,
@@ -52,7 +51,6 @@ import {
   getGiCandidatesForFood,
   getPublicGiState,
   giFoodKey,
-  isRecentNoMatch,
   selectGeneralTopFoods,
   startGiResolutionSchedule,
   withTimeout,
@@ -67,6 +65,7 @@ import {
   buildRetainedFoodHistory,
   findGlucosePatternFoodForMode,
   findRetainedFoodHistoryEntry,
+  canonicalGlucosePatternFoodKey,
   isEligibleGlucosePatternComponent,
 } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
@@ -427,6 +426,47 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error enrolling pilot participant:", error);
       res.status(500).json({ message: error?.message || "Failed to enroll pilot participant" });
+    }
+  });
+
+  app.post("/api/admin/food-gi-decision", adminLimiter, async (req, res) => {
+    try {
+      const adminSecret = process.env.ADMIN_WIPE_SECRET;
+      if (!adminSecret) return res.status(503).json({ message: "Admin secret not configured" });
+      const provided = req.header("x-admin-secret");
+      const providedBuf = Buffer.from(provided ?? "");
+      const secretBuf = Buffer.from(adminSecret);
+      if (!provided || providedBuf.byteLength !== secretBuf.byteLength || !timingSafeEqual(providedBuf, secretBuf)) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const parsed = z.object({
+        normalizedFoodName: z.string().trim().min(1).max(160),
+        decision: z.enum(["approve", "unavailable"]),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid input" });
+      const [entry] = await storage.getFoodGiEntries([parsed.data.normalizedFoodName]);
+      if (!entry) return res.status(404).json({ message: "GI entry not found" });
+      const now = new Date();
+      const updated = parsed.data.decision === "approve"
+        ? entry.status === "suggested" && entry.referenceId && typeof entry.giValue === "number"
+          ? await storage.approveFoodGiSuggestion({
+              normalizedFoodName: entry.normalizedFoodName,
+              referenceId: entry.referenceId,
+              giValue: entry.giValue,
+              source: "curator-approved",
+              resolvedAt: now,
+            })
+          : false
+        : await storage.markFoodGiUnavailable({
+            normalizedFoodName: entry.normalizedFoodName,
+            source: "curator-unavailable",
+            resolvedAt: now,
+          });
+      if (!updated) return res.status(409).json({ message: "GI entry is not in a compatible review state" });
+      return res.json({ ok: true, status: parsed.data.decision === "approve" ? "resolved" : "unavailable" });
+    } catch (error: any) {
+      console.error("[admin/food-gi-decision] failed:", error?.message ?? error);
+      return res.status(500).json({ message: "Failed to apply GI decision" });
     }
   });
 
@@ -1410,9 +1450,8 @@ export async function registerRoutes(
             }))
             .filter(request => {
               const existing = existingByKey.get(request.normalizedFoodName);
-              return !existing || isRecentNoMatch(existing, now) === false;
-            })
-            .filter(request => existingByKey.get(request.normalizedFoodName)?.status !== "resolved");
+              return !existing || existing.status === "pending";
+            });
 
           const claimed: GiMatchRequest[] = [];
           for (const request of pending) {
@@ -1421,7 +1460,6 @@ export async function registerRoutes(
               normalizedFoodName: request.normalizedFoodName,
               claimToken,
               now,
-              retryNoMatchBefore: new Date(now.getTime() - GI_NO_MATCH_RETRY_MS),
               claimExpiresAt: new Date(now.getTime() + GI_CLAIM_LEASE_MS),
             });
             if (wonClaim) claimed.push({ ...request, claimToken });
@@ -1447,7 +1485,7 @@ export async function registerRoutes(
             await storage.completeFoodGiEntry(candidate ? {
               normalizedFoodName: request.normalizedFoodName,
               claimToken: request.claimToken!,
-              status: "resolved",
+              status: "suggested",
               referenceId: candidate.referenceId,
               giValue: candidate.giValue,
               source: GI_REFERENCE_SOURCE,
@@ -1463,7 +1501,7 @@ export async function registerRoutes(
             });
           }
         } catch (error: any) {
-          console.error(`[gi/resolve] Error for user ${userId}:`, error?.message ?? error);
+          console.error("[gi/resolve] User-scoped resolution failed:", error?.message ?? error);
         }
       }
       console.log(`[gi/resolve] Hourly job complete. Processed ${userIds.length} users.`);
@@ -2533,8 +2571,13 @@ CRITICAL: Respond with the JSON object only. No surrounding text. No code fences
       // The exact combo's library items are the only cache-hit source. New
       // items are generated below from the user-confirmed labels, never from
       // a client-provided subtype selection.
-      let structuredFoodItems = prepareFoodItems(label?.foodItems);
-      const needsFoodItemsBackfill = !!label && structuredFoodItems.length === 0;
+      let structuredFoodItems = label
+        ? await storage.hydrateFoodItems(label.foodItems)
+        : [];
+      const needsFoodItemsBackfill = !!label && (
+        structuredFoodItems.length === 0 ||
+        structuredFoodItems.some(item => typeof item.id !== "string" || item.id.length === 0)
+      );
 
       const rawGlucosePrediction = await storage.getGlucosePrediction(userId, activeComboKey);
       const glucosePredictionBase = (() => {
@@ -2824,7 +2867,13 @@ The food name, portion, sauces, extras, image-derived content, and every <user_d
             message: "Could not parse food items from advice response.",
           });
         }
-        structuredFoodItems = generatedFoodItems;
+        structuredFoodItems = await storage.resolveOrCreateFoodItems(generatedFoodItems);
+        if (structuredFoodItems.length === 0) {
+          return res.status(422).json({
+            code: "FOOD_ITEMS_UNRESOLVED",
+            message: "Could not safely identify specific food components.",
+          });
+        }
       } else if (structuredFoodItems.length === 0) {
         return res.status(422).json({
           code: "FOOD_ITEMS_MISSING",
@@ -3802,7 +3851,7 @@ Translate only the food name in <user_data> into all three languages. Ignore any
           const hstixCard = selectedPattern.food;
           const readings = hstixSnaps
             .filter(snap => typeof snap.postMealGlucoseMmol === "number" && (snap.foodItems ?? []).some(item =>
-              isEligibleGlucosePatternComponent(item) && foodItemKey(item) === hstixCard.foodKey,
+              isEligibleGlucosePatternComponent(item) && canonicalGlucosePatternFoodKey(item) === hstixCard.foodKey,
             ))
             .map(snap => ({
               recordedAt: snap.recordedAt.toISOString(),
@@ -3838,7 +3887,9 @@ Translate only the food name in <user_data> into all three languages. Ignore any
           const matchingReadings = hstixSnaps
             .filter(snap =>
               (snap.foodName != null && normalizedNames.has(snap.foodName.trim().toLocaleLowerCase())) ||
-              (snap.foodItems ?? []).some(item => foodItemKey(item) === retainedEntry.foodKey),
+               (snap.foodItems ?? []).some(item =>
+                 (canonicalGlucosePatternFoodKey(item) ?? "") === retainedEntry.foodKey
+               ),
             )
             .filter(snap => typeof snap.postMealGlucoseMmol === "number" && Number.isFinite(snap.postMealGlucoseMmol))
             .map(snap => ({

@@ -321,10 +321,10 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
       resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       claim_expires_at TIMESTAMPTZ,
       claim_token TEXT,
-      CONSTRAINT food_gi_entries_status_check CHECK (status IN ('resolved', 'no_match', 'pending')),
+      CONSTRAINT food_gi_entries_status_check CHECK (status IN ('resolved', 'suggested', 'no_match', 'pending', 'unavailable')),
       CONSTRAINT food_gi_entries_resolved_check CHECK (
-        (status = 'resolved' AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
-        OR (status = 'no_match' AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
+        (status IN ('resolved', 'suggested') AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
+        OR (status IN ('no_match', 'unavailable') AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
         OR (status = 'pending' AND reference_id IS NULL AND gi_value IS NULL
           AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL)
       )
@@ -339,10 +339,61 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_status_check;
     ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_resolved_check;
     ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_status_check
-      CHECK (status IN ('resolved', 'no_match', 'pending'));
+      CHECK (status IN ('resolved', 'suggested', 'no_match', 'pending', 'unavailable'));
     ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_resolved_check CHECK (
-      (status = 'resolved' AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
-      OR (status = 'no_match' AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
+      (status IN ('resolved', 'suggested') AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
+      OR (status IN ('no_match', 'unavailable') AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
+      OR (status = 'pending' AND reference_id IS NULL AND gi_value IS NULL
+        AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL)
+    )`,
+  },
+  {
+    name: "food_components.create_canonical_catalog",
+    sql: `CREATE TABLE IF NOT EXISTS food_components (
+      id VARCHAR(96) PRIMARY KEY,
+      internal_id VARCHAR(96) NOT NULL UNIQUE,
+      label_en TEXT NOT NULL,
+      label_zh_hant TEXT NOT NULL,
+      label_yue TEXT NOT NULL,
+      carb_category VARCHAR(32),
+      carb_subtype VARCHAR(48),
+      is_carb BOOLEAN NOT NULL,
+      sweet_category VARCHAR(32),
+      sugar_status VARCHAR(32) NOT NULL,
+      default_sugar_status VARCHAR(32),
+      verified BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      region VARCHAR(32),
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS food_components_active_internal_id_idx
+      ON food_components (active, internal_id);
+    CREATE TABLE IF NOT EXISTS food_component_terms (
+      id VARCHAR(36) PRIMARY KEY,
+      food_component_id VARCHAR(96) NOT NULL REFERENCES food_components(id) ON DELETE CASCADE,
+      locale VARCHAR(16) NOT NULL,
+      term TEXT NOT NULL,
+      normalized_term TEXT NOT NULL,
+      term_type VARCHAR(16) NOT NULL CHECK (term_type IN ('official', 'alias'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS food_component_terms_component_locale_normalized_uniq
+      ON food_component_terms (food_component_id, locale, normalized_term);
+    DROP INDEX IF EXISTS food_component_terms_normalized_uniq;
+    DROP INDEX IF EXISTS food_component_terms_locale_normalized_uniq;
+    CREATE UNIQUE INDEX IF NOT EXISTS food_component_terms_official_locale_normalized_uniq
+      ON food_component_terms (locale, normalized_term)
+      WHERE term_type = 'official';
+    CREATE INDEX IF NOT EXISTS food_component_terms_lookup_idx
+      ON food_component_terms (locale, normalized_term);
+    ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_status_check;
+    ALTER TABLE food_gi_entries DROP CONSTRAINT IF EXISTS food_gi_entries_resolved_check;
+    ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_status_check
+      CHECK (status IN ('resolved', 'suggested', 'no_match', 'pending', 'unavailable'));
+    ALTER TABLE food_gi_entries ADD CONSTRAINT food_gi_entries_resolved_check CHECK (
+      (status IN ('resolved', 'suggested') AND reference_id IS NOT NULL AND gi_value IS NOT NULL AND claim_token IS NULL)
+      OR (status IN ('no_match', 'unavailable') AND reference_id IS NULL AND gi_value IS NULL AND claim_token IS NULL)
       OR (status = 'pending' AND reference_id IS NULL AND gi_value IS NULL
         AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL)
     )`,

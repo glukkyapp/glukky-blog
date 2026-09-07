@@ -7,7 +7,11 @@ import { strict as assert } from "node:assert";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, pool } from "../server/db";
-import { claimFoodGiEntry, completeFoodGiEntry } from "../server/gi-resolution-storage";
+import {
+  approveFoodGiSuggestion,
+  claimFoodGiEntry,
+  completeFoodGiEntry,
+} from "../server/gi-resolution-storage";
 import { foodGiEntries } from "../shared/schema";
 
 const normalizedFoodName = `gi-claim-test-${randomUUID()}`;
@@ -15,21 +19,18 @@ const firstToken = randomUUID();
 const secondToken = randomUUID();
 const thirdToken = randomUUID();
 const now = new Date();
-const retryNoMatchBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
 try {
   const firstClaim = await claimFoodGiEntry({
     normalizedFoodName,
     claimToken: firstToken,
     now,
-    retryNoMatchBefore,
     claimExpiresAt: new Date(now.getTime() + 60_000),
   });
   const concurrentClaim = await claimFoodGiEntry({
     normalizedFoodName,
     claimToken: secondToken,
     now,
-    retryNoMatchBefore,
     claimExpiresAt: new Date(now.getTime() + 60_000),
   });
   assert.equal(firstClaim, true, "the first instance should win the atomic claim");
@@ -40,7 +41,6 @@ try {
     normalizedFoodName,
     claimToken: thirdToken,
     now: afterExpiry,
-    retryNoMatchBefore,
     claimExpiresAt: new Date(afterExpiry.getTime() + 60_000),
   });
   assert.equal(reclaimed, true, "an expired abandoned claim should be retryable");
@@ -48,7 +48,7 @@ try {
   const staleOwnerCompletion = await completeFoodGiEntry({
     normalizedFoodName,
     claimToken: firstToken,
-    status: "resolved",
+    status: "suggested",
     referenceId: "rice-white",
     giValue: 73,
     source: "test",
@@ -57,16 +57,33 @@ try {
   const currentOwnerCompletion = await completeFoodGiEntry({
     normalizedFoodName,
     claimToken: thirdToken,
-    status: "resolved",
+    status: "suggested",
     referenceId: "rice-white",
     giValue: 73,
     source: "test",
     resolvedAt: afterExpiry,
   });
   assert.equal(staleOwnerCompletion, false, "a stale instance must not finalize a reclaimed entry");
-  assert.equal(currentOwnerCompletion, true, "the current claim owner should finalize its result");
+  assert.equal(currentOwnerCompletion, true, "the current claim owner should save its suggestion");
 
-  console.log("GI database claim lease: 6 passed");
+  const postSuggestionClaim = await claimFoodGiEntry({
+    normalizedFoodName,
+    claimToken: randomUUID(),
+    now: afterExpiry,
+    claimExpiresAt: new Date(afterExpiry.getTime() + 60_000),
+  });
+  assert.equal(postSuggestionClaim, false, "a suggestion must not be re-claimed or re-generated");
+
+  const approved = await approveFoodGiSuggestion({
+    normalizedFoodName,
+    referenceId: "rice-white",
+    giValue: 73,
+    source: "test-curator",
+    resolvedAt: afterExpiry,
+  });
+  assert.equal(approved, true, "only an explicit curator transition makes a suggestion live");
+
+  console.log("GI database claim lease: 7 passed");
 } finally {
   await db.delete(foodGiEntries).where(eq(foodGiEntries.normalizedFoodName, normalizedFoodName));
   await pool.end();

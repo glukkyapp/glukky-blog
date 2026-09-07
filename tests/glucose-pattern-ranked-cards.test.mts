@@ -23,7 +23,6 @@ import {
   getPublicGiState,
   getGiAiModel,
   addGiAiModelErrorContext,
-  isRecentNoMatch,
   startGiResolutionSchedule,
   startObservedBackgroundJob,
   validateGiMatches,
@@ -82,11 +81,16 @@ const retainedHistory = buildRetainedFoodHistory([
   { foodName: "Deleted Chicken Breast", foodItems: null, isDeleted: true },
 ]);
 check("Retained history indexes raw logged food names without pattern eligibility",
-  retainedHistory.some(food => food.foodKey === "history:chicken breast" && food.mealCount === 2));
+  retainedHistory.some(food =>
+    food.foodKey.startsWith("history:") &&
+    !food.foodKey.includes("chicken breast") &&
+    food.mealCount === 2,
+  ));
 check("Deleted meals stay out of retained-history search",
   !retainedHistory.some(food => food.foodNameEn === "Deleted Chicken Breast"));
-check("A retained-history selection resolves case-insensitively",
-  findRetainedFoodHistoryEntry("CHICKEN BREAST", retainedHistory)?.mealCount === 2);
+check("A retained-history selection requires its opaque public key",
+  findRetainedFoodHistoryEntry(retainedHistory[0].foodKey, retainedHistory)?.mealCount === 2 &&
+  findRetainedFoodHistoryEntry("CHICKEN BREAST", retainedHistory) === null);
 
 console.log("\nGeneral-card GI rules");
 check("GI boundaries are deterministic at 55/56 and 69/70",
@@ -107,8 +111,9 @@ check("Resolved GI state exposes only a rank while missing data stays pending",
   JSON.stringify(getPublicGiState({ status: "resolved", giValue: 70, resolvedAt: new Date() })) ===
     '{"giRank":"high","giStatus":"resolved"}' &&
   JSON.stringify(getPublicGiState(undefined)) === '{"giRank":null,"giStatus":"pending"}');
-check("A stored no-match suppresses hourly retries during its backoff",
-  isRecentNoMatch({ status: "no_match", giValue: null, resolvedAt: new Date() }));
+check("Automated no-match remains pending rather than becoming unavailable",
+  JSON.stringify(getPublicGiState({ status: "no_match", giValue: null, resolvedAt: new Date() })) ===
+    '{"giRank":null,"giStatus":"pending"}');
 const validatedMatches = validateGiMatches([
   { inputIndex: 0, referenceId: "rice-white" },
   { inputIndex: 1, referenceId: "rice-white" },
@@ -337,7 +342,7 @@ check("GI is server-resolved only for the shared General top-five selection",
   !routes.includes("requestsByIndex") &&
   routes.includes("matchesByIndex") &&
   giResolution.includes("candidateIdsByIndex.get(inputIndex)?.has(referenceId)") &&
-  giResolution.includes("GI_NO_MATCH_RETRY_MS"));
+  !giResolution.includes("GI_NO_MATCH_RETRY_MS"));
 check("Each unresolved food requires an atomic expiring database claim before Claude",
   storage.includes("async claimFoodGiEntry") &&
   giResolutionStorage.includes("ON CONFLICT (normalized_food_name) DO UPDATE") &&

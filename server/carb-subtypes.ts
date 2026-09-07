@@ -6,7 +6,6 @@ export type CarbMatchType = "exact" | "substring_fallback" | "no_match";
 export type CanonicalCarbSubtype =
   | "brown_rice"
   | "basmati_rice"
-  | "wholegrain_noodles"
   | "shirataki_noodles"
   | "wholegrain_bread"
   | "sourdough"
@@ -129,11 +128,6 @@ const CANONICAL_CARB_SUBTYPE_ALIASES: Array<{
   { category: "rice", subtype: "basmati_rice", aliases: ["basmati", "basmati rice", "印度香米", "巴斯馬蒂米"] },
   {
     category: "noodles",
-    subtype: "wholegrain_noodles",
-    aliases: ["wholegrain noodles", "whole grain noodles", "wholewheat noodles", "whole wheat noodles", "全麥麵"],
-  },
-  {
-    category: "noodles",
     subtype: "shirataki_noodles",
     aliases: ["shirataki", "shirataki noodles", "konjac", "konjac noodles", "蒟蒻麵"],
   },
@@ -197,16 +191,9 @@ function logCarbMatch(
   matchType: CarbMatchType,
 ) {
   if (matchType === "no_match") {
-    console.warn("[carb-classify-miss]", {
-      nameEn: item.nameEn,
-      nameZhHant: item.nameZhHant,
-      nameYue: item.nameYue,
-    });
+    console.warn("[carb-classify-miss]");
   } else if (matchType === "substring_fallback") {
-    console.info("[carb-classify-fallback]", {
-      item,
-      matchedCategory,
-    });
+    console.info("[carb-classify-fallback]", { matchedCategory });
   }
 }
 
@@ -360,6 +347,7 @@ export function applyConfirmedCarbSubtypes(
   });
 }
 
-export function foodItemKey(item: Pick<FoodItemMetadata, "nameEn" | "nameZhHant" | "nameYue">): string {
+export function foodItemKey(item: Pick<FoodItemMetadata, "nameEn" | "nameZhHant" | "nameYue"> & { id?: string }): string {
+  if (item.id) return `component:${item.id}`;
   return normalize(`${item.nameEn}|${item.nameZhHant}|${item.nameYue}`);
 }

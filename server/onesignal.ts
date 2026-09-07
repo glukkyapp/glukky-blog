@@ -1,4 +1,4 @@
-import { log } from "./index";
+import { log } from "./logger";
 import { db, pool } from "./db";
 import { userProfiles } from "@shared/schema";
 import { and, eq, isNotNull, inArray, sql } from "drizzle-orm";

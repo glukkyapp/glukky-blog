@@ -1,10 +1,15 @@
 import type { FoodItemMetadata, MealSnap, SweetCategory } from "@shared/schema";
-import { foodItemKey, type CarbCategory } from "./carb-subtypes";
-import { isEligibleGlucosePatternComponent } from "./glucose-patterns";
+import { type CarbCategory } from "./carb-subtypes";
+import {
+  canonicalGlucosePatternFoodKey,
+  isEligibleGlucosePatternComponent,
+} from "./glucose-patterns";
 
 export const FOOD_FREQUENCY_MEAL_THRESHOLD = 25;
 
 export type FoodFrequencyFood = Pick<FoodItemMetadata, "nameEn" | "nameZhHant" | "nameYue"> & {
+  /** Durable catalog identity for canonical component aggregation. */
+  foodKey?: string;
   mealCount: number;
   carbCategory: CarbCategory;
   // Undefined is preserved for legacy items whose sweet fields predate this
@@ -42,8 +47,8 @@ export function selectGeneralTopFoods(foods: FoodFrequencyFood[]): FoodFrequency
 type FrequencySnap = Pick<MealSnap, "foodItems" | "isDeleted">;
 
 /**
- * Counts a component once per meal. Food identity uses all three canonical
- * names, while sweet subtype and carb-category identity are counted
+ * Counts a resolved catalog component once per meal. Food identity uses its
+ * durable component ID, while sweet subtype and carb-category identity are counted
  * independently, so one component can contribute to both without appearing
  * twice as a food. Only the same authoritative carb-or-sugar components used
  * by Glucose Patterns are included in the food list.
@@ -62,7 +67,7 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
     for (const item of (snap.foodItems ?? [])) {
       if (!isEligibleGlucosePatternComponent(item)) continue;
 
-      const key = foodItemKey(item);
+      const key = canonicalGlucosePatternFoodKey(item)!;
       if (!seenFoodsThisMeal.has(key)) {
         seenFoodsThisMeal.add(key);
         const existing = foods.get(key);
@@ -70,6 +75,7 @@ export function buildFoodFrequencySummary(snaps: FrequencySnap[]): FoodFrequency
           existing.mealCount += 1;
         } else {
           foods.set(key, {
+            foodKey: key,
             nameEn: item.nameEn,
             nameZhHant: item.nameZhHant,
             nameYue: item.nameYue,
