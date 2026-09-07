@@ -1,0 +1,49 @@
+﻿internal_id,name_en,name_zh_hant,name_yue,carb_category,carb_subtype,region,verified,notes
+white_rice,White rice,白飯,白飯,rice,white_rice,chinese,True,
+brown_rice,Brown rice,糙米飯,糙米飯,rice,brown_rice,chinese,True,
+red_rice,Red rice,紅米飯,紅米飯,rice,other,chinese,True,Distinct variety from brown rice (紅米 vs 糙米); do not merge as alias
+mixed_grain_rice,Mixed grain rice,五穀飯,五穀飯,rice,mixed_grain_rice,chinese,True,
+sticky_rice,Glutinous rice,糯米飯,糯米飯,rice,sticky_rice,chinese,True,
+basmati_rice,Basmati rice,印度香米,印度香米,rice,basmati_rice,other,True,
+fried_rice,Fried rice,炒飯,炒飯,rice,white_rice,hk_cantonese,True,Usually white-rice based; oil/egg content not tracked here
+clay_pot_rice,Clay pot rice,煲仔飯,煲仔飯,rice,white_rice,hk_cantonese,True,
+lo_mai_gai,Glutinous rice in lotus leaf (lo mai gai),糯米雞,糯米雞,rice,sticky_rice,hk_cantonese,True,Dim sum item
+maisin,Rice noodles,米線,米線,noodles,rice_noodles,hk_cantonese,True,
+ho_fun,Ho fun (flat rice noodles),河粉,河粉,noodles,rice_noodles,hk_cantonese,True,
+cheung_fun,Rice noodle rolls,腸粉,腸粉,noodles,rice_noodles,hk_cantonese,True,
+lai_fun,Lai fun (thick rice noodles),瀨粉,瀨粉,noodles,rice_noodles,hk_cantonese,True,
+yau_min,Thin egg noodles,幼麵,幼蛋麵,noodles,egg_noodles,hk_cantonese,True,
+cho_min,Thick egg noodles,粗麵,粗麵,noodles,egg_noodles,hk_cantonese,True,
+gung_jai_min,Instant noodles,公仔麵,公仔麵,noodles,wheat_noodles,hk_cantonese,True,
+lo_min,Tossed noodles (lo mein),撈麵,撈麵,noodles,egg_noodles,hk_cantonese,True,
+chau_min,Stir-fried noodles,炒麵,炒麵,noodles,egg_noodles,hk_cantonese,True,
+fan_si,Mung bean vermicelli,粉絲,粉絲,noodles,other_noodles,chinese,True,
+udon,Udon noodles,烏冬,烏冬,noodles,wheat_noodles,other,True,
+ramen,Ramen noodles,拉麵,拉麵,noodles,wheat_noodles,other,True,
+soba,Soba noodles,蕎麥麵,蕎麥麵,noodles,other_noodles,other,True,
+pasta,Pasta / spaghetti,意粉,意粉,noodles,wheat_noodles,western,True,
+macaroni,Macaroni,通心粉,通心粉,noodles,wheat_noodles,western,True,
+shirataki_noodles,Shirataki noodles,蒟蒻麵,蒟蒻麵,noodles,shirataki_noodles,other,True,
+white_bread,White bread,白麵包,白麵包,bread,white_bread,other,True,
+wholegrain_bread,Wholegrain bread,全麥麵包,全麥麵包,bread,wholegrain_bread,other,True,
+sourdough_bread,Sourdough bread,酸種麵包,酸種麵包,bread,sourdough,other,True,
+dinner_roll,Dinner roll / bun,餐包,餐包,bread,white_bread,chinese,True,
+garlic_bread,Garlic bread bun,蒜蓉包,蒜蓉包,bread,white_bread,hk_cantonese,True,
+pineapple_bun,Pineapple bun,菠蘿包,菠蘿包,bread,white_bread,hk_cantonese,True,Also tag sweetCategory sweet_food
+french_toast,French toast (deep-fried),西多士,西多士,bread,white_bread,hk_cantonese,True,Also tag sweetCategory sweet_food
+toast,Toast,多士,多士,bread,white_bread,hk_cantonese,True,
+bagel,Bagel,貝果,貝果,bread,other_bread,western,True,
+croissant,Croissant,牛角包,牛角包,bread,other_bread,western,True,
+boiled_potato,Boiled potato,薯仔,薯仔,potatoes,boiled_potato,other,True,
+cooled_boiled_potato,Cooled boiled potato,已放涼薯仔,已放涼薯仔,potatoes,cooled_boiled_potato,other,True,Distinct GI handling; do not inherit boiled_potato GI
+mashed_potato,Mashed potato,薯泥,薯泥,potatoes,other_potato,other,True,
+french_fries,French fries,薯條,薯條,potatoes,other_potato,other,True,
+sweet_potato,Sweet potato,番薯,番薯,potatoes,sweet_potato,chinese,True,
+taro,Taro,芋頭,芋頭,potatoes,taro,chinese,True,
+taro_cake,Taro cake,芋頭糕,芋頭糕,potatoes,taro,hk_cantonese,True,Dim sum item
+congee,Plain congee,白粥,白粥,other,congee,hk_cantonese,True,
+oats,Rolled oats,燕麥,燕麥,other,oats,western,True,
+corn,Sweet corn,粟米,粟米,other,corn,chinese,True,
+quinoa,Quinoa,藜麥,藜麥,other,other,western,True,
+turnip_cake,Turnip cake,蘿蔔糕,蘿蔔糕,other,other,hk_cantonese,True,Dim sum item; rice-flour + radish based
+pumpkin,Pumpkin,南瓜,南瓜,other,other,chinese,True,

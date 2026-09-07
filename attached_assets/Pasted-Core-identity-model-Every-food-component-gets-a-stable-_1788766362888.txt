@@ -1,0 +1,89 @@
+Core identity model
+
+Every food component gets a stable, catalog-owned canonical internalId, separate from its display labels (nameEn/nameZhHant/nameYue).
+
+Meal-combination identity (foodLabels.internalId, comboKey, buildInternalId()) stays untouched — out of scope.
+
+Catalog is a separate reference table; meals/food-library store only IDs (plus source), never duplicate catalog contents.
+
+How components get identified
+
+No second Claude call needed for English names — foodItemsInstruction already returns all three languages in one response.
+
+New, specific food not yet catalogued → server auto-creates a canonical catalog row directly (no separate "provisional" tier — simplified per your call).
+
+Before creating a new row, run a near-duplicate check against existing aliases to avoid near-identical entries proliferating.
+
+Auto-created rows are flagged verified: false until a human reviews them; rate-limit auto-creation and restrict catalog write/edit access to an admin-only path, never reachable from user/AI-facing code.
+
+Alias uniqueness is enforced by a database constraint — one alias can only belong to one catalog entry, preventing the "multiple exact matches" scenario from ever occurring.
+
+Description too broad (e.g. "noodles," "tea," "soft drink") → no ID created; stays as plain text in meal history/search only.
+
+Model's candidate ID conflicting with its own labels → no ID created; stays as plain text in meal history/search only.
+
+Dropped: frequency-based tie-breaking (personal or global) for resolving ambiguous matches — removed entirely as unstable/unnecessary given the alias-uniqueness constraint.
+
+Verified marker and its priority
+
+verified: true/false field on the same catalog table (no separate list).
+
+Verified entries are the authority for: near-duplicate matching target, GI-mapping eligibility (only verified entries can carry a giReferenceId), and are the only entries a human can edit/merge — auto-created entries can be freely cleaned up by tooling.
+
+Storage model
+
+FoodItemMetadata/meal storage uses small structured refs ({ id, source }), not bare ID strings, to preserve occurrence-level facts.
+
+Simplified: no separate "unresolved" table — vague/conflicting items just stay as plain text with no catalog reference at all.
+
+Dropped the 4-tier quality ladder for food-library overwrite protection — simplified to one rule: don't let a list with fewer/no IDs silently replace one that already has IDs.
+
+isCarb and carbCategory should live directly on the catalog entry and be read from there once resolved — never recalculated from names.
+
+GI handling
+
+Direct mapping only for resolved components: internalId → giReferenceId → value/rank. No runtime fuzzy/substring/category matching for canonical components.
+
+resolved: canonical ID + vetted GI reference present.
+
+pending: canonical ID exists but no GI reference yet, OR food not yet catalogued at all — both are legitimately "might still be resolved later."
+
+unavailable: reserved only for an explicit curator decision that GI will never apply (e.g. a sauce or mixed soup) — not a default fallback.
+
+New: Claude may be used as a background, one-time, per-catalog-entry curation aid — searching only the canonical Chinese name against the fixed, vetted GI_REFERENCE_CANDIDATES table, never per-meal, never inventing a new numeric value. Output is a suggestion requiring curator approval before it becomes resolved.
+
+Legacy GI storage key (normalizedFoodName) must not mix old translated-tuple format with new canonical IDs — use separate columns.
+
+Old claim/lease/retry machinery is only needed because the old system called AI synchronously per meal; direct mapping removes that need for canonical components, but stays for unmigrated legacy rows.
+
+Drinks
+
+Sugar-capable drinks default to sweetened when no modifier is stated; explicit no-sugar wording maps to a separate catalog-defined unsweetened/zero-sugar variant — applies to all catalogued sugar-capable drinks, not just milk tea.
+
+No "unknown sugar" state; unsweetened/zero variants never inherit the sweetened variant's GI.
+
+"Diet"/"zero" only resolve via exact, complete-phrase catalog aliases — never substring/keyword checks.
+
+Water, plain tea, black coffee are standalone components with sugarStatus: not_applicable — not every drink needs a sweetened/unsweetened pair.
+
+Propagation and safety
+
+foodItemKey() becomes the central function: canonical → component:<id>, unresolved → unique namespaced legacy key or excluded — never a shared blank key.
+
+This must correctly flow through: recurring-food frequency, General patterns, HStix cards, needs-more-readings, and HStix food pairing/partner insights (confirmed in scope — pairing already keys off foodItemKey()).
+
+Every meal/HStix lookup stays scoped to the authenticated user at the query level; a food key is never itself an authorization token.
+
+Legacy keys containing raw food text should not be exposed directly in client URLs; migration/diagnostic logs must never contain raw meal text, food labels, or glucose values — counts and correlation IDs only.
+
+HStix reliability formula and thresholds stay unchanged — only population membership (which meals count as containing which food) changes.
+
+Today's catalog additions
+
+Seeded a 48-entry starter catalog for common HK/Chinese/Western carbs (CSV delivered), all verified: true.
+
+Split red rice (紅米飯) from brown rice (糙米飯) as genuinely distinct varieties, correcting an existing alias merge in the current GI reference table.
+
+Renamed thick egg noodles to cho_min with 粗麵 for both zh-Hant and Yue.
+
+Removed wholegrain_noodles from the starter set.
