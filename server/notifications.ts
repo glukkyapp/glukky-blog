@@ -11,6 +11,7 @@ import { log } from "./logger";
 // hours. 36h is the smallest window that covers today's 18:00 +
 // tomorrow's 19:00 local triggers even when the only wakeup of
 // the UTC day happens at 00:00 UTC (= 8 AM HKT).
+import { automaticNotificationIdempotencyKey } from "./notification-idempotency";
 const LOOKAHEAD_HOURS = 36;
 const LOOKAHEAD_MS = LOOKAHEAD_HOURS * 60 * 60 * 1000;
 
@@ -336,6 +337,11 @@ async function queueOneNotification(
 ): Promise<{ ok: boolean; notificationId: string | null; targetMode: "alias" | "player_id" | "none" }> {
   const content = CONTENTS[type];
   const sendAfter = next.sendAtUtc.toISOString();
+  const idempotencyKey = automaticNotificationIdempotencyKey(
+    user.userId,
+    type,
+    next.localTriggerDate,
+  );
 
   // Prefer alias path (Rule C: keep player-id fallback).
   const useAlias = !!user.onesignalExternalId;
@@ -360,6 +366,7 @@ async function queueOneNotification(
     deepLink: content.deepLink,
     redirectUrl: opts?.redirectUrl,
     send_after: sendAfter,
+    idempotencyKey,
     externalIds: useAlias ? [user.onesignalExternalId as string] : undefined,
     playerIds: useAlias ? undefined : [user.onesignalPlayerId as string],
   });

@@ -25,6 +25,8 @@ interface NotificationPayload {
   send_after?: string;
   delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
+  // Supplied only by automatic scheduling callers for provider-level deduplication.
+  idempotencyKey?: string;
   // For delivery_time_of_day sends, the t+0 and t+6s reports
   // always read 0 — the actual delivery hasn't happened yet.
   // Setting `postTriggerReportAfterMs` schedules an additional
@@ -52,6 +54,7 @@ interface OneSignalRequestBody {
   send_after?: string;
   delivery_time_of_day?: string;
   delayed_option?: "timezone" | "last-active";
+  idempotency_key?: string;
 }
 
 // OneSignal's per-notification report has slightly different shapes
@@ -303,6 +306,9 @@ export async function sendPushNotification(payload: NotificationPayload): Promis
     }
     if (payload.delayed_option) {
       body.delayed_option = payload.delayed_option;
+    }
+    if (payload.idempotencyKey) {
+      body.idempotency_key = payload.idempotencyKey;
     }
 
     // Full pretty-printed payload so we can see exactly what OneSignal
