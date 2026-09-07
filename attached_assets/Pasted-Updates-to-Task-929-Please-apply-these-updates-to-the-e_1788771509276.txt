@@ -1,0 +1,144 @@
+Updates to Task #929
+
+Please apply these updates to the existing Canonical Food Component Identity plan. Before coding, inspect the current code paths and flag any conflict with these decisions.
+
+1. Component catalog and food library
+
+- Keep meal identification, meal-combination IDs, `foodLabels.internalId`, `mealSnaps.comboKey`, portion/sauce/topping IDs, and combo matching unchanged.
+- The new component catalog is a separate reference table; it is not the food library.
+- The catalog stores:
+  - stable canonical component ID;
+  - English, Traditional Chinese, and Cantonese names;
+  - exact aliases;
+  - `isCarb`, carb category, carb subtype;
+  - sweet category, sugar status/default;
+  - `verified` and `active`.
+- `meal_snaps.food_items` and `food_labels.food_items` store compact component references only:
+
+```ts
+{ id: "mai_sin", source: "catalog_match" }
+```
+
+- Names and classifications must be read from the component catalog when displaying or calculating.
+- For broad, ambiguous, or conflicting items, preserve the original text in a separate history-only structure. It remains visible/searchable but does not enter canonical frequency, General patterns, HStix, pairing, or GI calculations.
+
+2. Auto-created components and verification
+
+- If a component is sufficiently specific and has no exact existing catalog match, the server automatically creates a new active catalog row with `verified: false`.
+- Human review only adds/removes the `verified` marker and may curate labels, aliases, classifications, active status, and GI decisions. It is not required before a component can be created or used.
+- The server—not Claude—creates the stable ID.
+- Claude may return labels and an optional candidate ID, but cannot choose the stored ID, set `verified`, approve GI, merge entries, or retire entries.
+- Use deterministic exact normalized matching only. No substring, fuzzy, embedding, category, random, personal-frequency, or global-frequency matching.
+- Repeat the no-match check inside the same transaction as creation to prevent duplicate rows from concurrent FoodSnap requests.
+- Enforce normalized alias and official-label uniqueness in the database.
+
+3. Corrected seed catalog
+
+Use the corrected 49-row carbohydrate catalog:
+
+- Correct the malformed extra delimiter in the `red_rice` row.
+- Rename `maisin` to `mai_sin`.
+- `mai_sin`:
+  - English: Rice noodles
+  - Traditional Chinese: 米線
+  - Cantonese: 米線
+  - Do not include “rice vermicelli” as an alias.
+- Add `mai_fun`:
+  - English: Rice vermicelli
+  - Traditional Chinese: 米粉
+  - Cantonese: 米粉
+  - Carb category/subtype: `noodles` / `rice_noodles`.
+- Keep these as separate components:
+
+```text
+mai_sin     = 米線
+mai_fun     = 米粉
+ho_fun      = 河粉
+cheung_fun  = 腸粉
+lai_fun     = 瀨粉
+```
+
+- Keep `cho_min` with 粗麵 for both Traditional Chinese and Cantonese.
+- Remove `wholegrain_noodles` from the initial subtype vocabulary and seed catalog.
+- Keep `red_rice` / 紅米飯 separate from `brown_rice` / 糙米飯.
+- Remove `紅米飯` from the aliases of the existing brown-rice GI entry.
+
+4. Calculation versus display
+
+All component-based calculations must use canonical component IDs:
+
+- Recurring-food frequency and favourite carbs.
+- General food patterns.
+- HStix card membership, present/absent groups, ranking, and needs-more-readings.
+- HStix food pairing: presence, per-meal deduplication, self-exclusion, co-occurrence, dominant partners, and higher/lower partner comparisons.
+
+All user-visible food names must come from the component catalog’s localized labels.
+
+In short:
+
+```text
+Canonical component ID → calculations.
+Catalog English/Chinese/Cantonese name → display.
+```
+
+5. GI lookup — Chinese name only
+
+Do not add or use a separate `giReferenceId`.
+
+GI lookup flow must be:
+
+```text
+Canonical component ID
+→ component catalog
+→ canonical Traditional Chinese name
+→ exact GI table lookup by normalized Chinese name
+→ GI value/status
+```
+
+Examples:
+
+```text
+mai_sin → 米線 → GI table lookup for 米線
+mai_fun → 米粉 → GI table lookup for 米粉
+ho_fun → 河粉 → GI table lookup for 河粉
+```
+
+Different rice-noodle components may have different GI values. Do not automatically give `mai_sin`, `mai_fun`, `ho_fun`, `cheung_fun`, or `lai_fun` the same GI value merely because they share `rice_noodles`.
+
+GI states:
+
+```text
+resolved    = approved exact Chinese-name GI value exists
+pending     = component exists but GI is not yet decided; also valid for unresolved text that could be resolved later
+unavailable = curator explicitly decides GI does not apply
+```
+
+For a pending canonical component, Claude may be called once in a background process using the canonical Chinese name and the fixed existing GI candidate table. Claude may only suggest a match from the fixed table or “no match”; it may not invent a GI value. The suggestion is not live until curator approval.
+
+Please first audit and confirm the current GI structures in `server/gi-resolution.ts`, including whether `GI_REFERENCE_CANDIDATES` still exists and whether it can support exact canonical-Chinese-name lookup.
+
+6. Drinks
+
+These rules apply to all catalogued sugar-capable drinks, not only milk tea:
+
+- No sugar modifier → use the catalog-defined sweetened component.
+- Explicit no-sugar / sugar-free / unsweetened / zero-sugar wording → use a separate catalog-defined unsweetened/zero-sugar component.
+- No “unknown sugar” state for an otherwise recognised drink.
+- Unsweetened/zero-sugar variants never inherit GI values from sweetened variants.
+- Water, plain tea, and black coffee remain standalone components with `sugarStatus: not_applicable`.
+- `diet` and `zero` only work as exact, catalog-approved full-phrase aliases. Never use broad keyword matching.
+
+7. Data safety
+
+- Keep all food-key meal/HStix queries scoped to the authenticated user before filtering by the component key.
+- Use opaque, namespaced public keys such as `component:mai_sin`.
+- Do not put raw food text or multilingual tuples in URLs, logs, analytics, or diagnostics.
+- Do not log raw meal names, food labels, component lists, glucose readings, user IDs, images, prompts, or model responses.
+- Food-library data containing IDs must not be silently overwritten by null, empty, lower-ID-coverage, or automatic conflicting lists. Deliberate user/admin corrections must still be allowed.
+
+Before implementation, return only:
+1. Conflicts/questions found.
+2. The exact files/functions that need changing.
+3. Confirmation that meal identification and meal-combination logic remain unchanged.
+4. Confirmation that HStix pairing will use component IDs for calculation and catalog names for display.
+5. GI-table audit and the minimum required change for exact Chinese-name GI lookup.

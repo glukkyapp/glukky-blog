@@ -1,0 +1,41 @@
+Catalog ID immutability
+Once created, food_components.id must never be changed. Curators may update labels, aliases, classification, GI decisions, active state, and verification, but historical references must remain valid.
+
+Auto-created row limits
+Auto-created unverified entries must be rate-limited and protected from repeated malformed inputs. A FoodSnap request must not be able to create unbounded catalog rows.
+
+This protects against accidental prompt/model failures or a user submitting many nonsense requests.
+
+Alias creation on runtime-created rows
+A subtle point: if auto-creation inserts every model-provided label as a permanent alias immediately, an incorrect model label can later block a real component from claiming that alias.
+
+Recommended rule:
+
+For an automatically created unverified component, store its three returned labels as its provisional official labels for display and duplicate detection. Do not add extra broad aliases automatically. Additional aliases are curator-managed. The database still enforces uniqueness across those stored official labels.
+
+This avoids accidental catalog pollution from low-confidence alternate names.
+
+Classification on auto-created rows
+A newly created component needs isCarb, carbCategory, subtype, sugar status, and sweet category to work in the normal food-pattern functions. Since it is not verified yet:
+
+Store initial model/deterministic classification on the unverified component, but allow curators to correct it later. Never assign a GI reference automatically from that classification.
+
+This retains the user’s expected product behavior: a newly identified food still appears in carb frequency/HStix/pairing right away, even while its GI remains pending.
+
+Final assessment
+The ticket is ready for implementation once you make the seed-count correction and specify the ID generator. The architecture is coherent:
+
+text
+Meal/food-library component reference
+        ↓
+Stable component ID
+        ↓
+Catalog lookup for names, carb status, subtype, sweetness, and GI state
+        ↓
+Frequency / favourite-carb / General pattern / HStix / pairing calculations
+        ↓
+Localized display name returned to the user
+The central implementation rule should remain:
+
+Use the component ID to calculate. Use the catalog label to display. Use the GI reference only to show GI.
+
