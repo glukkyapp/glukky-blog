@@ -1,0 +1,70 @@
+Resolving the outstanding points from your last review:
+
+1. Catalog creation authorization — resolved.
+New catalog rows can be created automatically whenever a food component is 
+identified with no matching existing entry. There is no separate approval 
+gate before creation. Human review exists only to add the `verified` marker 
+afterward — it does not control whether a row gets created in the first place.
+
+2. Schema fields — confirmed necessary, with one dropped:
+- aliases: required. The three name fields (nameEn/nameZhHant/nameYue) each 
+  hold exactly one official label per language, but AI output varies in 
+  wording (e.g. "rice noodles" vs "rice vermicelli" vs "mai sin" all meaning 
+  the same dish). Aliases absorb this variation via exact-match only, 
+  without reintroducing fuzzy matching. Without it, minor wording differences 
+  would keep spawning duplicate catalog entries for the same real food.
+- Alias uniqueness constraint: required at the database level, not just as 
+  policy. It's the actual mechanism that guarantees "exactly one match" 
+  resolution never becomes ambiguous as more curators add entries over time.
+- active: keep — needed to retire/merge an entry without breaking historical 
+  references to it.
+- vocabularyVersion: dropped for now. Only useful once we've actually made a 
+  vocabulary change to compare against; not needed for the initial catalog. 
+  Can be added later with zero migration cost (defaults to a fixed value for 
+  all pre-existing rows).
+- sweetCategory / sugarStatus / defaultSugarStatus / giReferenceId: confirmed 
+  as structured columns, not notes text.
+
+3. sweetCategory as a structured column — confirmed, applied to 
+pineapple_bun and french_toast in the attached catalog.
+
+4. Alias uniqueness — confirmed as a hard requirement, not optional. See 
+point 2 above.
+
+5. Wording correction — confirmed. Replace "every food component gets a 
+stable ID" with: "Every uniquely resolved, sufficiently specific component 
+gets a stable ID; broad, conflicting, or unresolved text remains 
+history-only." Please update this wording in the ticket.
+
+6. GI status rules — confirmed, supersedes the original Task #929 wording:
+- Canonical component with an approved GI reference → resolved
+- Canonical component awaiting GI curation → pending
+- Uncatalogued/unresolved component → pending
+- Curator has explicitly decided GI does not apply → unavailable
+"Unavailable" is reserved for that explicit curator decision only — it is 
+never the default when a mapping simply hasn't been added yet.
+
+7. Runtime catalog creation — resolved by point 1. No further authorization 
+mechanism is needed beyond the deterministic near-duplicate check before 
+insertion.
+
+Attached: seed catalog for common HK/Chinese/Western carbohydrate 
+components (48 entries), with the full field set (aliases, carbCategory, 
+carbSubtype, isCarb, sweetCategory, sugarStatus, defaultSugarStatus, 
+giReferenceId, verified, active). All entries are pre-marked verified: true 
+since this set was manually curated. 20 entries have a direct GI reference 
+assigned only where an existing vetted reference clearly applies (e.g. 
+maisin/ho_fun/cheung_fun sharing noodles-rice, per the earlier agreed 
+many-to-one mapping). The remaining 28 are intentionally left with no GI 
+reference and should show as "pending" — including deliberately distinct 
+entries like red_rice (not merged with brown_rice) and cooled_boiled_potato 
+(not inheriting boiled_potato's reference).
+
+Please confirm the current contents of GI_REFERENCE_CANDIDATES in 
+server/gi-resolution.ts against what was shown earlier in this thread, since 
+this table becomes the fixed candidate pool for the curator-reviewed, 
+Claude-assisted GI matching step (canonical Chinese name only, one-time 
+per catalog entry, suggestion requires human approval before going live).
+
+Drink-variant catalog (sweetened/unsweetened components) will follow 
+separately using the same field structure.

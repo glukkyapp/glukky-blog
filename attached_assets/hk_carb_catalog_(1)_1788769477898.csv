@@ -1,0 +1,49 @@
+﻿internal_id,name_en,name_zh_hant,name_yue,aliases,carb_category,carb_subtype,is_carb,sweet_category,sugar_status,default_sugar_status,gi_reference_id,verified,active,region,notes
+white_rice,White rice,白飯,白飯,white rice;rice;plain rice;白米飯;米飯,rice,white_rice,True,,not_applicable,,rice-white,True,True,chinese,
+brown_rice,Brown rice,糙米飯,糙米飯,brown rice;糙米,rice,brown_rice,True,,not_applicable,,rice-brown,True,True,chinese,
+red_rice,Red rice,紅米飯,紅米飯,red rice;紅米,rice,other,True,,not_applicable,,,,True,True,chinese,Distinct variety from brown rice; do not merge as alias; GI pending dedicated evidence
+mixed_grain_rice,Mixed grain rice,五穀飯,五穀飯,mixed grain rice;multigrain rice;五穀米飯,rice,mixed_grain_rice,True,,not_applicable,,,True,True,chinese,
+sticky_rice,Glutinous rice,糯米飯,糯米飯,sticky rice;glutinous rice;糯米,rice,sticky_rice,True,,not_applicable,,rice-sticky,True,True,chinese,
+basmati_rice,Basmati rice,印度香米,印度香米,basmati rice;印度香米飯,rice,basmati_rice,True,,not_applicable,,rice-basmati,True,True,other,
+fried_rice,Fried rice,炒飯,炒飯,fried rice;egg fried rice;揚州炒飯,rice,white_rice,True,,not_applicable,,,True,True,hk_cantonese,"Composite dish; GI pending, do not auto-inherit white_rice reference"
+clay_pot_rice,Clay pot rice,煲仔飯,煲仔飯,clay pot rice;瓦煲飯,rice,white_rice,True,,not_applicable,,,True,True,hk_cantonese,Composite dish; GI pending
+lo_mai_gai,Glutinous rice in lotus leaf,糯米雞,糯米雞,lo mai gai;lotus leaf rice,rice,sticky_rice,True,,not_applicable,,,True,True,hk_cantonese,Dim sum item; GI pending
+maisin,Rice noodles,米線,米線,rice noodles;rice vermicelli;mai sin;米线,noodles,rice_noodles,True,,not_applicable,,noodles-rice,True,True,hk_cantonese,
+ho_fun,Ho fun,河粉,河粉,ho fun;flat rice noodles;he fen,noodles,rice_noodles,True,,not_applicable,,noodles-rice,True,True,hk_cantonese,
+cheung_fun,Rice noodle rolls,腸粉,腸粉,cheung fun;rice rolls;chee cheong fun,noodles,rice_noodles,True,,not_applicable,,noodles-rice,True,True,hk_cantonese,
+lai_fun,Lai fun,瀨粉,瀨粉,lai fun;thick rice noodles,noodles,rice_noodles,True,,not_applicable,,,True,True,hk_cantonese,"Thicker preparation; GI pending, not auto-mapped to noodles-rice"
+yau_min,Thin egg noodles,幼麵,幼蛋麵,thin egg noodles;yau min,noodles,egg_noodles,True,,not_applicable,,noodles-egg,True,True,hk_cantonese,
+cho_min,Thick egg noodles,粗麵,粗麵,thick egg noodles;cho min,noodles,egg_noodles,True,,not_applicable,,noodles-egg,True,True,hk_cantonese,
+gung_jai_min,Instant noodles,公仔麵,公仔麵,instant noodles;gung jai min,noodles,wheat_noodles,True,,not_applicable,,,True,True,hk_cantonese,Fried instant preparation differs from plain wheat noodles; GI pending
+lo_min,Tossed noodles,撈麵,撈麵,lo mein;tossed noodles,noodles,egg_noodles,True,,not_applicable,,noodles-egg,True,True,hk_cantonese,
+chau_min,Stir-fried noodles,炒麵,炒麵,chow mein;fried noodles,noodles,egg_noodles,True,,not_applicable,,noodles-egg,True,True,hk_cantonese,
+fan_si,Mung bean vermicelli,粉絲,粉絲,fan si;glass noodles;cellophane noodles,noodles,other_noodles,True,,not_applicable,,,True,True,chinese,Distinct low-GI profile vs rice noodles; do not merge; GI pending
+udon,Udon noodles,烏冬,烏冬,udon,noodles,wheat_noodles,True,,not_applicable,,,True,True,other,GI pending; texture differs from Western wheat noodles
+ramen,Ramen noodles,拉麵,拉麵,ramen,noodles,wheat_noodles,True,,not_applicable,,,True,True,other,GI pending
+soba,Soba noodles,蕎麥麵,蕎麥麵,soba;buckwheat noodles,noodles,other_noodles,True,,not_applicable,,,True,True,other,GI pending
+pasta,Pasta / spaghetti,意粉,意粉,pasta;spaghetti,noodles,wheat_noodles,True,,not_applicable,,,True,True,western,GI pending; differs from Asian wheat noodles
+macaroni,Macaroni,通心粉,通心粉,macaroni,noodles,wheat_noodles,True,,not_applicable,,,True,True,western,GI pending
+shirataki_noodles,Shirataki noodles,蒟蒻麵,蒟蒻麵,shirataki;konjac noodles,noodles,shirataki_noodles,True,,not_applicable,,,True,True,other,GI pending dedicated evidence entry
+white_bread,White bread,白麵包,白麵包,white bread;plain bread,bread,white_bread,True,,not_applicable,,bread-white,True,True,other,
+wholegrain_bread,Wholegrain bread,全麥麵包,全麥麵包,wholegrain bread;whole wheat bread,bread,wholegrain_bread,True,,not_applicable,,bread-wholegrain,True,True,other,
+sourdough_bread,Sourdough bread,酸種麵包,酸種麵包,sourdough,bread,sourdough,True,,not_applicable,,bread-sourdough,True,True,other,
+dinner_roll,Dinner roll,餐包,餐包,dinner roll;bread roll,bread,white_bread,True,,not_applicable,,,True,True,chinese,GI pending
+garlic_bread,Garlic bread bun,蒜蓉包,蒜蓉包,garlic bread,bread,white_bread,True,,not_applicable,,,True,True,hk_cantonese,GI pending
+pineapple_bun,Pineapple bun,菠蘿包,菠蘿包,pineapple bun;bo luo bao,bread,white_bread,True,sweet_food,not_applicable,,,True,True,hk_cantonese,GI pending
+french_toast,French toast,西多士,西多士,french toast;sai dor si,bread,white_bread,True,sweet_food,not_applicable,,,True,True,hk_cantonese,"Deep-fried, served sweet; GI pending"
+toast,Toast,多士,多士,toast;plain toast,bread,white_bread,True,,not_applicable,,,True,True,hk_cantonese,GI pending; toasting may alter GI vs plain bread-white
+bagel,Bagel,貝果,貝果,bagel,bread,other_bread,True,,not_applicable,,,True,True,western,GI pending
+croissant,Croissant,牛角包,牛角包,croissant,bread,other_bread,True,,not_applicable,,,True,True,western,GI pending
+boiled_potato,Boiled potato,薯仔,薯仔,boiled potato;potato,potatoes,boiled_potato,True,,not_applicable,,potato-boiled,True,True,other,
+cooled_boiled_potato,Cooled boiled potato,已放涼薯仔,已放涼薯仔,cooled potato;cold boiled potato,potatoes,cooled_boiled_potato,True,,not_applicable,,,True,True,other,Must not inherit boiled_potato GI reference; distinct entry pending its own evidence
+mashed_potato,Mashed potato,薯泥,薯泥,mashed potato,potatoes,other_potato,True,,not_applicable,,,True,True,other,GI pending
+french_fries,French fries,薯條,薯條,french fries;chips,potatoes,other_potato,True,,not_applicable,,,True,True,other,GI pending
+sweet_potato,Sweet potato,番薯,番薯,sweet potato;yam (colloquial),potatoes,sweet_potato,True,,not_applicable,,potato-sweet,True,True,chinese,
+taro,Taro,芋頭,芋頭,taro,potatoes,taro,True,,not_applicable,,potato-taro,True,True,chinese,
+taro_cake,Taro cake,芋頭糕,芋頭糕,taro cake;wu tau gou,potatoes,taro,True,,not_applicable,,,True,True,hk_cantonese,Dim sum item; GI pending
+congee,Plain congee,白粥,白粥,congee;plain rice porridge;jook,other,congee,True,,not_applicable,,other-porridge,True,True,hk_cantonese,
+oats,Rolled oats,燕麥,燕麥,oats;oatmeal;rolled oats,other,oats,True,,not_applicable,,other-oats,True,True,western,
+corn,Sweet corn,粟米,粟米,corn;sweet corn;maize,other,corn,True,,not_applicable,,other-corn,True,True,chinese,
+quinoa,Quinoa,藜麥,藜麥,quinoa,other,other,True,,not_applicable,,,True,True,western,GI pending
+turnip_cake,Turnip cake,蘿蔔糕,蘿蔔糕,turnip cake;lo bak gou,other,other,True,,not_applicable,,,True,True,hk_cantonese,Dim sum item; rice-flour + radish based; GI pending
+pumpkin,Pumpkin,南瓜,南瓜,pumpkin;squash,other,other,True,,not_applicable,,,True,True,chinese,GI pending

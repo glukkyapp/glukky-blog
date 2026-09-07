@@ -1,0 +1,3 @@
+﻿internal_id,name_en,name_zh_hant,name_yue,aliases,carb_category,carb_subtype,is_carb,sweet_category,sugar_status,default_sugar_status,gi_reference_id,verified,active,region,notes
+white_rice,White rice,白飯,白飯,white rice;rice;plain rice;白米飯;米飯,rice,white_rice,True,,not_applicable,,rice-white,True,True,chinese,
+brown_rice,Brown rice,糙米飯,糙米飯,brown rice;糙米,rice,brown_rice,True,,not_applicable,,rice-brown,True,True,chinese,
