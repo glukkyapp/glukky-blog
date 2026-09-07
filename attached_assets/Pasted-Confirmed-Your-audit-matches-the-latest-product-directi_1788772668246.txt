@@ -1,0 +1,47 @@
+Confirmed. Your audit matches the latest product direction.
+
+Please apply these final clarifications before implementation:
+
+1. Corrected seed:
+- Do not import the available 48-row CSV unchanged.
+- Construct the corrected 49-row seed.
+- Fix the malformed red_rice delimiter.
+- Rename maisin to mai_sin.
+- Add mai_fun:
+  - English: Rice vermicelli
+  - Traditional Chinese: 米粉
+  - Cantonese: 米粉
+  - Category/subtype: noodles / rice_noodles.
+- Remove rice vermicelli from mai_sin aliases.
+- Keep mai_sin, mai_fun, ho_fun, cheung_fun, and lai_fun separate.
+- Keep cho_min / 粗麵.
+- Remove wholegrain_noodles.
+- Remove 紅米飯 from brown-rice GI candidate aliases.
+- Remove gi_reference_id from the component-catalog seed and component catalog schema.
+
+2. GI lookup:
+- Confirmed: no giReferenceId on food components.
+- Canonical GI lookup is:
+  component ID → catalog nameZhHant → exact normalized Chinese-name GI table lookup.
+- GI_REFERENCE_CANDIDATES remains only as a restricted Claude suggestion pool for pending GI decisions.
+- It must not be used as the live identity key or to automatically apply generic category/subtype GI values.
+- 米線, 米粉, 河粉, 腸粉, and 瀨粉 each require their own exact Chinese-name GI rows before GI becomes resolved, even if approved values later happen to be equal.
+
+3. GI statuses:
+- resolved = curator-approved exact canonical Chinese-name GI row exists.
+- pending = no GI decision yet, including a Claude no-match suggestion.
+- unavailable = curator explicitly decides GI does not apply.
+- Add the explicit curator-controlled unavailable state.
+- Do not convert no_match automatically to unavailable.
+
+4. Component creation:
+- Specific unmatched foods create active unverified catalog rows automatically.
+- They participate immediately in frequency, General patterns, HStix, needs-more-readings, pairing, and partner insights.
+- Their GI is pending until separately approved.
+- Automatically created rows should use only their official returned labels for initial exact duplicate protection; do not automatically add broad extra aliases.
+
+5. Claude ID hints:
+- Prefer labels-only Claude output unless you identify a concrete benefit from candidateInternalId.
+- If retained, candidateInternalId is optional, non-authoritative, server-validated, and never directly persisted as the component ID.
+
+6. Continue with the code-path list, the GI-table migration plan, and tests you identified. Meal identification and meal-combination behavior remain unchanged.
