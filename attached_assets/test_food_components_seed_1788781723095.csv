@@ -1,0 +1,7 @@
+﻿internal_id,name_en,name_zh_hant,name_yue,aliases,is_carb,carb_category,carb_subtype,sweet_category,sugar_status,default_sugar_status,verified,active,gi_not_applicable,notes
+yu_dan,Fish balls,魚蛋,魚蛋,fish balls;yu dan,False,,,,not_applicable,,False,True,False,Auto-created (unverified) non-carb component; test first-seen creation path
+ngau_naam,Beef brisket,牛腩,牛腩,beef brisket;ngau naam,False,,,,not_applicable,,False,True,False,Auto-created (unverified) non-carb component
+coi_sam,Choi sum,菜心,菜心,choi sum;coi sam,False,,,,not_applicable,,False,True,False,Auto-created (unverified) non-carb component
+naai_cha_sweetened,Milk tea,奶茶,奶茶,milk tea;naai cha,False,,,sweet_drink,sweetened,sweetened,True,True,False,Curated sweetened default milk tea
+naai_cha_unsweetened,Milk tea (unsweetened),無糖奶茶,走糖奶茶,unsweetened milk tea;no sugar milk tea,False,,,,unsweetened,,True,True,False,Curated explicit no-sugar milk tea; must never inherit sweetened GI
+old_fire_soup,Slow-cooked soup,老火湯,老火湯,lo fo tong;slow cooked soup,False,,,,not_applicable,,True,True,True,Explicit curator decision: GI does not apply to mixed soup base

@@ -1,0 +1,7 @@
+﻿name_zh_hant,component_id_ref,gi_status,gi_value,source,notes
+米線,mai_sin,resolved,53,approved_reference,Approved rice-noodle GI value
+河粉,ho_fun,pending,,,Awaiting curator decision despite high meal frequency
+米粉,mai_fun,pending,,,Distinct from 米線; must not inherit its GI
+紅米飯,red_rice,pending,,,New rice variety; distinct from brown rice
+白飯,white_rice,resolved,73,approved_reference,
+老火湯,old_fire_soup,unavailable,,curator_decision,Explicit GI-not-applicable decision

@@ -1,0 +1,111 @@
+﻿meal_snap_id,user_id,local_date,meal_type,food_name,food_items_json,post_meal_glucose_mmol,is_deleted
+1001,test_user_929,2026-09-05,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.6,False
+1002,test_user_929,2026-09-04,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.3,False
+1003,test_user_929,2026-09-03,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.8,False
+1004,test_user_929,2026-09-02,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.1,False
+1005,test_user_929,2026-09-01,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.3,False
+1006,test_user_929,2026-08-31,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.5,False
+1007,test_user_929,2026-08-30,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.1,False
+1008,test_user_929,2026-08-29,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.2,False
+1009,test_user_929,2026-08-28,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.9,False
+1010,test_user_929,2026-08-27,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.8,False
+1011,test_user_929,2026-08-26,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.4,False
+1012,test_user_929,2026-08-25,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.7,False
+1013,test_user_929,2026-08-24,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.3,False
+1014,test_user_929,2026-08-23,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.0,False
+1015,test_user_929,2026-08-22,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.9,False
+1016,test_user_929,2026-08-21,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.0,False
+1017,test_user_929,2026-08-20,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.6,False
+1018,test_user_929,2026-08-19,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.1,False
+1019,test_user_929,2026-08-18,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.5,False
+1020,test_user_929,2026-08-17,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.3,False
+1021,test_user_929,2026-08-16,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.1,False
+1022,test_user_929,2026-08-15,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",10.7,False
+1023,test_user_929,2026-08-14,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.4,False
+1024,test_user_929,2026-08-13,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.7,False
+1025,test_user_929,2026-08-12,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",11.1,False
+1026,test_user_929,2026-08-11,lunch,Rice noodles with fish balls,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}, {""id"": ""yu_dan"", ""source"": ""catalog_match""}]",9.2,False
+1027,test_user_929,2026-08-10,lunch,Rice noodles,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}]",11.0,False
+1028,test_user_929,2026-08-09,lunch,Rice noodles,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}]",9.8,False
+1029,test_user_929,2026-08-08,lunch,Rice noodles,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}]",11.1,False
+1030,test_user_929,2026-08-07,lunch,Rice noodles,"[{""id"": ""mai_sin"", ""source"": ""catalog_match""}]",10.0,False
+1031,test_user_929,2026-08-06,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.3,False
+1032,test_user_929,2026-08-05,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.5,False
+1033,test_user_929,2026-08-04,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.9,False
+1034,test_user_929,2026-08-03,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.3,False
+1035,test_user_929,2026-08-02,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",9.8,False
+1036,test_user_929,2026-08-01,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.4,False
+1037,test_user_929,2026-07-31,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.4,False
+1038,test_user_929,2026-07-30,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.2,False
+1039,test_user_929,2026-07-29,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",9.8,False
+1040,test_user_929,2026-07-28,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.1,False
+1041,test_user_929,2026-07-27,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",10.6,False
+1042,test_user_929,2026-07-26,dinner,Ho fun with beef brisket,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""ngau_naam"", ""source"": ""catalog_match""}]",9.8,False
+1043,test_user_929,2026-07-25,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.4,False
+1044,test_user_929,2026-07-24,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.0,False
+1045,test_user_929,2026-07-23,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.5,False
+1046,test_user_929,2026-07-22,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.0,False
+1047,test_user_929,2026-07-21,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",6.6,False
+1048,test_user_929,2026-07-20,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",6.7,False
+1049,test_user_929,2026-07-19,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.2,False
+1050,test_user_929,2026-07-18,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.4,False
+1051,test_user_929,2026-07-17,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",6.8,False
+1052,test_user_929,2026-07-16,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",6.7,False
+1053,test_user_929,2026-07-15,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",7.2,False
+1054,test_user_929,2026-07-14,dinner,Ho fun with choi sum,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}, {""id"": ""coi_sam"", ""source"": ""catalog_match""}]",6.7,False
+1055,test_user_929,2026-07-13,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.1,False
+1056,test_user_929,2026-07-12,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.6,False
+1057,test_user_929,2026-07-11,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.1,False
+1058,test_user_929,2026-07-10,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.1,False
+1059,test_user_929,2026-07-09,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.1,False
+1060,test_user_929,2026-07-08,dinner,Ho fun,"[{""id"": ""ho_fun"", ""source"": ""catalog_match""}]",8.2,False
+1061,test_user_929,2026-07-07,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.1,False
+1062,test_user_929,2026-07-06,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.2,False
+1063,test_user_929,2026-07-05,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",7.4,False
+1064,test_user_929,2026-07-04,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.2,False
+1065,test_user_929,2026-07-03,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.3,False
+1066,test_user_929,2026-07-02,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.3,False
+1067,test_user_929,2026-07-01,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",7.8,False
+1068,test_user_929,2026-06-30,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",7.5,False
+1069,test_user_929,2026-06-29,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.0,False
+1070,test_user_929,2026-06-28,breakfast,Rice noodle rolls,"[{""id"": ""cheung_fun"", ""source"": ""catalog_match""}]",8.0,False
+1071,test_user_929,2026-06-27,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.3,False
+1072,test_user_929,2026-06-26,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.9,False
+1073,test_user_929,2026-06-25,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.0,False
+1074,test_user_929,2026-06-24,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.8,False
+1075,test_user_929,2026-06-23,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",7.8,False
+1076,test_user_929,2026-06-22,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.1,False
+1077,test_user_929,2026-06-21,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",8.5,False
+1078,test_user_929,2026-06-20,lunch,Rice vermicelli,"[{""id"": ""mai_fun"", ""source"": ""catalog_match""}]",7.5,False
+1079,test_user_929,2026-06-19,dinner,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.2,False
+1080,test_user_929,2026-06-18,breakfast,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}]",7.8,False
+1081,test_user_929,2026-06-17,dinner,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_unsweetened"", ""source"": ""catalog_match""}]",8.1,False
+1082,test_user_929,2026-06-16,breakfast,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_unsweetened"", ""source"": ""catalog_match""}]",7.8,False
+1083,test_user_929,2026-06-15,dinner,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}]",7.5,False
+1084,test_user_929,2026-06-14,breakfast,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.9,False
+1085,test_user_929,2026-06-13,dinner,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}]",7.2,False
+1086,test_user_929,2026-06-12,breakfast,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}]",6.7,False
+1087,test_user_929,2026-06-11,dinner,Mixed home meal,"[{""id"": ""sweet_potato"", ""source"": ""catalog_match""}]",7.4,False
+1088,test_user_929,2026-06-10,breakfast,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_sweetened"", ""source"": ""catalog_match""}]",6.6,False
+1089,test_user_929,2026-06-09,dinner,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_sweetened"", ""source"": ""catalog_match""}]",8.1,False
+1090,test_user_929,2026-06-08,breakfast,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}]",7.4,False
+1091,test_user_929,2026-06-07,dinner,Mixed home meal,"[{""id"": ""oats"", ""source"": ""catalog_match""}]",6.7,False
+1092,test_user_929,2026-06-06,breakfast,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_unsweetened"", ""source"": ""catalog_match""}]",6.2,False
+1093,test_user_929,2026-06-05,dinner,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.5,False
+1094,test_user_929,2026-06-04,breakfast,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.8,False
+1095,test_user_929,2026-06-03,dinner,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_sweetened"", ""source"": ""catalog_match""}]",7.7,False
+1096,test_user_929,2026-06-02,breakfast,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",8.1,False
+1097,test_user_929,2026-06-01,dinner,Mixed home meal,"[{""id"": ""sweet_potato"", ""source"": ""catalog_match""}]",7.8,False
+1098,test_user_929,2026-05-31,breakfast,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.6,False
+1099,test_user_929,2026-05-30,dinner,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_sweetened"", ""source"": ""catalog_match""}]",6.4,False
+1100,test_user_929,2026-05-29,breakfast,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_unsweetened"", ""source"": ""catalog_match""}]",8.0,False
+1101,test_user_929,2026-05-28,dinner,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",7.9,False
+1102,test_user_929,2026-05-27,breakfast,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}, {""id"": ""old_fire_soup"", ""source"": ""catalog_match""}]",8.1,False
+1103,test_user_929,2026-05-26,dinner,Mixed home meal,"[{""id"": ""congee"", ""source"": ""catalog_match""}]",7.2,False
+1104,test_user_929,2026-05-25,breakfast,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}]",7.4,False
+1105,test_user_929,2026-05-24,dinner,Mixed home meal,"[{""id"": ""oats"", ""source"": ""catalog_match""}]",6.5,False
+1106,test_user_929,2026-05-23,breakfast,Mixed home meal,"[{""id"": ""sweet_potato"", ""source"": ""catalog_match""}]",7.3,False
+1107,test_user_929,2026-05-22,dinner,Mixed home meal,"[{""id"": ""white_bread"", ""source"": ""catalog_match""}]",7.0,False
+1108,test_user_929,2026-05-21,breakfast,Mixed home meal,"[{""id"": ""white_rice"", ""source"": ""catalog_match""}, {""id"": ""naai_cha_sweetened"", ""source"": ""catalog_match""}]",7.1,False
+1109,test_user_929,2026-05-20,snack,麵,"[{""source"": ""unresolved"", ""nameZhHant"": ""麵"", ""reason"": ""vague""}]",,False
+1110,test_user_929,2026-05-19,snack,麵,"[{""source"": ""unresolved"", ""nameZhHant"": ""麵"", ""reason"": ""vague""}]",,False
