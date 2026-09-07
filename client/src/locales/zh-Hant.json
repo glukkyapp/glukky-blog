@@ -1242,7 +1242,6 @@
     "personalised_popup_title": "個人化血糖值已設定",
     "personalised_popup_body": "你已累積 {{count}} 次記錄，血糖值已根據你的個人規律設定。",
     "personalised_popup_dismiss": "明白了",
-    "personalised_progress_label": "本應用程式需要更多讀數，才可顯示你的用餐模式。只在有助回答與你的餐點或生活方式改變有關的具體問題時記錄血糖。",
     "impact_high": "高影響",
     "impact_medium": "中影響",
     "impact_low": "低影響",

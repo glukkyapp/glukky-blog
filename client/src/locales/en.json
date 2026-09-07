@@ -1238,7 +1238,6 @@
     "personalised_popup_title": "Personalised glucose values ready",
     "personalised_popup_body": "Your {{count}} readings now shape glucose values personalised to your own patterns.",
     "personalised_popup_dismiss": "Got it",
-    "personalised_progress_label": "More readings are needed before this app can show a pattern for your meals. Record glucose only when it helps answer a specific question about your meals or lifestyle changes.",
     "impact_high": "High",
     "impact_medium": "Medium",
     "impact_low": "Low",

@@ -207,6 +207,14 @@ check("inline education is the fallback and hides only its own copy while its mo
   guidance.includes("if (hidden) return null") &&
   hstix.includes('<GlucoseGuidanceInline kind="hstix" hidden={activeGuidance === "hstix"} />') &&
   patterns.includes('<GlucoseGuidanceInline kind="meal-pattern" hidden={activeGuidance === "meal-pattern"} />'));
+check("meal-pattern progress renders one authoritative inline message in every locale",
+  (patterns.match(/<GlucoseGuidanceInline kind="meal-pattern"/g) ?? []).length === 1 &&
+  !patterns.includes("text-personalised-progress") &&
+  !patterns.includes("glucose.personalised_progress_label") &&
+  [en, zhHant, yue].every(locale =>
+    locale.glucose["guidance_meal-pattern_body"] &&
+    !Object.prototype.hasOwnProperty.call(locale.glucose, "personalised_progress_label")
+  ));
 check("each page supplies only its resolved contextual candidates",
   hstix.includes("eligible: showEntryForm && !validMealSnapId") &&
   patterns.includes("eligible: !isLoading && !isLocked && showPersonalisedProgress") &&
