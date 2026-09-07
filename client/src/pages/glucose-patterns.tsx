@@ -459,7 +459,12 @@ export default function GlucosePatterns() {
                           <ImpactBadge impact={impact} measured />
                         </div>
                         <div>
-                          <p className="mb-3 text-sm text-[var(--brand-muted)]">{t(`glucose.pattern_hstix_description_${impact}`)}</p>
+                          <p className="mb-3 text-sm text-[var(--brand-muted)]">
+                            <Trans
+                              i18nKey={`glucose.pattern_hstix_description_${impact}`}
+                              components={{ emphasis: <strong className="font-bold text-[var(--brand-ink)]" /> }}
+                            />
+                          </p>
                           <p className="text-sm text-[var(--brand-muted)]">{t("glucose.pattern_hstix_result", { high: activeFood.highMeals, total: activeFood.totalMeals })}</p>
                           {activeFood.partnerInsight?.kind === "dominant" && (
                             <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800" data-testid="glucose-partner-dominant">
