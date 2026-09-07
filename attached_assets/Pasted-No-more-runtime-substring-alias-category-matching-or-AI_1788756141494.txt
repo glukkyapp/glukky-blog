@@ -1,0 +1,34 @@
+No more runtime substring/alias/category matching or AI candidate selection for canonical components.
+•	Known component with no vetted GI reference → show “Unavailable,” not a guessed value.
+•	 cooled_boiled_potato  stays distinct from  boiled_potato  and must not inherit its GI value without its own vetted reference.
+•	Carb subtype vocabulary conflict (two incompatible type lists in the code) must be unified into one canonical list before this rolls out.
+7. Sweetened/unsweetened rule — applies to ALL drinks, not just milk tea
+•	No sugar modifier stated on a recognized sugar-capable drink → resolves to its sweetened canonical component by default.
+•	Explicit no-sugar/zero/diet wording → resolves only to a catalog-defined unsweetened/zero-sugar variant.
+•	No “unknown sugar” state — absence of a modifier always means sweetened.
+•	Unsweetened/zero-sugar variants must never inherit the sweetened variant’s GI value; show “Unavailable” if no dedicated reference exists.
+•	“Diet” and “zero” have no global meaning — they resolve only through exact catalog aliases (e.g.,  cola_zero ), never a blanket keyword check.
+•	Water, plain tea, black coffee remain standalone ordinary components with  sugarStatus: not_applicable  — not every drink needs a sweetened/unsweetened pair, only catalog-approved ones.
+8. Food-library write protection
+•	Monotonic quality rule: Level 3 (fully validated IDs) > Level 2 (partial) > Level 1 (legacy names) > Level 0 (null/empty).
+•	Lower quality must never silently overwrite higher quality; null/empty must never erase a non-empty list.
+•	Equal-quality conflicting lists should not silently overwrite each other — log a diagnostic instead.
+•	Exception: legitimate user-confirmed corrections or admin/versioned curation should still be allowed to update records — the protection is against unattended automated downgrades, not deliberate fixes.
+9. Historical/legacy data handling
+•	Never fuzzy-merge old health records into canonical components.
+•	Auto-backfill only unique, exact catalog alias/label matches.
+•	Ambiguous or unmatched old records stay visible/searchable under a namespaced  legacy: / history:  key but excluded from canonical statistics until resolved.
+10. API/client contract
+•	 foodKey  becomes an opaque, namespaced key ( component:<id>  /  legacy:...  /  history:... ) — never displayed to users.
+•	All three localized labels continue to be returned in every response; client selects the display label by locale.
+11. Security and data-handling safeguards
+•	Every food-key lookup must stay scoped to the authenticated user at the query level — a key alone is not authorization.
+•	Catalog write access is restricted to reviewed migrations/curation, never reachable by AI or user-facing code paths.
+•	Automatic alias/candidate resolution succeeds only on an exact, unique match — no broad substring/keyword matching.
+•	Migration/diagnostic logs must not contain raw meal text, food labels, glucose values, or direct user identifiers — use pseudonymous correlation IDs and aggregate counts only.
+•	Legacy keys (which can embed food text) should be treated carefully in URLs/logs, not freely exposed.
+12. Explicit non-goals
+•	Do not change meal-combination identity, glucose thresholds, HStix reliability formulas, partner statistical thresholds, or localized label presentation.
+•	Do not display internal IDs to users.
+•	Do not let AI invent or persist catalog IDs unchecked.
+•	Do not assume every drink needs both sweetened and unsweetened variants.

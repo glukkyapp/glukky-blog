@@ -1,0 +1,20 @@
+at string is used as the identity key for frequency counting, GI lookup, HStix evidence, and HStix pairing. Because translations, wording, and AI phrasing vary, the same real-world food can fragment into multiple “different” foods across records.
+2. New identity model
+Every food component gets a stable, app-owned canonical ID, separate from its display labels.
+•	 internalId  (e.g.  maisin ,  udon_noodles ,  naai_cha_sweetened ) — used for all matching, grouping, and lookup logic.
+•	 nameEn  /  nameZhHant  /  nameYue  — display and search labels only, resolved via join/lookup at render time.
+•	Meal-combination identity stays untouched.  foodLabels.internalId ,  mealSnaps.comboKey ,  buildInternalId() , and portion/sauce/topping matching are explicitly out of scope — they identify a whole meal configuration, not an individual food.
+3. Storage restructuring (latest addition)
+•	 food_labels.food_items  and  meal_snaps.food_items  should store canonical component IDs, not full name objects.
+•	A new dedicated table holds the component catalog: canonical ID + all three localized labels + aliases + classification metadata.
+•	Every function that displays a food name must join back to this table; every function that groups/counts/compares foods uses the ID.
+•	Meal identification and food-library save/reuse logic itself must not be disrupted by this restructuring.
+4. How components get identified (no name change to model call)
+•	Claude already returns  nameEn ,  nameZhHant ,  nameYue  together in one call ( foodItemsInstruction ) — no second AI call is needed to get the English name.
+•	The server derives/validates the canonical ID server-side (slug logic similar to existing  buildInternalId() ), or accepts an optional  candidateInternalId  from Claude, but never trusts it blindly.
+•	New, clearly identified food not yet in the catalog → server creates a new canonical ID automatically. It must NOT be excluded from any component-based function (frequency, GI, HStix, pairing) just because it’s new.
+•	Description too broad (e.g. “noodles,” “tea,” “soft drink”) → keep in meal history and search only; do not create an ID or use it in component analytics. Rule of thumb: broad if it could plausibly mean 2+ materially different components (different subtype, sugar status, or GI).
+•	Multiple existing catalog matches → resolve by picking the component with the user’s highest historical frequency (personal frequency first, global as tiebreaker fallback, then deterministic ordering). Frequency is only used to break ties between genuine exact matches — never to force-resolve a vague label.
+•	Model candidate ID conflicts with labels → keep in meal history/search only; do not create/assign an ID or include in analytics.
+•	The catalog itself is server-owned; AI/user input can never write to it directly — only suggest candidates.
+5.  foodItemKey()  becomes the central identity function
