@@ -55,8 +55,9 @@ console.log("\nImpact parsing");
 console.log("\nSelector validation");
 {
   check("low: keeps a valid single pick", normalizeSelectors("low", [3]).join() === "3");
-  check("low: rejects 2 (high-only), falls back", normalizeSelectors("low", [2]).join() === "1");
-  check("medium: rejects 4, picks valid alternative", normalizeSelectors("medium", [4, 5]).join() === "5");
+  check("low: accepts action 2", normalizeSelectors("low", [2]).join() === "2");
+  check("medium: accepts action 4", normalizeSelectors("medium", [4, 5]).join() === "4");
+  check("low: accepts action 6", normalizeSelectors("low", [6]).join() === "6");
   check("low: exactly one even when Claude sends two", normalizeSelectors("low", [1, 3]).length === 1);
   check("low: empty falls back to 1", normalizeSelectors("low", []).join() === "1");
   const high = normalizeSelectors("high", [2, 4]);
@@ -64,6 +65,7 @@ console.log("\nSelector validation");
   const highBad = normalizeSelectors("high", [1, 3]);
   check("high: forces at least one of 2/4", highBad.some((s) => s === 2 || s === 4));
   check("high: always exactly two", normalizeSelectors("high", [4]).length === 2);
+  check("high: keeps vinegar with required action", normalizeSelectors("high", [6, 2]).join() === "6,2");
   check("high: invalid numbers dropped", normalizeSelectors("high", [9, 4, 1]).join() === "4,1");
   check("unknown impact treated as one action, no 2/4", normalizeSelectors(null, [2, 4]).join() === "1");
 }
@@ -73,6 +75,12 @@ console.log("\nRight-now mapping per locale");
   check("en text", mapRightNow("en", "low", [3])[0] === RIGHT_NOW_ACTIONS.en[3]);
   check("zh-Hant text", mapRightNow("zh-Hant", "low", [3])[0] === RIGHT_NOW_ACTIONS["zh-Hant"][3]);
   check("yue text", mapRightNow("yue", "low", [3])[0] === RIGHT_NOW_ACTIONS.yue[3]);
+  check(
+    "selector 6 maps approved copy in every locale",
+    mapRightNow("en", "low", [6])[0] === "Add a splash of vinegar or use a vinegar-based condiment/dip; it may help reduce the post-meal blood-sugar rise." &&
+      mapRightNow("zh-Hant", "low", [6])[0] === "加一點醋或使用醋類蘸醬，或有助減緩餐後血糖上升。" &&
+      mapRightNow("yue", "low", [6])[0] === "加少少醋或點醋汁，可能有助減輕餐後血糖上升幅度。",
+  );
   check("no selector numbers leak", mapRightNow("en", "high", [2, 4]).every((t) => !/^\d/.test(t)));
 }
 
@@ -84,6 +92,7 @@ console.log("\nApproved Chinese action copy");
     "吃慢一點",
     "飯後步行10分鐘",
     "這餐可減少飯或麵的分量",
+    "加一點醋或使用醋類蘸醬，或有助減緩餐後血糖上升。",
   ];
   const yueExpected = [
     "先食菜同肉，最後先食飯或麵",
@@ -91,6 +100,7 @@ console.log("\nApproved Chinese action copy");
     "食慢啲",
     "飯後行10分鐘",
     "呢餐可以減少飯或麵嘅份量",
+    "加少少醋或點醋汁，可能有助減輕餐後血糖上升幅度。",
   ];
   check(
     "zh-Hant uses all approved strings exactly",
@@ -195,6 +205,17 @@ console.log("\nNext-time route metadata contract");
   const routes = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
   const selectorCalls = routes.match(/selectNextTime\([\s\S]*?structuredFoodItems[\s\S]*?\)/g) ?? [];
   check("fresh and both cache response paths pass prepared components to Next time", selectorCalls.length === 3);
+  const rightNowRules = routes.slice(
+    routes.indexOf("Right-now action list (refer to them ONLY by number):"),
+    routes.indexOf("Hard constraints on your advice:"),
+  );
+  check("prompt includes approved vinegar action", rightNowRules.includes("6. Add a splash of vinegar or use a vinegar-based condiment/dip; it may help reduce the post-meal blood-sugar rise."));
+  check("prompt allows low/medium actions 1 through 6", rightNowRules.includes("select EXACTLY ONE action from 1 through 6"));
+  check("prompt preserves high-impact requirement", rightNowRules.includes("At least one selected High-impact action must be 2 or 4."));
+  check("prompt does not prioritize action 1", rightNowRules.includes("Do not prioritize action 1 over other eligible actions."));
+  check("prompt gates action 6 to plausible carbohydrate meals", rightNowRules.includes("Select action 6 only for a carbohydrate-containing meal where adding vinegar or using a vinegar-based condiment or dip is culinarily plausible."));
+  check("prompt excludes implausible and vinegar-based meals", rightNowRules.includes("sweet drinks, milk tea, desserts, fruit, soup, meals that already contain vinegar"));
+  check("prompt avoids already-satisfied actions", rightNowRules.includes("Do not select an action the meal has already satisfied unless that action remains clearly useful."));
 }
 
 console.log("\nWatch-out row parsing");
@@ -323,7 +344,9 @@ console.log("\nbuildStructuredAdvice — food-specific action-1 phrase via Food 
 console.log("\nbuildStructuredAdvice — invalid selectors normalized");
 {
   const s = buildStructuredAdvice("Blood sugar impact: Low\nRight now: 2", "en", "next");
-  check("selector 2 rejected for low impact", s.rightNow[0] === RIGHT_NOW_ACTIONS.en[1]);
+  check("selector 2 accepted for low impact", s.rightNow[0] === RIGHT_NOW_ACTIONS.en[2]);
+  const vinegar = buildStructuredAdvice("血糖影響: 中\n現在：6", "zh-Hant", "next");
+  check("selector 6 parsed and localized", vinegar.rightNow[0] === RIGHT_NOW_ACTIONS["zh-Hant"][6]);
   const s2 = buildStructuredAdvice("Blood sugar impact: High\nRight now: 3", "en", "next");
   check("high gets two actions incl 2 or 4", s2.rightNow.length === 2);
 }

@@ -44,7 +44,7 @@ export function sanitizeEmoji(text: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Fixed right-now actions (selectors 1–5)                             */
+/* Fixed right-now actions (selectors 1–6)                             */
 /* ------------------------------------------------------------------ */
 
 export const RIGHT_NOW_ACTIONS: Record<Locale, Record<number, string>> = {
@@ -54,6 +54,7 @@ export const RIGHT_NOW_ACTIONS: Record<Locale, Record<number, string>> = {
     3: "Eat slowly.",
     4: "Go for a 10-minute walk after the meal.",
     5: "Reduce the portion of carbs in this meal.",
+    6: "Add a splash of vinegar or use a vinegar-based condiment/dip; it may help reduce the post-meal blood-sugar rise.",
   },
   "zh-Hant": {
     1: "先吃菜和肉，最後才吃飯或麵",
@@ -61,6 +62,7 @@ export const RIGHT_NOW_ACTIONS: Record<Locale, Record<number, string>> = {
     3: "吃慢一點",
     4: "飯後步行10分鐘",
     5: "這餐可減少飯或麵的分量",
+    6: "加一點醋或使用醋類蘸醬，或有助減緩餐後血糖上升。",
   },
   yue: {
     1: "先食菜同肉，最後先食飯或麵",
@@ -68,6 +70,7 @@ export const RIGHT_NOW_ACTIONS: Record<Locale, Record<number, string>> = {
     3: "食慢啲",
     4: "飯後行10分鐘",
     5: "呢餐可以減少飯或麵嘅份量",
+    6: "加少少醋或點醋汁，可能有助減輕餐後血糖上升幅度。",
   },
 };
 
@@ -77,30 +80,34 @@ export const POSITIVE_LINE: Record<Locale, string> = {
   yue: "呢餐揀得唔錯。",
 };
 
-/** Selectors 2 and 4 are high-impact-only. */
-const HIGH_ONLY = new Set([2, 4]);
-const ALL_SELECTORS = new Set([1, 2, 3, 4, 5]);
+/** High-impact advice must include selector 2 or 4. */
+const HIGH_REQUIRED = new Set([2, 4]);
+const ALL_SELECTORS = new Set([1, 2, 3, 4, 5, 6]);
 
 /**
  * Validate Claude selector output against the impact rules.
- * - low/medium: exactly one of {1,3,5}; fallback 1.
+ * - low/medium: exactly one of {1,2,3,4,5,6}; fallback 1.
  * - high: exactly two, at least one of {2,4}; fallback [4,1].
+ * - unknown: exactly one of {1,3,5,6}; fallback 1 (legacy behavior).
  */
 export function normalizeSelectors(impact: Impact | null, selectors: number[]): number[] {
   const valid = selectors.filter((s) => ALL_SELECTORS.has(s));
   if (impact === "high") {
     let picks = Array.from(new Set(valid)).slice(0, 2);
-    if (!picks.some((s) => HIGH_ONLY.has(s))) {
+    if (!picks.some((s) => HIGH_REQUIRED.has(s))) {
       picks = [4, ...picks.filter((s) => s !== 4)].slice(0, 2);
     }
     if (picks.length < 2) {
-      const filler = [4, 1, 3, 5].filter((s) => !picks.includes(s));
+      const filler = [4, 1, 3, 5, 6].filter((s) => !picks.includes(s));
       picks = [...picks, ...filler].slice(0, 2);
     }
     return picks;
   }
-  // low / medium / unknown → one action, never 2 or 4
-  const first = valid.find((s) => !HIGH_ONLY.has(s));
+  if (impact === "low" || impact === "medium") {
+    return [valid[0] ?? 1];
+  }
+  // Unknown impact retains the legacy one-action behavior, never 2 or 4.
+  const first = valid.find((s) => !HIGH_REQUIRED.has(s));
   return [first ?? 1];
 }
 
@@ -110,7 +117,7 @@ export function mapRightNow(locale: Locale, impact: Impact | null, selectors: nu
 
 /**
  * Legacy cache rows predate the selector-only contract and contain free-form
- * action text. Recognize the five approved action meanings so cached advice
+ * action text. Recognize the six approved action meanings so cached advice
  * can use the current fixed copy just like freshly generated advice.
  */
 const LEGACY_ACTION_MATCHERS: Record<number, RegExp[]> = {
@@ -137,10 +144,14 @@ const LEGACY_ACTION_MATCHERS: Record<number, RegExp[]> = {
     /\breduce\b.*\bcarbs?\b/i,
     /(減少|減).*(碳水|飯|麵).*(份量|分量)?/,
   ],
+  6: [
+    /\bvinegar\b/i,
+    /(醋|醋汁|醋類蘸醬)/,
+  ],
 };
 
 function legacyActionSelectors(body: string): number[] {
-  return [1, 2, 3, 4, 5].filter((selector) =>
+  return [1, 2, 3, 4, 5, 6].filter((selector) =>
     LEGACY_ACTION_MATCHERS[selector].some((matcher) => matcher.test(body)),
   );
 }
@@ -576,7 +587,7 @@ export function buildStructuredAdvice(
       const body = stripMarker(line, RIGHT_NOW_MARKERS);
       // New contract: selector numbers only (e.g. "1" or "2,4").
       const numbersOnly = body.replace(/[\d,、\s和and&+]/gi, "") === "";
-      const digits = (body.match(/[1-5]/g) ?? []).map(Number);
+      const digits = (body.match(/[1-6]/g) ?? []).map(Number);
       if (numbersOnly && digits.length > 0) {
         rightNow = mapRightNow(loc, impact, digits);
       } else if (body) {

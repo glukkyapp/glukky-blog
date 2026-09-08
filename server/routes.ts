@@ -2795,12 +2795,16 @@ Right-now action list (refer to them ONLY by number):
 3. Eat slowly.
 4. Go for a 10-minute walk after the meal.
 5. Reduce the portion of carbs in this meal.
+6. Add a splash of vinegar or use a vinegar-based condiment/dip; it may help reduce the post-meal blood-sugar rise.
 
 Selection rules:
-- If Blood sugar impact is Low or Medium: select EXACTLY ONE action from 1, 3, or 5.
+- If Blood sugar impact is Low or Medium: select EXACTLY ONE action from 1 through 6.
 - If Blood sugar impact is High: select EXACTLY TWO actions.
 - At least one selected High-impact action must be 2 or 4.
-- Select action 1 only if the meal clearly contains both a carbohydrate AND at least one vegetable or protein, e.g. rice with cabbage, fish with rice, beef noodles with choi sum etc. When selected, also output a Food order line with a short meal-specific phrase — e.g. "cabbage first, plain rice later" — listing only foods present in that meal.
+- Select action 1 only if the meal clearly contains both a carbohydrate AND at least one vegetable or protein, e.g. rice with cabbage, fish with rice, beef noodles with choi sum etc. Do not prioritize action 1 over other eligible actions. When selected, also output a Food order line with a short meal-specific phrase — e.g. "cabbage first, plain rice later" — listing only foods present in that meal.
+- Select action 6 only for a carbohydrate-containing meal where adding vinegar or using a vinegar-based condiment or dip is culinarily plausible.
+- Do not select action 6 for sweet drinks, milk tea, desserts, fruit, soup, meals that already contain vinegar or a vinegar-based condiment, or any other case where vinegar is implausible.
+- Do not select an action the meal has already satisfied unless that action remains clearly useful.
 
 Hard constraints on your advice:
 - Where the food's actual ingredients make a principle directly relevant, refer to them by name. If the food doesn't naturally connect to a principle, express the principle in a natural, conversational tone.
