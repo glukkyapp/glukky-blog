@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,12 +11,8 @@ import { createPortal } from "react-dom";
 import i18n from "./i18n";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import { CoinSavedPopup } from "@/components/coin-saved-popup";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
-import { hapticPattern, hapticNotify } from "@/lib/haptics";
 import { useBounceScroll, BOUNCE_WRAPPER_ID } from "@/hooks/use-bounce-scroll";
 import {
   loginToRevenueCat,
@@ -97,35 +93,13 @@ interface PiggyBankData {
 }
 
 function GlobalPiggyBankPopup() {
-  const { t } = useTranslation();
   const { data: piggy } = useQuery<PiggyBankData>({
     queryKey: ["/api/piggybank"],
   });
 
-  const [showRewardSetup, setShowRewardSetup] = useState(false);
-  const [showCongrats, setShowCongrats] = useState(false);
-  const [rewardInput, setRewardInput] = useState("");
-  const [congratsShown, setCongratsShown] = useState(false);
-  const [dialogStep, setDialogStep] = useState<"intro" | "goal">("intro");
-  const [dialogMode, setDialogMode] = useState<"first_time" | "edit">("first_time");
   const [coinPopupVisible, setCoinPopupVisible] = useState(false);
-  const [coinPopupCount, setCoinPopupCount] = useState(0);
 
-  const PIGGY_INTRO_SKIPPED_KEY = "piggy_intro_skipped";
-
-  const introShownRef = useRef(false);
   const prevCoinsRef = useRef<number | null>(null);
-  const pendingCongratsRef = useRef(false);
-
-  useEffect(() => {
-    if (piggy && !piggy.introSeen && !introShownRef.current) {
-      introShownRef.current = true;
-      apiRequest("PATCH", "/api/profile/intro-seen").catch(() => {});
-      setDialogMode("first_time");
-      setDialogStep("intro");
-      setShowRewardSetup(true);
-    }
-  }, [piggy?.introSeen]);
 
   // Coin-saved popup: fires whenever the cached coin count increases.
   useEffect(() => {
@@ -136,186 +110,19 @@ function GlobalPiggyBankPopup() {
       return;
     }
     if (piggy.coins > prevCoinsRef.current) {
-      const delta = piggy.coins - prevCoinsRef.current;
       prevCoinsRef.current = piggy.coins;
-      setCoinPopupCount(delta);
       setCoinPopupVisible(true);
-      // Bank just hit capacity — chain congrats after the popup auto-dismisses.
-      if (piggy.coins >= piggy.capacity && !piggy.needsRewardSetup) {
-        setCongratsShown(true); // prevent the standalone congrats effect from double-firing
-        pendingCongratsRef.current = true;
-      }
     } else {
       prevCoinsRef.current = piggy.coins;
     }
   }, [piggy?.coins]);
 
-  // Standalone congrats: covers the case where the app is opened with a
-  // bank that was already full (no coin-increase delta to detect).
-  useEffect(() => {
-    if (piggy && piggy.coins >= piggy.capacity && !piggy.needsRewardSetup && !congratsShown) {
-      setCongratsShown(true);
-      setShowCongrats(true);
-      hapticPattern("..oO-Oo..", 80);
-    }
-  }, [piggy?.coins, piggy?.needsRewardSetup]);
-
   const handleCoinPopupDismiss = useCallback(() => {
     setCoinPopupVisible(false);
-    if (pendingCongratsRef.current) {
-      pendingCongratsRef.current = false;
-      hapticPattern("..oO-Oo..", 80);
-      setShowCongrats(true);
-    }
   }, []);
-
-  useEffect(() => {
-    const handleOpenReward = () => {
-      setDialogMode("edit");
-      setDialogStep("goal");
-      setShowRewardSetup(true);
-    };
-    const handleOpenCongrats = () => setShowCongrats(true);
-    window.addEventListener("piggy-open-reward", handleOpenReward);
-    window.addEventListener("piggy-open-congrats", handleOpenCongrats);
-    return () => {
-      window.removeEventListener("piggy-open-reward", handleOpenReward);
-      window.removeEventListener("piggy-open-congrats", handleOpenCongrats);
-    };
-  }, []);
-
-  const rewardMutation = useMutation({
-    mutationFn: (reward: string) =>
-      apiRequest("POST", "/api/piggybank/reward", { reward }),
-    onSuccess: () => {
-      hapticNotify("SUCCESS");
-      localStorage.removeItem(PIGGY_INTRO_SKIPPED_KEY);
-      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
-      setShowRewardSetup(false);
-      setRewardInput("");
-    },
-    onError: () => {
-      hapticNotify("ERROR");
-    },
-  });
-
-  const claimMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/piggybank/claim", {}),
-    onSuccess: () => {
-      hapticNotify("SUCCESS");
-      hapticPattern("..oO-Oo..", 80);
-      localStorage.removeItem(PIGGY_INTRO_SKIPPED_KEY);
-      queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
-      setShowCongrats(false);
-      setCongratsShown(false);
-      setTimeout(() => setShowRewardSetup(true), 400);
-    },
-    onError: () => {
-      hapticNotify("ERROR");
-    },
-  });
 
   return (
-    <>
-      <CoinSavedPopup coins={coinPopupCount} visible={coinPopupVisible} onDismiss={handleCoinPopupDismiss} />
-
-      <Dialog open={showRewardSetup} onOpenChange={setShowRewardSetup}>
-        <DialogContent
-          data-testid="modal-reward-setup-global"
-          onInteractOutside={dialogMode === "first_time" ? (e) => e.preventDefault() : undefined}
-          onEscapeKeyDown={dialogMode === "first_time" ? (e) => e.preventDefault() : undefined}
-        >
-          {dialogMode === "first_time" && dialogStep === "intro" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="sr-only">{t("roadmap.reward_setup_title")}</DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-col items-center text-center gap-4 py-2">
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line text-left" data-testid="text-piggy-intro-body">
-                  {t("roadmap.piggy_intro_body")}
-                </p>
-                <Button
-                  className="w-full btn-pop"
-                  onClick={() => setDialogStep("goal")}
-                  data-testid="button-piggy-intro-next"
-                >
-                  {t("intro.next")}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("roadmap.reward_setup_title")}</DialogTitle>
-                <DialogDescription>
-                  {t("roadmap.piggy_intro_body")}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 pt-1">
-                <Input
-                  value={rewardInput}
-                  onChange={(e) => setRewardInput(e.target.value)}
-                  placeholder={t("roadmap.reward_placeholder")}
-                  data-testid="input-reward-global"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && rewardInput.trim()) {
-                      rewardMutation.mutate(rewardInput.trim());
-                    }
-                  }}
-                />
-                <Button
-                  className="w-full btn-pop"
-                  onClick={() => rewardMutation.mutate(rewardInput.trim())}
-                  disabled={!rewardInput.trim() || rewardMutation.isPending}
-                  data-testid="button-save-reward-global"
-                >
-                  {rewardMutation.isPending ? t("roadmap.saving") : t("roadmap.save")}
-                </Button>
-                {dialogMode === "first_time" && (
-                  <button
-                    className="w-full text-sm text-muted-foreground underline underline-offset-2 py-1"
-                    onClick={() => {
-                      localStorage.setItem(PIGGY_INTRO_SKIPPED_KEY, "1");
-                      setShowRewardSetup(false);
-                    }}
-                    data-testid="button-skip-reward-global"
-                  >
-                    {t("roadmap.skip_for_now")}
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCongrats} onOpenChange={setShowCongrats}>
-        <DialogContent data-testid="modal-congrats-global">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{t("roadmap.congrats_title")}</DialogTitle>
-            <DialogDescription>
-              {t("roadmap.congrats_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          {piggy?.reward && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 my-2">
-              <p className="text-xs text-muted-foreground mb-1">{t("roadmap.your_reward")}</p>
-              <p className="font-semibold text-foreground text-base" data-testid="text-congrats-reward-global">
-                {piggy.reward}
-              </p>
-            </div>
-          )}
-          <Button
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-            onClick={() => claimMutation.mutate()}
-            disabled={claimMutation.isPending}
-            data-testid="button-confirm-claim-global"
-          >
-            {claimMutation.isPending ? t("roadmap.claiming") : t("roadmap.claim_reward")}
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </>
+    <CoinSavedPopup visible={coinPopupVisible} onDismiss={handleCoinPopupDismiss} />
   );
 }
 

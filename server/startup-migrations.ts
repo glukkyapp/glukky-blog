@@ -8,6 +8,16 @@ import { pool } from "./db";
  */
 const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) => Promise<void> }> = [
   {
+    name: "piggy_bank_events.user_achievement_unique",
+    sql: `DELETE FROM piggy_bank_events a
+          USING piggy_bank_events b
+          WHERE a.user_id = b.user_id
+            AND a.achievement_type = b.achievement_type
+            AND a.id > b.id;
+          CREATE UNIQUE INDEX IF NOT EXISTS piggy_bank_events_user_achievement_uniq
+            ON piggy_bank_events (user_id, achievement_type)`,
+  },
+  {
     name: "users.apple_refresh_token",
     sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_refresh_token text",
   },

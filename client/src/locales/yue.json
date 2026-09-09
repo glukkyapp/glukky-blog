@@ -269,9 +269,14 @@
     "reward_goal": "目標：",
     "tap_set_reward": "撳下設定獎勵 →",
     "claim_reward": "領取獎勵",
-    "new_coin_saved": "新硬幣已儲！+{{count}}",
-    "full": "滿嘞！",
-    "coins_count": "{{coins}} / {{capacity}} 個硬幣",
+    "new_coin_saved": "你嘅海港花園長大咗",
+    "full": "完成喇",
+    "coins_count": "{{coins}} / {{capacity}} 花園點數",
+    "harbour_garden": "海港花園",
+    "garden_grew": "你嘅海港花園長大咗",
+    "garden_points_count": "{{points}} / {{capacity}} 花園點數",
+    "garden_aria": "海港花園，{{capacity}} 點入面已經有 {{points}} 點",
+    "garden_complete": "你嘅海港花園完成喇。",
     "reward_setup_title": "設定你嘅第一個目標",
     "reward_setup_desc": "設定豬仔錢罌滿咗嘅獎勵（60個金幣）",
     "piggy_intro_body": "我哋知保持健康幾難架！\n獎勵吓自己吖：\n影相記錄一餐 → 1 個硬幣\n記錄飯後血糖 → 1 個硬幣\n每週飲食評分 ≥ 80 分 → 5 個硬幣\n一個星期入面，每日都記錄早、午、晚餐 → 10 個硬幣\n集滿 60 個硬幣，即可兌換你自己設定的獎勵，你最近最想要咩呢？",
@@ -708,6 +713,7 @@
     "confidentiality_link": "私隱聲明"
   },
   "popup": {
+    "garden_grew": "你嘅海港花園長大咗",
     "coin_saved_one": "已儲{{count}}個硬幣！",
     "coin_saved_other": "已儲{{count}}個硬幣！"
   },

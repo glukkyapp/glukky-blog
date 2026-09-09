@@ -44,12 +44,19 @@ import calendarHeadingIcon from "@assets/938a212f-9f09-4432-b49a-cf6f61738040_re
 import homeGiftImg from "@assets/35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_preview_1776612834467.png";
 import laurelImg from "@assets/generated_images/laurel-wreath-gold.png";
 import paywallHeroImg from "@assets/2dd316a7-1d08-4d1c-9af7-810af53516b8_1776833621839.png";
-import pigImg0 from "@assets/IMG_2062_1773846070998.PNG";
-import pigImg1 from "@assets/IMG_0610_1773846070999.PNG";
-import pigImg2 from "@assets/IMG_0611_1773846070999.PNG";
-import pigImg3 from "@assets/IMG_0612_1773846070999.PNG";
-import pigImg4 from "@assets/IMG_0613_1773846070999.PNG";
-import pigImg5 from "@assets/IMG_0614_1773846070999.PNG";
+import gardenBackground from "@assets/background_1788973267419.png";
+import gardenSeedling from "@assets/seedling_1788972650982.png";
+import gardenSmallTree from "@assets/small-tree_1788972650982.png";
+import gardenYoungTree from "@assets/young-tree_1788972650983.png";
+import gardenCompleteTree from "@assets/complete-tree_1788972650981.png";
+import gardenFlower1 from "@assets/flower1_1788972650982.png";
+import gardenFlower2 from "@assets/flower2_1788972650982.png";
+import gardenFlower3 from "@assets/flower3_1788972650982.png";
+import gardenFlower4 from "@assets/flower4_1788972650982.png";
+import gardenBird from "@assets/bird_1788972650981.png";
+import gardenBench from "@assets/bench_1788972650981.png";
+import gardenLamp from "@assets/lamp_1788972650982.png";
+import gardenFerry from "@assets/ferry_1788972650982.png";
 
 // Stage 4 — 11 diet-tip thumbnails (Health Info page)
 import dietTip1 from "@assets/cropped_circle_image_(1)_1775372471299.png";
@@ -76,7 +83,9 @@ const STAGE_3: string[] = [
   mountainBg, phoneBg, calendarBg,
   cameraHeadingIcon, roadmapHeadingIcon, lightbulbHeadingIcon, calendarHeadingIcon,
   homeGiftImg, laurelImg, paywallHeroImg,
-  pigImg0, pigImg1, pigImg2, pigImg3, pigImg4, pigImg5,
+  gardenBackground, gardenSeedling, gardenSmallTree, gardenYoungTree,
+  gardenCompleteTree, gardenFlower1, gardenFlower2, gardenBird,
+  gardenBench, gardenLamp, gardenFlower3, gardenFerry, gardenFlower4,
 ];
 
 const STAGE_4: string[] = [

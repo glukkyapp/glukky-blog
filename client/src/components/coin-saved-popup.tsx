@@ -1,24 +1,19 @@
 import { useEffect, useRef } from "react";
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
-import pigAnimationData from "@assets/wired-flat-453-savings-pig-hover-pinch_1773589181755.json";
 import { useTranslation } from "react-i18next";
 import { hapticNotify } from "@/lib/haptics";
 
 interface CoinSavedPopupProps {
-  coins: number;
   visible: boolean;
   onDismiss: () => void;
 }
 
-export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProps) {
+export function CoinSavedPopup({ visible, onDismiss }: CoinSavedPopupProps) {
   const { t } = useTranslation();
-  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (visible) {
       hapticNotify("SUCCESS");
-      lottieRef.current?.goToAndPlay(0, true);
       timerRef.current = setTimeout(onDismiss, 2500);
     }
     return () => {
@@ -52,14 +47,6 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
         }
       `}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-        <div style={{ width: 110, height: 110 }}>
-          <Lottie
-            lottieRef={lottieRef}
-            animationData={pigAnimationData}
-            loop={false}
-            autoplay={true}
-          />
-        </div>
         <p
           style={{
             margin: 0,
@@ -71,7 +58,7 @@ export function CoinSavedPopup({ coins, visible, onDismiss }: CoinSavedPopupProp
           }}
           data-testid="text-coin-saved-count"
         >
-          {t("popup.coin_saved", { count: coins })}
+          {t("popup.garden_grew")}
         </p>
       </div>
     </div>

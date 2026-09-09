@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useMotionValue, useTransform, animate } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { Gift } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
+import { isGardenComplete } from "@/components/harbour-garden-state";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
-import { hapticTap, hapticNotify } from "@/lib/haptics";
+import { hapticNotify } from "@/lib/haptics";
 
 export interface PiggyBankData {
   coins: number;
@@ -16,7 +15,7 @@ export interface PiggyBankData {
   needsRewardSetup: boolean;
 }
 
-const DEV_STATES = [0, 10, 25, 40, 55] as const;
+const DEV_STATES = [0, 1, 5, 7, 11, 16, 20, 25, 31, 35, 40, 46, 55, 60] as const;
 
 function AnimatedCoinCount({ target, capacity, t }: { target: number; capacity: number; t: (key: string, opts?: any) => string }) {
   const count = useMotionValue(0);
@@ -35,7 +34,7 @@ function AnimatedCoinCount({ target, capacity, t }: { target: number; capacity: 
     };
   }, [target]);
 
-  return <span>{t("roadmap.coins_count", { coins: displayVal, capacity })}</span>;
+  return <span>{t("roadmap.garden_points_count", { points: displayVal, capacity })}</span>;
 }
 
 export function PiggyBankCard({ data, isDev }: {
@@ -45,7 +44,6 @@ export function PiggyBankCard({ data, isDev }: {
   const { t } = useTranslation();
   const prevCoins = useRef(data.coins);
   const [animating, setAnimating] = useState(false);
-  const [coinsGained, setCoinsGained] = useState(0);
 
   const setDevCoinsMutation = useMutation({
     mutationFn: (coins: number | null) =>
@@ -61,7 +59,6 @@ export function PiggyBankCard({ data, isDev }: {
 
   useEffect(() => {
     if (data.coins > prevCoins.current) {
-      setCoinsGained(data.coins - prevCoins.current);
       setAnimating(true);
       const timer = setTimeout(() => setAnimating(false), 2200);
       prevCoins.current = data.coins;
@@ -70,18 +67,12 @@ export function PiggyBankCard({ data, isDev }: {
     prevCoins.current = data.coins;
   }, [data.coins]);
 
-  const isFull = data.coins >= data.capacity;
+  const isFull = isGardenComplete(data.coins);
   const fillPct = Math.min((data.coins / data.capacity) * 100, 100);
 
   return (
     <>
       <style>{`
-        @keyframes coin-drop {
-          0% { transform: translateY(-56px); opacity: 1; }
-          65% { transform: translateY(4px); opacity: 1; }
-          80% { transform: translateY(0); opacity: 0.6; }
-          100% { transform: translateY(0); opacity: 0; }
-        }
         @keyframes saved-label {
           0% { opacity: 0; transform: translateY(6px); }
           30%, 75% { opacity: 1; transform: translateY(0); }
@@ -89,51 +80,41 @@ export function PiggyBankCard({ data, isDev }: {
         }
       `}</style>
 
-      <div data-testid="card-piggy-bank" className="px-6 pt-4 pb-5">
+      <div data-testid="card-harbour-garden" className="px-0 pt-2 pb-5">
         <div className="flex flex-col items-center gap-1 relative">
           {animating && (
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
-              style={{ width: 80 }}
+               style={{ width: 160 }}
             >
-              <div
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle at 35% 35%, #fde68a, #f59e0b)",
-                  border: "2px solid #d97706",
-                  boxShadow: "0 2px 6px rgba(217,119,6,0.4)",
-                  animation: "coin-drop 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards",
-                }}
-              />
               <p
                 style={{
                   animation: "saved-label 1.5s ease forwards",
-                  animationDelay: "0.7s",
+                  animationDelay: "0.15s",
                   opacity: 0,
-                  color: "#d97706",
+                  color: "#477349",
                   fontWeight: 700,
                   fontSize: 12,
                   marginTop: 2,
                   whiteSpace: "nowrap",
                 }}
               >
-                {t("roadmap.new_coin_saved", { count: coinsGained })}
+                 {t("roadmap.garden_grew")}
               </p>
             </div>
           )}
 
-          <PiggyBankSVG coins={data.coins} />
+          <h2 className="w-full text-left text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
+            {t("roadmap.harbour_garden")}
+          </h2>
 
-          {data.reward && (
-            <p className="text-base font-bold text-foreground text-center mt-1" data-testid="text-piggy-reward">
-              {data.reward}
-            </p>
-          )}
+          <PiggyBankSVG
+            coins={data.coins}
+            ariaLabel={t("roadmap.garden_aria", { points: Math.max(0, Math.min(60, data.coins)), capacity: 60 })}
+          />
 
           {isDev && (
-            <div className="flex items-center gap-1 mt-1">
+            <div className="flex flex-wrap items-center justify-center gap-1 mt-1">
               <span className="text-[10px] text-muted-foreground mr-1">preview:</span>
               {DEV_STATES.map((c) => (
                 <button
@@ -149,14 +130,6 @@ export function PiggyBankCard({ data, isDev }: {
                   {c}
                 </button>
               ))}
-              <button
-                disabled={setDevCoinsMutation.isPending}
-                onClick={() => setDevCoinsMutation.mutate(null)}
-                className="text-[10px] px-1.5 py-0.5 rounded border border-muted-foreground/30 text-muted-foreground hover:text-foreground ml-1 disabled:opacity-40"
-                title="Clear dev override"
-              >
-                ✕
-              </button>
             </div>
           )}
 
@@ -165,34 +138,15 @@ export function PiggyBankCard({ data, isDev }: {
               <span className="text-xs text-muted-foreground font-medium" data-testid="text-piggy-coins">
                 <AnimatedCoinCount target={data.coins} capacity={data.capacity} t={t} />
               </span>
-              {isFull && (
-                <span className="text-xs font-semibold text-amber-600">{t("roadmap.full")}</span>
-              )}
+              {isFull && <span className="text-xs font-semibold text-emerald-700">{t("roadmap.garden_complete")}</span>}
             </div>
-            <Progress value={fillPct} className={isFull ? "[&>div]:bg-amber-400" : ""} data-testid="progress-piggy-bank" />
+            <Progress value={fillPct} className={isFull ? "[&>div]:bg-emerald-500" : ""} data-testid="progress-harbour-garden" />
           </div>
 
-          {!data.reward && (
-            <div className="w-full mt-2">
-              <button
-                className="text-xs text-primary underline underline-offset-2"
-                onClick={() => { hapticTap("SOFT"); window.dispatchEvent(new Event("piggy-open-reward")); }}
-                data-testid="button-set-reward"
-              >
-                {t("roadmap.tap_set_reward")}
-              </button>
-            </div>
-          )}
-
           {isFull && (
-            <Button
-              onClick={() => { hapticTap("MEDIUM"); window.dispatchEvent(new Event("piggy-open-congrats")); }}
-              className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white btn-pop"
-              data-testid="button-claim-reward"
-            >
-              <Gift className="h-4 w-4 mr-2" />
-              {t("roadmap.claim_reward")}
-            </Button>
+            <p className="mt-3 w-full text-center font-semibold text-emerald-800" role="status" data-testid="garden-complete-message">
+              {t("roadmap.garden_complete")}
+            </p>
           )}
         </div>
       </div>

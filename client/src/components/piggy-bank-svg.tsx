@@ -1,44 +1,97 @@
-import img0 from "@assets/IMG_2062_1773846070998.PNG";
-import img1 from "@assets/IMG_0610_1773846070999.PNG";
-import img2 from "@assets/IMG_0611_1773846070999.PNG";
-import img3 from "@assets/IMG_0612_1773846070999.PNG";
-import img4 from "@assets/IMG_0613_1773846070999.PNG";
-import img5 from "@assets/IMG_0614_1773846070999.PNG";
+import background from "@assets/background_1788973267419.png";
+import seedling from "@assets/seedling_1788972650982.png";
+import smallTree from "@assets/small-tree_1788972650982.png";
+import youngTree from "@assets/young-tree_1788972650983.png";
+import completeTree from "@assets/complete-tree_1788972650981.png";
+import flower1 from "@assets/flower1_1788972650982.png";
+import flower2 from "@assets/flower2_1788972650982.png";
+import flower3 from "@assets/flower3_1788972650982.png";
+import flower4 from "@assets/flower4_1788972650982.png";
+import bird from "@assets/bird_1788972650981.png";
+import bench from "@assets/bench_1788972650981.png";
+import lamp from "@assets/lamp_1788972650982.png";
+import ferry from "@assets/ferry_1788972650982.png";
+import {
+  clampGardenPoints,
+  getGardenLayerKeys,
+  getGardenTree,
+  renderOrder,
+  type GardenLayer,
+  type GardenTree,
+} from "@/components/harbour-garden-state";
+
+export { getGardenLayerKeys, getGardenTree, renderOrder };
+export type { GardenLayer, GardenTree };
 
 interface Props {
   coins: number;
   className?: string;
+  ariaLabel?: string;
 }
 
-function getImage(coins: number): string {
-  if (coins >= 46) return img5;
-  if (coins >= 31) return img4;
-  if (coins >= 16) return img3;
-  if (coins >= 7) return img2;
-  if (coins >= 1) return img1;
-  return img0;
+const staticSources: Partial<Record<GardenLayer, string>> = {
+  background,
+  flower1,
+  flower2,
+  bird,
+  bench,
+  lamp,
+  flower3,
+  ferry,
+  flower4,
+};
+
+const treeSources: Record<GardenTree, string> = {
+  seedling,
+  "small-tree": smallTree,
+  "young-tree": youngTree,
+  "complete-tree": completeTree,
+};
+
+export function getGardenLayers(coins: number): Array<{ key: GardenLayer; src: string }> {
+  const selectedTree = getGardenTree(coins);
+  const layers: Array<{ key: GardenLayer; src: string }> = [];
+  for (const key of getGardenLayerKeys(coins)) {
+    if (key === "tree") {
+      if (selectedTree) layers.push({ key, src: treeSources[selectedTree] });
+      continue;
+    }
+    const src = staticSources[key];
+    if (src) layers.push({ key, src });
+  }
+  return layers;
 }
 
 export function PiggyBankPreloader() {
   return (
     <div style={{ display: "none" }} aria-hidden="true">
-      {[img0, img1, img2, img3, img4, img5].map((src, i) => (
-        <img key={i} src={src} alt="" />
+      {[background, seedling, smallTree, youngTree, completeTree, flower1, flower2, bird, bench, lamp, flower3, ferry, flower4].map((src) => (
+        <img key={src} src={src} alt="" />
       ))}
     </div>
   );
 }
 
-export function PiggyBankSVG({ coins, className }: Props) {
+export function PiggyBankSVG({ coins, className, ariaLabel }: Props) {
+  const points = clampGardenPoints(coins);
   return (
-    <img
-      src={getImage(coins)}
-      alt="piggy bank"
-      width={230}
-      height={230}
-      style={{ width: 230, height: 230, objectFit: "contain" }}
-      draggable={false}
-      className={className}
-    />
+    <div
+      className={`relative w-full overflow-hidden ${className ?? ""}`}
+      style={{ aspectRatio: "1376 / 768" }}
+      role="img"
+      aria-label={ariaLabel ?? `Harbour Garden, ${points} of 60 garden points`}
+      data-testid="harbour-garden"
+    >
+      {getGardenLayers(points).map(({ key, src }) => (
+        <img
+          key={key}
+          src={src}
+          alt=""
+          draggable={false}
+          data-garden-layer={key}
+          className="absolute inset-0 h-full w-full object-contain"
+        />
+      ))}
+    </div>
   );
 }

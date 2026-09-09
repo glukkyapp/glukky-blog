@@ -74,6 +74,7 @@ import { awardHstixCoin, awardSnapCoin } from "./achievements";
 import { buildTwoMonthReport, getLatestTwoCompletedMonths } from "./two-month-report";
 import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 import { parseFoodNameTranslations, wrapUntrustedPromptData } from "./prompt-isolation";
+import { isDevelopmentGardenRouteAvailable } from "./piggy-bank-policy";
 
 type SnapRow = {
   mealType: string | null;
@@ -1149,30 +1150,11 @@ export async function registerRoutes(
   });
 
   app.post("/api/piggybank/reward", isAuthenticated, async (req: any, res) => {
-    try {
-      const reward = typeof req.body?.reward === "string" ? req.body.reward.trim() : "";
-      if (!reward) return res.status(400).json({ message: "Reward text is required" });
-      const profile = await storage.setPiggyBankReward(req.user.claims.sub, reward);
-      if (!profile) return res.status(404).json({ message: "Profile not found" });
-      return res.json({ reward: profile.piggyBankReward, needsRewardSetup: profile.piggyBankNeedsRewardSetup });
-    } catch (error) {
-      console.error("Error setting piggy bank reward:", error);
-      return res.status(500).json({ message: "Failed to set reward" });
-    }
+    return res.status(410).json({ message: "Reward setup is no longer available" });
   });
 
   app.post("/api/piggybank/claim", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
-      if (!profile) return res.status(404).json({ message: "Profile not found" });
-      if (profile.piggyBankCoins < 60) return res.status(400).json({ message: "Piggy bank is not full yet" });
-      await storage.claimPiggyBank(userId);
-      return res.json({ claimed: true });
-    } catch (error) {
-      console.error("Error claiming piggy bank reward:", error);
-      return res.status(500).json({ message: "Failed to claim reward" });
-    }
+    return res.status(410).json({ message: "Garden points cannot be claimed or reset" });
   });
 
   const hardLockBodySchema = z.object({ optedOut: z.boolean() });
@@ -1586,6 +1568,36 @@ export async function registerRoutes(
     }
     return res.status(403).json({ message: "Forbidden" });
   };
+
+  const rejectProductionDevRoute = (_req: any, res: any, next: any) => {
+    if (!isDevelopmentGardenRouteAvailable(process.env.NODE_ENV)) {
+      return res.status(404).json({ message: "Not found" });
+    }
+    return next();
+  };
+
+  const devGardenCoinsSchema = z.object({
+    coins: z.number().int().min(0).max(60),
+  }).strict();
+
+  app.post(
+    "/api/dev/set-coins",
+    isAuthenticated,
+    rejectProductionDevRoute,
+    isDevUser,
+    async (req: any, res) => {
+      const parsed = devGardenCoinsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "coins must be an integer from 0 to 60" });
+      }
+      const profile = await storage.setPiggyBankCoinsForDevelopment(
+        req.user.claims.sub,
+        parsed.data.coins,
+      );
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      return res.json({ coins: profile.piggyBankCoins, capacity: 60 });
+    },
+  );
 
   app.post("/api/dev/glucose-patterns/swipe-tutorial/reset", isAuthenticated, async (req: any, res) => {
     try {

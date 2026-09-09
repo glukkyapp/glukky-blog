@@ -53,6 +53,8 @@ export interface IStorage {
   getPiggyBankEvent(userId: string, achievementType: string): Promise<PiggyBankEvent | undefined>;
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
   addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
+  awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean>;
+  setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
 
@@ -386,6 +388,41 @@ export class DatabaseStorage implements IStorage {
   async addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined> {
     const [updated] = await db.update(userProfiles)
       .set({ piggyBankCoins: sql`LEAST(piggy_bank_coins + ${coins}, 60)` })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      const [event] = await tx.insert(piggyBankEvents)
+        .values({ userId, achievementType, coinsAwarded: 1, description })
+        .onConflictDoNothing({
+          target: [piggyBankEvents.userId, piggyBankEvents.achievementType],
+        })
+        .returning();
+      if (!event) return false;
+
+      const [updated] = await tx.update(userProfiles)
+        .set({ piggyBankCoins: sql`LEAST(piggy_bank_coins + 1, 60)` })
+        .where(and(
+          eq(userProfiles.userId, userId),
+          lt(userProfiles.piggyBankCoins, 60),
+        ))
+        .returning({ userId: userProfiles.userId });
+      if (!updated) {
+        await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.id, event.id));
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Protected development visual-state override only. Deliberately bypasses
+  // the ledger and must never be used by normal award or user flows.
+  async setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles)
+      .set({ piggyBankCoins: coins })
       .where(eq(userProfiles.userId, userId))
       .returning();
     return updated;

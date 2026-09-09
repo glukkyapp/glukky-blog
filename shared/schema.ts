@@ -127,7 +127,12 @@ export const piggyBankEvents = pgTable("piggy_bank_events", {
   coinsAwarded: integer("coins_awarded").notNull(),
   description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userAchievementUniq: uniqueIndex("piggy_bank_events_user_achievement_uniq").on(
+    table.userId,
+    table.achievementType,
+  ),
+}));
 
 export type InsertPiggyBankEvent = typeof piggyBankEvents.$inferInsert;
 export type PiggyBankEvent = typeof piggyBankEvents.$inferSelect;
