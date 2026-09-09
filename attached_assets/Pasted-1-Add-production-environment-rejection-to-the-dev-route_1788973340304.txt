@@ -1,0 +1,131 @@
+1. Add production-environment rejection to the dev route
+Your comment says the route “should also refuse requests in a deployed environment,” but the sample route does not actually do that yet. Add that check before isDevUser() and before reading coins.
+
+Use the project’s actual environment convention rather than assuming a variable name, but the intended logic is:
+
+ts
+if (isProductionEnvironment()) {
+  return res.status(404).json({
+    message: "Not found.",
+  });
+}
+Then retain the authorised-dev-user check.
+
+A 404 is generally preferable to 403 here because it does not advertise a development balance override route in production. The important requirement is behavior, not the exact status: it must reject every production request without updating piggyBankCoins, even if the requester is recognised as a dev user.
+
+2. setPiggyBankCoins needs careful placement
+Your setter is appropriate for development visual testing, but it bypasses the ledger deliberately. That is fine only because the route is development-only.
+
+Make the intended constraint explicit in the code review/testing requirement:
+
+text
+setPiggyBankCoins must not be called by any FoodSnap, HStix, reward, claim, or normal user path. It is for the protected development override route only.
+This avoids a future developer using it as a convenient general-purpose “change points” method and quietly breaking the event history.
+
+3. The generalized award code preserves the existing race condition
+Your code accurately reflects the current pattern, but it still performs:
+
+text
+Read profile
+Check cap
+Check event
+Insert event
+Increment balance
+as separate operations. Two concurrent requests could still both pass the duplicate check and both increment balance.
+
+Since you listed concurrent retries and award-source uniqueness as part of the intended automated checks earlier, this needs an explicit implementation requirement:
+
+text
+Create the ledger event and increment the balance atomically.
+Enforce uniqueness on the event identity per user at the database layer.
+If the event already exists, award zero points.
+This does not require a new balance or ledger. It strengthens the existing piggy_bank_events mechanism. The actual migration/constraint syntax must follow the real schema, so it should not be guessed here.
+
+Also, confirm the event-identity format against existing FoodSnap/HStix data before switching wrappers. If current records use exactly snap_<meal ID> and hstix_<reading ID>, compatibility wrappers should preserve those exact strings rather than converting them to food_snap_<ID> or hstix_reading_<ID>. Otherwise existing events may no longer be recognised as duplicates.
+
+So, revise the helper conceptually to support an explicit, preserved event key:
+
+ts
+type PiggyBankAwardInput = {
+  userId: string;
+  eventType: PiggyBankEventType;
+  eventKey: string;
+};
+Then preserve existing keys:
+
+ts
+awardSnapCoin(userId, snapId) {
+  return awardPiggyBankCoin({
+    userId,
+    eventType: "food_snap",
+    eventKey: `snap_${snapId}`,
+  });
+}
+
+awardHstixCoin(userId, readingId) {
+  return awardPiggyBankCoin({
+    userId,
+    eventType: "hstix_reading",
+    eventKey: `hstix_${readingId}`,
+  });
+}
+daily_win can stay in the union only. It must not generate an event key, route, or award call until a later ticket defines the feature.
+
+4. Ensure all legacy global flows are removed
+Your card correctly removes reward controls, but App.tsx still has to remove:
+
+piggy-open-reward event handling.
+
+piggy-open-congrats event handling.
+
+Reward setup mutations.
+
+Claim mutations.
+
+Full-bank congratulations dialog state and effects.
+
+Any reset-after-claim logic.
+
+Any introduction flow that depends on reward setup status.
+
+Otherwise the card can look correct while old global dialogs still open.
+
+This is the major non-renderer risk in the implementation.
+
+5. Garden popup wording is correct, but artwork should remain deferred
+The replacement popup is appropriately minimal:
+
+text
+Your garden grew
+Do not make the popup attempt to render “the newly unlocked layer” yet. The existing balance-change detection may know a balance changed but not necessarily know which reward source or asset animation is appropriate. With supplied files only, a text-only popup is safe and meets the scope.
+
+6. Add a test case at 60
+Your layer test matrix is correct through 55. Include a final explicit case, even though the layers match 55:
+
+ts
+{
+  points: 60,
+  tree: "complete-tree",
+  decorations: [
+    "flower1",
+    "flower2",
+    "bird",
+    "bench",
+    "lamp",
+    "flower3",
+    "ferry",
+    "flower4",
+  ],
+  isComplete: true,
+}
+It should specifically verify:
+
+garden-complete-message appears at 60.
+
+It does not appear at 59.
+
+No reset or claim control is rendered at 60.
+
+A value above 60 is visually clamped to 60.
+
+The development setter rejects 61 and negative/non-integer values.
