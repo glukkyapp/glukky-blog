@@ -1,0 +1,58 @@
+Trees (mutually exclusive — replace each other):
+seedling → small tree → young tree → complete tree
+
+Stacking components (cumulative — layer on background):
+flower1, flower2, flower3, flower4, bird, ferry, bench, lamp
+
+Corrected threshold mapping
+Balance	Tree shown	Stacked components added
+0	none	background only
+1	seedling	—
+7	small tree	flower1
+16	young tree	flower2, bird
+31	complete tree	bench, lamp
+46	complete tree (stays)	flower3, ferry
+60	complete tree	flower4 — completion state
+Corrected component logic
+tsx
+type GardenAsset =
+  | "background" | "seedling" | "small-tree" | "young-tree" | "complete-tree"
+  | "flower1" | "flower2" | "flower3" | "flower4" | "bird" | "ferry" | "bench" | "lamp";
+
+const treeForPoints = (points: number) => {
+  if (points >= 31) return "complete-tree";
+  if (points >= 16) return "young-tree";
+  if (points >= 7) return "small-tree";
+  if (points >= 1) return "seedling";
+  return null;
+};
+
+const stackedAssets = [
+  { asset: "flower1", minimumPoints: 7 },
+  { asset: "flower2", minimumPoints: 16 },
+  { asset: "bird", minimumPoints: 16 },
+  { asset: "bench", minimumPoints: 31 },
+  { asset: "lamp", minimumPoints: 31 },
+  { asset: "flower3", minimumPoints: 46 },
+  { asset: "ferry", minimumPoints: 46 },
+  { asset: "flower4", minimumPoints: 60 },
+];
+tsx
+export function HarbourGardenSvg({ points }: { points: number }) {
+  const tree = treeForPoints(points);
+  return (
+    <div className="relative aspect-[16/9] w-full overflow-hidden"
+         aria-label={`Harbour Garden with ${points} points`}>
+      <img src="/garden/background.png" alt="" className="absolute inset-0 h-full w-full object-contain" />
+      {tree && (
+        <img src={`/garden/${tree}.png`} alt="" className="absolute inset-0 h-full w-full object-contain" />
+      )}
+      {stackedAssets
+        .filter((item) => points >= item.minimumPoints)
+        .map((item) => (
+          <img key={item.asset} src={`/garden/${item.asset}.png`} alt=""
+               className="absolute inset-0 h-full w-full object-contain" />
+        ))}
+    </div>
+  );
+}
