@@ -278,7 +278,7 @@
     "new_coin_saved": "你的海港花園成長了",
     "full": "已完成",
     "coins_count": "{{coins}} / {{capacity}} 花園點數",
-    "harbour_garden": "每日完成健康習慣，建造你的海港花園",
+    "harbour_garden": "每日完成健康習慣，建造你的海港花園!",
     "garden_grew": "你的海港花園成長了",
     "garden_points_count": "{{points}} / {{capacity}} 花園點數",
     "garden_aria": "海港花園，{{capacity}} 點中已有 {{points}} 點",

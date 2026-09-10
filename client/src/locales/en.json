@@ -278,7 +278,7 @@
     "new_coin_saved": "Your garden grew",
     "full": "Complete",
     "coins_count": "{{coins}} / {{capacity}} garden points",
-    "harbour_garden": "Complete a healthy habit every day to build your Harbour Garden",
+    "harbour_garden": "Complete a healthy habit every day to build your Harbour Garden!",
     "garden_grew": "Your garden grew",
     "garden_points_count": "{{points}} / {{capacity}} garden points",
     "garden_aria": "Harbour Garden, {{points}} of {{capacity}} garden points",
