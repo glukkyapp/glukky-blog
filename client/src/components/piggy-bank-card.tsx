@@ -2,6 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useMotionValue, useTransform, animate } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { isGardenComplete } from "@/components/harbour-garden-state";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -11,6 +23,8 @@ import { hapticNotify } from "@/lib/haptics";
 export interface PiggyBankData {
   coins: number;
   capacity: number;
+  gardensCompleted: number;
+  visualSetId: string;
   reward: string | null;
   needsRewardSetup: boolean;
 }
@@ -44,6 +58,8 @@ export function PiggyBankCard({ data, isDev }: {
   const { t } = useTranslation();
   const prevCoins = useRef(data.coins);
   const [animating, setAnimating] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetMessage, setResetMessage] = useState<"success" | "error" | null>(null);
 
   const setDevCoinsMutation = useMutation({
     mutationFn: (coins: number | null) =>
@@ -54,6 +70,24 @@ export function PiggyBankCard({ data, isDev }: {
     },
     onError: () => {
       hapticNotify("ERROR");
+    },
+  });
+
+  const startNewGardenMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/piggybank/start-new-garden", {
+      visualSetId: data.visualSetId,
+    }),
+    onMutate: () => setResetMessage(null),
+    onSuccess: async () => {
+      setResetDialogOpen(false);
+      setResetMessage("success");
+      hapticNotify("SUCCESS");
+      await queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+    },
+    onError: async () => {
+      setResetMessage("error");
+      hapticNotify("ERROR");
+      await queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
     },
   });
 
@@ -145,8 +179,66 @@ export function PiggyBankCard({ data, isDev }: {
           </div>
 
           {isFull && (
-            <p className="mt-3 w-full text-center font-semibold text-emerald-800" role="status" data-testid="garden-complete-message">
-              {t("roadmap.garden_complete")}
+            <>
+              <p className="mt-3 w-full text-center font-semibold text-emerald-800" role="status" data-testid="garden-complete-message">
+                {t("roadmap.garden_complete")}
+              </p>
+              <AlertDialog
+                open={resetDialogOpen}
+                onOpenChange={(open) => {
+                  if (!startNewGardenMutation.isPending) setResetDialogOpen(open);
+                }}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2"
+                    disabled={startNewGardenMutation.isPending}
+                    data-testid="button-start-new-garden"
+                  >
+                    {t("roadmap.start_new_garden")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent data-testid="dialog-start-new-garden">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("roadmap.start_new_garden_title")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("roadmap.start_new_garden_description")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={startNewGardenMutation.isPending}>
+                      {t("roadmap.start_new_garden_cancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={startNewGardenMutation.isPending}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        startNewGardenMutation.mutate();
+                      }}
+                      data-testid="button-confirm-start-new-garden"
+                    >
+                      {startNewGardenMutation.isPending
+                        ? t("roadmap.starting_new_garden")
+                        : t("roadmap.start_new_garden_confirm")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+          {resetMessage && (
+            <p
+              className={`mt-2 w-full text-center text-sm font-semibold ${
+                resetMessage === "success" ? "text-emerald-700" : "text-destructive"
+              }`}
+              role={resetMessage === "success" ? "status" : "alert"}
+              data-testid={`garden-reset-${resetMessage}`}
+            >
+              {t(resetMessage === "success"
+                ? "roadmap.start_new_garden_success"
+                : "roadmap.start_new_garden_error")}
             </p>
           )}
         </div>

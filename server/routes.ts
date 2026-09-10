@@ -97,6 +97,7 @@ const GUIDANCE_SEEN_FIELD_BY_KIND = {
 
 type GuidanceKind = keyof typeof GUIDANCE_SEEN_FIELD_BY_KIND;
 type GuidanceSeenField = typeof GUIDANCE_SEEN_FIELD_BY_KIND[GuidanceKind];
+const CURRENT_GARDEN_VISUAL_SET_ID = "harbour-garden-v1" as const;
 const guidanceKindSchema = z.enum([
   "hstix",
   "meal-pattern",
@@ -1140,6 +1141,8 @@ export async function registerRoutes(
       return res.json({
         coins: profile.piggyBankCoins,
         capacity: 60,
+        gardensCompleted: profile.piggyBankGardensCompleted,
+        visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
         reward: profile.piggyBankReward ?? null,
         needsRewardSetup: profile.piggyBankNeedsRewardSetup,
         introSeen: !profile.onboardingComplete ? true : profile.introSeen,
@@ -1190,6 +1193,41 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error completing daily task:", error);
       return res.status(500).json({ message: "Failed to complete daily task" });
+    }
+  });
+
+  const startNewGardenSchema = z.object({
+    visualSetId: z.literal(CURRENT_GARDEN_VISUAL_SET_ID),
+  }).strict();
+
+  app.post("/api/piggybank/start-new-garden", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = startNewGardenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid garden visual set" });
+      }
+
+      const result = await storage.startNewPiggyBankGarden(req.user.claims.sub);
+      if (!result.started) {
+        if (result.reason === "not_found") {
+          return res.status(404).json({ message: "Profile not found" });
+        }
+        return res.status(409).json({
+          code: "garden_not_complete",
+          message: "The current garden is not complete",
+        });
+      }
+
+      return res.json({
+        started: true,
+        coins: result.profile.piggyBankCoins,
+        capacity: 60,
+        gardensCompleted: result.profile.piggyBankGardensCompleted,
+        visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
+      });
+    } catch (error) {
+      console.error("Error starting new garden:", error);
+      return res.status(500).json({ message: "Failed to start a new garden" });
     }
   });
 

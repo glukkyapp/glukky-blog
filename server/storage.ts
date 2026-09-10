@@ -59,6 +59,10 @@ export interface DailyTaskAwardResult {
   alreadyCompleted: boolean;
 }
 
+export type StartNewPiggyBankGardenResult =
+  | { started: true; profile: UserProfile }
+  | { started: false; reason: "not_found" | "not_complete" };
+
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
   createProfile(profile: InsertUserProfile): Promise<UserProfile>;
@@ -72,6 +76,7 @@ export interface IStorage {
   awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean>;
   getDailyTaskCompletion(userId: string, localDate: string): Promise<DailyTaskCompletion | undefined>;
   completeDailyTaskAndAward(input: CompleteDailyTaskAndAwardInput): Promise<DailyTaskAwardResult>;
+  startNewPiggyBankGarden(userId: string): Promise<StartNewPiggyBankGardenResult>;
   setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
@@ -487,6 +492,31 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async startNewPiggyBankGarden(userId: string): Promise<StartNewPiggyBankGardenResult> {
+    return db.transaction(async (tx) => {
+      const [profile] = await tx.update(userProfiles)
+        .set({
+          piggyBankCoins: 0,
+          piggyBankGardensCompleted: sql`${userProfiles.piggyBankGardensCompleted} + 1`,
+        })
+        .where(and(
+          eq(userProfiles.userId, userId),
+          gte(userProfiles.piggyBankCoins, 60),
+        ))
+        .returning();
+
+      if (profile) return { started: true, profile };
+
+      const [existing] = await tx.select({ userId: userProfiles.userId })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId))
+        .limit(1);
+      return existing
+        ? { started: false, reason: "not_complete" }
+        : { started: false, reason: "not_found" };
+    });
+  }
+
   // Protected development visual-state override only. Deliberately bypasses
   // the ledger and must never be used by normal award or user flows.
   async setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined> {
@@ -544,6 +574,7 @@ export class DatabaseStorage implements IStorage {
         hardLockedAfterAdviceDismiss: false,
         isPremium: false,
         piggyBankCoins: 0,
+        piggyBankGardensCompleted: 0,
         piggyBankReward: null,
         piggyBankNeedsRewardSetup: true,
       }).where(eq(userProfiles.userId, userId));
