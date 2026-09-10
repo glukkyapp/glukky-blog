@@ -167,26 +167,6 @@ export default function Home() {
         </div>
       </header>
 
-      {profile?.goal && (
-        <div className="goal-bubble-wrap">
-          <div className="min-w-0 goal-bubble" data-testid="text-goal-reminder">
-             <p className="text-[18px] leading-snug" style={{ color: "var(--brand-ink)" }}>
-              {(() => {
-                const full = t("home.goal_reminder", { goal: "{{GOAL}}" });
-                const parts = full.split("{{GOAL}}");
-                return (
-                  <>
-                    {parts[0]}
-                     <strong style={{ color: "var(--brand-ink)" }}>{profile.goal}</strong>
-                    {parts[1]}
-                  </>
-                );
-              })()}
-            </p>
-          </div>
-        </div>
-      )}
-
       {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
       <DailyTaskCard />
 

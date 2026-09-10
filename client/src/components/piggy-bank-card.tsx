@@ -104,15 +104,15 @@ export function PiggyBankCard({ data, isDev }: {
             </div>
           )}
 
-          <h2 className="w-full text-left text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
-            {t("roadmap.harbour_garden")}
-          </h2>
-
           <PiggyBankSVG
             coins={data.coins}
             previousCoins={prevCoins.current}
             ariaLabel={t("roadmap.garden_aria", { points: Math.max(0, Math.min(60, data.coins)), capacity: 60 })}
           />
+
+          <h2 className="w-full text-left text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
+            {t("roadmap.harbour_garden")}
+          </h2>
 
           {isDev && (
             <div className="flex flex-wrap items-center justify-center gap-1 mt-1">
