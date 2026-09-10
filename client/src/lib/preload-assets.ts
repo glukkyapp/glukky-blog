@@ -52,7 +52,7 @@ import gardenCompleteTree from "@assets/complete-tree_1788972650981.png";
 import gardenFlower1 from "@assets/flower1_1788972650982.png";
 import gardenFlower2 from "@assets/flower2_1788972650982.png";
 import gardenFlower3 from "@assets/flower3_1788972650982.png";
-import gardenFlower4 from "@assets/flower4_1788972650982.png";
+import gardenFlower4 from "@assets/flower4_1789049667502.png";
 import gardenBird from "@assets/bird_1788972650981.png";
 import gardenBench from "@assets/bench_1788972650981.png";
 import gardenLamp from "@assets/lamp_1788972650982.png";

@@ -6,7 +6,7 @@ import completeTree from "@assets/complete-tree_1788972650981.png";
 import flower1 from "@assets/flower1_1788972650982.png";
 import flower2 from "@assets/flower2_1788972650982.png";
 import flower3 from "@assets/flower3_1788972650982.png";
-import flower4 from "@assets/flower4_1788972650982.png";
+import flower4 from "@assets/flower4_1789049667502.png";
 import bird from "@assets/bird_1788972650981.png";
 import bench from "@assets/bench_1788972650981.png";
 import lamp from "@assets/lamp_1788972650982.png";
