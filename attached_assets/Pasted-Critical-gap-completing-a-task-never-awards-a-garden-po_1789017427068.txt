@@ -1,0 +1,30 @@
+Critical gap: completing a task never awards a garden point
+completeDailyTask writes only to daily_task_completions. Nowhere in routes G/H is awardPiggyBankCoin (or equivalent) called, and nowhere does piggyBankCoins get incremented. As written, checking a box records that a task was chosen, but the Harbour Garden balance never moves — the entire premise of daily wins feeding the garden is not implemented, only the UI/persistence half is.
+
+Fix: inside POST /api/daily-task/complete, after storage.completeDailyTask succeeds with inserted truthy (first-writer wins), call the existing generalized award function with eventType: "daily_win" and an event key like daily_win_<localDate> scoped to the user. If inserted is falsy (a concurrent duplicate), skip the award — the first request already claimed it. Ideally the completion insert and the award insert happen in the same database transaction so a task can never be marked done without the point landing, or vice versa.
+
+Client-side gap: garden doesn't refresh after completion
+completeMutation.onSuccess invalidates only ["/api/daily-task"]. Once the award is wired in, the mutation must also invalidate ["/api/piggybank"], or the garden will keep showing the old balance until some unrelated refetch happens.
+
+ts
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ["/api/daily-task"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
+},
+Minor points
+isPointIncrease compares clamped points against raw previousCoins. If previousCoins can exceed 60 for any reason, this comparison could misfire. Clamp both sides the same way before comparing, for robustness.
+
+The rotation formula cycles through only 4 distinct configurations (one per weekday-independent day-offset), since localDateOrdinal % 4 repeats every 4 days. That's fine for an MVP but worth noting as a known limitation, not a bug — a longer-period rotation could be added later if repetition becomes noticeable to users.
+
+The locale JSON snippet shows flat keys (daily_tasks_heading, etc.) while the component calls t("home.daily_tasks_heading"). Whether these need to be nested under a "home" object depends on the real file structure, which isn't verifiable here — confirm the actual nesting in en.json/zh-Hant.json/yue.json before merging, rather than assuming the flat snippet is correct as shown.
+
+Test list additions
+The existing 16 test cases are thorough for animation and rotation/persistence, but add:
+
+Completing a daily task increases the piggy-bank balance by exactly 1.
+
+The award respects the existing 60-point cap (completing a task at balance 60 awards 0).
+
+Only the first of two concurrent completion requests awards a point; the second records no additional award.
+
+Completing a task invalidates and refreshes the garden's displayed balance.
