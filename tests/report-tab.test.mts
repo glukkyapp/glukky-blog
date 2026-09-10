@@ -84,13 +84,13 @@ check("Home no longer renders FoodSnap or Report action buttons",
 check("Home greeting no longer imports or renders the decorative gift image",
   !homeSource.includes("img-gift-greeting") &&
   !homeSource.includes("35789ab2-a5d2-4ca4-b0e5-6ac1d9fc5241_removalai_preview_1776612834467.png"));
-check("Home keeps the focused HStix, suggestion, piggy bank, greeting, and goal experiences",
+check("Home keeps the focused HStix, suggestion, piggy bank, and greeting while hiding the goal reminder",
   homeSource.includes("button-home-hstix-record") &&
   homeSource.includes("button-home-hstix-change") &&
   homeSource.includes("button-meal-suggestion") &&
   homeSource.includes("<PiggyBankCard") &&
   homeSource.includes('data-testid="text-greeting"') &&
-  homeSource.includes('data-testid="text-goal-reminder"'));
+  !homeSource.includes('data-testid="text-goal-reminder"'));
 
 console.log("\nTwo-month retention");
 check(
