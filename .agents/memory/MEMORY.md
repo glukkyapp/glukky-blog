@@ -13,3 +13,4 @@
 - [Multi-stage AI trust boundaries](multi-stage-ai-trust-boundaries.md) — prompt hardening must include downstream model calls and persistence edges, not only headline responses.
 - [OneSignal identity ordering](onesignal-identity-ordering.md) — timed-out identity commands require an ordered compensating remove before any new association.
 - [Server test import side effects](server-test-import-side-effects.md) — importing broad server singletons can boot the app; isolate data access for database-backed tests.
+- [Piggy-bank ledger uniqueness](piggy-bank-ledger-uniqueness.md) — preserve legacy duplicate history; enforce uniqueness only for current namespaced award keys.

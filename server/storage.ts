@@ -425,9 +425,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<boolean> {
       const [event] = await tx.insert(piggyBankEvents)
         .values({ userId, achievementType, coinsAwarded: 1, description })
-        .onConflictDoNothing({
-          target: [piggyBankEvents.userId, piggyBankEvents.achievementType],
-        })
+        .onConflictDoNothing()
         .returning();
       if (!event) return false;
 

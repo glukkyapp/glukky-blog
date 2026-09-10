@@ -10,7 +10,7 @@ const [user] = await db.select({ id: users.id }).from(users).where(eq(users.emai
 assert.ok(user, "Run tests/harbour-garden-api.spec.ts first to create the test user");
 
 const userId = user.id;
-const prefix = "atomic_harbour_";
+const prefix = "snap_atomic_harbour_";
 
 async function balance() {
   const [profile] = await db.select({ coins: userProfiles.piggyBankCoins })

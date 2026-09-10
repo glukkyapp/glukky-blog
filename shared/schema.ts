@@ -131,7 +131,7 @@ export const piggyBankEvents = pgTable("piggy_bank_events", {
   userAchievementUniq: uniqueIndex("piggy_bank_events_user_achievement_uniq").on(
     table.userId,
     table.achievementType,
-  ),
+  ).where(sql`${table.achievementType} ~ '^(snap_|hstix_|daily_win_)'`),
 }));
 
 export type InsertPiggyBankEvent = typeof piggyBankEvents.$inferInsert;
