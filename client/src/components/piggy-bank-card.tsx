@@ -110,6 +110,7 @@ export function PiggyBankCard({ data, isDev }: {
 
           <PiggyBankSVG
             coins={data.coins}
+            previousCoins={prevCoins.current}
             ariaLabel={t("roadmap.garden_aria", { points: Math.max(0, Math.min(60, data.coins)), capacity: 60 })}
           />
 

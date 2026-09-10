@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
+import { DailyTaskCard } from "@/components/daily-task-card";
 import type { UserProfile } from "@shared/schema";
 
 type CorrectableHstixReading = {
@@ -187,6 +188,7 @@ export default function Home() {
       )}
 
       {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
+      <DailyTaskCard />
 
       <section aria-label={t("glucose.hstix_heading")} data-testid="section-home-hstix">
         {correctableHstixReading ? (

@@ -151,7 +151,13 @@
     "meal_suggestion_your_pick": "You tried this before — your glucose stayed low",
     "meal_suggestion_list_breakfast": "A gentle start — lower in sugar than typical breakfast choices",
     "meal_suggestion_list_lunch": "A balanced lunch to keep your afternoon steady",
-    "meal_suggestion_list_dinner": "A lighter evening choice — easier on your blood sugar overnight"
+    "meal_suggestion_list_dinner": "A lighter evening choice — easier on your blood sugar overnight",
+    "daily_tasks_heading": "Today's small win",
+    "daily_task_post_meal_walk": "10-minute walk after a meal",
+    "daily_task_unsweetened_drink": "Water or unsweetened drink",
+    "daily_task_vegetable_dish": "Add a vegetable dish",
+    "daily_task_regular_mealtime": "Regular mealtime",
+    "daily_task_good_job": "Good job!"
   },
   "mitigation": {
     "fiber_starter_label": "Fiber Starter",

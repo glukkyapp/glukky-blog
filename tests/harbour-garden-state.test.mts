@@ -3,6 +3,8 @@ import {
   clampGardenPoints,
   getGardenLayerKeys,
   getGardenTree,
+  getNewGardenVisualLayerKeys,
+  getGardenVisualLayerKeys,
   isGardenComplete,
   renderOrder,
 } from "../client/src/components/harbour-garden-state";
@@ -41,5 +43,13 @@ assert.equal(isGardenComplete(60), true);
 assert.equal(isGardenComplete(61), true);
 assert.deepEqual(getGardenLayerKeys(59), [...renderOrder]);
 assert.deepEqual(getGardenLayerKeys(61), [...renderOrder]);
+assert.deepEqual(getNewGardenVisualLayerKeys(0, 0), []);
+assert.deepEqual(getNewGardenVisualLayerKeys(0, 1), ["tree:seedling"]);
+assert.deepEqual(getNewGardenVisualLayerKeys(5, 7), ["tree:small-tree"]);
+assert.deepEqual(getNewGardenVisualLayerKeys(7, 11), ["flower2"]);
+assert.deepEqual(getNewGardenVisualLayerKeys(60, 61), []);
+assert.deepEqual(getNewGardenVisualLayerKeys(-10, 1), ["tree:seedling"]);
+assert.deepEqual(getNewGardenVisualLayerKeys(11, 7), []);
+assert.ok(getGardenVisualLayerKeys(16).includes("tree:young-tree"));
 
 console.log("Harbour Garden thresholds and render order passed");

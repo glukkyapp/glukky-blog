@@ -70,7 +70,8 @@ import {
 } from "./glucose-patterns";
 import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
-import { awardHstixCoin, awardSnapCoin } from "./achievements";
+import { awardHstixCoin, awardSnapCoin, completeDailyWin } from "./achievements";
+import { getDailyTaskRotation, isDailyTaskId } from "./daily-tasks";
 import { buildTwoMonthReport, getLatestTwoCompletedMonths } from "./two-month-report";
 import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 import { parseFoodNameTranslations, wrapUntrustedPromptData } from "./prompt-isolation";
@@ -1146,6 +1147,49 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching piggy bank:", error);
       return res.status(500).json({ message: "Failed to fetch piggy bank" });
+    }
+  });
+
+  app.get("/api/daily-task", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const localDate = getLocalDate(profile.deviceTimezone);
+      const completion = await storage.getDailyTaskCompletion(userId, localDate);
+      return res.json({
+        localDate,
+        tasks: getDailyTaskRotation(userId, localDate),
+        completedTaskId: completion?.taskId ?? null,
+      });
+    } catch (error) {
+      console.error("Error fetching daily task:", error);
+      return res.status(500).json({ message: "Failed to fetch daily task" });
+    }
+  });
+
+  app.post("/api/daily-task", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const localDate = getLocalDate(profile.deviceTimezone);
+      const taskId = req.body?.taskId;
+      const offeredTasks = getDailyTaskRotation(userId, localDate);
+      if (!isDailyTaskId(taskId) || !offeredTasks.includes(taskId)) {
+        return res.status(400).json({ message: "Invalid daily task" });
+      }
+      const result = await completeDailyWin(userId, localDate, taskId);
+      return res.json({
+        localDate,
+        tasks: offeredTasks,
+        completedTaskId: result.completion.taskId,
+        awarded: result.awarded,
+        alreadyCompleted: result.alreadyCompleted,
+      });
+    } catch (error) {
+      console.error("Error completing daily task:", error);
+      return res.status(500).json({ message: "Failed to complete daily task" });
     }
   });
 

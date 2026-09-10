@@ -151,7 +151,13 @@
     "meal_suggestion_your_pick": "你之前吃過這個，血糖反應很好",
     "meal_suggestion_list_breakfast": "低糖早餐之選，幫助穩定早上血糖",
     "meal_suggestion_list_lunch": "均衡午餐，有助下午血糖平穩",
-    "meal_suggestion_list_dinner": "清淡晚餐之選，有助夜間血糖平穩"
+    "meal_suggestion_list_dinner": "清淡晚餐之選，有助夜間血糖平穩",
+    "daily_tasks_heading": "今天的小勝利",
+    "daily_task_post_meal_walk": "飯後散步10分鐘",
+    "daily_task_unsweetened_drink": "喝水或無糖飲品",
+    "daily_task_vegetable_dish": "加一道蔬菜",
+    "daily_task_regular_mealtime": "定時用餐",
+    "daily_task_good_job": "做得好！"
   },
   "mitigation": {
     "fiber_starter_label": "纖維優先",

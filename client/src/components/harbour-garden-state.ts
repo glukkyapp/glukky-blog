@@ -46,3 +46,18 @@ export function getGardenLayerKeys(points: number): GardenLayer[] {
     return threshold === undefined || clamped >= threshold;
   });
 }
+
+export function getGardenVisualLayerKeys(points: number): string[] {
+  const tree = getGardenTree(points);
+  return getGardenLayerKeys(points).map((key) =>
+    key === "tree" && tree ? `tree:${tree}` : key
+  );
+}
+
+export function getNewGardenVisualLayerKeys(previousPoints: number, currentPoints: number): string[] {
+  const previous = clampGardenPoints(previousPoints);
+  const current = clampGardenPoints(currentPoints);
+  if (current <= previous) return [];
+  const previousKeys = new Set(getGardenVisualLayerKeys(previous));
+  return getGardenVisualLayerKeys(current).filter((key) => !previousKeys.has(key));
+}

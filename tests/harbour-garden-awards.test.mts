@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq, like, or } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { storage } from "../server/storage";
-import { piggyBankEvents, userProfiles, users } from "../shared/schema";
+import { dailyTaskCompletions, piggyBankEvents, userProfiles, users } from "../shared/schema";
+import { createPiggyBankAward } from "../server/achievements";
 
 const email = "test-harbour-garden@glukky.test";
 const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
@@ -18,9 +19,14 @@ async function balance() {
 }
 
 async function reset(coins: number) {
+  await db.delete(dailyTaskCompletions).where(eq(dailyTaskCompletions.userId, userId));
   await db.delete(piggyBankEvents).where(and(
     eq(piggyBankEvents.userId, userId),
-    like(piggyBankEvents.achievementType, `${prefix}%`),
+    or(
+      like(piggyBankEvents.achievementType, `${prefix}%`),
+      eq(piggyBankEvents.achievementType, "daily_win_2099-01-01"),
+      eq(piggyBankEvents.achievementType, "daily_win_2099-01-02"),
+    ),
   ));
   await storage.setPiggyBankCoinsForDevelopment(userId, coins);
 }
@@ -46,6 +52,34 @@ try {
   assert.equal(blocked, false);
   const atCapEvent = await storage.getPiggyBankEvent(userId, `${prefix}at-cap`);
   assert.equal(atCapEvent, undefined);
+
+  await reset(0);
+  const dailyDate = "2099-01-01";
+  const dailyAward = createPiggyBankAward("daily_win", dailyDate);
+  const dailyRace = await Promise.all([
+    storage.completeDailyTaskAndAward({
+      userId, localDate: dailyDate, taskId: "post_meal_walk", award: dailyAward,
+    }),
+    storage.completeDailyTaskAndAward({
+      userId, localDate: dailyDate, taskId: "vegetable_dish", award: dailyAward,
+    }),
+  ]);
+  assert.deepEqual(dailyRace.map(result => result.awarded).sort(), [0, 1]);
+  assert.equal(new Set(dailyRace.map(result => result.completion.taskId)).size, 1);
+  assert.equal(await balance(), 1);
+  assert.ok(await storage.getPiggyBankEvent(userId, "daily_win_2099-01-01"));
+
+  await reset(60);
+  const cappedDate = "2099-01-02";
+  const capped = await storage.completeDailyTaskAndAward({
+    userId,
+    localDate: cappedDate,
+    taskId: "regular_mealtime",
+    award: createPiggyBankAward("daily_win", cappedDate),
+  });
+  assert.equal(capped.awarded, 0);
+  assert.equal(capped.completion.taskId, "regular_mealtime");
+  assert.equal(await storage.getPiggyBankEvent(userId, "daily_win_2099-01-02"), undefined);
 
   console.log("Harbour Garden atomic award safeguards passed");
 } finally {

@@ -8,6 +8,18 @@ import { pool } from "./db";
  */
 const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) => Promise<void> }> = [
   {
+    name: "daily_task_completions.create",
+    sql: `CREATE TABLE IF NOT EXISTS daily_task_completions (
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      local_date DATE NOT NULL,
+      task_id VARCHAR(32) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS daily_task_completions_user_date_uniq
+      ON daily_task_completions (user_id, local_date)`,
+  },
+  {
     name: "piggy_bank_events.user_achievement_unique",
     sql: `DELETE FROM piggy_bank_events a
           USING piggy_bank_events b

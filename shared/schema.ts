@@ -136,6 +136,21 @@ export const piggyBankEvents = pgTable("piggy_bank_events", {
 
 export type InsertPiggyBankEvent = typeof piggyBankEvents.$inferInsert;
 export type PiggyBankEvent = typeof piggyBankEvents.$inferSelect;
+
+export const dailyTaskCompletions = pgTable("daily_task_completions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull(),
+  localDate: date("local_date", { mode: "string" }).notNull(),
+  taskId: varchar("task_id", { length: 32 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userDateUniq: uniqueIndex("daily_task_completions_user_date_uniq").on(
+    table.userId,
+    table.localDate,
+  ),
+}));
+
+export type DailyTaskCompletion = typeof dailyTaskCompletions.$inferSelect;
 export const ingredientVocabulary = pgTable("ingredient_vocabulary", {
   id: serial("id").primaryKey(),
   internalId: varchar("internal_id").unique().notNull(),

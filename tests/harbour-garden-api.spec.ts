@@ -61,4 +61,62 @@ test.describe("Harbour Garden API safeguards", () => {
     const garden = await request.get(`${BASE}/api/piggybank`);
     expect((await garden.json()).coins).toBe(60);
   });
+
+  test("daily task completion persists and awards the shared balance once", async ({ request }) => {
+    const initial = await request.get(`${BASE}/api/daily-task`);
+    expect(initial.status()).toBe(200);
+    const state = await initial.json();
+    expect(state.tasks).toHaveLength(3);
+    expect(new Set(state.tasks).size).toBe(3);
+    expect(state.completedTaskId).toBeNull();
+
+    const selected = state.tasks[0];
+    const complete = await request.post(`${BASE}/api/daily-task`, { data: { taskId: selected } });
+    expect(complete.status()).toBe(200);
+    expect(await complete.json()).toMatchObject({
+      completedTaskId: selected,
+      awarded: 1,
+      alreadyCompleted: false,
+    });
+    expect((await (await request.get(`${BASE}/api/piggybank`)).json()).coins).toBe(1);
+
+    const duplicate = await request.post(`${BASE}/api/daily-task`, { data: { taskId: selected } });
+    expect(duplicate.status()).toBe(200);
+    expect(await duplicate.json()).toMatchObject({
+      completedTaskId: selected,
+      awarded: 0,
+      alreadyCompleted: true,
+    });
+    expect((await (await request.get(`${BASE}/api/piggybank`)).json()).coins).toBe(1);
+
+    const reload = await request.get(`${BASE}/api/daily-task`);
+    expect(await reload.json()).toMatchObject({ completedTaskId: selected });
+  });
+
+  test("daily completion at capacity persists without a ledger award", async ({ request }) => {
+    expect((await request.post(`${BASE}/api/dev/set-coins`, { data: { coins: 60 } })).status()).toBe(200);
+    const state = await (await request.get(`${BASE}/api/daily-task`)).json();
+    const complete = await request.post(`${BASE}/api/daily-task`, { data: { taskId: state.tasks[0] } });
+    expect(complete.status()).toBe(200);
+    expect(await complete.json()).toMatchObject({
+      completedTaskId: state.tasks[0],
+      awarded: 0,
+      alreadyCompleted: false,
+    });
+    expect((await (await request.get(`${BASE}/api/piggybank`)).json()).coins).toBe(60);
+  });
+
+  test("concurrent daily completions cannot award twice or replace the winner", async ({ request }) => {
+    const state = await (await request.get(`${BASE}/api/daily-task`)).json();
+    const [first, second] = await Promise.all([
+      request.post(`${BASE}/api/daily-task`, { data: { taskId: state.tasks[0] } }),
+      request.post(`${BASE}/api/daily-task`, { data: { taskId: state.tasks[1] } }),
+    ]);
+    expect(first.status()).toBe(200);
+    expect(second.status()).toBe(200);
+    const results = [await first.json(), await second.json()];
+    expect(results.map((result) => result.awarded).sort()).toEqual([0, 1]);
+    expect(new Set(results.map((result) => result.completedTaskId)).size).toBe(1);
+    expect((await (await request.get(`${BASE}/api/piggybank`)).json()).coins).toBe(1);
+  });
 });

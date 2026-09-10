@@ -11,10 +11,12 @@ import bird from "@assets/bird_1788972650981.png";
 import bench from "@assets/bench_1788972650981.png";
 import lamp from "@assets/lamp_1788972650982.png";
 import ferry from "@assets/ferry_1788972650982.png";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   clampGardenPoints,
   getGardenLayerKeys,
   getGardenTree,
+  getNewGardenVisualLayerKeys,
   renderOrder,
   type GardenLayer,
   type GardenTree,
@@ -25,6 +27,7 @@ export type { GardenLayer, GardenTree };
 
 interface Props {
   coins: number;
+  previousCoins?: number;
   className?: string;
   ariaLabel?: string;
 }
@@ -48,16 +51,16 @@ const treeSources: Record<GardenTree, string> = {
   "complete-tree": completeTree,
 };
 
-export function getGardenLayers(coins: number): Array<{ key: GardenLayer; src: string }> {
+export function getGardenLayers(coins: number): Array<{ key: GardenLayer; visualKey: string; src: string }> {
   const selectedTree = getGardenTree(coins);
-  const layers: Array<{ key: GardenLayer; src: string }> = [];
+  const layers: Array<{ key: GardenLayer; visualKey: string; src: string }> = [];
   for (const key of getGardenLayerKeys(coins)) {
     if (key === "tree") {
-      if (selectedTree) layers.push({ key, src: treeSources[selectedTree] });
+      if (selectedTree) layers.push({ key, visualKey: `tree:${selectedTree}`, src: treeSources[selectedTree] });
       continue;
     }
     const src = staticSources[key];
-    if (src) layers.push({ key, src });
+    if (src) layers.push({ key, visualKey: key, src });
   }
   return layers;
 }
@@ -72,24 +75,30 @@ export function PiggyBankPreloader() {
   );
 }
 
-export function PiggyBankSVG({ coins, className, ariaLabel }: Props) {
+export function PiggyBankSVG({ coins, previousCoins = coins, className, ariaLabel }: Props) {
   const points = clampGardenPoints(coins);
+  const reduceMotion = useReducedMotion();
+  const newLayerKeys = new Set(getNewGardenVisualLayerKeys(previousCoins, points));
   return (
     <div
-      className={`relative w-full overflow-hidden ${className ?? ""}`}
-      style={{ aspectRatio: "1376 / 768" }}
+      className={`relative w-full overflow-hidden rounded-2xl ${className ?? ""}`}
+      style={{ aspectRatio: "1376 / 768", boxShadow: "0 8px 24px rgba(36, 74, 47, 0.16)" }}
       role="img"
       aria-label={ariaLabel ?? `Harbour Garden, ${points} of 60 garden points`}
       data-testid="harbour-garden"
     >
-      {getGardenLayers(points).map(({ key, src }) => (
-        <img
-          key={key}
+      {getGardenLayers(points).map(({ key, visualKey, src }) => (
+        <motion.img
+          key={visualKey}
           src={src}
           alt=""
           draggable={false}
           data-garden-layer={key}
+          data-garden-visual-layer={visualKey}
           className="absolute inset-0 h-full w-full object-contain"
+          initial={newLayerKeys.has(visualKey) && !reduceMotion ? { opacity: 0, y: 8 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
         />
       ))}
     </div>

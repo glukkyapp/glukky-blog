@@ -1,6 +1,7 @@
 import {
   type UserProfile, type InsertUserProfile,
   type PiggyBankEvent, type InsertPiggyBankEvent,
+  type DailyTaskCompletion,
   type IngredientVocabulary, type InsertIngredientVocabulary,
   type FoodLabel, type InsertFoodLabel,
   type FoodAdviceCache,
@@ -16,6 +17,7 @@ import {
   userProfiles,
   doctorInfo,
   piggyBankEvents,
+  dailyTaskCompletions,
   ingredientVocabulary, foodLabels, foodAdviceCache, foodGiEntries, foodComponents, foodComponentTerms,
   scheduledNotifications,
   mealSnaps, hstixReadings, snapReportMealFacts, snapReportUserMetadata,
@@ -42,6 +44,20 @@ import {
   markFoodGiUnavailable as markFoodGiUnavailableWithDb,
 } from "./gi-resolution-storage";
 import { createFoodComponentId, normalizeFoodTerm, unresolvedFoodComponent } from "./food-catalog";
+import type { PiggyBankAwardDescriptor } from "./achievements";
+
+export interface CompleteDailyTaskAndAwardInput {
+  userId: string;
+  localDate: string;
+  taskId: string;
+  award: PiggyBankAwardDescriptor;
+}
+
+export interface DailyTaskAwardResult {
+  completion: DailyTaskCompletion;
+  awarded: number;
+  alreadyCompleted: boolean;
+}
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -54,6 +70,8 @@ export interface IStorage {
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
   addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
   awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean>;
+  getDailyTaskCompletion(userId: string, localDate: string): Promise<DailyTaskCompletion | undefined>;
+  completeDailyTaskAndAward(input: CompleteDailyTaskAndAwardInput): Promise<DailyTaskAwardResult>;
   setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
   claimPiggyBank(userId: string): Promise<UserProfile | undefined>;
@@ -395,6 +413,16 @@ export class DatabaseStorage implements IStorage {
 
   async awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean> {
     return db.transaction(async (tx) => {
+      return this.awardPiggyBankCoinInTransaction(tx, userId, achievementType, description);
+    });
+  }
+
+  private async awardPiggyBankCoinInTransaction(
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+    userId: string,
+    achievementType: string,
+    description: string,
+  ): Promise<boolean> {
       const [event] = await tx.insert(piggyBankEvents)
         .values({ userId, achievementType, coinsAwarded: 1, description })
         .onConflictDoNothing({
@@ -415,6 +443,49 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       return true;
+  }
+
+  async getDailyTaskCompletion(userId: string, localDate: string): Promise<DailyTaskCompletion | undefined> {
+    const [completion] = await db.select().from(dailyTaskCompletions)
+      .where(and(
+        eq(dailyTaskCompletions.userId, userId),
+        eq(dailyTaskCompletions.localDate, localDate),
+      ))
+      .limit(1);
+    return completion;
+  }
+
+  async completeDailyTaskAndAward(input: CompleteDailyTaskAndAwardInput): Promise<DailyTaskAwardResult> {
+    return db.transaction(async (tx) => {
+      const [inserted] = await tx.insert(dailyTaskCompletions)
+        .values({
+          userId: input.userId,
+          localDate: input.localDate,
+          taskId: input.taskId,
+        })
+        .onConflictDoNothing({
+          target: [dailyTaskCompletions.userId, dailyTaskCompletions.localDate],
+        })
+        .returning();
+
+      if (!inserted) {
+        const [completion] = await tx.select().from(dailyTaskCompletions)
+          .where(and(
+            eq(dailyTaskCompletions.userId, input.userId),
+            eq(dailyTaskCompletions.localDate, input.localDate),
+          ))
+          .limit(1);
+        if (!completion) throw new Error("Daily task completion conflict could not be resolved");
+        return { completion, awarded: 0, alreadyCompleted: true };
+      }
+
+      const awarded = await this.awardPiggyBankCoinInTransaction(
+        tx,
+        input.userId,
+        input.award.eventKey,
+        input.award.description,
+      );
+      return { completion: inserted, awarded: awarded ? 1 : 0, alreadyCompleted: false };
     });
   }
 
@@ -463,21 +534,24 @@ export class DatabaseStorage implements IStorage {
       }));
       await this.writeHealthHistory("profile", entries);
     }
-    await db.update(userProfiles).set({
-      name: null,
-      goal: null,
-      hba1cLevel: null,
-      bloodTestDate: null,
-      onboardingComplete: false,
-      hasTriedFirstFoodSnap: false,
-      hasReachedPaywall: false,
-      hardLockedAfterAdviceDismiss: false,
-      isPremium: false,
-      piggyBankCoins: 0,
-      piggyBankReward: null,
-      piggyBankNeedsRewardSetup: true,
-    }).where(eq(userProfiles.userId, userId));
-    await db.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
+    await db.transaction(async (tx) => {
+      await tx.update(userProfiles).set({
+        name: null,
+        goal: null,
+        hba1cLevel: null,
+        bloodTestDate: null,
+        onboardingComplete: false,
+        hasTriedFirstFoodSnap: false,
+        hasReachedPaywall: false,
+        hardLockedAfterAdviceDismiss: false,
+        isPremium: false,
+        piggyBankCoins: 0,
+        piggyBankReward: null,
+        piggyBankNeedsRewardSetup: true,
+      }).where(eq(userProfiles.userId, userId));
+      await tx.delete(dailyTaskCompletions).where(eq(dailyTaskCompletions.userId, userId));
+      await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.userId, userId));
+    });
   }
 
   async deleteUserCompletely(userId: string): Promise<Record<string, number>> {
@@ -630,6 +704,7 @@ export class DatabaseStorage implements IStorage {
       await tx.execute(sql`DELETE FROM weekly_reports WHERE user_id = ${userId}`);
       await tx.execute(sql`DELETE FROM monthly_reports WHERE user_id = ${userId}`);
       await tx.execute(sql`DELETE FROM cycle_history WHERE user_id = ${userId}`);
+      await tx.execute(sql`DELETE FROM daily_task_completions WHERE user_id = ${userId}`);
       await tx.execute(sql`DELETE FROM piggy_bank_events WHERE user_id = ${userId}`);
 
       // Cancel any pre-scheduled push notifications. Without this,
