@@ -110,7 +110,7 @@ export function PiggyBankCard({ data, isDev }: {
             ariaLabel={t("roadmap.garden_aria", { points: Math.max(0, Math.min(60, data.coins)), capacity: 60 })}
           />
 
-          <h2 className="w-full text-left font-bold" style={{ color: "var(--brand-ink)", fontSize: "12.6px" }}>
+          <h2 className="w-full py-2 text-left font-bold" style={{ color: "var(--brand-ink)", fontSize: "17px" }}>
             {t("roadmap.harbour_garden")}
           </h2>
 
