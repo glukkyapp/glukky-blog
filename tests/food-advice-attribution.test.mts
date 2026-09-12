@@ -85,22 +85,25 @@ const directFalseEnglish = sanitizeAdviceAttribution(
   "Blood sugar impact: Medium\nWatch out: egg --> concentrated starch；tofu --> high GI\nRight now: 3",
   attributionContext,
 );
-assert.equal(directFalseEnglish.removedRows, 2);
-assert.doesNotMatch(directFalseEnglish.advice, /Watch out:/);
+assert.equal(directFalseEnglish.removedRows, 0);
+assert.match(directFalseEnglish.advice, /egg --> concentrated starch/);
+assert.match(directFalseEnglish.advice, /tofu --> high GI/);
 
 const directFalseTraditional = sanitizeAdviceAttribution(
   "血糖影響: 中\n注意：雞蛋 --> 澱粉集中；豆腐 --> 高升糖指數\n現在: 3",
   attributionContext,
 );
-assert.equal(directFalseTraditional.removedRows, 2);
-assert.doesNotMatch(directFalseTraditional.advice, /注意：/);
+assert.equal(directFalseTraditional.removedRows, 0);
+assert.match(directFalseTraditional.advice, /雞蛋 --> 澱粉集中/);
+assert.match(directFalseTraditional.advice, /豆腐 --> 高升糖指數/);
 
 const directFalseCantonese = sanitizeAdviceAttribution(
   "血糖影響: 中\n注意：雞蛋 --> 高碳水；豆腐 --> 血糖急升\n依家: 3",
   attributionContext,
 );
-assert.equal(directFalseCantonese.removedRows, 2);
-assert.doesNotMatch(directFalseCantonese.advice, /注意：/);
+assert.equal(directFalseCantonese.removedRows, 0);
+assert.match(directFalseCantonese.advice, /雞蛋 --> 高碳水/);
+assert.match(directFalseCantonese.advice, /豆腐 --> 血糖急升/);
 
 const supportedDirectClaims = sanitizeAdviceAttribution(
   "Blood sugar impact: Medium\nWatch out: white rice --> concentrated starch；sweetened yogurt --> added sugar\nRight now: 3",
@@ -145,7 +148,7 @@ assert.match(prompt, /texture and preparation descriptors as modifiers/);
 assert.match(prompt, /If food identity, preparation, evidence, or portion is uncertain/);
 assert.match(prompt, /Do not state an estimated carbohydrate amount, total carbohydrate burden, or glycaemic-load value without sufficient portion and composition information/);
 assert.match(prompt, /Mixed-meal effects may be considered conservatively/);
-assert.match(prompt, /select EXACTLY ONE action from 1, 3, or 5/);
+assert.match(prompt, /select EXACTLY ONE action from 1 through 6/);
 assert.match(prompt, /select EXACTLY TWO actions/);
 assert.match(prompt, /At least one selected High-impact action must be 2 or 4/);
 assert.doesNotMatch(prompt, /\bglycemic\b/i);

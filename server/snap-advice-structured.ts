@@ -413,7 +413,6 @@ const ATTRIBUTION_STOP_WORDS = new Set([
 type AttributionComponent = {
   id: string;
   aliases: string[];
-  directGlycaemicClaimsAllowed: boolean;
 };
 
 export type AdviceAttributionContext = {
@@ -443,12 +442,6 @@ function splitConfirmedComponents(value?: string | null): string[] {
     .filter(Boolean);
 }
 
-const EXPLICIT_CARBOHYDRATE_IDENTITY_PATTERN =
-  /\b(?:sweetened|sugared|sugar|syrup|honey|milk|yogurt|yoghurt)\b|(?:加糖|含糖|甜|糖漿|蜜糖|奶|乳酪)/i;
-
-const DIRECT_GLYCAEMIC_RISK_PATTERN =
-  /\b(?:starch|carb(?:ohydrate)?s?|glyc(?:emic|aemic)|gi|blood\s+sugar|glucose|sugar|spike)\b|(?:澱粉|碳水|升糖|血糖|糖分|糖份|糖)/i;
-
 function buildAttributionComponents(context: AdviceAttributionContext): AttributionComponent[] {
   const foodComponents = context.foodItems.map((item, index) => {
     const aliases = new Set([
@@ -456,15 +449,9 @@ function buildAttributionComponents(context: AdviceAttributionContext): Attribut
       ...aliasesFromName(item.nameZhHant),
       ...aliasesFromName(item.nameYue),
     ]);
-    const identityText = `${item.nameEn} ${item.nameZhHant} ${item.nameYue}`;
     return {
       id: `food-${index}`,
       aliases: [...aliases],
-      directGlycaemicClaimsAllowed:
-        item.isCarb ||
-        item.isSweet === true ||
-        item.sweetCategory != null ||
-        EXPLICIT_CARBOHYDRATE_IDENTITY_PATTERN.test(identityText),
     };
   });
 
@@ -475,7 +462,6 @@ function buildAttributionComponents(context: AdviceAttributionContext): Attribut
       "sauce", "condiment", "dressing", "gravy", "syrup",
       "醬", "醬汁", "汁", "調味", "糖漿",
     ],
-    directGlycaemicClaimsAllowed: true,
   }));
   return [...foodComponents, ...sauceComponents];
 }
@@ -524,13 +510,9 @@ export function sanitizeAdviceAttribution(
             component.aliases.some(alias => textContainsAlias(row.risk, alias)),
           )
         : false;
-      const unsupportedDirectClaim =
-        DIRECT_GLYCAEMIC_RISK_PATTERN.test(row.risk) &&
-        owner?.directGlycaemicClaimsAllowed !== true;
       const unsafe =
         AGGREGATE_BURDEN_PATTERN.test(row.risk) ||
-        namesAnotherComponent ||
-        unsupportedDirectClaim;
+        namesAnotherComponent;
       if (unsafe) removedRows += 1;
       return !unsafe;
     });
