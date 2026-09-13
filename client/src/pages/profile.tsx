@@ -460,11 +460,6 @@ function PersonalShortcuts() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
-  const handleShare = () => {
-    track("share_button_tapped");
-    window.natively.shareText("Try this app: https://apps.apple.com/app/your-app-id");
-  };
-
   const shortcuts = [
     { key: "glucose", path: "/hstix", icon: Droplet, label: t("profile.shortcut_glucose") },
     { key: "food", path: "/food-log", icon: Utensils, label: t("profile.shortcut_food_log") },
@@ -488,15 +483,25 @@ function PersonalShortcuts() {
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={handleShare}
-        className="mt-3 w-full rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        data-testid="button-share-app"
-      >
-        分享這個APP給朋友或家人
-      </button>
     </section>
+  );
+}
+
+function ShareAppButton() {
+  const handleShare = () => {
+    track("share_button_tapped");
+    window.natively.shareText("Try this app: https://apps.apple.com/app/your-app-id");
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      className="w-full rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-testid="button-share-app"
+    >
+      分享這個APP給朋友或家人
+    </button>
   );
 }
 
@@ -770,6 +775,7 @@ export default function ProfilePage() {
       <h1 className="text-[26px] font-bold uppercase tracking-wide" data-testid="text-profile-heading">{t("profile.title")}</h1>
 
       <PersonalShortcuts />
+      <ShareAppButton />
 
       {deletionStatus && (
         <div

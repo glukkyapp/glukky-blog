@@ -33,9 +33,19 @@ assert.ok(
   "analytics should be captured before opening the share sheet",
 );
 
+const shortcutsCard = profile.match(
+  /<section className="rounded-2xl border border-border bg-card p-3" data-testid="profile-personal-shortcuts">([\s\S]*?)<\/section>/,
+);
+assert.ok(shortcutsCard, "profile should contain the four-button shortcuts card");
+assert.doesNotMatch(
+  shortcutsCard[1],
+  /data-testid="button-share-app"/,
+  "share button should not be inside the four-button card",
+);
 assert.match(
   profile,
-  /data-testid="profile-personal-shortcuts"[\s\S]*data-testid=\{`profile-shortcut-\$\{key\}`\}[\s\S]*data-testid="button-share-app"/,
+  /<PersonalShortcuts \/>\s*<ShareAppButton \/>/,
+  "share button should render as a sibling after the shortcuts card",
 );
 assert.match(profile, /分享這個APP給朋友或家人/);
 assert.match(
