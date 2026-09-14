@@ -1,0 +1,13 @@
+The current implementation renders 12 separate small tiles in a 3-column grid, each labeled "未解鎖." This is wrong and should be entirely replaced.
+
+What it should be instead: a single photo display that occupies the exact same size and position as the Harbour Garden visual currently does, one image filling that whole area, not a grid of individual tiles. There is only ever one photo visible at a time, exactly like there is only one garden visible at a time.
+
+Progression logic: the currently displayed photo corresponds to how many 5-coin thresholds the user has crossed in this cycle. As coins accumulate and cross each 5-coin threshold, the displayed photo changes from the current one to the next one in the set, replacing the old image entirely rather than revealing an additional tile alongside it.
+
+Transition animation: every time a new threshold is crossed, play a light-based transition, a soft glow or flash that washes across the frame as the old photo fades and the new one settles in. This should feel like a distinct, celebratory moment, comparable in weight and delight to whatever visual change happens on the garden at its own progress steps, not an abrupt cut and not a static grid item silently un-graying.
+
+Before the first threshold: immediately after a user selects photo mode, before they've earned their first 5 coins in that cycle, show a starting/placeholder state in that same full-size display area, something visually intentional (for example, a dimmed or silhouette version of the first photo, or a soft "your first photo unlocks soon" treatment), not a blank grid of 12 empty boxes. This should read as the beginning of a journey, not an empty inventory.
+
+Across the cycle: as coins climb from 0 to 60, the display transitions through the full set (up to 12 photos) one at a time, each new photo replacing the last, with the light-transition animation firing at every 5-coin threshold. At 60 coins, the final photo in the set is what's showing when the claim/reset behavior triggers, matching the existing shared claim/reset logic already defined for both reward modes.
+
+Explicitly remove: the grid layout, the individual "未解鎖" tile labels, the dot-icon placeholders, and any per-tile locked/unlocked state tracking. None of that persists in this design, there is no gallery of thumbnails, only one large image at a time.
