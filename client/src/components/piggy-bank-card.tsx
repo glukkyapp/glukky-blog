@@ -21,6 +21,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { PiggyBankSVG } from "@/components/piggy-bank-svg";
 import { isGardenComplete } from "@/components/harbour-garden-state";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -141,6 +147,7 @@ function PhotoModePanel({
   const reduceMotion = useReducedMotion();
   const unlockedCount = Math.max(0, Math.min(PHOTO_SLOT_COUNT, data.unlockedPhotoCount));
   const photoSet = PHOTO_SET_MANIFEST[data.photoSetIndex] ?? PHOTO_SET_MANIFEST[0];
+  const photoDecade = photoSet.name.match(/\d{4}/)?.[0] ?? photoSet.name;
   const activePhoto = unlockedCount > 0 ? photoSet.photos[unlockedCount - 1] : null;
   const previousProgressRef = useRef<{
     cycleId: number;
@@ -148,6 +155,7 @@ function PhotoModePanel({
     unlockedCount: number;
   } | null>(null);
   const [lightTransition, setLightTransition] = useState(0);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
 
   // Download the complete active set at cycle start so threshold transitions
   // never wait for the next archival image to load.
@@ -186,75 +194,116 @@ function PhotoModePanel({
     };
   }, [data.cycleId, data.photoSetIndex, data.presentationScope, unlockedCount]);
 
+  const photoSurface = (
+    <>
+      <AnimatePresence mode="wait">
+        {activePhoto ? (
+          <motion.img
+            key={activePhoto.id}
+            src={activePhoto.assetUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.025 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
+            transition={{ duration: reduceMotion ? 0.15 : 0.7, ease: "easeOut" }}
+          />
+        ) : (
+          <motion.div
+            key="photo-starting-state"
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <img
+              src={photoSet.photos[0].assetUrl}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-cover opacity-20 blur-[2px] grayscale"
+            />
+            <div className="absolute inset-0 bg-slate-950/45" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+              <p className="text-base font-semibold">{t("roadmap.photo_placeholder_title")}</p>
+              <p className="mt-1 max-w-xs text-sm text-white/80">
+                {t("roadmap.photo_placeholder_description")}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {lightTransition > 0 && !reduceMotion && (
+        <motion.div
+          key={lightTransition}
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: "linear-gradient(110deg, transparent 15%, rgba(255,255,255,0.15) 35%, rgba(255,247,205,0.85) 50%, rgba(255,255,255,0.18) 65%, transparent 85%)",
+          }}
+          initial={{ opacity: 0, x: "-110%" }}
+          animate={{ opacity: [0, 1, 0], x: ["-110%", "0%", "110%"] }}
+          transition={{ duration: 1.05, ease: "easeInOut" }}
+          aria-hidden="true"
+          data-testid="photo-light-transition"
+        />
+      )}
+    </>
+  );
+
+  const surfaceClassName = "relative block w-full overflow-hidden rounded-2xl bg-slate-900";
+  const surfaceStyle = { aspectRatio: "1376 / 768", boxShadow: "0 8px 24px rgba(36, 74, 47, 0.16)" };
+
   return (
     <section className="w-full" aria-labelledby="photo-mode-heading" data-testid="photo-mode-panel">
-      <div
-        className="relative w-full overflow-hidden rounded-2xl bg-slate-900"
-        style={{ aspectRatio: "1376 / 768", boxShadow: "0 8px 24px rgba(36, 74, 47, 0.16)" }}
-        role="img"
-        aria-label={activePhoto
-          ? t("roadmap.photo_display_aria", { current: unlockedCount, total: PHOTO_SLOT_COUNT })
-          : t("roadmap.photo_placeholder_aria")}
-        data-testid="photo-display"
-      >
-        <AnimatePresence mode="wait">
-          {activePhoto ? (
-            <motion.img
-              key={activePhoto.id}
-              src={activePhoto.assetUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.025 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
-              transition={{ duration: reduceMotion ? 0.15 : 0.7, ease: "easeOut" }}
-            />
-          ) : (
-            <motion.div
-              key="photo-starting-state"
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        {activePhoto ? (
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className={`${surfaceClassName} cursor-zoom-in border-0 p-0 text-left`}
+              style={surfaceStyle}
+              aria-label={t("roadmap.photo_expand_aria", { current: unlockedCount, total: PHOTO_SLOT_COUNT })}
+              data-testid="photo-display"
             >
-              <img
-                src={photoSet.photos[0].assetUrl}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover opacity-20 blur-[2px] grayscale"
-              />
-              <div className="absolute inset-0 bg-slate-950/45" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-                <p className="text-base font-semibold">{t("roadmap.photo_placeholder_title")}</p>
-                <p className="mt-1 max-w-xs text-sm text-white/80">
-                  {t("roadmap.photo_placeholder_description")}
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {lightTransition > 0 && !reduceMotion && (
-          <motion.div
-            key={lightTransition}
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: "linear-gradient(110deg, transparent 15%, rgba(255,255,255,0.15) 35%, rgba(255,247,205,0.85) 50%, rgba(255,255,255,0.18) 65%, transparent 85%)",
-            }}
-            initial={{ opacity: 0, x: "-110%" }}
-            animate={{ opacity: [0, 1, 0], x: ["-110%", "0%", "110%"] }}
-            transition={{ duration: 1.05, ease: "easeInOut" }}
-            aria-hidden="true"
-            data-testid="photo-light-transition"
-          />
+              {photoSurface}
+            </button>
+          </DialogTrigger>
+        ) : (
+          <div
+            className={surfaceClassName}
+            style={surfaceStyle}
+            role="img"
+            aria-label={t("roadmap.photo_placeholder_aria")}
+            data-testid="photo-display"
+          >
+            {photoSurface}
+          </div>
         )}
-      </div>
+
+        {activePhoto && (
+          <DialogContent
+            className="max-h-[92vh] max-w-[calc(100vw-2rem)] gap-3 rounded-2xl p-3 sm:max-w-3xl"
+            data-testid="photo-expanded-dialog"
+          >
+            <DialogTitle className="sr-only">{t("roadmap.photo_dialog_title")}</DialogTitle>
+            <img
+              src={activePhoto.assetUrl}
+              alt={t("roadmap.photo_display_aria", { current: unlockedCount, total: PHOTO_SLOT_COUNT })}
+              className="max-h-[75vh] w-full object-contain"
+              data-testid="photo-expanded-image"
+            />
+            <p className="pr-8 text-[10px] leading-relaxed text-muted-foreground" data-testid="photo-expanded-attribution">
+              {t("roadmap.photo_copyright_disclaimer")}
+            </p>
+          </DialogContent>
+        )}
+      </Dialog>
 
       <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground" data-testid="photo-copyright-disclaimer">
         {t("roadmap.photo_copyright_disclaimer")}
       </p>
 
       <h2 id="photo-mode-heading" className="w-full py-2 text-left font-bold" style={{ color: "var(--brand-ink)", fontSize: "17px" }}>
-        {t("roadmap.photo_mode_title")}
+        {t("roadmap.photo_mode_title", { decade: photoDecade })}
       </h2>
       <p className="text-sm leading-snug mb-3" style={{ color: "var(--brand-muted)" }}>
         {t("roadmap.photo_mode_description")}
@@ -271,7 +320,7 @@ function PhotoModePanel({
           </span>
           <span className="text-xs text-muted-foreground">
             {unlockedCount === 0
-              ? t("roadmap.photo_first_unlock_progress", { coins: data.coins })
+              ? t("roadmap.photo_first_unlock_progress", { points: data.coins })
               : t("roadmap.photo_current_number", { current: unlockedCount, total: PHOTO_SLOT_COUNT })}
           </span>
         </div>
@@ -403,10 +452,7 @@ export function PiggyBankCard({ data, isDev }: {
       <div data-testid="card-harbour-garden" className="px-0 pt-2 pb-5">
         <div className="flex flex-col items-center gap-1 relative">
           {data.mode === null ? (
-            <section className="w-full" aria-labelledby="piggy-mode-choice-heading" data-testid="piggy-mode-choice">
-              <h2 id="piggy-mode-choice-heading" className="w-full py-2 text-left font-bold" style={{ color: "var(--brand-ink)", fontSize: "17px" }}>
-                {t("roadmap.choose_mode_title")}
-              </h2>
+            <section className="w-full" data-testid="piggy-mode-choice">
               <div className="flex flex-col gap-2">
                 <Button
                   type="button"

@@ -15,3 +15,4 @@
 - [Server test import side effects](server-test-import-side-effects.md) — importing broad server singletons can boot the app; isolate data access for database-backed tests.
 - [Piggy-bank ledger uniqueness](piggy-bank-ledger-uniqueness.md) — preserve legacy duplicate history; enforce uniqueness only for current namespaced award keys.
 - [Account-scoped presentation state](account-scoped-presentation-state.md) — session presentation keys must include an opaque account scope to prevent cross-login UI state leaks.
+- [Reward popup mode timing](reward-popup-mode-timing.md) — balance and mode arrive from one committed refetch; keep a null-mode guard if optimistic updates are added.

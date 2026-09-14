@@ -4,10 +4,11 @@ import { hapticNotify } from "@/lib/haptics";
 
 interface CoinSavedPopupProps {
   visible: boolean;
+  mode: "garden" | "photo" | null;
   onDismiss: () => void;
 }
 
-export function CoinSavedPopup({ visible, onDismiss }: CoinSavedPopupProps) {
+export function CoinSavedPopup({ visible, mode, onDismiss }: CoinSavedPopupProps) {
   const { t } = useTranslation();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -21,7 +22,7 @@ export function CoinSavedPopup({ visible, onDismiss }: CoinSavedPopupProps) {
     };
   }, [visible, onDismiss]);
 
-  if (!visible) return null;
+  if (!visible || mode === null) return null;
 
   return (
     <div
@@ -58,7 +59,7 @@ export function CoinSavedPopup({ visible, onDismiss }: CoinSavedPopupProps) {
           }}
           data-testid="text-coin-saved-count"
         >
-          {t("popup.garden_grew")}
+          {t(mode === "photo" ? "popup.photo_collection_grew" : "popup.garden_grew")}
         </p>
       </div>
     </div>

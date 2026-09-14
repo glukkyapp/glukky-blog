@@ -117,19 +117,27 @@ function GlobalPiggyBankPopup() {
       return;
     }
     if (piggy.coins > prevCoinsRef.current) {
+      // Awards commit their balance and mode together. Keeping the null guard
+      // also protects this popup if a future optimistic cache update publishes
+      // the new balance before first-point mode assignment has resolved.
+      if (piggy.mode === null) return;
       prevCoinsRef.current = piggy.coins;
       setCoinPopupVisible(true);
     } else {
       prevCoinsRef.current = piggy.coins;
     }
-  }, [piggy?.coins]);
+  }, [piggy?.coins, piggy?.mode]);
 
   const handleCoinPopupDismiss = useCallback(() => {
     setCoinPopupVisible(false);
   }, []);
 
   return (
-    <CoinSavedPopup visible={coinPopupVisible} onDismiss={handleCoinPopupDismiss} />
+    <CoinSavedPopup
+      visible={coinPopupVisible}
+      mode={piggy?.mode ?? null}
+      onDismiss={handleCoinPopupDismiss}
+    />
   );
 }
 
