@@ -1136,13 +1136,30 @@ export async function registerRoutes(
 
   app.get("/api/piggybank", isAuthenticated, async (req: any, res) => {
     try {
-      const profile = await storage.getProfile(req.user.claims.sub);
+      const userId = req.user.claims.sub;
+      const [profile, user] = await Promise.all([
+        storage.getProfile(userId),
+        authStorage.getUser(userId),
+      ]);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const mode = profile.piggyBankMode ?? null;
+      const photoSetIndex = profile.piggyBankPhotoSetIndex;
       return res.json({
         coins: profile.piggyBankCoins,
         capacity: 60,
         gardensCompleted: profile.piggyBankGardensCompleted,
+        cycleId: profile.piggyBankGardensCompleted,
         visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
+        mode,
+        piggyBankMode: mode,
+        modeAutoAssigned: profile.piggyBankModeAutoAssigned,
+        piggyBankModeAutoAssigned: profile.piggyBankModeAutoAssigned,
+        photoSetIndex,
+        piggyBankPhotoSetIndex: photoSetIndex,
+        unlockedPhotoCount: Math.floor(profile.piggyBankCoins / 5),
+        cycle: { mode, photoSetIndex },
+        cycleIdentity: { mode, photoSetIndex },
+        canForceMode: user?.email?.trim().toLowerCase() === "yusycyn@gmail.com",
         reward: profile.piggyBankReward ?? null,
         needsRewardSetup: profile.piggyBankNeedsRewardSetup,
         introSeen: !profile.onboardingComplete ? true : profile.introSeen,
@@ -1200,6 +1217,70 @@ export async function registerRoutes(
     visualSetId: z.literal(CURRENT_GARDEN_VISUAL_SET_ID),
   }).strict();
 
+  const piggyBankModeSchema = z.object({
+    mode: z.enum(["garden", "photo"]),
+  }).strict();
+
+  const piggyBankCanonical = (profile: any) => ({
+    mode: profile?.piggyBankMode ?? null,
+    piggyBankMode: profile?.piggyBankMode ?? null,
+    modeAutoAssigned: profile?.piggyBankModeAutoAssigned ?? false,
+    piggyBankModeAutoAssigned: profile?.piggyBankModeAutoAssigned ?? false,
+    photoSetIndex: profile?.piggyBankPhotoSetIndex ?? 0,
+    piggyBankPhotoSetIndex: profile?.piggyBankPhotoSetIndex ?? 0,
+    unlockedPhotoCount: Math.floor((profile?.piggyBankCoins ?? 0) / 5),
+    cycleId: profile?.piggyBankGardensCompleted ?? 0,
+  });
+
+  // A real user choice is first-write-wins against the first-coin fallback.
+  app.post("/api/piggybank/mode", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = piggyBankModeSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "mode must be garden or photo" });
+      const result = await storage.setPiggyBankMode(req.user.claims.sub, parsed.data.mode);
+      if (!result.profile) return res.status(404).json({ message: "Profile not found" });
+      return res.json({
+        selectedNow: result.selectedNow,
+        coins: result.profile.piggyBankCoins,
+        ...piggyBankCanonical(result.profile),
+      });
+    } catch (error) {
+      console.error("Error selecting piggy bank mode:", error);
+      return res.status(500).json({ message: "Failed to select piggy bank mode" });
+    }
+  });
+
+  const startNewCycle = async (req: any, res: any) => {
+    try {
+      const result = await storage.startNewPiggyBankCycle(req.user.claims.sub);
+      if (!result.started) {
+        if (result.reason === "not_found") return res.status(404).json({ message: "Profile not found" });
+        return res.status(409).json({
+          code: "cycle_not_complete",
+          message: "The current piggy bank cycle is not complete",
+        });
+      }
+      return res.json({
+        started: true,
+        coins: result.profile.piggyBankCoins,
+        capacity: 60,
+        gardensCompleted: result.profile.piggyBankGardensCompleted,
+        visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
+        ...piggyBankCanonical(result.profile),
+      });
+    } catch (error) {
+      console.error("Error starting new piggy bank cycle:", error);
+      return res.status(500).json({ message: "Failed to start a new piggy bank cycle" });
+    }
+  };
+
+  app.post("/api/piggybank/start-new-cycle", isAuthenticated, async (req: any, res) => {
+    if (!z.object({}).strict().safeParse(req.body).success) {
+      return res.status(400).json({ message: "Invalid cycle request" });
+    }
+    return startNewCycle(req, res);
+  });
+
   app.post("/api/piggybank/start-new-garden", isAuthenticated, async (req: any, res) => {
     try {
       const parsed = startNewGardenSchema.safeParse(req.body);
@@ -1207,7 +1288,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid garden visual set" });
       }
 
-      const result = await storage.startNewPiggyBankGarden(req.user.claims.sub);
+      const result = await storage.startNewPiggyBankCycle(req.user.claims.sub);
       if (!result.started) {
         if (result.reason === "not_found") {
           return res.status(404).json({ message: "Profile not found" });
@@ -1224,10 +1305,35 @@ export async function registerRoutes(
         capacity: 60,
         gardensCompleted: result.profile.piggyBankGardensCompleted,
         visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
+        ...piggyBankCanonical(result.profile),
       });
     } catch (error) {
       console.error("Error starting new garden:", error);
       return res.status(500).json({ message: "Failed to start a new garden" });
+    }
+  });
+
+  // QA-only override. This deliberately does not use isDevUser: the exact
+  // production QA account is the only account permitted to force-switch.
+  app.post("/api/piggybank/force-mode", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await authStorage.getUser(userId);
+      if (user?.email?.trim().toLowerCase() !== "yusycyn@gmail.com") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = piggyBankModeSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "mode must be garden or photo" });
+      const result = await storage.setPiggyBankMode(userId, parsed.data.mode, true);
+      if (!result.profile) return res.status(404).json({ message: "Profile not found" });
+      return res.json({
+        selectedNow: result.selectedNow,
+        coins: result.profile.piggyBankCoins,
+        ...piggyBankCanonical(result.profile),
+      });
+    } catch (error) {
+      console.error("Error forcing piggy bank mode:", error);
+      return res.status(500).json({ message: "Failed to force piggy bank mode" });
     }
   });
 

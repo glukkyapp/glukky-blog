@@ -6,6 +6,8 @@ import { z } from "zod";
 export { users, sessions, passwordResetTokens } from "./models/auth";
 export type { User, UpsertUser } from "./models/auth";
 
+export type PiggyBankMode = "garden" | "photo";
+
 export const userProfiles = pgTable("user_profiles", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: varchar("user_id").notNull().unique(),
@@ -25,6 +27,9 @@ export const userProfiles = pgTable("user_profiles", {
   // deliberately independent of the retired weekly-planner progression.
   piggyBankCoins: integer("piggy_bank_coins").notNull().default(0),
   piggyBankGardensCompleted: integer("piggy_bank_gardens_completed").notNull().default(0),
+  piggyBankMode: text("piggy_bank_mode", { enum: ["garden", "photo"] }),
+  piggyBankPhotoSetIndex: integer("piggy_bank_photo_set_index").notNull().default(0),
+  piggyBankModeAutoAssigned: boolean("piggy_bank_mode_auto_assigned").notNull().default(false),
   piggyBankReward: text("piggy_bank_reward"),
   piggyBankNeedsRewardSetup: boolean("piggy_bank_needs_reward_setup").notNull().default(true),
   onesignalPlayerId: text("onesignal_player_id"),

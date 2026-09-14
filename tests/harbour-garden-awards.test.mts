@@ -35,7 +35,13 @@ async function reset(coins: number) {
     ),
   ));
   await db.update(userProfiles)
-    .set({ piggyBankCoins: coins, piggyBankGardensCompleted: 0 })
+    .set({
+      piggyBankCoins: coins,
+      piggyBankGardensCompleted: 0,
+      piggyBankMode: null,
+      piggyBankPhotoSetIndex: 0,
+      piggyBankModeAutoAssigned: false,
+    })
     .where(eq(userProfiles.userId, userId));
 }
 
@@ -47,6 +53,28 @@ try {
   ]);
   assert.deepEqual(duplicate.sort(), [false, true]);
   assert.equal((await balance())?.coins, 59);
+
+  // A manual choice and two simultaneous first-coin writes have one
+  // canonical winner; the fallback never overwrites a manual choice.
+  await reset(0);
+  const modeRace = await Promise.all([
+    storage.setPiggyBankMode(userId, "garden"),
+    storage.setPiggyBankMode(userId, "photo"),
+  ]);
+  assert.deepEqual(modeRace.map(result => result.selectedNow).sort(), [false, true]);
+  const chosenMode = (await storage.getProfile(userId))?.piggyBankMode;
+  assert.ok(chosenMode === "garden" || chosenMode === "photo");
+  const firstCoin = await storage.awardPiggyBankCoinWithMode(userId, `${prefix}mode-race`, "test");
+  assert.equal(firstCoin.autoAssignedNow, false);
+  assert.equal(firstCoin.mode, chosenMode);
+
+  await reset(0);
+  const firstCoinRace = await Promise.all([
+    storage.awardPiggyBankCoinWithMode(userId, `${prefix}first-a`, "test"),
+    storage.awardPiggyBankCoinWithMode(userId, `${prefix}first-b`, "test"),
+  ]);
+  assert.equal(firstCoinRace.filter(result => result.autoAssignedNow).length, 1);
+  assert.ok(firstCoinRace.every(result => result.mode === "garden" || result.mode === "photo"));
 
   await reset(59);
   const capacityRace = await Promise.all([
@@ -131,6 +159,14 @@ try {
   assert.equal(repeatedDaily.awarded, 0);
   assert.equal(repeatedDaily.alreadyCompleted, true);
   assert.equal((await balance())?.coins, 0);
+  assert.equal((await storage.getProfile(userId))?.piggyBankPhotoSetIndex, 0);
+
+  await storage.setPiggyBankMode(userId, "photo");
+  await storage.setPiggyBankCoinsForDevelopment(userId, 60);
+  const photoCycle = await storage.startNewPiggyBankCycle(userId);
+  assert.equal(photoCycle.started, true);
+  assert.equal((await storage.getProfile(userId))?.piggyBankPhotoSetIndex, 1);
+  assert.equal((await storage.getProfile(userId))?.piggyBankMode, null);
 
   console.log("Harbour Garden atomic award safeguards passed");
 } finally {

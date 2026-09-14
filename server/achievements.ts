@@ -1,6 +1,5 @@
 import { storage } from "./storage";
-
-const PIGGY_BANK_CAPACITY = 60;
+import { getPosthogConsent, trackServer } from "./posthog";
 
 export type PiggyBankAwardSource = "food_snap" | "hstix_reading" | "daily_win";
 
@@ -36,9 +35,14 @@ export function createPiggyBankAward(
 }
 
 async function awardCoins(userId: string, award: PiggyBankAwardDescriptor): Promise<number> {
-  const profile = await storage.getProfile(userId);
-  if (!profile || profile.piggyBankCoins >= PIGGY_BANK_CAPACITY) return 0;
-  return (await storage.awardPiggyBankCoin(userId, award.eventKey, award.description)) ? 1 : 0;
+  const result = await storage.awardPiggyBankCoinWithMode(userId, award.eventKey, award.description);
+  if (result.autoAssignedNow && result.mode) {
+    // This runs only after the storage transaction has committed. Analytics
+    // must never be an outbound side effect inside the coin/ledger transaction.
+    const consented = await getPosthogConsent(userId);
+    trackServer(userId, "reward_auto_assigned", { mode: result.mode }, consented);
+  }
+  return result.awarded ? 1 : 0;
 }
 
 /** Award once for a completed FoodSnap meal record. */
@@ -58,5 +62,11 @@ export function completeDailyWin(userId: string, localDate: string, taskId: stri
     localDate,
     taskId,
     award,
+  }).then(async result => {
+    if (result.autoAssignedNow && result.mode) {
+      const consented = await getPosthogConsent(userId);
+      trackServer(userId, "reward_auto_assigned", { mode: result.mode }, consented);
+    }
+    return result;
   });
 }

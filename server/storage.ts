@@ -1,5 +1,5 @@
 import {
-  type UserProfile, type InsertUserProfile,
+  type UserProfile, type InsertUserProfile, type PiggyBankMode,
   type PiggyBankEvent, type InsertPiggyBankEvent,
   type DailyTaskCompletion,
   type IngredientVocabulary, type InsertIngredientVocabulary,
@@ -57,11 +57,23 @@ export interface DailyTaskAwardResult {
   completion: DailyTaskCompletion;
   awarded: number;
   alreadyCompleted: boolean;
+  autoAssignedNow: boolean;
+  mode: PiggyBankMode | null;
 }
 
-export type StartNewPiggyBankGardenResult =
+export interface PiggyBankAwardResult {
+  awarded: boolean;
+  autoAssignedNow: boolean;
+  mode: PiggyBankMode | null;
+  profile?: UserProfile;
+}
+
+export type StartNewPiggyBankCycleResult =
   | { started: true; profile: UserProfile }
   | { started: false; reason: "not_found" | "not_complete" };
+
+/** @deprecated Use StartNewPiggyBankCycleResult. */
+export type StartNewPiggyBankGardenResult = StartNewPiggyBankCycleResult;
 
 export interface IStorage {
   getProfile(userId: string): Promise<UserProfile | undefined>;
@@ -74,8 +86,14 @@ export interface IStorage {
   createPiggyBankEvent(event: InsertPiggyBankEvent): Promise<PiggyBankEvent>;
   addPiggyBankCoins(userId: string, coins: number): Promise<UserProfile | undefined>;
   awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean>;
+  awardPiggyBankCoinWithMode(userId: string, achievementType: string, description: string): Promise<PiggyBankAwardResult>;
+  setPiggyBankMode(userId: string, mode: PiggyBankMode, force?: boolean): Promise<{
+    selectedNow: boolean;
+    profile: UserProfile | undefined;
+  }>;
   getDailyTaskCompletion(userId: string, localDate: string): Promise<DailyTaskCompletion | undefined>;
   completeDailyTaskAndAward(input: CompleteDailyTaskAndAwardInput): Promise<DailyTaskAwardResult>;
+  startNewPiggyBankCycle(userId: string): Promise<StartNewPiggyBankCycleResult>;
   startNewPiggyBankGarden(userId: string): Promise<StartNewPiggyBankGardenResult>;
   setPiggyBankCoinsForDevelopment(userId: string, coins: number): Promise<UserProfile | undefined>;
   setPiggyBankReward(userId: string, reward: string): Promise<UserProfile | undefined>;
@@ -417,6 +435,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async awardPiggyBankCoin(userId: string, achievementType: string, description: string): Promise<boolean> {
+    const result = await this.awardPiggyBankCoinWithMode(userId, achievementType, description);
+    return result.awarded;
+  }
+
+  async awardPiggyBankCoinWithMode(
+    userId: string,
+    achievementType: string,
+    description: string,
+  ): Promise<PiggyBankAwardResult> {
     return db.transaction(async (tx) => {
       return this.awardPiggyBankCoinInTransaction(tx, userId, achievementType, description);
     });
@@ -427,25 +454,64 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     achievementType: string,
     description: string,
-  ): Promise<boolean> {
-      const [event] = await tx.insert(piggyBankEvents)
-        .values({ userId, achievementType, coinsAwarded: 1, description })
-        .onConflictDoNothing()
-        .returning();
-      if (!event) return false;
+  ): Promise<PiggyBankAwardResult> {
+    const [event] = await tx.insert(piggyBankEvents)
+      .values({ userId, achievementType, coinsAwarded: 1, description })
+      .onConflictDoNothing()
+      .returning();
+    if (!event) {
+      const [profile] = await tx.select().from(userProfiles)
+        .where(eq(userProfiles.userId, userId)).limit(1);
+      return {
+        awarded: false,
+        autoAssignedNow: false,
+        mode: profile?.piggyBankMode ?? null,
+        profile,
+      };
+    }
 
-      const [updated] = await tx.update(userProfiles)
-        .set({ piggyBankCoins: sql`LEAST(piggy_bank_coins + 1, 60)` })
-        .where(and(
-          eq(userProfiles.userId, userId),
-          lt(userProfiles.piggyBankCoins, 60),
-        ))
-        .returning({ userId: userProfiles.userId });
-      if (!updated) {
-        await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.id, event.id));
-        return false;
-      }
-      return true;
+    // The conditional mode update and coin increment share this transaction.
+    // Whichever mode writer acquires the profile row first wins; later writers
+    // observe a non-null mode and become no-ops.
+    const autoMode: PiggyBankMode = Math.random() < 0.5 ? "garden" : "photo";
+    const [autoAssigned] = await tx.update(userProfiles)
+      .set({
+        piggyBankMode: autoMode,
+        piggyBankModeAutoAssigned: true,
+      })
+      .where(and(
+        eq(userProfiles.userId, userId),
+        isNull(userProfiles.piggyBankMode),
+        lt(userProfiles.piggyBankCoins, 60),
+      ))
+      .returning({ mode: userProfiles.piggyBankMode });
+
+    const [updated] = await tx.update(userProfiles)
+      .set({
+        piggyBankCoins: sql`LEAST(piggy_bank_coins + 1, 60)`,
+      })
+      .where(and(
+        eq(userProfiles.userId, userId),
+        lt(userProfiles.piggyBankCoins, 60),
+      ))
+      .returning();
+    if (!updated) {
+      await tx.delete(piggyBankEvents).where(eq(piggyBankEvents.id, event.id));
+      const [profile] = await tx.select().from(userProfiles)
+        .where(eq(userProfiles.userId, userId)).limit(1);
+      return {
+        awarded: false,
+        autoAssignedNow: false,
+        mode: profile?.piggyBankMode ?? null,
+        profile,
+      };
+    }
+    return {
+      awarded: true,
+      autoAssignedNow: Boolean(autoAssigned),
+      mode: updated.piggyBankMode ?? null,
+      profile: updated,
+    };
   }
 
   async getDailyTaskCompletion(userId: string, localDate: string): Promise<DailyTaskCompletion | undefined> {
@@ -479,25 +545,44 @@ export class DatabaseStorage implements IStorage {
           ))
           .limit(1);
         if (!completion) throw new Error("Daily task completion conflict could not be resolved");
-        return { completion, awarded: 0, alreadyCompleted: true };
+        const [profile] = await tx.select({
+          mode: userProfiles.piggyBankMode,
+        }).from(userProfiles)
+          .where(eq(userProfiles.userId, input.userId)).limit(1);
+        return {
+          completion,
+          awarded: 0,
+          alreadyCompleted: true,
+          autoAssignedNow: false,
+          mode: profile?.mode ?? null,
+        };
       }
 
-      const awarded = await this.awardPiggyBankCoinInTransaction(
+      const awardResult = await this.awardPiggyBankCoinInTransaction(
         tx,
         input.userId,
         input.award.eventKey,
         input.award.description,
       );
-      return { completion: inserted, awarded: awarded ? 1 : 0, alreadyCompleted: false };
+      return {
+        completion: inserted,
+        awarded: awardResult.awarded ? 1 : 0,
+        alreadyCompleted: false,
+        autoAssignedNow: awardResult.autoAssignedNow,
+        mode: awardResult.mode,
+      };
     });
   }
 
-  async startNewPiggyBankGarden(userId: string): Promise<StartNewPiggyBankGardenResult> {
+  async startNewPiggyBankCycle(userId: string): Promise<StartNewPiggyBankCycleResult> {
     return db.transaction(async (tx) => {
       const [profile] = await tx.update(userProfiles)
         .set({
           piggyBankCoins: 0,
           piggyBankGardensCompleted: sql`${userProfiles.piggyBankGardensCompleted} + 1`,
+          piggyBankPhotoSetIndex: sql`CASE WHEN piggy_bank_mode = 'photo' THEN (piggy_bank_photo_set_index + 1) % 4 ELSE piggy_bank_photo_set_index END`,
+          piggyBankMode: null,
+          piggyBankModeAutoAssigned: false,
         })
         .where(and(
           eq(userProfiles.userId, userId),
@@ -514,6 +599,32 @@ export class DatabaseStorage implements IStorage {
       return existing
         ? { started: false, reason: "not_complete" }
         : { started: false, reason: "not_found" };
+    });
+  }
+
+  async startNewPiggyBankGarden(userId: string): Promise<StartNewPiggyBankGardenResult> {
+    return this.startNewPiggyBankCycle(userId);
+  }
+
+  async setPiggyBankMode(
+    userId: string,
+    mode: PiggyBankMode,
+    force = false,
+  ): Promise<{ selectedNow: boolean; profile: UserProfile | undefined }> {
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(userProfiles)
+        .set({
+          piggyBankMode: mode,
+          piggyBankModeAutoAssigned: false,
+        })
+        .where(force
+          ? eq(userProfiles.userId, userId)
+          : and(eq(userProfiles.userId, userId), isNull(userProfiles.piggyBankMode)))
+        .returning();
+      if (updated) return { selectedNow: true, profile: updated };
+      const [current] = await tx.select().from(userProfiles)
+        .where(eq(userProfiles.userId, userId)).limit(1);
+      return { selectedNow: false, profile: current };
     });
   }
 
@@ -575,6 +686,9 @@ export class DatabaseStorage implements IStorage {
         isPremium: false,
         piggyBankCoins: 0,
         piggyBankGardensCompleted: 0,
+        piggyBankMode: null,
+        piggyBankPhotoSetIndex: 0,
+        piggyBankModeAutoAssigned: false,
         piggyBankReward: null,
         piggyBankNeedsRewardSetup: true,
       }).where(eq(userProfiles.userId, userId));

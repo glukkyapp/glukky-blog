@@ -90,6 +90,12 @@ interface PiggyBankData {
   reward: string | null;
   needsRewardSetup: boolean;
   introSeen: boolean;
+  mode: "garden" | "photo" | null;
+  modeAutoAssigned: boolean;
+  photoSetIndex: number;
+  unlockedPhotoCount: number;
+  cycleId: number;
+  canForceMode: boolean;
 }
 
 function GlobalPiggyBankPopup() {
