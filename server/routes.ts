@@ -1149,6 +1149,7 @@ export async function registerRoutes(
         capacity: 60,
         gardensCompleted: profile.piggyBankGardensCompleted,
         cycleId: profile.piggyBankGardensCompleted,
+        presentationScope: String(profile.id),
         visualSetId: CURRENT_GARDEN_VISUAL_SET_ID,
         mode,
         piggyBankMode: mode,

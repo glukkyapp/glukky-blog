@@ -4,6 +4,9 @@ import {
   request as createRequestContext,
   type APIRequestContext,
 } from "@playwright/test";
+import { eq } from "drizzle-orm";
+import { db } from "../server/db";
+import { userProfiles, users } from "../shared/schema";
 
 const BASE = "http://localhost:5000";
 const TEST_EMAIL = "test-harbour-garden@glukky.test";
@@ -64,6 +67,57 @@ test.describe("Harbour Garden API safeguards", () => {
       });
       expect(response.status()).toBe(400);
     }
+  });
+
+  test("mode selection is strict, first-write-wins, and the QA override is forbidden", async () => {
+    const selected = await request.post(`${BASE}/api/piggybank/mode`, {
+      data: { mode: "photo" },
+    });
+    expect(selected.status()).toBe(200);
+    expect(await selected.json()).toMatchObject({
+      selectedNow: true,
+      mode: "photo",
+      modeAutoAssigned: false,
+    });
+
+    const losingChoice = await request.post(`${BASE}/api/piggybank/mode`, {
+      data: { mode: "garden" },
+    });
+    expect(losingChoice.status()).toBe(200);
+    expect(await losingChoice.json()).toMatchObject({
+      selectedNow: false,
+      mode: "photo",
+    });
+
+    expect((await request.post(`${BASE}/api/piggybank/mode`, {
+      data: { mode: "photo", unexpected: true },
+    })).status()).toBe(400);
+    expect((await request.post(`${BASE}/api/piggybank/force-mode`, {
+      data: { mode: "garden" },
+    })).status()).toBe(403);
+  });
+
+  test("full account reset restores all reward-mode defaults", async () => {
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, TEST_EMAIL)).limit(1);
+    expect(user).toBeTruthy();
+    await db.update(userProfiles).set({
+      piggyBankCoins: 35,
+      piggyBankMode: "photo",
+      piggyBankModeAutoAssigned: true,
+      piggyBankPhotoSetIndex: 2,
+    }).where(eq(userProfiles.userId, user!.id));
+
+    expect((await request.post(`${BASE}/api/dev/reset-account`)).status()).toBe(200);
+    expect((await request.post(`${BASE}/api/profile`, { data: {} })).status()).toBe(200);
+    const state = await request.get(`${BASE}/api/piggybank`);
+    expect(state.status()).toBe(200);
+    expect(await state.json()).toMatchObject({
+      coins: 0,
+      mode: null,
+      modeAutoAssigned: false,
+      photoSetIndex: 0,
+      unlockedPhotoCount: 0,
+    });
   });
 
   test("legacy reward and claim routes are inert and never reset completion", async () => {

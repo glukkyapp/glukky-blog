@@ -580,7 +580,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           piggyBankCoins: 0,
           piggyBankGardensCompleted: sql`${userProfiles.piggyBankGardensCompleted} + 1`,
-          piggyBankPhotoSetIndex: sql`CASE WHEN piggy_bank_mode = 'photo' THEN (piggy_bank_photo_set_index + 1) % 4 ELSE piggy_bank_photo_set_index END`,
+          piggyBankPhotoSetIndex: sql`CASE WHEN piggy_bank_mode = 'photo' THEN (piggy_bank_photo_set_index + 1) % 3 ELSE piggy_bank_photo_set_index END`,
           piggyBankMode: null,
           piggyBankModeAutoAssigned: false,
         })

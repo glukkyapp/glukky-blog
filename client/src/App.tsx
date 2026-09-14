@@ -95,6 +95,7 @@ interface PiggyBankData {
   photoSetIndex: number;
   unlockedPhotoCount: number;
   cycleId: number;
+  presentationScope: string;
   canForceMode: boolean;
 }
 

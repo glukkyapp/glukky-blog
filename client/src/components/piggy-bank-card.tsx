@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -35,36 +42,64 @@ export interface PiggyBankData {
   photoSetIndex: number;
   unlockedPhotoCount: number;
   cycleId: number;
+  presentationScope: string;
   canForceMode: boolean;
 }
 
 const DEV_STATES = [0, 1, 5, 7, 11, 16, 20, 25, 31, 35, 40, 46, 55, 60] as const;
 const PHOTO_SLOT_COUNT = 12;
 
-/**
- * The manifest deliberately contains no URLs yet. Later supplied archival
- * assets can be added per slot without changing the progress or rendering
- * contract. A null asset is rendered as an explicit pending state, never as
- * an image with a guessed or broken URL.
- */
 export const PHOTO_SET_MANIFEST: Record<number, {
   id: string;
-  photos: ReadonlyArray<{ id: string; assetUrl: string | null }>;
-}> = Object.fromEntries(
-  [0, 1, 2, 3].map((setIndex) => [
-    setIndex,
-    {
-      id: `hong-kong-archive-set-${setIndex}`,
-      photos: Array.from({ length: PHOTO_SLOT_COUNT }, (_, index) => ({
-        id: `set-${setIndex}-photo-${index + 1}`,
-        assetUrl: null,
-      })),
-    },
-  ]),
-) as Record<number, {
-  id: string;
-  photos: ReadonlyArray<{ id: string; assetUrl: string | null }>;
-}>;
+  name: string;
+  photos: ReadonlyArray<{ id: string; assetUrl: string }>;
+}> = {
+  0: {
+    id: "1970s-1",
+    name: "1970s 1",
+    photos: [
+      "15_92_71_1789395231871.jpg", "15A_38A_74_1789395557149.jpg",
+      "19_75B_76_1789395574056.jpg", "1A_210_72_1789395241767.jpg",
+      "20_62D_74_1789395557150.jpg", "3_104_76_1789395574055.jpg",
+      "31A_1_74_1789395557150.jpg", "31A_38C_74_1789395557151.jpg",
+      "33_103_78_1789395673734.jpg", "7_23_76_1789395574055.jpg",
+      "7A_279_72_1789395241768.jpg", "9_99_73_1789395251195.jpg",
+    ].map((file, index) => ({
+      id: `1970s-1-${index + 1}`,
+      assetUrl: `/reward-photos/1970s-1/${file}`,
+    })),
+  },
+  1: {
+    id: "1970s-2",
+    name: "1970s 2",
+    photos: [
+      "0_62D_74_1789395257632.jpg", "0A_141_71_1789395231868.jpg",
+      "15_66_75_1789395563724.jpg", "1A_130A_71_1789395231870.jpg",
+      "1A_32_72_1789395241765.jpg", "2_10_76_1789395574052.jpg",
+      "26_58_70_1789395225019.jpg", "33_69_78_1789395644047.jpg",
+      "5_10_72_1789395241768.jpg", "5_15_75_1789395563724.jpg",
+      "6_96_73_1789395251194.jpg", "9A_38D_74_1789395557148.jpg",
+    ].map((file, index) => ({
+      id: `1970s-2-${index + 1}`,
+      assetUrl: `/reward-photos/1970s-2/${file}`,
+    })),
+  },
+  2: {
+    id: "1970s-3",
+    name: "1970s 3",
+    photos: [
+      "15_74A_71_1789395231870.jpg", "17_19_76_1789395574056.jpg",
+      "17A_32_72_1789395241768.jpg", "2A_279_72_1789395241767.jpg",
+      "30A_38_74_1789395557150.jpg", "4_11_75_1789395563722.jpg",
+      "4A_83_73_1789395251192.jpg", "6A_76A_70_1789395225017.jpg",
+      "7_25_78_1789395681530.jpg", "8_104_76_1789395574056.jpg",
+      "8_19_76_1789395574056.jpg", "9_98B_70_1789395225019.jpg",
+    ].map((file, index) => ({
+      id: `1970s-3-${index + 1}`,
+      assetUrl: `/reward-photos/1970s-3/${file}`,
+    })),
+  },
+};
 
 function AnimatedCoinCount({
   target,
@@ -103,94 +138,127 @@ function PhotoModePanel({
   data: PiggyBankData;
   t: (key: string, opts?: any) => string;
 }) {
-  const previousUnlockedRef = useRef<number | null>(null);
-  const [newlyUnlocked, setNewlyUnlocked] = useState<ReadonlySet<number>>(new Set());
+  const reduceMotion = useReducedMotion();
   const unlockedCount = Math.max(0, Math.min(PHOTO_SLOT_COUNT, data.unlockedPhotoCount));
   const photoSet = PHOTO_SET_MANIFEST[data.photoSetIndex] ?? PHOTO_SET_MANIFEST[0];
+  const activePhoto = unlockedCount > 0 ? photoSet.photos[unlockedCount - 1] : null;
+  const previousProgressRef = useRef<{
+    cycleId: number;
+    photoSetIndex: number;
+    unlockedCount: number;
+  } | null>(null);
+  const [lightTransition, setLightTransition] = useState(0);
+
+  // Download the complete active set at cycle start so threshold transitions
+  // never wait for the next archival image to load.
+  useEffect(() => {
+    const preloaders = photoSet.photos.map(({ assetUrl }) => {
+      const image = new window.Image();
+      image.src = assetUrl;
+      return image;
+    });
+    return () => {
+      preloaders.forEach((image) => {
+        image.onload = null;
+        image.onerror = null;
+      });
+    };
+  }, [data.cycleId, data.photoSetIndex, photoSet.photos]);
 
   useEffect(() => {
-    const previous = previousUnlockedRef.current;
-    if (previous !== null && unlockedCount > previous) {
-      setNewlyUnlocked(new Set(
-        Array.from({ length: unlockedCount - previous }, (_, offset) => previous + offset),
-      ));
-      previousUnlockedRef.current = unlockedCount;
-      const timer = window.setTimeout(() => setNewlyUnlocked(new Set()), 2200);
-      return () => window.clearTimeout(timer);
+    const storageKey = `piggy-photo-presented:${data.presentationScope}:${data.cycleId}:${data.photoSetIndex}`;
+    const previous = previousProgressRef.current;
+    const samePresentation = previous?.cycleId === data.cycleId &&
+      previous.photoSetIndex === data.photoSetIndex;
+    const storedCount = Number.parseInt(window.sessionStorage.getItem(storageKey) ?? "0", 10);
+    const previousCount = samePresentation
+      ? previous.unlockedCount
+      : Number.isFinite(storedCount) ? storedCount : 0;
+
+    if (unlockedCount > previousCount) {
+      setLightTransition((value) => value + 1);
     }
-    setNewlyUnlocked(new Set());
-    previousUnlockedRef.current = unlockedCount;
-  }, [data.cycleId, unlockedCount]);
-
-  // A new cycle starts at zero, even if the previous cycle had all twelve slots.
-  useEffect(() => {
-    previousUnlockedRef.current = unlockedCount;
-    setNewlyUnlocked(new Set());
-  }, [data.cycleId, data.photoSetIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+    window.sessionStorage.setItem(storageKey, String(unlockedCount));
+    previousProgressRef.current = {
+      cycleId: data.cycleId,
+      photoSetIndex: data.photoSetIndex,
+      unlockedCount,
+    };
+  }, [data.cycleId, data.photoSetIndex, data.presentationScope, unlockedCount]);
 
   return (
     <section className="w-full" aria-labelledby="photo-mode-heading" data-testid="photo-mode-panel">
+      <div
+        className="relative w-full overflow-hidden rounded-2xl bg-slate-900"
+        style={{ aspectRatio: "1376 / 768", boxShadow: "0 8px 24px rgba(36, 74, 47, 0.16)" }}
+        role="img"
+        aria-label={activePhoto
+          ? t("roadmap.photo_display_aria", { current: unlockedCount, total: PHOTO_SLOT_COUNT })
+          : t("roadmap.photo_placeholder_aria")}
+        data-testid="photo-display"
+      >
+        <AnimatePresence mode="wait">
+          {activePhoto ? (
+            <motion.img
+              key={activePhoto.id}
+              src={activePhoto.assetUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.025 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
+              transition={{ duration: reduceMotion ? 0.15 : 0.7, ease: "easeOut" }}
+            />
+          ) : (
+            <motion.div
+              key="photo-starting-state"
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <img
+                src={photoSet.photos[0].assetUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover opacity-20 blur-[2px] grayscale"
+              />
+              <div className="absolute inset-0 bg-slate-950/45" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+                <p className="text-base font-semibold">{t("roadmap.photo_placeholder_title")}</p>
+                <p className="mt-1 max-w-xs text-sm text-white/80">
+                  {t("roadmap.photo_placeholder_description")}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {lightTransition > 0 && !reduceMotion && (
+          <motion.div
+            key={lightTransition}
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "linear-gradient(110deg, transparent 15%, rgba(255,255,255,0.15) 35%, rgba(255,247,205,0.85) 50%, rgba(255,255,255,0.18) 65%, transparent 85%)",
+            }}
+            initial={{ opacity: 0, x: "-110%" }}
+            animate={{ opacity: [0, 1, 0], x: ["-110%", "0%", "110%"] }}
+            transition={{ duration: 1.05, ease: "easeInOut" }}
+            aria-hidden="true"
+            data-testid="photo-light-transition"
+          />
+        )}
+      </div>
+
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground" data-testid="photo-copyright-disclaimer">
+        {t("roadmap.photo_copyright_disclaimer")}
+      </p>
+
       <h2 id="photo-mode-heading" className="w-full py-2 text-left font-bold" style={{ color: "var(--brand-ink)", fontSize: "17px" }}>
         {t("roadmap.photo_mode_title")}
       </h2>
       <p className="text-sm leading-snug mb-3" style={{ color: "var(--brand-muted)" }}>
         {t("roadmap.photo_mode_description")}
       </p>
-      <div
-        role="grid"
-        aria-label={t("roadmap.photo_grid_label")}
-        className="grid grid-cols-3 gap-2"
-        data-testid="photo-grid"
-      >
-        {photoSet.photos.map((photo, index) => {
-          const unlocked = index < unlockedCount;
-          const slotLabel = unlocked
-            ? photo.assetUrl
-              ? t("roadmap.photo_slot_available", { number: index + 1 })
-              : t("roadmap.photo_slot_pending", { number: index + 1 })
-            : t("roadmap.photo_slot_locked", { number: index + 1, coins: (index + 1) * 5 });
-          const slot = (
-            <div
-              role="gridcell"
-              aria-label={slotLabel}
-              aria-disabled={!unlocked}
-              tabIndex={0}
-              className={`aspect-square rounded-xl border flex flex-col items-center justify-center text-center px-1 ${
-                unlocked
-                  ? "border-sky-200 bg-sky-50 text-sky-900"
-                  : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
-              }`}
-              data-testid={`photo-slot-${index + 1}`}
-              data-unlocked={unlocked ? "true" : "false"}
-            >
-              {unlocked && photo.assetUrl ? (
-                <img
-                  src={photo.assetUrl}
-                  alt={t("roadmap.photo_slot_available", { number: index + 1 })}
-                  className="h-full w-full rounded-lg object-cover"
-                />
-              ) : (
-                <span className="text-lg" aria-hidden="true">{unlocked ? "▧" : "•"}</span>
-              )}
-              <span className="text-[11px] leading-tight">
-                {unlocked ? (photo.assetUrl ? t("roadmap.photo_slot_available_short") : t("roadmap.photo_asset_pending")) : t("roadmap.photo_locked")}
-              </span>
-            </div>
-          );
-          return newlyUnlocked.has(index) ? (
-            <motion.div
-              key={photo.id}
-              initial={{ opacity: 0, scale: 0.82, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-            >
-              {slot}
-            </motion.div>
-          ) : (
-            <div key={photo.id}>{slot}</div>
-          );
-        })}
-      </div>
       <div className="w-full mt-4">
         <div className="flex justify-between items-center mb-1">
           <span className="text-xs text-muted-foreground font-medium" data-testid="text-piggy-coins">
@@ -202,7 +270,9 @@ function PhotoModePanel({
             />
           </span>
           <span className="text-xs text-muted-foreground">
-            {t("roadmap.photo_unlocked_count", { unlocked: unlockedCount, total: PHOTO_SLOT_COUNT })}
+            {unlockedCount === 0
+              ? t("roadmap.photo_first_unlock_progress", { coins: data.coins })
+              : t("roadmap.photo_current_number", { current: unlockedCount, total: PHOTO_SLOT_COUNT })}
           </span>
         </div>
         <Progress value={Math.min((data.coins / data.capacity) * 100, 100)} data-testid="progress-harbour-photo" />

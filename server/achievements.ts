@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage, type PiggyBankAwardResult } from "./storage";
 import { getPosthogConsent, trackServer } from "./posthog";
 
 export type PiggyBankAwardSource = "food_snap" | "hstix_reading" | "daily_win";
@@ -34,25 +34,52 @@ export function createPiggyBankAward(
   return { source, eventKey: `daily_win_${identity}`, description: "Daily wellbeing task completed" };
 }
 
-async function awardCoins(userId: string, award: PiggyBankAwardDescriptor): Promise<number> {
-  const result = await storage.awardPiggyBankCoinWithMode(userId, award.eventKey, award.description);
+export interface RewardAutoAssignmentTrackingDependencies {
+  getConsent: typeof getPosthogConsent;
+  track: typeof trackServer;
+}
+
+const defaultTrackingDependencies: RewardAutoAssignmentTrackingDependencies = {
+  getConsent: getPosthogConsent,
+  track: trackServer,
+};
+
+export async function trackRewardAutoAssignmentAfterCommit(
+  userId: string,
+  result: Pick<PiggyBankAwardResult, "autoAssignedNow" | "mode">,
+  dependencies: RewardAutoAssignmentTrackingDependencies = defaultTrackingDependencies,
+): Promise<void> {
   if (result.autoAssignedNow && result.mode) {
-    // This runs only after the storage transaction has committed. Analytics
-    // must never be an outbound side effect inside the coin/ledger transaction.
-    const consented = await getPosthogConsent(userId);
-    trackServer(userId, "reward_auto_assigned", { mode: result.mode }, consented);
+    const consented = await dependencies.getConsent(userId);
+    dependencies.track(userId, "reward_auto_assigned", { mode: result.mode }, consented);
   }
+}
+
+export async function awardPiggyBankCoinWithTracking(
+  userId: string,
+  award: PiggyBankAwardDescriptor,
+  dependencies: RewardAutoAssignmentTrackingDependencies & {
+    award: typeof storage.awardPiggyBankCoinWithMode;
+  } = {
+    ...defaultTrackingDependencies,
+    award: storage.awardPiggyBankCoinWithMode.bind(storage),
+  },
+): Promise<number> {
+  // The storage promise resolves only after its transaction commits. No
+  // outbound analytics call can occur before that point.
+  const result = await dependencies.award(userId, award.eventKey, award.description);
+  await trackRewardAutoAssignmentAfterCommit(userId, result, dependencies);
   return result.awarded ? 1 : 0;
 }
 
 /** Award once for a completed FoodSnap meal record. */
 export function awardSnapCoin(userId: string, snapId: number): Promise<number> {
-  return awardCoins(userId, createPiggyBankAward("food_snap", snapId));
+  return awardPiggyBankCoinWithTracking(userId, createPiggyBankAward("food_snap", snapId));
 }
 
 /** Award once for a saved HStix reading, whether or not it is meal-linked. */
 export function awardHstixCoin(userId: string, readingId: number): Promise<number> {
-  return awardCoins(userId, createPiggyBankAward("hstix_reading", readingId));
+  return awardPiggyBankCoinWithTracking(userId, createPiggyBankAward("hstix_reading", readingId));
 }
 
 export function completeDailyWin(userId: string, localDate: string, taskId: string) {
@@ -63,10 +90,7 @@ export function completeDailyWin(userId: string, localDate: string, taskId: stri
     taskId,
     award,
   }).then(async result => {
-    if (result.autoAssignedNow && result.mode) {
-      const consented = await getPosthogConsent(userId);
-      trackServer(userId, "reward_auto_assigned", { mode: result.mode }, consented);
-    }
+    await trackRewardAutoAssignmentAfterCommit(userId, result);
     return result;
   });
 }

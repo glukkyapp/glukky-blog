@@ -1,5 +1,19 @@
 import { pool } from "./db";
 
+export const PIGGY_BANK_MODE_MIGRATION_SQL = `ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS piggy_bank_mode text DEFAULT 'garden',
+  ADD COLUMN IF NOT EXISTS piggy_bank_photo_set_index integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS piggy_bank_mode_auto_assigned boolean NOT NULL DEFAULT false;
+  ALTER TABLE user_profiles ALTER COLUMN piggy_bank_mode DROP DEFAULT;
+  DO $$ BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'user_profiles_piggy_bank_mode_check'
+    ) THEN
+      ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_piggy_bank_mode_check
+        CHECK (piggy_bank_mode IS NULL OR piggy_bank_mode IN ('garden', 'photo'));
+    END IF;
+  END $$`;
+
 /**
  * Idempotent DDL migrations that run at server startup.
  * Each statement must be safe to re-run (use IF NOT EXISTS / IF EXISTS guards).
@@ -280,19 +294,7 @@ const MIGRATIONS: Array<{ name: string; sql: string | null; fn?: (client: any) =
     // The temporary default backfills rows that existed before this
     // migration, while the final default for new profiles is NULL.
     name: "user_profiles.piggy_bank_mode",
-    sql: `ALTER TABLE user_profiles
-      ADD COLUMN IF NOT EXISTS piggy_bank_mode text DEFAULT 'garden',
-      ADD COLUMN IF NOT EXISTS piggy_bank_photo_set_index integer NOT NULL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS piggy_bank_mode_auto_assigned boolean NOT NULL DEFAULT false;
-      ALTER TABLE user_profiles ALTER COLUMN piggy_bank_mode DROP DEFAULT;
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'user_profiles_piggy_bank_mode_check'
-        ) THEN
-          ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_piggy_bank_mode_check
-            CHECK (piggy_bank_mode IS NULL OR piggy_bank_mode IN ('garden', 'photo'));
-        END IF;
-      END $$`,
+    sql: PIGGY_BANK_MODE_MIGRATION_SQL,
   },
   {
     name: "food_labels.food_items",
