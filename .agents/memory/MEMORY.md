@@ -16,3 +16,4 @@
 - [Piggy-bank ledger uniqueness](piggy-bank-ledger-uniqueness.md) — preserve legacy duplicate history; enforce uniqueness only for current namespaced award keys.
 - [Account-scoped presentation state](account-scoped-presentation-state.md) — session presentation keys must include an opaque account scope to prevent cross-login UI state leaks.
 - [Reward popup mode timing](reward-popup-mode-timing.md) — balance and mode arrive from one committed refetch; keep a null-mode guard if optimistic updates are added.
+- [CJK mockup video capture](cjk-mockup-video-capture.md) — load a CJK webfont explicitly and await document.fonts.ready before headless recording.

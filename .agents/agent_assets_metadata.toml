@@ -82,3 +82,17 @@ mtime_ms = 1788573137883
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/86df78b0-79b2-45dc-bd7e-89bf52e094b5/8e8c7665-090b-473a-99cd-f850a642eed1"
 storage_version_token = "1788573191978038"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "mWxE3i99z4wLm9yltSYZx"
+uri = "file://exports/task963-clip1-zh-hant/glukky-clip1-zh-hant.mp4"
+type = "video"
+title = "Glukky Clip 1 — 香港舊照片獎勵（繁中）"
+description = "8.5-second vertical H.264 mockup showing the real 4/60 to 5/60 first-photo unlock flow, daily-task completion, and archive-photo reveal."
+logical_id = "257c0b23-7b99-4b73-b3f4-e816d743a8ce"
+content_hash = "sha256:e4a21132b029f0a005b3216b3a4244d7170b1ec7d59b29037540951c25c192a1"
+size = 906762
+mtime_ms = 1789631683588
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/257c0b23-7b99-4b73-b3f4-e816d743a8ce/996c1131-24ef-4a5d-ba05-b037480c99de"
+storage_version_token = "1789631703634727"
+content_type = "video/mp4"

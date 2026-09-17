@@ -1,0 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap");
+
+.glukkyClip1 {
+  --ink: #173f46;
+  --muted: #5c7477;
+  --cream: #fef2e0;
+  --card: #fff8ec;
+  --teal: #0d7e8f;
+  --deep-teal: #086574;
+  --gold: #e6a63a;
+  position: relative;
+  width: 390px;
+  height: 844px;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "Noto Sans TC", "Karla", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.glukkyClip1 *, .glukkyClip1 *::before, .glukkyClip1 *::after { box-sizing: border-box; }
+.clip1Scroll {
+  height: 100%;
+  padding: 28px 24px 112px;
+  animation: clip1Dim 8.5s both;
+}
+.clip1Header { margin-bottom: 19px; }
+.clip1Week { margin: 0; font-size: 22px; font-weight: 400; line-height: 1; }
+.clip1Hello { margin: 7px 0 0; font-size: 48px; font-weight: 700; line-height: .96; letter-spacing: -1.6px; }
+.clip1Card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(92,116,119,.17);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 2px 8px rgba(23,63,70,.07);
+}
+.clip1PhotoCard { height: 324px; padding: 12px 14px 13px; }
+.clip1PhotoFrame {
+  position: relative;
+  height: 206px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #5d6a68;
+}
+.clip1PhotoFrame img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+.clip1PhotoOld {
+  filter: grayscale(1) blur(2px) contrast(.88);
+  animation: clip1OldPhoto 8.5s both;
+}
+.clip1PhotoNew {
+  opacity: 0;
+  transform: scale(1.025);
+  filter: none;
+  animation: clip1NewPhoto 8.5s both;
+}
+.clip1Sweep {
+  position: absolute; inset: -20% -50%;
+  background: linear-gradient(110deg, transparent 15%, rgba(255,255,255,.16) 35%, rgba(255,247,205,.85) 50%, rgba(255,255,255,.18) 65%, transparent 85%);
+  opacity: 0;
+  transform: translateX(-55%);
+  animation: clip1Sweep 8.5s both;
+  pointer-events: none;
+}
+.clip1PhotoShade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(23,63,70,.48), rgba(23,63,70,.18));
+  animation: clip1Shade 8.5s both;
+}
+.clip1Unlock {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  color: #fff8ec; text-shadow: 0 1px 7px rgba(0,0,0,.24);
+  animation: clip1Unlock 8.5s both;
+}
+.clip1Unlock strong { font-size: 16px; }
+.clip1Unlock span { display: block; margin-top: 5px; font-size: 12px; opacity: .88; }
+.clip1PhotoTitle { margin: 10px 0 0; font-size: 17px; font-weight: 700; }
+.clip1PhotoDesc { margin: 3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.25; }
+.clip1Progress { display: flex; justify-content: space-between; margin-top: 12px; color: var(--muted); font-size: 12px; }
+.clip1ProgressLabel { position: relative; min-width: 92px; }
+.clip1ProgressLabel.right { min-width: 108px; text-align: right; }
+.clip1ProgressLabel span { display: block; }
+.clip1ProgressLabel .after { position: absolute; inset: 0; opacity: 0; animation: clip1AfterLabel 8.5s both; }
+.clip1ProgressLabel .before { animation: clip1BeforeLabel 8.5s both; }
+.clip1Bar { height: 7px; margin-top: 5px; overflow: hidden; border-radius: 20px; background: #eadfce; }
+.clip1Bar i { display: block; height: 100%; width: 6.667%; border-radius: inherit; background: var(--teal); animation: clip1Progress 8.5s both; }
+.clip1Tasks { margin-top: 18px; padding: 14px 15px 13px; }
+.clip1Tasks h2 { margin: 0 0 9px; font-size: 16px; }
+.clip1TaskRow { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: 14px; }
+.clip1Check {
+  position: relative; width: 22px; height: 22px; flex: 0 0 22px; border: 2px solid #7f9b9d;
+  border-radius: 7px; background: transparent; animation: clip1CheckBox 8.5s both; padding: 0; cursor: pointer;
+}
+.clip1Check::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 7px; height: 12px;
+  border: solid #fff8ec; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0);
+  animation: clip1Tick 8.5s both;
+}
+.clip1Good { margin: 7px 0 0 34px; color: #32815f; font-size: 13px; font-weight: 700; opacity: 0; animation: clip1Good 8.5s both; }
+.clip1Nav {
+  position: absolute; z-index: 5; bottom: 28px; left: 16px; right: 16px; height: 58px;
+  display: flex; align-items: center; padding: 0 8px; border-radius: 160px;
+  background: rgba(174,209,214,.85); box-shadow: 0 4px 10px rgba(0,0,0,.25);
+}
+.clip1NavItem { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--deep-teal); font-size: 10px; }
+.clip1NavItem svg { width: 21px; height: 21px; margin-bottom: 2px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.clip1NavItem.active { font-weight: 700; }
+.clip1Replay {
+  position: absolute; z-index: 8; top: 14px; right: 16px; width: 28px; height: 28px; border: 0; border-radius: 50%;
+  background: rgba(255,248,236,.72); color: var(--deep-teal); font-size: 16px; line-height: 1; cursor: pointer;
+}
+@keyframes clip1Dim { 0%,100% { opacity: 1 } }
+@keyframes clip1OldPhoto { 0%,55% { opacity: 1; transform: scale(1) } 64%,100% { opacity: 0; transform: scale(.99) } }
+@keyframes clip1NewPhoto { 0%,56% { opacity: 0; transform: scale(1.025) } 64%,100% { opacity: 1; transform: scale(1) } }
+@keyframes clip1Shade { 0%,54% { opacity: .8 } 64%,100% { opacity: 0 } }
+@keyframes clip1Unlock { 0%,48% { opacity: 1 } 58%,100% { opacity: 0 } }
+@keyframes clip1Sweep { 0%,58% { opacity: 0; transform: translateX(-55%) } 62% { opacity: 1 } 74%,100% { opacity: 0; transform: translateX(55%) } }
+@keyframes clip1Progress { 0%,49% { width: 6.667% } 58%,100% { width: 8.333% } }
+@keyframes clip1BeforeLabel { 0%,55% { opacity: 1 } 63%,100% { opacity: 0 } }
+@keyframes clip1AfterLabel { 0%,55% { opacity: 0 } 63%,100% { opacity: 1 } }
+@keyframes clip1CheckBox { 0%,28% { background: transparent; border-color: #7f9b9d } 34%,100% { background: var(--teal); border-color: var(--teal) } }
+@keyframes clip1Tick { 0%,32% { transform: rotate(45deg) scale(0) } 37%,100% { transform: rotate(45deg) scale(1) } }
+@keyframes clip1Good { 0%,36% { opacity: 0 } 41%,100% { opacity: 1 } }
