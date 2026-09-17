@@ -1,0 +1,47 @@
+Task: Generate two mockup video clips for Glukky marketing/App Store use.
+
+IMPORTANT — Before building either mockup:
+Check the actual current app code and functions for the Homepage, the Daily Health Task feature, the Old Photo Reward feature, Foodsnap, and the Glucose Pattern page. The mockups must accurately reflect how these features actually work in the app today — do not invent behavior that doesn't exist in the code. If any described behavior below doesn't match what the code actually does, flag the discrepancy before proceeding, and adjust the mockup to match the real function while still making the feature visually stand out.
+
+Both clips must:
+- Include the app's navigation bar exactly as it currently appears.
+- Keep the app's existing color palette — do not introduce new colors or reskin the UI for the mockup.
+- Emphasize/exaggerate the featured interaction visually (e.g., stronger reveal animation, clearer on-screen callouts) without changing the underlying real functionality or copy.
+- Be suitable for use as a short promotional/App Store preview clip.
+
+---
+
+Clip 1 — Homepage: Old Photo Visual Reward
+
+Concept: Show the homepage where completing a daily health task unlocks/reveals a new old photo as a visual reward.
+
+Sequence to depict:
+1. Open on the homepage, navigation bar visible.
+2. Show the current state of the daily health task (e.g., not yet completed today).
+3. User completes the daily health task (show the actual in-app action that triggers completion, per the real code).
+4. Show the reward moment: a new old photo is revealed/unlocked as a result of completing the task.
+5. Make this reveal moment visually satisfying — e.g., a clear transition/animation — reflecting whatever reveal animation already exists in the app, enhanced for clarity in the clip, not fabricated from scratch.
+
+Verify before building: What exactly triggers the old-photo reward in the current code (which task, what counts as "completed," what the actual reveal animation/transition looks like), and use that real flow.
+
+---
+
+Clip 2 — Foodsnap + Glucose Pattern Correlation
+
+Concept: Show a meal logged via Foodsnap, then show how that same food appears on the Glucose Pattern page with insight callouts.
+
+Sequence to depict:
+1. Open on Foodsnap, show a meal being photographed/logged (use a real or realistic example food item — confirm with the team what specific food example to use, since "masin" in the original request is unclear; substitute a clear, realistic meal example if that term doesn't correspond to an actual food name in the app).
+2. Transition to the Glucose Pattern page.
+3. Show that specific food surfaced with the insight: "Glucose higher than usual after this food."
+4. Show the pairing insight: "You tend to pair it with [food B], and pairing it with [food B] gives a larger glucose impact."
+5. Make these two callouts visually prominent (e.g., highlighted text, a subtle pop-in animation) so viewers immediately register the personalization and insight, without altering the real underlying logic or wording used in the app.
+
+Verify before building: Confirm the exact real copy/wording the app currently uses for these two insight types (glucose-higher-than-usual callout, and food-pairing callout), and use the real strings rather than paraphrased placeholder text, unless the real strings need light trimming for on-screen readability in a short clip.
+
+---
+
+Deliverables:
+- Two separate short video mockup clips, one per concept above.
+- Confirm which specific screens/components/functions in the codebase were referenced for each clip before finalizing.
+- Flag any feature described above that doesn't actually exist yet in the current build, rather than mocking up a feature that isn't real.
