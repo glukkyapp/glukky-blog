@@ -96,3 +96,31 @@ mtime_ms = 1789631683588
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/257c0b23-7b99-4b73-b3f4-e816d743a8ce/996c1131-24ef-4a5d-ba05-b037480c99de"
 storage_version_token = "1789631703634727"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "RccJHA_Lk9A77SMu5crDA"
+uri = "file://exports/task963-clip2-zh-hant/glukky-clip2-zh-hant.mp4"
+type = "video"
+title = "Glukky Clip 2 — Traditional Chinese (MP4)"
+description = "Final 12-second higher-impact Foodsnap to Glucose Pattern clip in 9:16 portrait, 720×1280 H.264."
+logical_id = "0b091951-c08f-456a-b319-e1fac4f24c10"
+content_hash = "sha256:5b776ce3e0cba39d7b7d4461b347c58b40fc9193514460850f700be54a3200f0"
+size = 1190463
+mtime_ms = 1789641859624
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/0b091951-c08f-456a-b319-e1fac4f24c10/02925874-940b-4274-9a2a-efc07e607ed3"
+storage_version_token = "1789641918311409"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "QOz-xnsVRVJdIC5T-vktw"
+uri = "file://exports/task963-clip2-zh-hant/glukky-clip2-zh-hant.webm"
+type = "video"
+title = "Glukky Clip 2 — Traditional Chinese (WebM)"
+description = "WebM version of the final Traditional Chinese higher-impact Foodsnap to Glucose Pattern clip."
+logical_id = "4f49951f-8e24-4000-9ca3-6315d351bd34"
+content_hash = "sha256:3282ecb87a0660c9e958bef0d2cfc9c4bda5ebef1b68df21ca18dc0e0fec65f9"
+size = 767318
+mtime_ms = 1789641877718
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/4f49951f-8e24-4000-9ca3-6315d351bd34/a4ef4946-1b1b-4a31-a2ab-b040dc28f420"
+storage_version_token = "1789641921177847"
+content_type = "video/webm"

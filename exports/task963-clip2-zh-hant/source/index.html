@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glukky Clip 2 — 食物快拍到血糖規律</title>
+  <style>
+    @font-face {
+      font-family: "Noto Sans CJK";
+      src: url("../../../server/assets/fonts/NotoSansCJK-Regular.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+
+    :root {
+      --outer: #FCFAF5;
+      --card: #FFFDF8;
+      --ink: #153F41;
+      --muted: #6B7775;
+      --teal: #0E8890;
+      --teal-deep: #0B6D73;
+      --teal-soft: #AED1D6;
+      --line: #E3DED4;
+      --impact-bg: #FFE0DE;
+      --impact-ink: #9D2F2F;
+      --impact-line: rgba(232, 90, 90, .45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 720px;
+      height: 1280px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--outer);
+      color: var(--ink);
+      font-family: "Noto Sans CJK", "Noto Sans TC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .stage {
+      position: relative;
+      width: 360px;
+      height: 640px;
+      overflow: hidden;
+      background: var(--outer);
+      transform: scale(2);
+      transform-origin: top left;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      padding: 21px 20px 92px;
+      opacity: 0;
+      transform: translateX(12px);
+      pointer-events: none;
+      transition: opacity 360ms ease, transform 420ms cubic-bezier(.22,.8,.3,1);
+    }
+
+    .screen.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .heading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .heading-icon {
+      width: 47px;
+      height: 47px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      color: var(--teal);
+      border-radius: 50%;
+      background: rgba(174, 209, 214, .22);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.05;
+      letter-spacing: .06em;
+      font-weight: 850;
+    }
+
+    .subtitle {
+      margin: 12px 0 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .upload-options {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 43px;
+    }
+
+    .upload-option {
+      width: 141px;
+      height: 141px;
+      border: 2px dashed rgba(14, 136, 144, .38);
+      border-radius: 18px;
+      background: rgba(174, 209, 214, .10);
+      color: rgba(11, 109, 115, .85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+
+    .upload-option svg {
+      width: 36px;
+      height: 36px;
+      stroke-width: 1.6;
+    }
+
+    .upload-option span {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .upload-option.pressed {
+      transform: scale(.94);
+      background: rgba(174, 209, 214, .26);
+    }
+
+    .meal-photo {
+      display: block;
+      width: 100%;
+      height: 207px;
+      margin-top: 18px;
+      object-fit: cover;
+      object-position: 50% 55%;
+      border-radius: 18px;
+      box-shadow: 0 3px 10px rgba(25, 56, 53, .12);
+    }
+
+    .meal-time {
+      margin: 8px 0 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    .meal-question {
+      margin: 0 0 12px;
+      text-align: center;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .chips {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      margin-bottom: 17px;
+    }
+
+    .chip {
+      min-width: 62px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted);
+      font-size: 11px;
+      transition: transform 160ms ease, color 180ms ease, background 180ms ease;
+    }
+
+    .chip.selected {
+      color: #fff;
+      border-color: var(--teal);
+      background: var(--teal);
+      transform: scale(1.03);
+    }
+
+    .continue-button {
+      width: 100%;
+      height: 41px;
+      border: 0;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--teal);
+      font-size: 12px;
+      font-weight: 750;
+      box-shadow: 0 3px 8px rgba(14, 136, 144, .20);
+      transition: transform 160ms ease;
+    }
+
+    .continue-button.pressed {
+      transform: scale(.97);
+    }
+
+    .loading-wrap {
+      height: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 31px;
+      height: 31px;
+      border: 3px solid rgba(14, 136, 144, .18);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 760ms linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .glucose-screen {
+      padding: 18px 18px 90px;
+    }
+
+    .glucose-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .glucose-top h1 {
+      font-size: 24px;
+      letter-spacing: .03em;
+    }
+
+    .glucose-intro {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.4;
+    }
+
+    .trend-badge {
+      width: 43px;
+      height: 43px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(174, 209, 214, .22);
+      color: var(--teal);
+      flex: none;
+    }
+
+    .mode-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      height: 35px;
+      margin-top: 13px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--teal);
+      font-size: 11px;
+      font-weight: 750;
+      box-shadow: 0 2px 6px rgba(14, 136, 144, .18);
+    }
+
+    .impact-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .impact-tab {
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--card);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 9.5px;
+      white-space: nowrap;
+    }
+
+    .impact-tab.active {
+      border-color: var(--impact-line);
+      color: var(--impact-ink);
+      background: var(--impact-bg);
+      font-weight: 750;
+    }
+
+    .impact-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .actual-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 12px 2px 7px;
+    }
+
+    .actual-heading strong {
+      font-size: 12px;
+    }
+
+    .actual-heading span {
+      color: var(--muted);
+      font-size: 9.5px;
+    }
+
+    .food-card {
+      position: relative;
+      padding: 14px 14px 13px;
+      overflow: hidden;
+      border: 1px solid var(--impact-line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 3px 12px rgba(25, 56, 53, .10);
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 480ms ease, transform 520ms cubic-bezier(.22,.8,.3,1);
+    }
+
+    .food-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .food-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: #E85A5A;
+    }
+
+    .food-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .food-title-row h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 850;
+    }
+
+    .impact-badge {
+      padding: 5px 9px;
+      border: 1px solid var(--impact-line);
+      border-radius: 999px;
+      color: var(--impact-ink);
+      background: var(--impact-bg);
+      font-size: 9.5px;
+      font-weight: 760;
+      white-space: nowrap;
+      transition: transform 260ms ease, box-shadow 260ms ease;
+    }
+
+    .impact-badge.emphasized {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 5px rgba(232, 90, 90, .12);
+    }
+
+    .measured-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      color: var(--teal-deep);
+      font-size: 9.5px;
+      font-weight: 760;
+    }
+
+    .impact-description {
+      margin: 5px 0 0;
+      color: #344D4C;
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .impact-description strong {
+      color: var(--impact-ink);
+      font-weight: 850;
+    }
+
+    .reading-count {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 9.5px;
+    }
+
+    .reading-count strong {
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .pairing {
+      margin-top: 10px;
+      padding: 10px 11px 9px;
+      border-radius: 11px;
+      background: rgba(174, 209, 214, .15);
+      opacity: 0;
+      transform: translateY(7px);
+      transition: opacity 380ms ease, transform 420ms ease;
+    }
+
+    .pairing.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .pairing-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin: 0 0 4px;
+      color: var(--teal-deep);
+      font-size: 9.5px;
+      font-weight: 800;
+    }
+
+    .pairing-copy {
+      margin: 0;
+      color: #304A49;
+      font-size: 10px;
+      line-height: 1.52;
+    }
+
+    .food-token {
+      color: var(--teal-deep);
+      font-weight: 850;
+    }
+
+    .disclaimer {
+      margin: 7px 0 0;
+      padding-top: 7px;
+      border-top: 1px solid rgba(11, 109, 115, .12);
+      color: #687573;
+      font-size: 8.5px;
+      line-height: 1.48;
+    }
+
+    .nav {
+      position: absolute;
+      z-index: 50;
+      left: 16px;
+      bottom: 18px;
+      width: 328px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 160px;
+      background: rgba(174, 209, 214, .85);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, .25);
+      backdrop-filter: blur(5px);
+    }
+
+    .nav-item {
+      position: relative;
+      height: 100%;
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--teal-deep);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+    }
+
+    .nav-item svg {
+      width: 19px;
+      height: 19px;
+      stroke-width: 2;
+    }
+
+    .nav-item.active svg {
+      stroke-width: 2.5;
+    }
+
+    .nav-item span {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      font-size: 7.5px;
+      line-height: 1.05;
+      font-weight: 750;
+      white-space: nowrap;
+      transition: opacity 200ms ease, max-height 200ms ease;
+    }
+
+    .nav-item.active span {
+      max-height: 10px;
+      opacity: 1;
+    }
+
+    .tap-pulse {
+      position: absolute;
+      z-index: 100;
+      width: 28px;
+      height: 28px;
+      margin: -14px 0 0 -14px;
+      border: 2px solid rgba(14, 136, 144, .72);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .55);
+      pointer-events: none;
+      animation: tap 460ms ease-out forwards;
+    }
+
+    @keyframes tap {
+      0% { opacity: 0; transform: scale(.35); }
+      24% { opacity: 1; transform: scale(.72); }
+      100% { opacity: 0; transform: scale(1.65); }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" aria-label="食物快拍到血糖規律示範">
+    <section id="upload-screen" class="screen active">
+      <div class="heading-row">
+        <div class="heading-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="29" height="29" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+          </svg>
+        </div>
+        <h1>食物快拍</h1>
+      </div>
+      <p class="subtitle">拍下你的餐點，獲得個人化飲食建議！</p>
+      <div class="upload-options">
+        <button class="upload-option" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+          </svg>
+          <span>拍照</span>
+        </button>
+        <button id="album-button" class="upload-option" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="16" height="14" rx="2"/>
+            <circle cx="8.5" cy="9.5" r="1.5"/>
+            <path d="m3 16 4-4 3 3 2-2 7 6"/>
+            <path d="M7 2h14a1 1 0 0 1 1 1v12"/>
+          </svg>
+          <span>選擇相片</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="meal-screen" class="screen">
+      <div class="heading-row">
+        <div class="heading-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="29" height="29" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+          </svg>
+        </div>
+        <h1>食物快拍</h1>
+      </div>
+      <img class="meal-photo" src="../../../attached_assets/generated_images/task963-white-rice-meal.png" alt="白飯、燒肉和雞肉" />
+      <p class="meal-time">現在是 07:42</p>
+      <p class="meal-question">這是哪一餐？</p>
+      <div class="chips">
+        <button class="chip" type="button">早餐</button>
+        <button class="chip" type="button">午餐</button>
+        <button id="dinner-chip" class="chip" type="button">晚餐</button>
+        <button class="chip" type="button">小食</button>
+      </div>
+      <button id="continue-button" class="continue-button" type="button">繼續</button>
+    </section>
+
+    <section id="loading-screen" class="screen">
+      <div class="heading-row">
+        <div class="heading-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="29" height="29" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+          </svg>
+        </div>
+        <h1>食物快拍</h1>
+      </div>
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div>正在分析你的餐點…</div>
+      </div>
+    </section>
+
+    <section id="glucose-screen" class="screen glucose-screen">
+      <div class="glucose-top">
+        <div>
+          <h1>血糖規律</h1>
+          <p class="glucose-intro">查看你已記錄的餐後血糖結果。</p>
+        </div>
+        <div class="trend-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 17 6-6 4 4 8-8"/>
+            <path d="M14 7h7v7"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="mode-pill">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M7 5h8a4 4 0 0 1 0 8H9a4 4 0 0 0 0 8h8"/>
+        </svg>
+        已紀錄血糖的食物
+      </div>
+
+      <div class="impact-tabs">
+        <div class="impact-tab"><span class="impact-dot"></span>較低影響&nbsp;1</div>
+        <div class="impact-tab"><span class="impact-dot"></span>沒有明顯差異&nbsp;0</div>
+        <div class="impact-tab active"><span class="impact-dot"></span>較高影響&nbsp;1</div>
+      </div>
+
+      <div class="actual-heading">
+        <strong>你的實際記錄</strong>
+        <span>1 款食物</span>
+      </div>
+
+      <article id="food-card" class="food-card">
+        <div class="food-title-row">
+          <h2>白飯</h2>
+          <span id="impact-badge" class="impact-badge">較高影響</span>
+        </div>
+        <div class="measured-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M7 5h8a4 4 0 0 1 0 8H9a4 4 0 0 0 0 8h8"/>
+          </svg>
+          實測餐後血糖規律
+        </div>
+        <p class="impact-description">這款食物的餐後血糖與平常比<strong>較高</strong></p>
+        <p class="reading-count"><strong>25</strong> 餐中有 <strong>19</strong> 次偏高</p>
+        <div id="pairing" class="pairing">
+          <p class="pairing-title">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3v3M16 3v3M5 8h14M6 5h12a1 1 0 0 1 1 1v13H5V6a1 1 0 0 1 1-1Z"/>
+              <path d="m9 14 2 2 4-5"/>
+            </svg>
+            食物配搭規律
+          </p>
+          <p class="pairing-copy">吃 <span class="food-token">白飯</span> 時，配 <span class="food-token">燒肉</span> 的平均餐後血糖讀數較高；配 <span class="food-token">雞肉</span> 的較低。</p>
+          <p class="disclaimer">這只是你記錄中的模式，不能證明是其中一種食物造成差異。份量、其他食物、活動和測量時間也會影響讀數。</p>
+        </div>
+      </article>
+    </section>
+
+    <nav class="nav" aria-label="主要導覽">
+      <button class="nav-item" data-nav="home" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+        <span>主頁</span>
+      </button>
+      <button class="nav-item" data-nav="report" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 10h6M9 14h6M9 18h4"/></svg>
+        <span>報告</span>
+      </button>
+      <button class="nav-item active" data-nav="snap" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z"/><circle cx="12" cy="13" r="3.4"/></svg>
+        <span>食物快拍</span>
+      </button>
+      <button class="nav-item" data-nav="glucose" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <span>血糖規律</span>
+      </button>
+      <button class="nav-item" data-nav="profile" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>個人資料</span>
+      </button>
+    </nav>
+  </main>
+
+  <script>
+    const screens = [...document.querySelectorAll(".screen")];
+    const navItems = [...document.querySelectorAll(".nav-item")];
+    let started = false;
+
+    function showScreen(id) {
+      screens.forEach((screen) => screen.classList.toggle("active", screen.id === id));
+    }
+
+    function setActiveNav(key) {
+      navItems.forEach((item) => item.classList.toggle("active", item.dataset.nav === key));
+    }
+
+    function pulseAt(x, y) {
+      const pulse = document.createElement("div");
+      pulse.className = "tap-pulse";
+      pulse.style.left = `${x}px`;
+      pulse.style.top = `${y}px`;
+      document.querySelector(".stage").appendChild(pulse);
+      window.setTimeout(() => pulse.remove(), 500);
+    }
+
+    window.startClip = function startClip() {
+      if (started) return;
+      started = true;
+
+      window.setTimeout(() => {
+        pulseAt(263, 248);
+        document.querySelector("#album-button").classList.add("pressed");
+      }, 920);
+
+      window.setTimeout(() => {
+        document.querySelector("#album-button").classList.remove("pressed");
+        showScreen("meal-screen");
+      }, 1430);
+
+      window.setTimeout(() => {
+        pulseAt(215, 431);
+        document.querySelector("#dinner-chip").classList.add("selected");
+      }, 2390);
+
+      window.setTimeout(() => {
+        pulseAt(181, 485);
+        document.querySelector("#continue-button").classList.add("pressed");
+      }, 3270);
+
+      window.setTimeout(() => {
+        document.querySelector("#continue-button").classList.remove("pressed");
+        showScreen("loading-screen");
+      }, 3610);
+
+      window.setTimeout(() => {
+        pulseAt(222, 598);
+        setActiveNav("glucose");
+      }, 4490);
+
+      window.setTimeout(() => {
+        showScreen("glucose-screen");
+      }, 4860);
+
+      window.setTimeout(() => {
+        document.querySelector("#food-card").classList.add("visible");
+      }, 5260);
+
+      window.setTimeout(() => {
+        document.querySelector("#impact-badge").classList.add("emphasized");
+      }, 6350);
+
+      window.setTimeout(() => {
+        document.querySelector("#impact-badge").classList.remove("emphasized");
+        document.querySelector("#pairing").classList.add("visible");
+      }, 7100);
+    };
+  </script>
+</body>
+</html>
