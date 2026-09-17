@@ -1,111 +1,13 @@
 /*
- * Temporary homepage-only color trial.
- * Keep these values scoped to the homepage; do not promote them to the
- * shared theme or root design tokens until the trial is approved.
+ * Homepage-only exception: keep the meal suggestion action orange while
+ * the rest of the page uses the shared app palette.
  */
-.home-page-v2,
-.home-trial-nav {
-  --home-trial-teal: #007D82;
-  --home-trial-orange: #D97D3D;
-  --home-trial-ink: #173F46;
-  --home-trial-nav-surface: rgba(6, 79, 85, 0.85);
-  --home-trial-nav-foreground: #FFFFFF;
-}
-
-.home-page-v2 {
-  --brand-cream: #FCFAF5;
-  --brand-cream-card: #FCFAF5;
-  --brand-cream-muted: #F4F8F8;
-  --brand-teal: var(--home-trial-teal);
-  --brand-teal-deep: var(--home-trial-teal);
-  --brand-teal-soft: #DDF1F0;
-  --brand-teal-wash: #EFF8F7;
-  --brand-ink: var(--home-trial-ink);
-  --brand-muted: #5C7477;
-
-  --background: 0 0% 100%;
-  --foreground: 188.936 50.538% 18.235%;
-  --border: 180 18% 84%;
-  --card: 0 0% 100%;
-  --card-foreground: 188.936 50.538% 18.235%;
-  --card-border: 180 18% 84%;
-  --primary: 183.529 100% 25.686%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 180 32% 92%;
-  --secondary-foreground: 188.936 50.538% 18.235%;
-  --muted: 180 25% 94%;
-  --muted-foreground: 186.667 12.796% 41.373%;
-  --accent: 24.615 67.241% 54.510%;
-  --accent-foreground: 188.936 50.538% 18.235%;
-  --input: 180 18% 78%;
-  --ring: 183.529 100% 25.686%;
-
-  background: #FCFAF5;
-  color: var(--home-trial-ink);
-}
-
-.home-page-v2 .shadcn-card {
-  background-color: #FCFAF5 !important;
-  box-shadow: 0 4px 14px rgba(0, 125, 130, 0.08) !important;
-}
-
-.home-page-v2 .bg-card,
-.home-page-v2 .bg-background {
-  background-color: #FCFAF5 !important;
-}
-
-.home-page-v2 .bg-muted {
-  background-color: #DDF1F0 !important;
-}
-
-.home-page-v2 .bg-muted\/50 {
-  background-color: #F4F8F8 !important;
-}
-
-.home-page-v2 .bg-muted\/30 {
-  background-color: #FCFAF5 !important;
-}
-
-.home-page-v2 .text-muted-foreground {
-  color: #5C7477 !important;
-}
-
 .home-page-v2 [data-testid="button-meal-suggestion"] {
-  background: var(--home-trial-orange) !important;
-  color: var(--home-trial-ink) !important;
+  background: #D97D3D !important;
+  color: #173F46 !important;
   box-shadow: 0 2px 8px rgba(217, 125, 61, 0.2) !important;
 }
 
 .home-page-v2 [data-testid="button-meal-suggestion"]:disabled {
-  color: var(--home-trial-ink) !important;
-}
-
-.home-page-v2 [data-testid="button-home-hstix-record"],
-.home-page-v2 [data-testid="button-home-hstix-change"] {
-  border-color: var(--home-trial-teal) !important;
-  color: var(--home-trial-teal) !important;
-}
-
-.home-page-v2 [data-state="checked"] {
-  background-color: var(--home-trial-orange) !important;
-  border-color: var(--home-trial-orange) !important;
-  color: var(--home-trial-ink) !important;
-}
-
-.home-page-v2 [role="status"] {
-  color: var(--home-trial-orange) !important;
-}
-
-.home-page-v2 [role="progressbar"] > div {
-  background-color: var(--home-trial-teal) !important;
-}
-
-/* The floating nav is rendered outside the homepage main element. */
-.home-trial-nav > div {
-  background-color: var(--home-trial-nav-surface) !important;
-}
-
-.home-trial-nav-item,
-.home-trial-nav-item-label {
-  color: var(--home-trial-nav-foreground) !important;
+  color: #173F46 !important;
 }

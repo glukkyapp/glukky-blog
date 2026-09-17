@@ -19,7 +19,6 @@ export default function FloatingNavBar() {
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const { gate, isLocked, showPaywall } = useGate();
-  const isHome = location === "/" || location === "";
 
   const navItems = [
     { key: "home", label: t("nav.home"), path: "/", icon: Home },
@@ -91,9 +90,7 @@ export default function FloatingNavBar() {
 
   return (
     <nav
-      className={`fixed bottom-7 left-1/2 transform -translate-x-1/2 z-50 ${
-        isHome ? "home-trial-nav" : ""
-      }`}
+      className="fixed bottom-7 left-1/2 transform -translate-x-1/2 z-50"
       style={{ width: "calc(100vw - 32px)", maxWidth: "384px", height: "58px" }}
       data-testid="nav-floating-bar"
     >
@@ -114,9 +111,7 @@ export default function FloatingNavBar() {
               onClick={() => handleNavClick(path, key)}
               whileTap={NAV_TAP}
               transition={NAV_TAP_TRANSITION}
-              className={`relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none ${
-                isHome ? "home-trial-nav-item" : ""
-              }`}
+              className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none"
               style={{
                 height: "100%",
                 color: locked ? "#9CA3AF" : "var(--brand-teal-deep)",
@@ -131,9 +126,7 @@ export default function FloatingNavBar() {
               <motion.span
                 animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
                 transition={{ duration: 0.2 }}
-                className={`text-xs font-medium overflow-hidden leading-tight ${
-                  isHome ? "home-trial-nav-item-label" : ""
-                }`}
+                className="text-xs font-medium overflow-hidden leading-tight"
                 style={{ color: locked ? "#9CA3AF" : "var(--brand-teal-deep)" }}
               >
                 {label}
