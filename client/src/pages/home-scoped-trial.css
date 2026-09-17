@@ -12,8 +12,8 @@
 }
 
 .home-page-v2 {
-  --brand-cream: #FFFFFF;
-  --brand-cream-card: #FFFFFF;
+  --brand-cream: #F8F8F8;
+  --brand-cream-card: #F8F8F8;
   --brand-cream-muted: #F4F8F8;
   --brand-teal: var(--home-trial-teal);
   --brand-teal-deep: var(--home-trial-teal);
@@ -39,18 +39,18 @@
   --input: 180 18% 78%;
   --ring: 183.529 100% 25.686%;
 
-  background: #FFFFFF;
+  background: #F8F8F8;
   color: var(--home-trial-ink);
 }
 
 .home-page-v2 .shadcn-card {
-  background-color: #FFFFFF !important;
+  background-color: #F8F8F8 !important;
   box-shadow: 0 4px 14px rgba(0, 125, 130, 0.08) !important;
 }
 
 .home-page-v2 .bg-card,
 .home-page-v2 .bg-background {
-  background-color: #FFFFFF !important;
+  background-color: #F8F8F8 !important;
 }
 
 .home-page-v2 .bg-muted {
@@ -62,7 +62,7 @@
 }
 
 .home-page-v2 .bg-muted\/30 {
-  background-color: #FFFFFF !important;
+  background-color: #F8F8F8 !important;
 }
 
 .home-page-v2 .text-muted-foreground {
