@@ -1,0 +1,42 @@
+====================================================================
+CLIP 2: Foodsnap -> Glucose Pattern Insights
+====================================================================
+
+CONFIRMED REAL BEHAVIOR:
+- Foodsnap flow: user picks Camera or Album (native file input) -> selects meal type (breakfast/lunch/dinner/snack) -> taps Continue (snap.tsx:940-1036).
+- Glucose Pattern card per food shows: food name, an ImpactBadge (High/Medium/Low), a description string, and a reading count "X high readings from Y meals" (glucose-patterns.tsx:445-468).
+- Real impact copy (en.json:1312-1319):
+  - High: "Higher impact compared with your other recorded meals"
+  - Medium: "Similar impact compared with your other recorded meals"
+  - Low: "Lower impact compared with your other recorded meals"
+- Real food-pairing copy (glucose-patterns.tsx:469-496):
+  - Dominant partner: "Most times you eat {{indexFood}}, you also eat {{partner}}. The reading may reflect both foods together."
+  - Comparison: "After eating {{indexFood}}, your average reading was higher with {{higherPartner}} and lower with {{lowerPartner}}."
+  - Disclaimer (always shown): "This is a pattern in your records. It does not prove that either food caused the difference. Portion size, other foods, activity, and timing can also affect readings."
+
+WHY THE ORIGINAL BRIEF WAS WRONG:
+- "Glucose higher than usual after this food" is NOT the real string. The real string is "Higher impact compared with your other recorded meals."
+- "Pairing it with ___ gives a larger glucose impact" is more causal/definitive than the real product language, which is carefully hedged ("average reading was higher with...") and always paired with an explicit non-causal disclaimer. Using the stronger phrasing would misrepresent the app AND reintroduce the exact kind of overclaiming risk flagged in the App Store description review (avoid treatment/causal-outcome claims).
+
+CORRECTED SHOT SEQUENCE:
+1. Open on Foodsnap, nav bar visible.
+2. User taps Camera or Album, selects a real supported food photo.
+3. User selects a meal type (e.g., Dinner) and taps Continue.
+4. Transition to Glucose Pattern page via nav bar (glucose/TrendingUp icon).
+5. Show the logged food's card: food name, "Higher impact" badge, and the real description "Higher impact compared with your other recorded meals," plus the reading count line.
+6. Show the food-pairing insight using the REAL comparison copy: "After eating {{indexFood}}, your average reading was higher with {{higherPartner}} and lower with {{lowerPartner}}."
+7. Include the disclaimer text on screen (even briefly) rather than omitting it -- it's part of the real product experience and should not be cut for the sake of a cleaner-looking clip.
+
+====================================================================
+SHARED: Navigation Bar (both clips)
+====================================================================
+
+Five items, in order: Home, Report (clipboard icon), Snap (camera icon), Glucose Patterns (trending-up icon), Profile (user icon) (floating-nav-bar.tsx:23-29).
+
+Visual: floating translucent teal pill, fixed to bottom center, background rgba(174,209,214,0.85), 160px border radius, subtle drop shadow (floating-nav-bar.tsx:91-103). Reproduce exactly -- do not restyle.
+
+====================================================================
+LOCALE FOR ON-SCREEN TEXT
+====================================================================
+
+Not yet decided -- confirm before filming whether clips use en.json, zh-Hant.json, or yue.json strings. Keep consistent across both clips unless separate localized versions are explicitly requested. All exact strings quoted above are from en.json; pull the equivalent verified strings from zh-Hant.json/yue.json if a Chinese-language version is chosen instead of re-translating on the fly.
