@@ -490,7 +490,7 @@ function PersonalShortcuts() {
 function ShareAppButton() {
   const handleShare = () => {
     track("share_button_tapped");
-    window.natively.shareText("Try this app: https://apps.apple.com/app/your-app-id");
+    window.natively.shareText("Try this app: https://apps.apple.com/hk/app/glukky/id6761914533");
   };
 
   return (
