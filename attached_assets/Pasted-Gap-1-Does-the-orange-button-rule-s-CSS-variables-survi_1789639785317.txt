@@ -1,0 +1,12 @@
+Gap 1: Does the orange button rule's CSS variables survive?
+The button override you're keeping references var(--home-trial-orange) and var(--home-trial-ink), but those variables aren't defined inside the rule you're keeping, they're defined in a separate block (the one that also set --home-trial-teal, --home-trial-nav-surface, etc.). Your item #3 only lists the brand-token override block (--brand-cream, --brand-teal, background) as "to remove", it doesn't mention the block that actually declares --home-trial-orange: #D97D3D and --home-trial-ink: #173F46 in the first place.
+
+If that variable-declaration block gets deleted along with the rest of the trial CSS (which is the natural thing to do if someone's told to "restore to original"), the surviving button rule will reference undefined variables and the orange button will silently lose all styling, no error, it'll just fall back to whatever default button style exists underneath. Before this runs, you need to explicitly decide: either keep the --home-trial-orange/--home-trial-ink variable declarations alive somewhere, or replace var(--home-trial-orange) and var(--home-trial-ink) in the surviving rule with the literal hex values (#D97D3D, #173F46) so it has no dependency on anything else in the file.
+
+Gap 2: Does .home-page-v2 stay on the actual page markup?
+The surviving button rule is scoped as .home-page-v2 [data-testid="button-meal-suggestion"], it only matches if the homepage's wrapper element still carries the home-page-v2 class in the JSX. Your rollback plan describes removing the CSS rules under that selector, but doesn't mention whether the class itself gets stripped from home.tsx's markup. If someone reflexively removes the class along with the trial (reasonable instinct when "restoring to original"), the orange button rule becomes permanently unreachable, same silent failure as above.
+
+What I'd confirm before approving
+The home-page-v2 class stays on the homepage wrapper in home.tsx (even though most of what it used to control is gone).
+
+Either the --home-trial-orange/--home-trial-ink variable definitions stay in home-scoped-trial.css, or the surviving rule gets rewritten with literal hex values instead of variables.
