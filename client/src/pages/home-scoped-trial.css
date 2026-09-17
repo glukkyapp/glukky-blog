@@ -2,10 +2,6 @@
  * Homepage-only exception: keep the meal suggestion action orange while
  * the rest of the page uses the shared app palette.
  */
-.home-page-v2 {
-  background: #FCFAF5;
-}
-
 .home-page-v2 [data-testid="button-meal-suggestion"] {
   background: #D97D3D !important;
   color: #173F46 !important;
