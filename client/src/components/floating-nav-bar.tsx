@@ -115,7 +115,7 @@ export default function FloatingNavBar() {
               whileTap={NAV_TAP}
               transition={NAV_TAP_TRANSITION}
               className={`relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none ${
-                isHome && !locked ? "home-trial-nav-item" : ""
+                isHome ? "home-trial-nav-item" : ""
               }`}
               style={{
                 height: "100%",
@@ -132,7 +132,7 @@ export default function FloatingNavBar() {
                 animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
                 transition={{ duration: 0.2 }}
                 className={`text-xs font-medium overflow-hidden leading-tight ${
-                  isHome && !locked ? "home-trial-nav-item-label" : ""
+                  isHome ? "home-trial-nav-item-label" : ""
                 }`}
                 style={{ color: locked ? "#9CA3AF" : "var(--brand-teal-deep)" }}
               >
