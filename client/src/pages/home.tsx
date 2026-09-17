@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 import { DailyTaskCard } from "@/components/daily-task-card";
 import type { UserProfile } from "@shared/schema";
+import "./home-scoped-trial.css";
 
 type CorrectableHstixReading = {
   id: number;
