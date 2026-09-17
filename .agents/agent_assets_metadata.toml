@@ -87,14 +87,14 @@ content_type = "text/markdown"
 id = "mWxE3i99z4wLm9yltSYZx"
 uri = "file://exports/task963-clip1-zh-hant/glukky-clip1-zh-hant.mp4"
 type = "video"
-title = "Glukky Clip 1 — 香港舊照片獎勵（繁中）"
-description = "8.5-second vertical H.264 mockup showing the real 4/60 to 5/60 first-photo unlock flow, daily-task completion, and archive-photo reveal."
+title = "Glukky Clip 1 — MP4"
+description = "Traditional Chinese Clip 1 with the presentation background recolored to #FCFAF5."
 logical_id = "257c0b23-7b99-4b73-b3f4-e816d743a8ce"
-content_hash = "sha256:e4a21132b029f0a005b3216b3a4244d7170b1ec7d59b29037540951c25c192a1"
-size = 906762
-mtime_ms = 1789631683588
-storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/257c0b23-7b99-4b73-b3f4-e816d743a8ce/996c1131-24ef-4a5d-ba05-b037480c99de"
-storage_version_token = "1789631703634727"
+content_hash = "sha256:0ed3309952fa5af86a8ec5e5c5b62738b07eaf20fcfae5802a59be3877c4189b"
+size = 883005
+mtime_ms = 1789649519662
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/257c0b23-7b99-4b73-b3f4-e816d743a8ce/243e7abd-710e-4524-a2f8-2862b83972d7"
+storage_version_token = "1789649601644677"
 content_type = "video/mp4"
 
 [[outputs]]
@@ -124,3 +124,31 @@ mtime_ms = 1789641877718
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/4f49951f-8e24-4000-9ca3-6315d351bd34/a4ef4946-1b1b-4a31-a2ab-b040dc28f420"
 storage_version_token = "1789641921177847"
 content_type = "video/webm"
+
+[[outputs]]
+id = "w4c1jSZq6XMSWEgYZLD_s"
+uri = "file://exports/task963-clip1-zh-hant/glukky-clip1-zh-hant.webm"
+type = "video"
+title = "Glukky Clip 1 — WebM"
+description = "Matching VP9 WebM export with the #FCFAF5 presentation background."
+logical_id = "30462a4a-0435-4894-a625-bc3c4d36d538"
+content_hash = "sha256:b133c45643b244e9e20e9922a6f552c754dc6864e5a122f5d1210819195960ab"
+size = 662951
+mtime_ms = 1789649537138
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/30462a4a-0435-4894-a625-bc3c4d36d538/0def5f20-5d9f-410a-98de-819912bf2a8b"
+storage_version_token = "1789649604439488"
+content_type = "video/webm"
+
+[[outputs]]
+id = "rKa-y1Lca1CBXcaqpmZtw"
+uri = "file://screenshots/task974-clip1-background/contact-sheet.png"
+type = "image"
+title = "Clip 1 verification contact sheet"
+description = "Representative frames at 0.5, 4.0, and 8.0 seconds for visual verification."
+logical_id = "147551a1-360e-4178-82c0-4bb21bf873e7"
+content_hash = "sha256:705057835b6568bf761495ac82f47e444bfea8ea9df3631514cae387b40554a2"
+size = 631500
+mtime_ms = 1789649569522
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/147551a1-360e-4178-82c0-4bb21bf873e7/9b349edd-ecfc-405d-a226-4cf5ec52d2b0"
+storage_version_token = "1789649607188088"
+content_type = "image/png"
