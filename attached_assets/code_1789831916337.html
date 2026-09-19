@@ -1,0 +1,266 @@
+<!DOCTYPE html><html lang="zh-HK" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>食物快拍 - 飲食建議 | Glukky</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              teal: '#086574',
+              tealDark: '#054652',
+              tealLight: '#D7EEF0',
+              tealUltraLight: '#F0F9FA',
+              warmBg: '#FAF6ED',
+              cardBg: '#FCFBF7',
+              graySub: '#5B6871',
+              disclaimer: '#828F99'
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"PingFang HK"', '"Noto Sans TC"', '"Microsoft JhengHei"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Styles for Mobile Frame and Pulse Animation -->
+<style data-purpose="custom-animations">
+    @keyframes subtle-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+    .animate-voice-pulse {
+      animation: subtle-pulse 2.2s infinite ease-in-out;
+    }
+    /* iOS Momentum Scrolling & safe area */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-stone-900 min-h-screen flex items-center justify-center font-sans antialiased select-none p-0 sm:p-4">
+<!-- BEGIN: MobileDeviceContainer -->
+<!-- iPhone viewport simulation (390 x 844) -->
+<div class="relative w-full max-w-[390px] h-[844px] bg-[#FAF6ED] rounded-[44px] shadow-2xl overflow-hidden flex flex-col border-[6px] border-stone-800">
+<!-- BEGIN: UnderDimmedScreen (Background view) -->
+<div aria-hidden="true" class="absolute inset-0 flex flex-col justify-between select-none filter blur-[2px] opacity-40 pointer-events-none">
+<!-- iOS Status Bar Placeholder -->
+<div class="pt-3 px-7 flex justify-between items-center text-xs font-semibold text-stone-800">
+<span class="">1:39</span>
+<div class="flex items-center space-x-1.5">
+<svg class="w-4 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"></path></svg>
+<span class="text-[11px] font-bold">LTE</span>
+<div class="w-5 h-2.5 border border-stone-800 rounded-sm p-0.5 flex items-center">
+<div class="h-full w-3 bg-stone-800 rounded-2xs"></div>
+</div>
+</div>
+</div>
+<!-- Background Screen Header -->
+<div class="px-5 pt-4 pb-2 flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-full flex items-center justify-center text-stone-800">
+<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><circle cx="12" cy="13" r="4" stroke-width="2"></circle></svg>
+</div>
+<h1 class="text-2xl font-bold text-stone-800 tracking-tight">食物快拍</h1>
+</div>
+<button class="w-11 h-9 rounded-xl border border-stone-400 font-bold text-stone-700 flex items-center justify-center text-base">Aa</button>
+</div>
+<!-- Background Screen Body Content -->
+<div class="px-6 py-4 flex-1">
+<p class="text-stone-600 text-base mb-6">拍下你的餐點，獲得個人化飲食建議！</p>
+<div class="bg-white/80 rounded-2xl p-5 shadow-sm space-y-4">
+<h2 class="text-xl font-bold text-stone-800">飲食建議</h2>
+<p class="text-stone-500 text-sm">今日還有 4 / 5 次飲食建議</p>
+<div class="w-full h-44 bg-stone-200 rounded-xl flex items-center justify-center text-stone-400">
+            餐點照片預覽
+          </div>
+<div class="text-center py-2 text-brand-teal font-medium">換一張照片</div>
+</div>
+</div>
+<!-- Background Bottom Tab Bar Navigation -->
+<nav class="mx-4 mb-5 px-3 py-2 bg-stone-200/90 rounded-full flex justify-around items-center">
+<div class="flex flex-col items-center py-1 text-stone-600">
+<span class="text-xl">🏠</span>
+<span class="text-[11px] mt-0.5">主頁</span>
+</div>
+<div class="flex flex-col items-center py-1 text-stone-600">
+<span class="text-xl">📋</span>
+<span class="text-[11px] mt-0.5">記錄</span>
+</div>
+<div class="flex flex-col items-center py-1 text-brand-teal font-bold">
+<span class="text-xl">📷</span>
+<span class="text-[11px] mt-0.5">食物快拍</span>
+</div>
+<div class="flex flex-col items-center py-1 text-stone-600">
+<span class="text-xl">📈</span>
+<span class="text-[11px] mt-0.5">趨勢</span>
+</div>
+<div class="flex flex-col items-center py-1 text-stone-600">
+<span class="text-xl">👤</span>
+<span class="text-[11px] mt-0.5">我的</span>
+</div>
+</nav>
+</div>
+<!-- END: UnderDimmedScreen -->
+<!-- BEGIN: ModalOverlayBackdrop -->
+<!-- Modal backdrop: 60% darkness with smooth blur for high accessibility focus -->
+<div class="absolute inset-0 bg-black/65 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center px-4 pt-10 pb-6">
+<!-- BEGIN: AccessibleDietAdviceCard -->
+<div aria-labelledby="modal-title" aria-modal="true" class="relative w-full bg-[#FAF6ED] rounded-[32px] shadow-2xl pt-14 pb-6 px-5 flex flex-col items-center text-center border-2 border-white/60" role="dialog">
+<!-- BEGIN: OverlappingMascot -->
+<!-- Steamed bun mascot sitting delightfully atop the modal -->
+<div class="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 filter drop-shadow-md z-30 pointer-events-none transition-transform hover:scale-105 duration-300">
+<img alt="Glukky 蒸包吉祥物" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAU0qpk7V7iJ9ZOZ2P0gSPqqdHw3sHotLEdIsGqNc6JSiE01m_-b1YOcRWGBD2wlYO8se9pVSW04MW6kVJ8X4TNIMpDSdcWiIbFUvrhxz6FANlOPR2lcDvfBV3gf3lGTHZHahjPlRHvYSKQKw5R71Cc7JF3pEVticN6_rPGiZ4edITeI1ioE1WRWUC-WmJ6S0Z9Le66Qeu8rYw1PDcjBnRG0Od6meT1VAgu-tZJspHe5_VxfTFuV8l5ojYMsHmNkD3ghA">
+</div>
+<!-- END: OverlappingMascot -->
+<!-- Accessible Close Button (Min 44x44 target) -->
+<button aria-label="關閉建議視窗" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-stone-100 text-stone-500 hover:text-stone-800 hover:bg-stone-200 active:scale-95 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-brand-teal" onclick="alert('已關閉建議')" type="button">
+<svg class="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+</button>
+<!-- Mascot Conversational Speech Tag -->
+<div class="mt-1 mb-1">
+<span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#D7EEF0] text-brand-teal text-base font-semibold tracking-wide shadow-xs">
+<span class="">💬</span>蝦餃仔溫馨提示：下次可試
+          </span>
+</div>
+<!-- Primary Suggestion Headline -->
+<h2 class="text-2xl sm:text-[26px] font-black text-brand-teal tracking-tight mt-1 mb-1.5" id="modal-title">
+          加點優質蛋白質
+        </h2>
+<!-- Senior-friendly Plain Explanation -->
+<p class="text-brand-graySub text-sm sm:text-base leading-snug px-2 font-medium mb-3">
+          飲食加入優質蛋白，有助平穩餐後血糖，耐餓又精神！
+        </p>
+<!-- BEGIN: VisualFoodOptionsGrid -->
+<!-- 4 Clear Accessible Food Option Chips -->
+<div class="w-full grid grid-cols-2 gap-2.5 mb-3.5 text-left" data-purpose="food-options-list">
+<!-- Food Option 1: 魚肉 -->
+<div class="flex items-center gap-2.5 p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm hover:border-brand-teal/40 transition-colors">
+<div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-2xl shrink-0">
+              🐟
+            </div>
+<div>
+<div class="font-bold text-stone-900 text-base leading-tight">鮮魚肉</div>
+
+</div>
+</div>
+<!-- Food Option 2: 豆腐 -->
+<div class="flex items-center gap-2.5 p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm hover:border-brand-teal/40 transition-colors">
+<div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-2xl shrink-0">
+              🧈
+            </div>
+<div>
+<div class="font-bold text-stone-900 text-base leading-tight">滑豆腐</div>
+
+</div>
+</div>
+<!-- Food Option 3: 雞蛋 -->
+<div class="flex items-center gap-2.5 p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm hover:border-brand-teal/40 transition-colors">
+<div class="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center text-2xl shrink-0">
+              🥚
+            </div>
+<div>
+<div class="font-bold text-stone-900 text-base leading-tight">水煮蛋</div>
+
+</div>
+</div>
+<!-- Food Option 4: 瘦肉 -->
+<div class="flex items-center gap-2.5 p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm hover:border-brand-teal/40 transition-colors">
+<div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-2xl shrink-0">
+              🥩
+            </div>
+<div>
+<div class="font-bold text-stone-900 text-base leading-tight">蒸瘦肉</div>
+
+</div>
+</div>
+</div>
+<!-- END: VisualFoodOptionsGrid -->
+<!-- BEGIN: AudioAssistanceBar -->
+<!-- Senior Friendly Voice Readout Feature (>=48px touch target) -->
+<div class="w-full flex items-center justify-between bg-[#D7EEF0]/60 border border-brand-teal/20 rounded-2xl p-2.5 mb-3.5 px-3">
+<div class="flex items-center gap-2">
+<div class="w-9 h-9 rounded-full bg-brand-teal text-white flex items-center justify-center shadow-sm animate-voice-pulse shrink-0">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="text-left">
+
+
+</div>
+</div>
+<button class="h-10 px-3.5 bg-white active:bg-stone-50 border border-brand-teal text-brand-teal font-bold rounded-xl text-sm flex items-center gap-1 shadow-xs transition hover:bg-brand-teal hover:text-white" id="listenBtn" onclick="triggerVoicePrompt()" type="button">
+<span class="">▶ 聽建議</span>
+</button>
+</div>
+<!-- END: AudioAssistanceBar -->
+<!-- Pagination Indicator (Slide 3 of 3 active) -->
+<div aria-label="分頁指示 (第3頁，共3頁)" class="flex items-center justify-center space-x-2 mb-3.5">
+<span class="w-2.5 h-2.5 rounded-full bg-stone-300"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-stone-300"></span>
+<span class="w-6 h-2.5 rounded-full bg-brand-teal transition-all"></span>
+</div>
+<!-- BEGIN: MainActionCTA -->
+<!-- Primary Action Button: "知道啦！" (Prominent, Elder-friendly 52px height) -->
+<button class="w-full min-h-[52px] bg-brand-teal hover:bg-brand-tealDark active:scale-[0.98] text-white font-bold text-xl rounded-2xl shadow-lg shadow-teal-900/15 flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-teal-200" onclick="alert('多謝！繼續保持健康飲食。')" type="button">
+          知道啦！
+        </button>
+<!-- END: MainActionCTA -->
+<!-- Secondary Action: Learn More Link -->
+<button class="mt-2.5 text-brand-teal hover:text-brand-tealDark font-bold text-base tracking-wide flex items-center justify-center gap-1 group py-1" onclick="alert('打開蛋白質與血糖健康專題詳解')" type="button">
+<span class="underline underline-offset-4 decoration-2">了解更多飲食建議</span>
+<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</button>
+<!-- Medical Disclaimer Footer -->
+<p class="mt-3 text-[11px] leading-tight text-brand-disclaimer max-w-[280px]">
+          Glukky 只提供一般生活飲食參考，並不構成任何醫療診斷或治療。作出任何醫療決定前，請務必諮詢註冊醫生。
+        </p>
+</div>
+<!-- END: AccessibleDietAdviceCard -->
+</div>
+<!-- END: ModalOverlayBackdrop -->
+</div>
+<!-- END: MobileDeviceContainer -->
+<!-- JavaScript for Audio Simulation Interactivity -->
+<script data-purpose="audio-simulation">
+    function triggerVoicePrompt() {
+      const btn = document.getElementById('listenBtn');
+      if (btn.classList.contains('bg-brand-teal')) {
+        btn.classList.remove('bg-brand-teal', 'text-white');
+        btn.classList.add('bg-white', 'text-brand-teal');
+        btn.innerHTML = '<span>▶ 聽建議</span>';
+      } else {
+        btn.classList.add('bg-brand-teal', 'text-white');
+        btn.classList.remove('bg-white', 'text-brand-teal');
+        btn.innerHTML = '<span>⏸ 播放中...</span>';
+        
+        // Simple Web Speech API fallback in Cantonese / Chinese if available
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance("下次可以試下：加點優質蛋白質，例如鮮魚、滑豆腐、水煮蛋或者瘦肉。");
+          utterance.lang = 'zh-HK';
+          utterance.rate = 0.9; // Slightly slower for elderly comprehension
+          utterance.onend = () => {
+            btn.classList.remove('bg-brand-teal', 'text-white');
+            btn.classList.add('bg-white', 'text-brand-teal');
+            btn.innerHTML = '<span>▶ 聽建議</span>';
+          };
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    }
+  </script>
+
+
+</body></html>
