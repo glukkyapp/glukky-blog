@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Leaf } from "lucide-react";
 import { DailyFoodSummaryBanner } from "@/components/DailyFoodSummaryBanner";
-import { LastTwoMonthsCard } from "@/pages/food-reports";
+import { getWeekStart, LastTwoMonthsCard, MealTimeline } from "@/pages/food-reports";
 import { getReportPath, getReportView, type ReportView } from "@/lib/report-navigation";
 
 export default function Report() {
@@ -13,6 +13,7 @@ export default function Report() {
   const tab = getReportView(search);
   const { data: profile } = useQuery<{ deviceTimezone?: string | null }>({ queryKey: ["/api/profile"] });
   const tz = profile?.deviceTimezone ?? undefined;
+  const weekStart = getWeekStart(tz);
   const labels: Record<ReportView, string> = {
     daily: t("two_month_report.daily_tab"),
     "two-month": t("two_month_report.tab"),
@@ -64,6 +65,9 @@ export default function Report() {
                 onViewMeal={() => setLocation("/food-log?from=report")}
                 viewMealLabel={copy.meal}
               />
+              <div className="mt-4">
+                <MealTimeline weekStart={weekStart} />
+              </div>
             </div>
           </section>
         ) : (

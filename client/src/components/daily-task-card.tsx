@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Footprints, Droplets, Salad, Clock3, CircleHelp } from "lucide-react";
 
 const LABEL_KEYS: Record<string, string> = {
   post_meal_walk: "home.daily_task_post_meal_walk",
@@ -9,6 +10,7 @@ const LABEL_KEYS: Record<string, string> = {
   vegetable_dish: "home.daily_task_vegetable_dish",
   regular_mealtime: "home.daily_task_regular_mealtime",
 };
+const TASK_ICONS = { post_meal_walk: Footprints, unsweetened_drink: Droplets, vegetable_dish: Salad, regular_mealtime: Clock3 };
 
 type DailyTaskState = {
   localDate: string;
@@ -64,15 +66,15 @@ export function DailyTaskCard() {
         return (
           <label
             key={taskId}
-            className="flex items-center gap-3 rounded-xl px-1 py-1.5"
+            className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 py-2 ${
+              completed ? "border-primary/30 bg-primary/5" : "border-card-border bg-card"
+            }`}
             data-testid={`daily-task-${taskId}`}
           >
-            <Checkbox
-              checked={completed}
-              disabled={Boolean(data.completedTaskId) || mutation.isPending}
+            <Checkbox checked={completed} disabled={Boolean(data.completedTaskId) || mutation.isPending}
               onCheckedChange={(checked) => checked && mutation.mutate(taskId)}
-              aria-label={t(LABEL_KEYS[taskId] ?? taskId)}
-            />
+              aria-label={t(LABEL_KEYS[taskId] ?? taskId)} />
+            {(() => { const Icon = TASK_ICONS[taskId as keyof typeof TASK_ICONS] ?? CircleHelp; return <Icon size={22} strokeWidth={completed ? 2.5 : 2} className={completed ? "text-primary" : "text-muted-foreground"} aria-hidden="true" />; })()}
             <span className="text-sm" style={{ color: "var(--brand-ink)" }}>
               {t(LABEL_KEYS[taskId] ?? taskId)}
             </span>

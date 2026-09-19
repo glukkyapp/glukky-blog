@@ -1038,7 +1038,7 @@ export default function Snap() {
       )}
 
       {step === "review" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 rounded-2xl border border-card-border bg-card p-4 shadow-sm">
           <div>
             <p className="text-sm font-semibold">{t("snap.label_title")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
@@ -1066,8 +1066,7 @@ export default function Snap() {
                   onChange={(e) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name: e.target.value })); }}
                   placeholder={t("snap.field_placeholder_name")}
                   rows={2}
-                  style={{ backgroundColor: "#FFF8EC" }}
-                  className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
+                  className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid="input-snap-name"
                 />
               </div>
@@ -1178,8 +1177,7 @@ export default function Snap() {
                     onChange={(e) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_sauces")}
                     rows={2}
-                    style={{ backgroundColor: "#FFF8EC" }}
-                    className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none leading-snug"
+                    className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     data-testid="input-snap-sauces"
                   />
                 )}
@@ -1236,8 +1234,7 @@ export default function Snap() {
                     onChange={(e) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
                     placeholder={t("snap.field_placeholder_extras")}
                     rows={2}
-                    style={{ backgroundColor: "#FFF8EC" }}
-                    className="flex w-full rounded-xl border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow duration-150 h-[4.5rem] resize-none text-right leading-snug"
+                    className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-right text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     data-testid="input-snap-extras"
                   />
                 )}
@@ -1290,8 +1287,7 @@ export default function Snap() {
             <Button
               onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
               disabled={!form.name.trim() || disambigQueue.length > 0}
-              className="w-full btn-pop h-14 text-base font-semibold rounded-2xl shadow-md text-white hover:brightness-105"
-              style={{ backgroundColor: "#F08A3E" }}
+              className="btn-pop h-14 w-full rounded-2xl bg-[var(--brand-culinary)] text-base font-semibold text-white shadow-md hover:bg-[var(--brand-culinary)] hover:brightness-105 active:bg-[var(--brand-culinary-pressed)]"
               data-testid="button-snap-get-advice"
             >
               {t("snap.get_advice")}

@@ -9,6 +9,7 @@ import { isLeftSwipe } from "@/lib/swipe";
 import glucoseLowImg from "@assets/glucose_low.png";
 import glucoseMediumImg from "@assets/glucose_medium.png";
 import glucoseHighImg from "@assets/glucose_high.png";
+import mascot from "@assets/hargawmascot_1789835862050.png";
 
 export interface StructuredAdvice {
   impactValue: "low" | "medium" | "high" | null;
@@ -176,14 +177,15 @@ export function SnapAdvicePopup({
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) dismiss(); }}>
       <DialogContent
-        className="max-w-xs mx-auto rounded-2xl p-0 overflow-hidden"
+        className="top-[calc(50%+1rem)] max-h-[calc(100dvh-6rem)] max-w-sm mx-auto rounded-[28px] p-0 overflow-visible border-card-border bg-card"
         aria-describedby={undefined}
         data-testid="dialog-snap-advice-popup"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         <DialogTitle className="sr-only">{t("snap.advice_title")}</DialogTitle>
-        <div className="flex flex-col items-center gap-4 p-6 pb-5" data-testid={`card-snap-advice-${card}`}>
+        <img src={mascot} alt="" aria-hidden="true" className="pointer-events-none absolute -top-16 left-1/2 z-10 h-28 w-28 -translate-x-1/2 object-contain" />
+        <div className="flex max-h-[calc(100dvh-6rem)] flex-col items-center gap-4 overflow-y-auto px-6 pt-14 pb-5" data-testid={`card-snap-advice-${card}`}>
           {card === 0 && (
             <>
               {advice.impactValue ? (

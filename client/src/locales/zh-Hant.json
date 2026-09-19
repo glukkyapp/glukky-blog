@@ -1257,6 +1257,10 @@
     "hstix_empty": "你已儲存的血糖記錄會顯示在這裡。",
     "hstix_note_label": "備註（可選）",
     "hstix_note_placeholder": "加入備註",
+    "preset_walk": "飯後散步",
+    "preset_water": "飲用清水",
+    "preset_veg": "有吃蔬菜",
+    "preset_early": "提早用餐",
     "hstix_home_record": "記錄血糖",
     "hstix_home_change": "更改",
     "hstix_home_saved": "已記錄 {{value}} mmol/L",
@@ -1377,6 +1381,12 @@
   },
   "food_log": {
     "overlap_tooltip": "與上一餐相隔不足2小時，血糖讀數可能受影響。"
+  },
+  "food_reports": {
+    "timeline_title": "本週餐點",
+    "timeline_error": "暫時未能載入餐點。",
+    "timeline_empty": "本週尚未有餐點記錄。",
+    "unnamed_meal": "食物"
   },
   "consent": {
     "onboarding_title": "你的私隱設定",

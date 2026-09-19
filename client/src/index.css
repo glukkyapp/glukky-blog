@@ -69,6 +69,8 @@ textarea,
   --brand-cream-muted: #F7E8D2;
   --brand-ink: #173F46;
   --brand-muted: #5C7477;
+  --brand-culinary: #8C3600;
+  --brand-culinary-pressed: #702B00;
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
 
@@ -77,24 +79,24 @@ textarea,
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 36 93.75% 93.725%;
+  --background: 48 65% 97%;
   --foreground: 188.936 50.538% 18.235%;
   --border: 31 39% 82%;
-  --card: 37.895 100% 96.275%;
+  --card: 48 42% 99%;
   --card-foreground: 188.936 50.538% 18.235%;
-  --card-border: 31 39% 84%;
+  --card-border: 42 24% 86%;
   --sidebar: 37 75% 91%;
   --sidebar-foreground: 188.936 50.538% 18.235%;
   --sidebar-border: 31 39% 82%;
-  --sidebar-primary: 187.846 83.333% 30.588%;
+  --sidebar-primary: 153 39% 24%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 187 45% 87%;
   --sidebar-accent-foreground: 188.936 50.538% 18.235%;
-  --sidebar-ring: 187.846 83.333% 30.588%;
-  --popover: 37.895 100% 96.275%;
+  --sidebar-ring: 153 39% 24%;
+  --popover: 48 42% 99%;
   --popover-foreground: 188.936 50.538% 18.235%;
-  --popover-border: 31 39% 82%;
-  --primary: 187.846 83.333% 30.588%;
+  --popover-border: 42 24% 86%;
+  --primary: 153 39% 24%;
   --primary-foreground: 0 0% 100%;
   --secondary: 187 38% 88%;
   --secondary-foreground: 188.936 50.538% 18.235%;
@@ -105,8 +107,8 @@ textarea,
   --destructive: 0 65% 55%;
   --destructive-foreground: 0 0% 100%;
   --input: 31 39% 78%;
-  --ring: 187.846 83.333% 30.588%;
-  --chart-1: 187.846 83.333% 30.588%;
+  --ring: 153 39% 24%;
+  --chart-1: 153 39% 24%;
   --chart-2: 38 78% 56%;
   --chart-3: 145 55% 42%;
   --chart-4: 0 65% 55%;
@@ -169,24 +171,24 @@ textarea,
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 187 28% 9%;
+  --background: 153 24% 10%;
   --foreground: 37 65% 91%;
   --border: 187 22% 22%;
-  --card: 187 25% 13%;
+  --card: 153 21% 15%;
   --card-foreground: 37 65% 91%;
-  --card-border: 187 22% 24%;
+  --card-border: 42 12% 28%;
   --sidebar: 187 27% 11%;
   --sidebar-foreground: 37 60% 89%;
   --sidebar-border: 187 22% 22%;
-  --sidebar-primary: 187 83% 38%;
+  --sidebar-primary: 153 39% 32%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 187 24% 17%;
   --sidebar-accent-foreground: 37 60% 89%;
-  --sidebar-ring: 187 83% 38%;
-  --popover: 187 25% 13%;
+  --sidebar-ring: 153 39% 32%;
+  --popover: 153 21% 15%;
   --popover-foreground: 37 65% 91%;
-  --popover-border: 187 22% 24%;
-  --primary: 187 83% 38%;
+  --popover-border: 42 12% 28%;
+  --primary: 153 39% 32%;
   --primary-foreground: 0 0% 100%;
   --secondary: 187 24% 19%;
   --secondary-foreground: 37 60% 89%;
@@ -197,8 +199,8 @@ textarea,
   --destructive: 0 60% 50%;
   --destructive-foreground: 0 0% 100%;
   --input: 187 22% 28%;
-  --ring: 187 83% 38%;
-  --chart-1: 187 83% 38%;
+  --ring: 153 39% 32%;
+  --chart-1: 153 39% 32%;
   --chart-2: 38 70% 50%;
   --chart-3: 145 50% 45%;
   --chart-4: 0 60% 50%;
@@ -253,6 +255,19 @@ html.font-small .text-\[50px\] { font-size: calc(50px * 2 / 3) !important; }
 
 .font-toggle-glyph {
   font-size: 18px !important;
+}
+
+/*
+ * Five permanent labels share the inner navigation width equally. The
+ * responsive bounds keep four-character CJK labels inside a 54px target at
+ * 320px while still making the default (large) setting visibly larger.
+ */
+.floating-nav-label {
+  font-size: clamp(0.65625rem, 3.4vw, 0.75rem);
+}
+
+html.font-small .floating-nav-label {
+  font-size: clamp(0.5625rem, 3vw, 0.6875rem);
 }
 
 @layer base {

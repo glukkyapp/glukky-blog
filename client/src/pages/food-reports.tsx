@@ -1,10 +1,17 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DonutChart } from "@/components/DonutChart";
+import {
+  impactPresentation,
+  isChineseLanguage,
+  mealLabel,
+  mealTimeLabel,
+  type MealLogItem,
+} from "@/lib/meal-presentation";
 
 interface WeeklySummary {
   snapCount: number;
@@ -140,6 +147,62 @@ function getPrevMonth(): string {
   const y = today.getFullYear();
   if (currentMonth === 1) return `${y - 1}-12`;
   return `${y}-${String(currentMonth - 1).padStart(2, "0")}`;
+}
+
+function addLocalDays(localDate: string, days: number): string {
+  const [year, month, day] = localDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days, 12))
+    .toISOString()
+    .slice(0, 10);
+}
+
+export function MealTimeline({ weekStart }: { weekStart: string }) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language || "en";
+  const isZh = isChineseLanguage(locale);
+  const weekEnd = addLocalDays(weekStart, 6);
+  const months = Array.from(new Set([weekStart.slice(0, 7), weekEnd.slice(0, 7)]));
+  const queries = useQueries({
+    queries: months.map((month) => ({
+      queryKey: ["/api/snap/meal-log", "report", month],
+      queryFn: async (): Promise<{ items: MealLogItem[] }> => {
+        const res = await fetch(`/api/snap/meal-log?month=${month}`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed");
+        return res.json();
+      },
+    })),
+  });
+  const isLoading = queries.some((query) => query.isLoading);
+  const isError = queries.some((query) => query.isError);
+  const items = queries
+    .flatMap((query) => query.data?.items ?? [])
+    .filter((item) => item.localDate >= weekStart && item.localDate <= weekEnd)
+    .sort((a, b) => new Date(a.snapTime).getTime() - new Date(b.snapTime).getTime());
+  return (
+    <Card data-testid="card-meal-timeline">
+      <CardHeader className="pb-2 pt-4">
+        <CardTitle className="text-base">{t("food_reports.timeline_title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="pb-4">
+        {isLoading && <div className="space-y-2" data-testid="meal-timeline-loading">{[1, 2, 3].map(i => <div key={i} className="h-12 rounded-xl bg-muted animate-pulse" />)}</div>}
+        {isError && <p className="text-sm text-muted-foreground" data-testid="meal-timeline-error">{t("food_reports.timeline_error")}</p>}
+        {!isLoading && !isError && items.length === 0 && <p className="text-sm text-muted-foreground" data-testid="meal-timeline-empty">{t("food_reports.timeline_empty")}</p>}
+        {!isError && <div className="space-y-2" data-testid="meal-timeline-list">
+          {items.map(item => {
+            const impact = impactPresentation(item.glucoseImpact, isZh);
+            return <div key={item.id} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-xl border border-card-border bg-card px-3 py-2.5" data-testid={`meal-timeline-item-${item.id}`}>
+              <span className="text-xs text-muted-foreground">{mealTimeLabel(item.snapTime, locale)}</span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{item.foodName || t("food_reports.unnamed_meal")}</p>
+                <p className="text-xs text-muted-foreground">{mealLabel(item.mealType, isZh)}</p>
+              </div>
+              <span className="col-start-2 w-fit max-w-full rounded-full px-2 py-1 text-xs font-semibold" style={{ color: impact.textColor, backgroundColor: `${impact.color}18` }}>{impact.label}</span>
+            </div>;
+          })}
+        </div>}
+      </CardContent>
+    </Card>
+  );
 }
 
 function WeeklyDonut({ breakdown }: { breakdown: NonNullable<WeeklySummary["dayBreakdown"]> }) {
@@ -848,6 +911,7 @@ export default function FoodReports() {
       </div>
       <div className="px-4 pt-4 flex flex-col gap-4">
         <WeeklyCard weekStart={weekStart} variant="reports" />
+        <MealTimeline weekStart={weekStart} />
         <MonthlyCard />
       </div>
     </div>

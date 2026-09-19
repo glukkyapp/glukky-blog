@@ -1253,6 +1253,10 @@
     "hstix_empty": "Your saved readings will appear here.",
     "hstix_note_label": "Note (optional)",
     "hstix_note_placeholder": "Add a note",
+    "preset_walk": "Walked after meal",
+    "preset_water": "Drank water",
+    "preset_veg": "Had vegetables",
+    "preset_early": "Ate earlier",
     "hstix_home_record": "Record glucose",
     "hstix_home_change": "Change",
     "hstix_home_saved": "Saved {{value}} mmol/L",
@@ -1373,6 +1377,12 @@
   },
   "food_log": {
     "overlap_tooltip": "Logged within 2 hrs of your previous meal — glucose reading may be affected."
+  },
+  "food_reports": {
+    "timeline_title": "This week’s meals",
+    "timeline_error": "Meals are temporarily unavailable.",
+    "timeline_empty": "No meals recorded this week.",
+    "unnamed_meal": "Food"
   },
   "consent": {
     "onboarding_title": "Your Privacy Settings",

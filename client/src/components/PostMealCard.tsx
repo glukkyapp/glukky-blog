@@ -26,6 +26,30 @@ interface Props {
 const INTEGER_RANGE = Array.from({ length: 19 }, (_, i) => i + 2);
 const DEFAULT_INT_IDX = 8;
 const DECIMAL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const NOTE_PRESET_SEPARATOR = /[\n\r,，、;；。!?！？]+/;
+
+function normalizeNoteSegment(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase("zh-HK")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function noteContainsPreset(note: string, preset: string): boolean {
+  const normalizedPreset = normalizeNoteSegment(preset);
+  return note
+    .split(NOTE_PRESET_SEPARATOR)
+    .map(normalizeNoteSegment)
+    .some((segment) => segment === normalizedPreset);
+}
+
+function appendNotePreset(note: string, preset: string): string {
+  if (noteContainsPreset(note, preset)) return note;
+  const separator = note.length > 0 && !/\s$/.test(note) ? "\n" : "";
+  const nextNote = `${note}${separator}${preset}`;
+  return nextNote.length <= 500 ? nextNote : note;
+}
 
 function IntegerWheel({
   value,
@@ -327,6 +351,26 @@ export default function PostMealCard({
                 placeholder={t("glucose.hstix_note_placeholder", "Add a note")}
                 data-testid="input-hstix-note"
               />
+              <div className="flex flex-wrap gap-2" data-testid="hstix-note-presets">
+                {([
+                  ["hstix.preset_walk", "Walked after meal"],
+                  ["hstix.preset_water", "Drank water"],
+                  ["hstix.preset_veg", "Had vegetables"],
+                  ["hstix.preset_early", "Ate earlier"],
+                ] as const).map(([key, fallback]) => {
+                  const preset = t(key, fallback);
+                  const hasPreset = noteContainsPreset(note, preset);
+                  const separatorLength = note.length > 0 && !/\s$/.test(note) ? 1 : 0;
+                  const hasRoom = note.length + separatorLength + preset.length <= 500;
+                  return <button type="button" key={key} disabled={hasPreset || !hasRoom}
+                    onClick={() => {
+                      hapticTap("SOFT");
+                      setNote((current) => appendNotePreset(current, preset));
+                    }}
+                    className="min-h-12 rounded-full border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary disabled:opacity-40"
+                    data-testid={`button-hstix-preset-${key.split(".").pop()}`}>{preset}</button>;
+                })}
+              </div>
             </label>
           )}
 

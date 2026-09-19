@@ -90,16 +90,21 @@ export default function FloatingNavBar() {
 
   return (
     <nav
-      className="fixed bottom-7 left-1/2 transform -translate-x-1/2 z-50"
-      style={{ width: "calc(100vw - 32px)", maxWidth: "384px", height: "58px" }}
+      className="fixed left-1/2 z-50 -translate-x-1/2"
+      style={{
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+        width: "calc(100vw - 32px)",
+        maxWidth: "384px",
+      }}
       data-testid="nav-floating-bar"
     >
       <div
-        className="flex items-center w-full h-full px-2"
+        className="flex items-center w-full px-2 py-1.5"
         style={{
-          backgroundColor: "rgba(174,209,214,0.85)",
+          backgroundColor: "rgba(255,255,255,0.96)",
+          border: "1px solid hsl(var(--card-border))",
           borderRadius: "160px",
-          boxShadow: "0px 4px 10px rgba(0,0,0,0.25)",
+          boxShadow: "0 8px 24px rgba(33,75,54,0.16)",
         }}
       >
         {navItems.map(({ key, label, path, icon: Icon }) => {
@@ -113,8 +118,8 @@ export default function FloatingNavBar() {
               transition={NAV_TAP_TRANSITION}
               className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none"
               style={{
-                height: "100%",
-                color: locked ? "#9CA3AF" : "var(--brand-teal-deep)",
+                 minHeight: "48px",
+                 color: locked ? "#87958a" : "var(--brand-ink)",
                 opacity: locked ? 0.6 : 1,
                 background: "transparent",
                 border: "none",
@@ -122,15 +127,10 @@ export default function FloatingNavBar() {
               data-testid={`nav-tab-${key}`}
               aria-current={active ? "page" : undefined}
             >
-              {locked ? <Lock size={18} /> : <Icon size={22} strokeWidth={active ? 2.5 : 2} />}
-              <motion.span
-                animate={{ opacity: active ? 1 : 0, height: active ? "auto" : 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-xs font-medium overflow-hidden leading-tight"
-                style={{ color: locked ? "#9CA3AF" : "var(--brand-teal-deep)" }}
-              >
+              {locked ? <Lock size={22} /> : <Icon size={22} strokeWidth={active ? 2.5 : 2} />}
+              <span className="floating-nav-label max-w-full break-words text-center font-medium leading-tight" style={{ color: locked ? "#87958a" : "var(--brand-ink)" }}>
                 {label}
-              </motion.span>
+              </span>
             </motion.button>
           );
         })}

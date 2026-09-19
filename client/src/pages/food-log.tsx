@@ -4,20 +4,14 @@ import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Pencil, AlertTriangle, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-
-interface MealLogItem {
-  id: number;
-  snapTime: string;
-  localDate: string;
-  mealType: string | null;
-  foodName: string | null;
-  glucoseImpact: string | null;
-  postMealGlucoseMmol: number | null;
-  hstixReadingId: number | null;
-  postMealSymptom: string | null;
-  previousMealOverlap: boolean;
-  overlapDismissed: boolean;
-}
+import {
+  GLUCOSE_BADGE,
+  MEAL_PILL_COLOR,
+  impactPresentation,
+  mealLabel as presentMealLabel,
+  mealTimeLabel,
+  type MealLogItem,
+} from "@/lib/meal-presentation";
 
 interface MealLogResponse {
   month: string;
@@ -56,47 +50,6 @@ function formatDateHeading(localDate: string, locale: string): string {
     return localDate;
   }
 }
-
-function formatTime(snapTime: string): string {
-  try {
-    return new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(snapTime));
-  } catch {
-    return "";
-  }
-}
-
-const MEAL_TYPE_LABEL: Record<string, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
-};
-
-const MEAL_TYPE_LABEL_ZH: Record<string, string> = {
-  breakfast: "早餐",
-  lunch: "午餐",
-  dinner: "晚餐",
-  snack: "小食",
-};
-
-const GLUCOSE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  low:    { bg: "bg-emerald-100", text: "text-emerald-700", label: "Low"  },
-  medium: { bg: "bg-amber-100",   text: "text-amber-700",   label: "Med"  },
-  high:   { bg: "bg-red-100",     text: "text-red-700",     label: "High" },
-};
-
-const GLUCOSE_PILL_SOLID: Record<string, string> = {
-  low:    "#22c55e",
-  medium: "#f59e0b",
-  high:   "#ef4444",
-};
-
-const MEAL_PILL_COLOR: Record<string, string> = {
-  breakfast: "bg-sky-100 text-sky-700",
-  lunch:     "bg-lime-100 text-lime-700",
-  dinner:    "bg-violet-100 text-violet-700",
-  snack:     "bg-orange-100 text-orange-700",
-};
 
 const SYMPTOM_LABEL_EN: Record<string, string> = {
   normal:        "😊 Normal",
@@ -167,13 +120,6 @@ export default function FoodLog() {
     if (!grouped.has(item.localDate)) grouped.set(item.localDate, []);
     grouped.get(item.localDate)!.push(item);
   }
-
-  const mealLabel = (type: string | null) => {
-    if (!type) return null;
-    return isZh ? (MEAL_TYPE_LABEL_ZH[type] ?? type) : (MEAL_TYPE_LABEL[type] ?? type);
-  };
-
-  const glucoseLabel = (impact: string) => GLUCOSE_BADGE[impact]?.label ?? impact;
 
   const symptomLabel = (sym: string | null) => {
     if (!sym) return null;
@@ -292,7 +238,7 @@ export default function FoodLog() {
                               {item.foodName ?? (isZh ? "食物" : "Food")}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {formatTime(item.snapTime)}
+                              {mealTimeLabel(item.snapTime, locale)}
                             </p>
                           </div>
 
@@ -302,15 +248,15 @@ export default function FoodLog() {
                                 data-testid={`food-log-meal-type-${item.id}`}
                                 className={`text-xs font-medium px-2 py-0.5 rounded-full ${pillColor}`}
                               >
-                                {mealLabel(item.mealType)}
+                                 {presentMealLabel(item.mealType, isZh)}
                               </span>
                             )}
-                            {effectiveImpact && GLUCOSE_PILL_SOLID[effectiveImpact] && (
+                            {effectiveImpact && GLUCOSE_BADGE[effectiveImpact] && (
                               <span
                                 data-testid={`food-log-glucose-${item.id}`}
                                 className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: GLUCOSE_PILL_SOLID[effectiveImpact] }}
-                                aria-label={glucoseLabel(effectiveImpact)}
+                                style={{ backgroundColor: GLUCOSE_BADGE[effectiveImpact].color }}
+                                 aria-label={impactPresentation(effectiveImpact, isZh).label}
                               />
                             )}
                             {showOverlapWarning && (

@@ -19,3 +19,4 @@
 - [CJK mockup video capture](cjk-mockup-video-capture.md) — load a CJK webfont explicitly and await document.fonts.ready before headless recording.
 - [Playwright video scaling](playwright-video-scaling.md) — recordVideo output size does not upscale a smaller CSS viewport; render at the final frame size.
 - [Floating navigation width](floating-navigation-width.md) — preserve the responsive floating envelope; do not replace it with a fixed compact width.
+- [Large-text layout verification](large-text-layout-verification.md) — check sibling overlap, not only parent bounds, using long localized fallback labels.
