@@ -1,0 +1,67 @@
+IMPORTANT FIRST STEP: Before making any changes, check the actual current code for each 
+affected screen/component and confirm current behavior. Do not assume or fabricate what 
+the app currently does — verify against the real files (e.g., how daily habit selection 
+actually works, what the current advice-card structure looks like, how food 
+identification/correction currently works). If anything below is based on a wrong 
+assumption about current behavior, flag it to me before proceeding.
+
+COLORS
+1. Use #086574 (teal) only for icons, borders, large headline text, and decorative 
+   surfaces. Keep the current darker green (#0D5C3A/#004328) for any white text on 
+   colored buttons and for normal-size body text, to preserve accessibility contrast.
+2. Keep orange as the distinct culinary/dinner CTA color, but darken it slightly from 
+   the mockup's #FC772C so white text on it is actually readable.
+
+BACKGROUND
+3. Change the app's background/canvas and card colors to match the mockup's off-white 
+   tones. Verify all existing text colors still have sufficient contrast against 
+   the new background; flag anything that needs adjustment before changing it.
+
+NAVIGATION BAR
+4. Restyle the bottom navigation bar's visual design (shape, colors, icon treatment, 
+   spacing) to match the mockup. Keep the current labels, current number of items, 
+   current touch-target sizes, and all existing paywall/locked-feature behavior 
+   unchanged. Do not copy the mockup's exact pixel dimensions. Provide the actual 
+   updated component code for review.
+
+DIET REPORT — MEAL TIMELINE (NEW FEATURE, FRONTEND ONLY)
+5. Add a new meal-timeline section to the diet report page showing each meal's time, 
+   food name, and blood-sugar impact level, using the app's existing impact 
+   terminology (高影響/中影響/低影響), pulling from real recorded meal data — no 
+   hardcoded/sample entries. Decide the implementation approach yourself and show 
+   me the planned code/data source before finalizing, since this is a new UI section.
+
+FOOD ADVICE MODAL
+6. Keep the existing swipeable advice cards (3-4 cards) and all their current content, 
+   logic, and card count completely unchanged. Apply only the mockup's visual design 
+   to these cards: mascot positioned at the top, matching border/spacing/color 
+   treatment. The four food-tile graphics from the mockup should be included as 
+   non-interactive decorative elements only — do not make them clickable or wire 
+   them to any new data.
+
+HOME SCREEN — DAILY HABITS
+7. Apply the mockup's visual design to the daily habit selection component. No 
+   functional change is needed here since the current app already only allows one 
+   habit to be selected at a time, matching the mockup's behavior.
+
+BLOOD SUGAR ENTRY — STATUS TAGS (NEW FEATURE, SMALL SCOPE)
+8. Add the four tappable status tags shown in the mockup (服藥後, 感覺良好, 輕微頭暈, 
+   剛吃完大餐). Their only function: tapping a tag inserts its corresponding preset 
+   text into the existing remarks/notes field. No new data field, no persistence 
+   beyond what the remarks field already does, no other behavior.
+
+FOODSNAP — FOOD EDITING
+9. Keep the current food identification, correction, and portion-matching system 
+   fully intact (AI guess, correction flow, canonical portion matching). Apply only 
+   the mockup's visual styling (colors, card layout, spacing, button treatment) — 
+   do not replace the current editing logic with free-text/fixed-size-only editing.
+
+EVERYTHING ELSE
+10. For any other visual details in the mockups not covered above (mascot bubble 
+    styling, "Aa" button appearance, badge/label styling, etc.), follow the mockup's 
+    visual design. Do not add any new backend logic, new API calls, or new data 
+    models beyond what's explicitly approved above. If something looks like it might 
+    require more than a visual change, stop and ask me first rather than 
+    implementing it.
+
+Provide the code changes for review before merging, organized by screen/component.
