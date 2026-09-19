@@ -152,3 +152,17 @@ mtime_ms = 1789649569522
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/147551a1-360e-4178-82c0-4bb21bf873e7/9b349edd-ecfc-405d-a226-4cf5ec52d2b0"
 storage_version_token = "1789649607188088"
 content_type = "image/png"
+
+[[outputs]]
+id = "UGwdocx9WouJ1kwHS7kpd"
+uri = "file://exports/glukky-ui-source.zip"
+type = "unspecified"
+title = "Glukky UI source code"
+description = "Downloadable ZIP of the client UI source, shared components, pages, styles, localization, and referenced public assets. Includes a handoff README; excludes server code, dependencies, secrets, and generated output."
+logical_id = "069a7f21-8561-4aec-b051-3713091c7dd0"
+content_hash = "sha256:606ee08a04f0d2bf043261e2fe182c7315a6f6bda197a5c8daa65a67c218e815"
+size = 28879849
+mtime_ms = 1789820821413
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/069a7f21-8561-4aec-b051-3713091c7dd0/d33b3732-6f4f-41a8-bc88-e7494e068344"
+storage_version_token = "1789820850410862"
+content_type = "application/octet-stream"
