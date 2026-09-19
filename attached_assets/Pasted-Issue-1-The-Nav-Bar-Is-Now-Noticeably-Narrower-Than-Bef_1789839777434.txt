@@ -1,0 +1,14 @@
+Issue 1: The Nav Bar Is Now Noticeably Narrower Than Before
+I ran the actual math on the new sizing formula: it computes to 296px wide (59px per icon column) on virtually every real phone screen — meaningfully narrower than your original 384px and the mockup's 420px. This isn't wrong exactly — it's built from a legitimate touch-target calculation (56px per button, which matches your own DESIGN.md's "ideally 56px for critical navigation") — but it may look tighter/more compact than what you had before, which is a real visual change even though it fixed the "copied literal pixel" problem.
+
+Ask the agent: "Show me a preview of the nav bar at 296px width next to the old 384px version, so I can confirm this narrower look is acceptable, or if the touch-target size should be increased to restore a closer visual match to the original width."
+
+Issue 2: Fixing the Popup Height Silently Dropped the Mascot's Overlap Effect
+This is the one worth flagging most. The original mockup — and your originally approved plan — had the mascot overlapping the top edge of the card, hanging half above it (that distinctive "peeking over the top" look). To fix the fixed-height problem, the new code moved the mascot inside the card's normal content flow instead of overlapping it. That solves the sizing bug, but it also quietly removes a specific visual detail you asked for, without flagging the trade-off.
+
+Ask the agent: "Can the mascot's overlapping-the-top-edge visual effect (from the original mockup) be preserved using a responsive technique — like a relatively-positioned wrapper with overflow-visible — while still keeping the dialog's height fully content-derived with no fixed minimum? If not possible without reintroducing a fixed-height risk, confirm that trade-off explicitly rather than dropping the effect silently."
+
+Issue 3: Minor — Unrecognized Meal Types Will Show Raw Backend Text to Users
+getMealTypeLabel deliberately shows the raw, untranslated value (e.g., a legacy code string) when it hits an unrecognized-but-not-null mealType, instead of falling back to "Other meal." The intent (preserving legacy data visibility for debugging) is reasonable, but it means an elderly end user could see a raw internal string on screen if the backend ever returns something unexpected.
+
+Ask the agent: "For any unrecognized (but non-null) mealType value, show the same friendly fallback used for null values ('其他餐點'/'Other meal') rather than the raw backend string, so users never see untranslated internal data."

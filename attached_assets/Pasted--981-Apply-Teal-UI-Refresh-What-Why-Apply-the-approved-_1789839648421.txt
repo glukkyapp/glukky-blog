@@ -1,0 +1,96 @@
+#981 - Apply Teal UI Refresh
+What & Why
+Apply the approved reference styling while preserving accessibility and all established behavior. Globally update the shared --primary, --background, --card, and --card-border tokens, including their dark-theme redeclarations, for an app-wide consistent dark-green/off-white foundation; leave --foreground and --accent unchanged. Add a dedicated --brand-culinary token for approved dinner/culinary CTAs only. Use the supplied transparent har-gow mascot, add the approved frontend-only meal timeline, and add HStix note preset tags without introducing new backend models or replacing current FoodSnap logic.
+
+Verified corrections to the requested assumptions: the advice popup has exactly three cards; daily habits are server-persisted with multiple offered choices but one completion per local day; current canvas/cards already use cream/off-white tokens; the navigation is already a gated five-item pill; and weekly report summaries do not contain meal names or timestamps.
+
+The meal timeline will use the existing monthly meal-log endpoint, whose records already include the recorded time, local date, meal type, food name, and glucose-impact level. The report page will filter those real records to its displayed date range, sort by recorded time, and render 高影響/中影響/低影響 without sample data.
+
+Done looks like
+Teal is limited to icons, borders, large headings, and decorative surfaces inside the reviewed components; normal text and white-on-colored controls retain an AAA-safe dark green
+Approved culinary/dinner actions use the dedicated --brand-culinary dark orange #8C3600 with white text (7.95:1 contrast), with a darker pressed state; the existing --accent token remains unchanged
+The app-wide --primary, --background, --card, and --card-border tokens use the approved accessible dark-green/off-white palette; --foreground and --accent remain unchanged
+The five-item bottom navigation keeps its centered floating behavior and visible edge/bottom margins while adopting the reference white-card, border, icon, and spacing treatment; its dimensions derive from content, responsive padding, and 48-56px touch targets rather than copied mockup pixels
+Diet reports show a real-data bilingual meal timeline with recorded time, food name, and existing impact terminology, reusing one shared meal/impact label and color helper extracted from Food Log, including safe handling for snack, null, legacy, and unknown values
+The existing three swipeable advice cards retain their content, controls, TTS, dismissal, and paywall behavior while adopting the mascot-led visual treatment; no decorative food tiles or text-based category inference are added
+Daily habits adopt the reference visual treatment while retaining the existing offered-task and one-completion-per-day persistence behavior; the four verified task IDs map to Footprints, Droplets, Salad, and Clock3, with 22px icons, active stroke 2.5/inactive stroke 2, completed row colors, and muted incomplete colors matching navigation conventions
+HStix standalone entry offers four preset tags that append their text to the existing notes field without duplicate insertion across punctuation, whitespace, or line-break variations and without schema changes
+FoodSnap keeps AI identification, correction, disambiguation, canonical portion matching, quotas, and persistence while adopting the approved styling
+Changes are organized by screen/component and validated with relevant automated checks and app previews
+Global token review gate
+Before merge, visually review every direct and indirect consumer of --primary, --background, --card, and --card-border. The review must cover:
+
+Global shell and overlays: App root, loading/unlocking states, Toaster, Tooltip, dialogs, alert dialogs, drawers, popovers, menus, navigation menus, tabs, selects, inputs, textareas, switches, sliders, radio groups, checkboxes, progress bars, badges, calendars, and default Buttons/Cards
+Authentication and entry: landing/login, password reset, onboarding, onboarding UI/illustrations, and app intro
+Account and support: profile, doctor information, health information, confidentiality/not-found route-adjacent surfaces, and dev panel
+Core product: home, report, Food Reports, Food Log, FoodSnap, HStix, and glucose patterns
+Shared feature components: DailyFoodSummaryBanner, DailyTaskCard, PostMealCard, SwipeableFoodCard, RecurringFoodInsights, PiggyBankCard, CoinSavedPopup, FatiguePopup, GlucoseMonitoringGuidance, SnapAdvicePopup, PaywallExitWarning, and FloatingNavBar
+Paywall/modal paths: all dialog and alert-dialog surfaces, including purchase, exit-warning, guidance, reward, fatigue, and advice overlays
+Primary review targets are white text on primary CTAs/selected states, text and borders on the new card/background colors, inputs and dialog surfaces using background, app-page-v2 overrides, and dark-mode overrides. Record any contrast or appearance regression before merge.
+
+The existing --accent token must remain byte-for-byte unchanged. Its menu, calendar, command, dialog-close, dropdown, menubar, select, navigation-menu, sidebar, and toggle consumers are outside the culinary color change.
+
+Culinary CTA decision
+Use a dark orange #8C3600 background with white text for the approved culinary/dinner CTAs
+Use #702B00 for the pressed state
+White on #8C3600 is approximately 7.95:1 and passes WCAG AAA for normal text
+This heavier visual treatment is explicitly approved; it is not intended to resemble the previous light-orange/dark-text pattern
+Keep --accent and every existing accent consumer unchanged
+Semantic token disposition gate
+Update in both light and dark blocks:
+
+--primary, --sidebar-primary, --sidebar-ring, --ring, and --chart-1 use the approved accessible primary family; recheck white text, focus visibility, and chart non-text contrast
+--background uses the approved canvas surface
+--card and --popover use the approved card surface
+--card-border and --popover-border use the approved neutral card border
+Retain intentionally unless measured contrast/hierarchy fails against the new foundation:
+
+--foreground, --card-foreground, --popover-foreground, --sidebar-foreground
+--border and --sidebar-border: general structural borders remain distinct from card-border
+--input: retain its stronger form-boundary role unless it becomes too faint or too strong
+--secondary and --secondary-foreground: retain the existing pale-teal secondary semantic
+--muted and --muted-foreground: retain the existing muted semantic unless contrast fails
+--sidebar and --sidebar-accent/foreground: retain their separate sidebar surface roles; only primary/ring track primary
+--accent and --accent-foreground: byte-for-byte unchanged; never use for culinary actions
+--destructive and --destructive-foreground: unchanged alert semantic
+--chart-2, --chart-3, --chart-4, and --chart-5: unchanged independent series colors
+elevation, shadow, font, and derived border-intensity tokens: unchanged unless their source token changes automatically
+Before merge, record the final old/new/retained value for every token above. Any retained token that visually clashes or fails contrast must be reported and adjusted only with evidence, not silently left or broadly recolored.
+
+Navigation responsive review
+Preserve visible left/right and bottom margin at every tested phone size
+Keep the bar horizontally centered and above the safe-area inset
+Derive dimensions from 22-26px icons, permanent label text, internal gaps/padding, and 48-56px minimum targets
+Do not copy the full-width mockup's literal height, width, radius, or position
+Test at 320x568 or the smallest supported phone viewport
+Test at approximately 430x932 for a large phone viewport
+Repeat both checks with large-text mode enabled
+Confirm all labels fit without clipping, wrapping into adjacent targets, or reducing any target below 48px
+Confirm locked icons, active state, inactive state, and paywall tap behavior remain legible and reachable
+Derived-dimensions rule
+Treat every new fixed pixel value copied from reference HTML as suspect unless it comes from the existing app's spacing/type scale, accessibility target, safe-area requirement, or measured asset ratio
+Derive component size from content, typography, existing spacing tokens, responsive container constraints, and 48-56px touch targets
+Prefer intrinsic sizing, min/max constraints tied to the viewport, flex/grid flow, and existing spacing utilities over preview-specific fixed heights or widths
+For the advice popup, do not use the proposed min-h-[420px]; verify the tallest real advice state and large-text state fit with reachable close and action controls on the smallest supported phone
+For the meal timeline, compare its outer alignment and inner padding directly with existing WeeklyCard and MonthlyCard at the same page gutter
+During review, flag every new arbitrary px literal and record its source or derivation before merge
+Out of scope
+Any change to --foreground or the existing --accent token and its consumers
+Global restyling beyond the explicitly approved --primary, --background, --card, and --card-border token updates
+Reusing --accent for culinary/dinner actions
+New backend endpoints, database columns, or data models
+Changes to advice-card count, content, swipe logic, TTS, citations, or paywall flow
+Any food tiles or advice-category classifier in the advice popup
+Replacing FoodSnap correction with unrestricted free text or fixed-only portions
+Navigation label, route, item-count, entitlement, or touch-target changes
+Changing the server-side daily-task completion rules
+Mockup-only interactions not explicitly approved
+Steps
+Shared foundation and culinary token -- Update :root and corresponding dark-theme --primary to the approved accessible dark green and update --background, --card, and --card-border to the approved off-white/neutral palette. Update primary-derived sidebar-primary, sidebar-ring, ring, and chart-1 with the same approved primary; update popover and popover-border with the approved card/card-border surfaces. Leave --foreground and --accent unchanged. Add --brand-culinary: #8C3600 with white text and --brand-culinary-pressed: #702B00, and apply them only to approved culinary/dinner CTAs. Explicitly retain or adjust every remaining semantic token according to the token disposition gate, with contrast evidence for any compatibility adjustment.
+Responsive floating navigation -- Preserve FloatingNavBar as a centered floating control with visible horizontal and bottom margins, not an edge-to-edge fixed bar. Apply the reference white-card surface, border, icon treatment, and spacing proportions while deriving width and height from icon size, label size, responsive internal padding, safe-area spacing, and 48-56px minimum targets. Preserve labels, routes, locks, paywall callbacks, and reachability, and avoid literal mockup dimensions or offsets.
+Bilingual diet report timeline -- Extract Food Log's existing English/Chinese meal labels, language detection, and GLUCOSE_BADGE color semantics into a shared typed helper imported by both Food Log and Food Reports; do not import one page from another or define timeline-only Chinese maps. Load the existing meal-log data for the displayed period, filter and sort real meals in the browser, and render time, food name, and localized impact terminology with empty/loading/error states. Cover breakfast, lunch, dinner, and snack while preserving safe raw/localized fallbacks for null, legacy, ai_estimated, and unrecognized values. Align the section with the existing Food Reports page gutter and compare its internal padding against WeeklyCard and MonthlyCard so the px-4 page wrapper plus card padding does not create an unintended double-indent.
+Advice popup styling -- Restyle the existing three-card carousel and place the supplied mascot at the top without changing card content or behavior. Omit decorative food tiles and all keyword/category matching. Size the dialog from its content and available viewport rather than a preview-derived fixed minimum height; keep the mascot overlap in normal flow calculations, allow internal scrolling only when genuinely needed, and verify close/actions remain reachable on small phones with large text.
+Daily habit styling -- Restyle the offered-task list and completed state while preserving server persistence, optimistic updates, and one completion per local day. Map post-meal walk, unsweetened drink, vegetable dish, and regular mealtime to Footprints, Droplets, Salad, and Clock3; follow the navigation icon convention of 22px with stroke 2.5 when completed and 2 when incomplete, and derive icon color from the row's completed/incomplete state. Unknown future task IDs must render a neutral fallback rather than a broken icon.
+HStix preset tags -- Add four accessible preset buttons to the standalone notes UI that append preset wording and preserve the original user text. Deduplicate using comparison-only Unicode/whitespace/punctuation normalization with boundary-aware exact preset matching, including repeated clicks and notes containing commas or line breaks.
+FoodSnap styling -- Apply the reference card, spacing, color, badge, and button treatment around the current AI label, correction, disambiguation, and canonical portion workflow.
+Verification and review -- Run focused tests and type/build checks, verify English and Traditional Chinese timeline labels/colors against Food Log, verify affected screens in preview, and present the resulting code changes grouped by screen/component before completion. Validate the floating navigation, advice popup, and report timeline on a small phone viewport and a large phone viewport at standard text size, then repeat with the app's large-text mode enabled. Confirm touch targets remain at least 48px, labels and advice do not clip or overlap, dialog close/actions remain reachable, safe-area spacing remains correct, the timeline aligns with existing report cards, and every new fixed px literal has a documented derivation rather than being copied from the mockup.
