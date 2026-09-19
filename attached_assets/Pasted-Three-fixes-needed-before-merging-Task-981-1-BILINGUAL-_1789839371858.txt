@@ -1,0 +1,37 @@
+Three fixes needed before merging Task #981:
+
+1. BILINGUAL BUG — Meal timeline shows Chinese only, ignoring language setting
+The new meal timeline on the diet report page uses hardcoded Chinese-only 
+MEAL_TYPE_LABELS/IMPACT_LABELS objects. The existing food-log.tsx page already 
+solves this correctly with MEAL_TYPE_LABEL_ZH, MEAL_TYPE_LABEL (English), and 
+GLUCOSE_BADGE, switched via an isZh conditional. 
+Fix: reuse that exact existing label/language-switch logic for the new timeline 
+instead of defining new hardcoded Chinese-only objects. Also match the existing 
+GLUCOSE_BADGE color coding so impact levels look visually consistent between 
+food-log.tsx and the new report timeline.
+
+2. INCOMPLETE COLOR MIGRATION — Some shared tokens were updated, others weren't
+--primary, --background, --card, and --card-border were updated to the new 
+palette, but --sidebar-primary, --sidebar-ring, --sidebar-accent, --border, 
+--input, --popover, --secondary, and --muted were left on the old colors. This 
+will make some parts of the app (popovers, form input borders, secondary 
+buttons, sidebar if present) look visually out of sync with the updated cards 
+and buttons right next to them.
+Fix: list every token in index.css still on old values, and for each one either 
+(a) update it to match the new palette, or (b) explicitly confirm it's 
+intentionally deferred to a later pass, so nothing is silently left mismatched.
+
+3. ORANGE CONTRAST FIX — Confirm the visual change is intentional, not just 
+   a shade adjustment
+The orange CTA is changing from a light-orange-background/dark-text pattern 
+(which already passed contrast fine) to a dark-orange-background/white-text 
+pattern. This is a valid fix for the earlier accessibility concern, but it's a 
+more noticeable visual change than a simple darkening — confirm this heavier, 
+darker CTA look is intended before finalizing, since it changes the button's 
+overall visual weight, not just its shade.
+
+Also apply the same "derived, not copied" sizing check used for the navigation 
+bar to: the advice popup's fixed min-height (420px), and the meal timeline's 
+padding relative to the existing food-reports.tsx page container. Confirm these 
+values work on a small-screen device and with large-text mode enabled, rather 
+than being sized to fit the mockup's single preview width.
