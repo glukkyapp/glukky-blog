@@ -18,3 +18,4 @@
 - [Reward popup mode timing](reward-popup-mode-timing.md) — balance and mode arrive from one committed refetch; keep a null-mode guard if optimistic updates are added.
 - [CJK mockup video capture](cjk-mockup-video-capture.md) — load a CJK webfont explicitly and await document.fonts.ready before headless recording.
 - [Playwright video scaling](playwright-video-scaling.md) — recordVideo output size does not upscale a smaller CSS viewport; render at the final frame size.
+- [Floating navigation width](floating-navigation-width.md) — preserve the responsive floating envelope; do not replace it with a fixed compact width.
