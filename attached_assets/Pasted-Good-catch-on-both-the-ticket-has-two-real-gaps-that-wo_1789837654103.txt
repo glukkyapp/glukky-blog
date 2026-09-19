@@ -1,0 +1,42 @@
+Good catch on both — the ticket has two real gaps that would ship broken or misleading UI. Here's the debug pass, plus the traps worth hunting for elsewhere in this same spec.
+
+Bug 1: Daily Habit Icons Are Completely Missing From the Code
+Look at the "Proposed visual update" for daily habits — it renders a Checkbox and a text <span> for the label, but no icon element at all. The mockup clearly shows an icon next to each habit (walking figure, water droplet, leaf), and since your app rotates 3-of-4 possible habits daily, the code needs an icon mapped to every possible task ID, not just whichever 3 happened to appear in the reference screenshot — otherwise the 4th habit (whatever it is) will silently render with no icon or a broken fallback the first time it's shown.
+
+Fix to request: "Add an icon to each daily habit row, matched by task ID. Since the app offers 4 total habit types and shows 3 at a time, first identify all 4 existing habit types from the backend/task list, confirm what icon (if any) is currently used for each, and ensure the icon mapping covers all 4 — not just the 3 visible in the mockup. Do not guess the 4th habit's icon; look it up in the existing icon set or ask before inventing one."
+
+Bug 2: The Decorative Food Tiles Are Hardcoded to One Advice Type
+The ticket's own "Remaining inconsistency" section already half-caught this — it added a regex (/蛋白|魚|豆腐|雞蛋|瘦肉/) to only show the fish/tofu/egg/meat tiles when the advice text happens to mention protein. But that's a band-aid, not a fix: your advice engine clearly generates other categories too (vegetables, portion size, carb swaps, hydration), and a protein-only decoration set will simply show nothing — or worse, mismatched food icons — for every other advice type.
+
+Fix to request: "The four food tiles are meant to be an example of the visual pattern for showing food-related advice, not fixed content — they should reflect whatever category the current advice actually falls into (protein, vegetables, lower-carb swaps, hydration, etc.), not always be fish/tofu/egg/meat. Before implementing, check the backend to see whether advice responses already carry any category/tag field. If they do, use that to select the matching icon set for each category. If they don't, do not fabricate a categorization system or add a new backend field — instead, tell me what data is available so we can decide together whether a lightweight keyword-based category match (like the current protein regex, but expanded to cover all real advice categories) is acceptable, or whether the decorative tiles should simply not render when the advice type can't be reliably identified from existing text."
+
+Other Traps to Ask the Agent to Hunt For
+This spec has a pattern worth naming explicitly: taking a single mockup example and coding it as fixed content, instead of treating it as "one example of a dynamic thing." Ask the agent to scan the whole ticket for more of these before implementing:
+
+text
+Before implementing, re-check the entire spec for any place where a mockup's specific 
+example (a label, icon, food name, category, or value) may have been hardcoded when 
+the underlying data can actually vary. Specifically check:
+
+1. Meal timeline meal-type labels — confirm every possible mealType value returned by 
+   the backend has a matching translation key, not just the ones seen in sample data. 
+   What happens if a mealType value has no translation entry?
+
+2. Meal timeline impact levels — confirm the three impact styles (high/medium/low) 
+   cover every value the backend can actually return, including any "unknown" or 
+   null-adjacent states beyond what's already handled.
+
+3. HStix note-preset duplicate detection — the logic splits existing note text by "、" 
+   to check for duplicates. Confirm this doesn't break if a user's existing note uses 
+   different punctuation, commas, or line breaks, which could cause the same preset 
+   to be inserted twice or a false "already exists" match.
+
+4. Daily habit label/icon mapping — as noted above, confirm all 4 possible habits 
+   (not just the 3 in the mockup) have both a translation and an icon defined.
+
+5. Advice-popup decorative tiles — as noted above, confirm the tile set adapts to 
+   the actual advice category rather than defaulting to one hardcoded example.
+
+Report back anywhere else in this spec where a single mockup example was treated as 
+the only possible case, before writing any code.
+This is exactly the kind of check worth insisting on every time a mockup-to-code translation happens — mockups by nature only show one snapshot of dynamic content, and it's easy for an agent to quietly bake that one snapshot in as if it were the whole truth.
