@@ -881,7 +881,6 @@ export default function Snap() {
           <div className="w-full px-1">
             <p className="text-[17px] leading-relaxed text-[var(--snap-ink)]">{t("snap.subtitle")}</p>
             <h2 className="mt-4 text-[22px] font-bold tracking-tight text-[var(--snap-ink)]">{t("snap.label_title")}</h2>
-            <p className="text-sm leading-snug text-muted-foreground">{t("snap.label_subtitle")}</p>
           </div>
         </>
       ) : (
