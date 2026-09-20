@@ -1,0 +1,21 @@
+Real Bug: The Daily-Habit Heading Will Now Show Twice
+The new mascot bubble displays t("home.daily_tasks_heading") as its text. But looking back at the DailyTaskCard component's actual current code (from earlier in this review), it already renders that exact same heading internally: <h2>{t("home.daily_tasks_heading")}</h2> sits inside the card itself, directly below where the new mascot bubble will appear. Once this ships, the same Chinese text — "今天你達成了什麼健康小習慣？" — will appear twice in a row: once in the mascot's speech bubble, then again as a heading inside the card underneath it.
+
+This also creates an accessibility echo: both the new wrapping <section> and the existing DailyTaskCard's own <section> use that same text as their aria-label/aria-labelledby, so a screen reader would announce the same landmark description twice back-to-back.
+
+Fix to request: "The mascot bubble now serves as the heading for this section. Remove the duplicate internal heading from DailyTaskCard (and its redundant aria-label, since the outer section's aria-labelledby now covers it), so the habit question appears exactly once."
+
+Risk: Removing the Border-Suppression Rule Could Reveal Hidden Borders Elsewhere
+The old CSS included a blanket rule forcing every border inside a card to be invisible (border-color: transparent !important) — and this repair correctly removes it, since it was part of what suppressed your new border colors. But that rule may have also been quietly hiding unrelated default borders on things like form inputs, dropdown selects, or other UI-kit components nested inside cards throughout the entire app — borders nobody intentionally designed to be visible, just hidden as a side effect of that blanket rule.
+
+Ask before approving: "After removing the border-suppression rule, do a full visual pass on form inputs, selects, and any other interactive elements nested inside cards across the whole app — not just the reviewed screens — to confirm no unexpected borders appeared that weren't part of the intended design."
+
+Risk: Three New CSS Classes May Have No Component Using Them
+The repair adds new selectors for .shadcn-card.is-alert, .is-emphasis, and .is-calendar — special variants meant to preserve distinct styling for alert cards, emphasis cards, and the calendar. But nothing in this proposal actually adds those class names to any component. If no existing component is updated to include is-alert/is-emphasis/is-calendar, these special cards will silently fall back to the plain default card look and lose whatever visual distinction they used to have from the old (now-removed) transparent-border hack.
+
+Ask before approving: "Confirm which existing cards previously relied on special visual treatment (alerts, calendar, emphasis) via the old transparent-border override, and confirm each one has actually been updated to include the new is-alert/is-emphasis/is-calendar class — otherwise list which cards will lose their distinct appearance."
+
+Minor, Not Blocking
+.shadcn-card > div { padding: 22px; padding-top: 22px; } — the second line is redundant (already 22px from the first), harmless but worth a quick cleanup.
+
+The Playfair Display serif font rule on the greeting text wasn't part of anything discussed in this reskin — confirm with the agent whether that's pre-existing legacy styling being carried over untouched, or something newly introduced, just so it's accounted for rather than assumed.
