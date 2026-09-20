@@ -1,0 +1,37 @@
+1. SKIP BUTTON — KEEP IT
+Do not remove the Skip button in the advice popup rewrite. Preserve its current 
+behavior and its exact current data-testid. For all advice-popup buttons, either 
+keep every current data-testid unchanged, or update tests/teal-refresh.spec.ts in 
+the same commit to match any renamed identifiers — do not rename test identifiers 
+without updating the tests that depend on them.
+
+2. DAILY MASCOT MESSAGE — CONTENT TO BE SUPPLIED LATER
+The mascot's speech bubble text should vary based on the daily assessment outcome 
+(e.g., good/stable, irregular meal timing, concerning/high-impact). I will supply 
+the exact wording for each outcome later — for now, build the underlying logic 
+structure to select between outcome-based message keys (placeholder copy is fine), 
+but still resolve where the outcome/summary data actually comes from: confirm 
+whether this requires lifting summary-fetching logic out of DailyFoodSummaryBanner 
+so both it and the mascot component can share the same data, and show that 
+plumbing before implementation.
+
+3. FOODSNAP NEW COMPONENTS
+Show the actual current implementation of the sauces/extras fields, and provide 
+the implementation of MascotSpeechBubble and EditableMealDetailCard — confirm 
+whether these are new components to be created or already exist elsewhere.
+
+4. QUOTA EXHAUSTED-STATE
+Confirm the new quota text still shows a distinct message when zero analyses 
+remain today, matching what CounterBadge currently handles.
+
+5. NOTE_PRESETS — TEXT ONLY, NO ICONS
+Drop the icon entirely from NOTE_PRESETS. Use plain text-only preset buttons: 
+each entry is just a translation key (e.g. "glucose.preset_walk") resolved to its 
+localized label, with no icon component and no icon-name field. Render each 
+preset as a plain labeled button.
+
+6. SCROLL WHEEL REPLACEMENT
+Confirmed: there is only one single HStix logging screen, used universally 
+whether entered standalone or meal-attached. Replace IntegerWheel entirely with 
+the new +/- and decimal-grid controls everywhere — there is no second flow that 
+needs to keep the old scroll wheel.
