@@ -19,7 +19,7 @@ export const modules: ModuleMap = {
   "./components/mockups/nav-width-comparison/LargeStandard.tsx": () => import("../components/mockups/nav-width-comparison/LargeStandard.tsx"),
   "./components/mockups/nav-width-comparison/SmallLargeText.tsx": () => import("../components/mockups/nav-width-comparison/SmallLargeText.tsx"),
   "./components/mockups/nav-width-comparison/SmallStandard.tsx": () => import("../components/mockups/nav-width-comparison/SmallStandard.tsx"),
-  "./components/mockups/splash-slides/Slide1.tsx": () => import("../components/mockups/splash-slides/Slide1.tsx"),
   "./components/mockups/paywall/PaywallScreen.tsx": () => import("../components/mockups/paywall/PaywallScreen.tsx"),
+  "./components/mockups/splash-slides/Slide1.tsx": () => import("../components/mockups/splash-slides/Slide1.tsx"),
   "./components/mockups/task963-clip1/TraditionalChinese.tsx": () => import("../components/mockups/task963-clip1/TraditionalChinese.tsx")
 };
