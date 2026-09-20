@@ -22,6 +22,9 @@ assert.match(card, /noteContainsPreset\(note, preset\)/, "preset append preserve
 assert.match(card, /note: note\.trim\(\) \|\| null/, "editing an empty note explicitly clears the stored note");
 assert.match(card, /queryKey: \["\/api\/snap\/daily-summary"\]/, "HStix saves invalidate the Daily summary");
 assert.match(card, /disabled=\{!canConfirmKeypad \|\| submitting\}/, "save stays disabled until the displayed reading is complete");
+assert.match(card, /items-baseline whitespace-nowrap/, "the reading parts share one inline baseline-aligned group");
+assert.match(card, /data-testid="text-post-meal-decimal"/, "the decimal remains an explicit readable value part");
+assert.doesNotMatch(card, /pointer-events-none absolute inset-0 flex items-center justify-center/, "the decimal is not positioned as an overlay");
 assert.match(page, /bg-\[#FCFBF2\]/, "the HStix surface uses the reference cream palette");
 assert.match(page, /correctionExpiresAt/, "correction expiry remains wired");
 assert.match(page, /mealSnapId=\{validMealSnapId\}/, "meal linking remains wired");
