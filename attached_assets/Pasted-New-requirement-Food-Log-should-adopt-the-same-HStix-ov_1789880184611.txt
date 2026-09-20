@@ -1,0 +1,35 @@
+New requirement: Food Log should adopt the same HStix-over-AI classification rule 
+already used by the Bimonthly report (and now being added to the Daily card) — 
+using personalized thresholds and meal-timing checks — instead of its current 
+simpler client-side approach.
+
+Scope clarification:
+- The raw recorded glucose number displayed under each meal in Food Log stays 
+  exactly as it is today — completely unchanged.
+- Only the "meal impact" label/classification attached to each meal should switch 
+  from Food Log's current logic (client-side, generic phase-one thresholds, no 
+  timing check) to the same authoritative rule used by getMonthlyReportFinalLabel().
+
+Before implementing, determine and report back — do not assume:
+
+1. Does switching Food Log's meal-impact label to the authoritative rule require 
+   Food Log's requests to /api/snap/meal-log to also pass the same opt-in flag 
+   (includeFinalImpact=true) that was just added for the Daily card? If so, this 
+   means Food Log will now incur the same extra profile/threshold lookup and 
+   server-side calculation that we specifically tried to avoid for Food Log in 
+   the last correction — confirm whether that tradeoff is unavoidable given how 
+   the data is currently structured.
+
+2. Is there any way to get personalized-threshold and timing-aware classification 
+   for Food Log without adding that extra backend cost — for example, if the 
+   profile/threshold data is already being fetched elsewhere on the Food Log page 
+   for a different reason and could be reused instead of a new lookup?
+
+3. Confirm exactly what changes in Food Log's code: is it only the classification 
+   logic for the impact label (removing the current classifyMmol/glucoseImpact 
+   fallback and replacing it with the shared rule's result), with the glucose 
+   number display untouched?
+
+Report back with a clear yes/no on whether this genuinely requires new backend 
+work for Food Log specifically, based on the actual current implementation — not 
+an assumption — before any code is written.
