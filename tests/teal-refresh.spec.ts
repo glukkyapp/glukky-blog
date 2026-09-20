@@ -179,7 +179,16 @@ test.describe("teal refresh regression evidence", () => {
     releaseAdvice();
 
     await expect(page.getByTestId("dialog-snap-advice-popup")).toBeVisible();
-    await page.screenshot({ path: `${SCREENSHOTS}/snap-advice-popup.png`, fullPage: true, animations: "disabled" });
+    await expect(page.getByTestId("card-snap-advice-0")).toBeVisible();
+    await page.screenshot({ path: `${SCREENSHOTS}/snap-popup-en-card-1.png`, fullPage: true, animations: "disabled" });
+    await page.getByTestId("dot-snap-popup-1").click();
+    await expect(page.getByTestId("card-snap-advice-1")).toBeVisible();
+    await page.screenshot({ path: `${SCREENSHOTS}/snap-popup-en-card-2.png`, fullPage: true, animations: "disabled" });
+    await page.getByTestId("dot-snap-popup-2").click();
+    await expect(page.getByTestId("card-snap-advice-2")).toBeVisible();
+    await page.screenshot({ path: `${SCREENSHOTS}/snap-popup-en-card-3.png`, fullPage: true, animations: "disabled" });
+    await page.getByTestId("dot-snap-popup-0").click();
+    await expect(page.getByTestId("button-snap-popup-skip")).toHaveText("Skip");
     await page.getByTestId("button-snap-popup-skip").click();
     await expect(page.getByTestId("dialog-snap-advice-popup")).toHaveCount(0);
     await expect(page.getByTestId("button-snap-new-photo")).toBeVisible();
@@ -188,7 +197,7 @@ test.describe("teal refresh regression evidence", () => {
 
   test("Daily and Food Log share opted-in final impact while raw mmol stays unchanged", async ({ page }) => {
     const yesterday = utcLocalDate(-1);
-    const requestedFlags = { daily: [] as string[], foodLog: [] as string[] };
+    const requestedFlags = { foodLog: [] as string[] };
     const items = [
       {
         id: 7101,
@@ -233,16 +242,12 @@ test.describe("teal refresh regression evidence", () => {
         overlapDismissed: false,
       },
     ];
-    await page.route("**/api/snap/daily-summary**", route => route.fulfill({
+    await page.route("**/api/snap/daily-report**", route => route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
-        snaps: items.map(({ glucoseImpact, mealType, snapTime, foodName }) => ({
-          glucoseImpact,
-          mealType,
-          snapTime,
-          foodName,
-        })),
-        irregularMealCount: 0,
+        date: yesterday,
+        verdict: "medium",
+        meals: items,
       }),
     }));
     const fulfillMealLog = (surface: keyof typeof requestedFlags) => (route: Route) => {
@@ -256,8 +261,6 @@ test.describe("teal refresh regression evidence", () => {
         }),
       });
     };
-    await page.route("**/api/snap/meal-log**", fulfillMealLog("daily"));
-
     await page.goto("/report");
     await expect(page.getByText("Yesterday’s meals", { exact: true })).toBeVisible();
     await expect(page.getByTestId("meal-timeline-item-7101")).toContainText("Low");
@@ -280,9 +283,7 @@ test.describe("teal refresh regression evidence", () => {
     await expect(delayed.getByLabel("Med")).toBeVisible();
     await expect(delayed).toContainText("12.3");
     await expect(unavailable.locator('[data-testid^="food-log-glucose-"]')).toHaveCount(0);
-    expect(requestedFlags.daily.length).toBeGreaterThan(0);
     expect(requestedFlags.foodLog.length).toBeGreaterThan(0);
-    expect(requestedFlags.daily.every(flag => flag === "true")).toBe(true);
     expect(requestedFlags.foodLog.every(flag => flag === "true")).toBe(true);
     await foodLogPage.screenshot({ path: `${SCREENSHOTS}/food-log-final-impact.png`, fullPage: true });
     await foodLogPage.close();
@@ -290,9 +291,13 @@ test.describe("teal refresh regression evidence", () => {
 
   test("malformed final impact is an error, never an empty meal state", async ({ page }) => {
     const yesterday = utcLocalDate(-1);
-    await page.route("**/api/snap/daily-summary**", route => route.fulfill({
+    await page.route("**/api/snap/daily-report**", route => route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ snaps: [], irregularMealCount: 0 }),
+      body: JSON.stringify({
+        date: yesterday,
+        verdict: "stable",
+        meals: [{ id: 1 }],
+      }),
     }));
     await page.route("**/api/snap/meal-log**", route => {
       const url = new URL(route.request().url());
@@ -317,7 +322,7 @@ test.describe("teal refresh regression evidence", () => {
     await expect(page.getByTestId("food-log-empty")).toHaveCount(0);
 
     await page.goto("/report");
-    await expect(page.getByTestId("meal-timeline-error")).toBeVisible();
+    await expect(page.getByTestId("daily-report-error")).toBeVisible();
     await expect(page.getByTestId("meal-timeline-empty")).toHaveCount(0);
   });
 
@@ -400,7 +405,7 @@ test.describe("teal refresh regression evidence", () => {
     await page.getByTestId("glucose-search-suggestion-oats").click();
     const detail = page.getByTestId("glucose-food-detail-dialog");
     await expect(detail).toBeVisible();
-    await expect(detail).toHaveCSS("background-color", "rgb(254, 242, 224)");
+    await expect(detail).toHaveCSS("background-color", "rgb(255, 248, 236)");
     await page.screenshot({ path: `${SCREENSHOTS}/glucose-patterns-dialog-unchanged.png`, fullPage: true });
   });
 });

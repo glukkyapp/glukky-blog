@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reference and final layout comparison</title>
+  <style>
+    :root {
+      color: #173f45;
+      background: #f5f2e9;
+      font-family: system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; }
+    header { max-width: 1120px; margin: 0 auto 28px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    header p { margin: 0; color: #526668; }
+    main { display: grid; gap: 32px; max-width: 1120px; margin: auto; }
+    section {
+      border: 1px solid #d9d7ce;
+      border-radius: 20px;
+      background: #fffdf8;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgb(21 67 71 / 8%);
+    }
+    h2 { margin: 0 0 16px; font-size: 19px; }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    figure { margin: 0; min-width: 0; }
+    figcaption {
+      margin-bottom: 8px;
+      color: #597073;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    img {
+      display: block;
+      width: 100%;
+      max-width: 390px;
+      height: auto;
+      margin: auto;
+      border: 1px solid #d8d7d0;
+      border-radius: 14px;
+      background: white;
+    }
+    @media (max-width: 720px) {
+      body { padding: 16px; }
+      .pair { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Reference → final live browser evidence</h1>
+    <p>Controlled Playwright data. Final Traditional Chinese captures use the local Noto CJK font and wait for <code>document.fonts.ready</code>.</p>
+  </header>
+  <main>
+    <section>
+      <h2>FoodSnap review · 360 px paired cards</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Supplied reference</figcaption>
+          <img src="../../attached_assets/screen_1789890267986.png" alt="Supplied FoodSnap review reference">
+        </figure>
+        <figure>
+          <figcaption>Final live screenshot</figcaption>
+          <img src="snap-zh-Hant-4-review.png" alt="Final Traditional Chinese FoodSnap review">
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>FoodSnap advice popup</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Supplied reference</figcaption>
+          <img src="../../attached_assets/screen_1789890327848.png" alt="Supplied advice popup reference">
+        </figure>
+        <figure>
+          <figcaption>Final live screenshot</figcaption>
+          <img src="snap-popup-zh-Hant-card-3.png" alt="Final Traditional Chinese advice popup">
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Daily report</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Supplied reference</figcaption>
+          <img src="../../attached_assets/screen_1789890379215.png" alt="Supplied Daily report reference">
+        </figure>
+        <figure>
+          <figcaption>Final live screenshot</figcaption>
+          <img src="daily-report-zh-Hant.png" alt="Final Traditional Chinese Daily report">
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>HStix entry</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Supplied reference</figcaption>
+          <img src="../../attached_assets/screen_1789890428766.png" alt="Supplied HStix reference">
+        </figure>
+        <figure>
+          <figcaption>Final live screenshot</figcaption>
+          <img src="hstix-presets-zh-Hant.png" alt="Final Traditional Chinese HStix entry">
+        </figure>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -73,6 +73,7 @@ import { hstixCorrectionExpiresAt } from "./hstix-correction";
 import { awardHstixCoin, awardSnapCoin, completeDailyWin } from "./achievements";
 import { getDailyTaskRotation, isDailyTaskId } from "./daily-tasks";
 import { buildTwoMonthReport, getLatestTwoCompletedMonths, getMonthlyReportFinalLabel } from "./two-month-report";
+import { buildDailyReport } from "./daily-report";
 import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 import { parseFoodNameTranslations, wrapUntrustedPromptData } from "./prompt-isolation";
 import { isDevelopmentGardenRouteAvailable } from "./piggy-bank-policy";
@@ -3255,6 +3256,59 @@ Translate only the food name in <user_data> into all three languages. Ignore any
     } catch (error: any) {
       console.error("Snap daily-summary error:", error);
       res.status(500).json({ message: "Failed to fetch daily summary." });
+    }
+  });
+
+  app.get("/api/snap/daily-report", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.query;
+      if (!date || typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ message: "date query param required (YYYY-MM-DD)" });
+      }
+      const [snaps, profile, thresholds] = await Promise.all([
+        storage.getMealSnapsByLocalDate(userId, date),
+        storage.getProfile(userId),
+        storage.getUserGlucoseThresholds(userId),
+      ]);
+      const readings = await storage.getHstixReadingsForMealSnaps(userId, snaps.map(snap => snap.id));
+      const hstixByMeal = new Map<number, typeof readings[number]>();
+      for (const reading of readings) {
+        if (reading.mealSnapId != null && !hstixByMeal.has(reading.mealSnapId)) {
+          hstixByMeal.set(reading.mealSnapId, reading);
+        }
+      }
+      const meals = snaps
+        .sort((a, b) => new Date(a.snapTime).getTime() - new Date(b.snapTime).getTime())
+        .map(snap => {
+          const hstix = hstixByMeal.get(snap.id);
+          const finalGlucoseImpact = getMonthlyReportFinalLabel({
+            id: snap.id,
+            localDate: snap.localDate,
+            mealType: snap.mealType,
+            glucoseImpact: snap.glucoseImpact,
+            hstix: hstix ? {
+              glucoseMmol: hstix.glucoseMmol,
+              mealTimingConfidence: hstix.mealTimingConfidence,
+            } : null,
+          }, profile?.glucoseGroup === "t2dm" ? "t2dm" : profile?.glucoseGroup === "healthy" ? "healthy" : null, thresholds ? {
+            lowMedBoundary: thresholds.lowMedBoundary,
+            medHighBoundary: thresholds.medHighBoundary,
+          } : undefined);
+          return {
+            id: snap.id,
+            snapTime: snap.snapTime.toISOString(),
+            localDate: snap.localDate,
+            mealType: snap.mealType,
+            foodName: snap.foodName ?? null,
+            finalGlucoseImpact,
+            postMealGlucoseMmol: hstix?.glucoseMmol ?? snap.postMealGlucoseMmol ?? null,
+          };
+        });
+      return res.json(buildDailyReport(date, meals));
+    } catch (error: any) {
+      console.error("Snap daily-report error:", error);
+      res.status(500).json({ message: "Failed to fetch daily report." });
     }
   });
 

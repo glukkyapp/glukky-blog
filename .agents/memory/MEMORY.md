@@ -21,3 +21,4 @@
 - [Floating navigation width](floating-navigation-width.md) — preserve the responsive floating envelope; do not replace it with a fixed compact width.
 - [Large-text layout verification](large-text-layout-verification.md) — check sibling overlap, not only parent bounds, using long localized fallback labels.
 - [Meal-impact refresh policy](meal-impact-refresh-policy.md) — event-driven freshness is intentional; an already-focused screen need not update immediately after nightly thresholds.
+- [Daily verdict authority](daily-verdict-authority.md) — mascot reflects the Daily report verdict; no independent assessment or timing-based override.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Clock3, Droplet } from "lucide-react";
+import { ArrowLeft, Clock3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearch } from "wouter";
 import PostMealCard from "@/components/PostMealCard";
@@ -78,6 +78,14 @@ export default function Hstix() {
     return () => window.clearTimeout(timer);
   }, [closeExpiredCorrection, editingReading?.id, editingReading?.correctionExpiresAt]);
   const dateLocale = i18n.language === "yue" ? "zh-HK" : i18n.language === "zh-Hant" ? "zh-TW" : "en-US";
+  const headerDate = editingReading ? new Date(editingReading.recordedAt) : new Date();
+  const nowLabel = new Intl.DateTimeFormat(dateLocale, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(headerDate);
+  const backLabel = t("glucose.hstix_back");
   const guidanceCandidates = useMemo(() => [{
     kind: "hstix" as const,
     // A meal-log link is contextual editing, not a voluntarily opened manual
@@ -87,75 +95,89 @@ export default function Hstix() {
   }], [entryElement, i18n.language, showEntryForm, validMealSnapId]);
 
   return (
-    <main className="mx-auto w-full max-w-md space-y-5 px-4 pb-28 pt-6">
-      <header className="flex items-start gap-3">
-        <div className="rounded-2xl bg-emerald-100 p-2.5 text-emerald-700">
-          <Droplet className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t("glucose.hstix_heading", "HStix")}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+    <main className="min-h-screen bg-[#FCFBF2] pb-28">
+      <div className="mx-auto w-full max-w-md space-y-5 px-4 pt-3">
+        <header className="grid grid-cols-[4.5rem_1fr_4.5rem] items-center">
+          <button
+            type="button"
+            onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/")}
+            aria-label={backLabel}
+            className="flex min-h-12 items-center gap-1 rounded-xl bg-[#F0EFEB] px-2 text-sm font-bold text-[#00583A]"
+            data-testid="button-hstix-back"
+          >
+            <ArrowLeft className="h-6 w-6" />
+            <span>{backLabel}</span>
+          </button>
+          <div className="min-w-0 text-center">
+            <h1 className="text-xl font-bold text-foreground">{t("glucose.hstix_heading", "HStix")}</h1>
+            <time className="mt-0.5 block text-xs font-medium text-muted-foreground">{nowLabel}</time>
+          </div>
+          <div aria-hidden="true" />
+        </header>
+
+        {validMealSnapId && (
+          <p className="rounded-xl bg-[#F5F3EE] px-3 py-2 text-center text-xs text-muted-foreground">
             {t("glucose.hstix_subheading", "Record a glucose reading any time. A meal is optional.")}
           </p>
-        </div>
-      </header>
-
-      {showEntryForm && (
-        <section ref={setEntryElement}>
-          <PostMealCard
-            standalone
-            mealSnapId={validMealSnapId}
-            hstixReadingId={validReadingId}
-            initialValue={editingReading?.glucoseMmol ?? null}
-            initialNote={editingReading?.note ?? null}
-            onDone={() => {
-              void refetch();
-              if (validMealSnapId) setLocation("/food-log");
-            }}
-            onHstixCorrectionExpired={closeExpiredCorrection}
-          />
-          {!validMealSnapId && <GlucoseGuidanceInline kind="hstix" hidden={activeGuidance === "hstix"} />}
-        </section>
-      )}
-
-      <section aria-labelledby="hstix-history-heading" className="space-y-3">
-        <h2 id="hstix-history-heading" className="text-base font-semibold text-foreground">
-          {t("glucose.hstix_history", "Reading history")}
-        </h2>
-        {data?.readings?.length ? (
-          <ul className="space-y-2">
-            {data.readings.map((reading) => (
-              <li key={reading.id} className="rounded-2xl border border-border bg-card px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-lg font-bold tabular-nums text-foreground">
-                    {reading.glucoseMmol.toFixed(1)} <span className="text-xs font-medium text-muted-foreground">mmol/L</span>
-                  </span>
-                  <time className="text-xs text-muted-foreground" dateTime={reading.recordedAt}>
-                    {new Intl.DateTimeFormat(dateLocale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(reading.recordedAt))}
-                  </time>
-                </div>
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock3 className="h-3.5 w-3.5" />
-                  <span>
-                    {reading.minutesSinceLastMeal === null
-                      ? t(timingKey[reading.mealTimingConfidence])
-                      : t("glucose.hstix_minutes_after_meal", {
-                          minutes: reading.minutesSinceLastMeal,
-                          timing: t(timingKey[reading.mealTimingConfidence]),
-                        })}
-                  </span>
-                </div>
-                {reading.note && <p className="mt-2 text-sm text-muted-foreground">{reading.note}</p>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-2xl bg-muted/60 px-4 py-5 text-sm text-muted-foreground">
-            {t("glucose.hstix_empty", "Your saved readings will appear here.")}
-          </p>
         )}
-      </section>
-      <GlucoseMonitoringGuidance candidates={guidanceCandidates} onActiveChange={setActiveGuidance} />
+
+        {showEntryForm && (
+          <section ref={setEntryElement}>
+            <PostMealCard
+              standalone
+              mealSnapId={validMealSnapId}
+              hstixReadingId={validReadingId}
+              initialValue={editingReading?.glucoseMmol ?? null}
+              initialNote={editingReading?.note ?? null}
+              onDone={() => {
+                void refetch();
+                if (validMealSnapId) setLocation("/food-log");
+              }}
+              onHstixCorrectionExpired={closeExpiredCorrection}
+            />
+            {!validMealSnapId && <GlucoseGuidanceInline kind="hstix" hidden={activeGuidance === "hstix"} />}
+          </section>
+        )}
+
+        <section aria-labelledby="hstix-history-heading" className="space-y-3 pt-1">
+          <h2 id="hstix-history-heading" className="text-base font-semibold text-foreground">
+            {t("glucose.hstix_history", "Reading history")}
+          </h2>
+          {data?.readings?.length ? (
+            <ul className="space-y-2">
+              {data.readings.map((reading) => (
+                <li key={reading.id} className="rounded-2xl bg-white px-4 py-3 shadow-[0_4px_16px_rgba(30,58,95,0.05)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-lg font-bold tabular-nums text-foreground">
+                      {reading.glucoseMmol.toFixed(1)} <span className="text-xs font-medium text-muted-foreground">mmol/L</span>
+                    </span>
+                    <time className="text-xs text-muted-foreground" dateTime={reading.recordedAt}>
+                      {new Intl.DateTimeFormat(dateLocale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(reading.recordedAt))}
+                    </time>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>
+                      {reading.minutesSinceLastMeal === null
+                        ? t(timingKey[reading.mealTimingConfidence])
+                        : t("glucose.hstix_minutes_after_meal", {
+                            minutes: reading.minutesSinceLastMeal,
+                            timing: t(timingKey[reading.mealTimingConfidence]),
+                          })}
+                    </span>
+                  </div>
+                  {reading.note && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{reading.note}</p>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl bg-[#F5F3EE] px-4 py-5 text-sm text-muted-foreground">
+              {t("glucose.hstix_empty", "Your saved readings will appear here.")}
+            </p>
+          )}
+        </section>
+        <GlucoseMonitoringGuidance candidates={guidanceCandidates} onActiveChange={setActiveGuidance} />
+      </div>
     </main>
   );
 }

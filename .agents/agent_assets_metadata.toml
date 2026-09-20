@@ -180,3 +180,17 @@ mtime_ms = 1789890208153
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/42b650d8-99a5-4a03-a7d2-63bf45799067/fd3e3eaa-3697-4a77-99a1-bc9e7e69c5d6"
 storage_version_token = "1789890222348411"
 content_type = "text/html"
+
+[[outputs]]
+id = "J0xutWfN-XN7YE5IpbUIT"
+uri = "file://screenshots/teal-refresh/comparison-self-contained.html"
+type = "html"
+title = "Reference layouts — implementation comparison"
+description = "Supplied references beside the implemented FoodSnap review, advice popup, Daily report and HStix screens. Screenshots use test data."
+logical_id = "4765070a-45e7-47e3-89ba-22932ca95cd9"
+content_hash = "sha256:438e486aa2ae16517cf07009d931515db4680e0ff203eb12e118ec4e69e4b88c"
+size = 2136449
+mtime_ms = 1789895611735
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/4765070a-45e7-47e3-89ba-22932ca95cd9/1dc4eab4-c4b4-48e0-b101-2bf653d552d5"
+storage_version_token = "1789895616280961"
+content_type = "text/html"

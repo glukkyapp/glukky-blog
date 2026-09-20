@@ -167,10 +167,10 @@ export function SnapAdvicePopup({
     <button
       type="button"
       onClick={handleListen}
-      className={`text-xs font-medium underline underline-offset-2 ${speaking ? "text-primary" : "text-muted-foreground"}`}
+      className={speaking ? "is-speaking" : ""}
       data-testid="button-snap-popup-listen"
     >
-      {t("snap_popup.listen")}
+      {speaking ? t("snap_popup.listen") : t("snap_popup.listen")}
     </button>
   ) : null;
 
@@ -185,7 +185,9 @@ export function SnapAdvicePopup({
       >
         <DialogTitle className="sr-only">{t("snap.advice_title")}</DialogTitle>
         <img src={mascot} alt="" aria-hidden="true" className="pointer-events-none absolute -top-16 left-1/2 z-10 h-28 w-28 -translate-x-1/2 object-contain" />
-        <div className="flex max-h-[calc(100dvh-6rem)] flex-col items-center gap-4 overflow-y-auto px-6 pt-14 pb-5" data-testid={`card-snap-advice-${card}`}>
+        <div className="snap-advice-content flex max-h-[calc(100dvh-6rem)] flex-col items-center gap-4 overflow-y-auto px-6 pb-5" data-testid={`card-snap-advice-${card}`}>
+          <span className="snap-advice-kicker">{advice.opener || t("snap.advice_title")}</span>
+          <h2 className="snap-advice-heading">{card === 0 ? impactLabel : card === 1 ? t("snap_popup.now_label") : t("snap_popup.next_label")}</h2>
           {card === 0 && (
             <>
               {advice.impactValue ? (
@@ -255,6 +257,13 @@ export function SnapAdvicePopup({
             </div>
           )}
 
+          {listenButton && (
+            <div className="snap-advice-audio">
+              <span className="text-left text-xs font-medium text-muted-foreground">{t("snap_popup.listen")}</span>
+              {listenButton}
+            </div>
+          )}
+
           <div className="flex items-center gap-2" data-testid="nav-snap-popup-dots" role="tablist" aria-label={t("snap.advice_title")}>
             {[0, 1, 2].map((i) => (
               <button
@@ -263,8 +272,8 @@ export function SnapAdvicePopup({
                 data-testid={`dot-snap-popup-${i}`}
                 role="tab"
                 aria-selected={i === card}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  i === card ? "bg-primary" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    i === card ? "snap-advice-dot is-active" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
                 }`}
                 aria-label={t("snap_popup.card_of", { current: i + 1, total: 3 })}
               />
@@ -285,7 +294,6 @@ export function SnapAdvicePopup({
                 >
                   {t("snap_popup.skip")}
                 </button>
-                {listenButton}
                 <Button
                   size="sm"
                   variant="outline"
@@ -299,9 +307,8 @@ export function SnapAdvicePopup({
           ) : (
             <div className="flex flex-col items-center gap-3 w-full pt-1">
               <div className="flex items-center justify-center gap-4 w-full">
-                {listenButton}
                 <Button
-                  className="flex-1"
+                  className="snap-advice-primary flex-1"
                   onClick={handleGotIt}
                   data-testid="button-snap-popup-got-it"
                   aria-label={t("snap_popup.got_it")}

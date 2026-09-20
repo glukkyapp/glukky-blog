@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Camera, Images, Loader2, RotateCcw, UtensilsCrossed, Scale, Droplets, Cherry } from "lucide-react";
+import { Camera, CheckCircle2, Images, Loader2, RotateCcw } from "lucide-react";
 import cameraHeadingIcon from "@assets/4af4faa5-cdea-44a0-b7b9-b2ce91b8d499_removalai_preview_1776612731555.png";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,10 @@ import { track, trackException } from "@/lib/posthog";
 import { timedFetch, queryClient } from "@/lib/queryClient";
 import { cancelSpeech } from "@/lib/tts";
 import { SnapAdvicePopup, type StructuredAdvice } from "@/components/snap-advice-popup";
+import { EditableMealDetailCard } from "@/components/new-editable-meal-detail-card";
+import { MascotSpeechBubble } from "@/components/mascot-speech-bubble";
+import mascot from "@assets/hargawmascot_1789835862050.png";
+import "./snap-scoped.css";
 
 const SNAP_TIMEOUT_MS = 45000;
 
@@ -71,46 +75,6 @@ interface LabelForm {
   extras: string;
   toppingIds: string[];
   toppingResolutions: TokenResolution[];
-}
-
-function PointerLine({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
-  const isTop = position.startsWith("top");
-  const isLeft = position === "top-left" || position === "bottom-left";
-  const r = 3.5;
-
-  const w = 48;
-  const gap = 28;
-  const bendInset = 8;
-  const totalH = gap + bendInset;
-  const svgW = w + r * 2;
-  const svgH = totalH + r * 2;
-
-  const style: React.CSSProperties = {
-    position: "absolute",
-    width: svgW,
-    height: svgH,
-    pointerEvents: "none",
-    zIndex: 10,
-    ...(isTop ? { top: -(gap + r) } : { bottom: -(gap + r) }),
-    ...(isLeft ? { left: -w + 20 } : { right: -w + 20 }),
-  };
-
-  const fieldX = isLeft ? r : svgW - r;
-  const fieldY = isTop ? r : svgH - r;
-
-  const bendX = fieldX;
-  const bendY = isTop ? totalH + r : r;
-
-  const circleX = isLeft ? svgW - r : r;
-  const circleY = bendY;
-
-  return (
-    <svg style={style} viewBox={`0 0 ${svgW} ${svgH}`} fill="none">
-      <polyline points={`${fieldX},${fieldY} ${bendX},${bendY} ${circleX},${circleY}`} stroke="hsl(30 25% 75%)" strokeWidth="1" fill="none" strokeLinejoin="round" />
-      <circle cx={circleX} cy={circleY} r={r} fill="hsl(30 25% 75%)" />
-      <circle cx={fieldX} cy={fieldY} r={r} fill="hsl(30 25% 75%)" />
-    </svg>
-  );
 }
 
 function CounterBadge({ used, limit, exhaustedKey, remainingKey }: {
@@ -765,6 +729,8 @@ export default function Snap() {
       setAdvicePopupOpen(true);
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/daily-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/daily-report"] });
       queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
       track("snap_advice_succeeded", { adviceSource: data.adviceSource });
     } catch (err) {
@@ -1053,195 +1019,40 @@ export default function Snap() {
             </div>
           )}
 
-          <div className="relative px-1">
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-name" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
-                  <UtensilsCrossed className="w-3 h-3" strokeWidth={2.5} />
-                  {t("snap.field_name")}
-                </Label>
-                <textarea
-                  id="snap-name"
-                  value={form.name}
-                  onChange={(e) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name: e.target.value })); }}
-                  placeholder={t("snap.field_placeholder_name")}
-                  rows={2}
-                  className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  data-testid="input-snap-name"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-portion" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
-                  {t("snap.field_portion")}
-                  <Scale className="w-3 h-3" strokeWidth={2.5} />
-                </Label>
-                <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1" data-testid="input-snap-portion">
-                  {[
-                    { key: "small", label: t("snap.portion_small") },
-                    { key: "medium", label: t("snap.portion_medium") },
-                    { key: "large", label: t("snap.portion_large") },
-                  ].map((opt) => {
-                    const isActive = form.portion.toLowerCase() === opt.key || form.portion === opt.label;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => {
-                          hapticTap("LIGHT");
-                          setForm((f) => ({
-                            ...f,
-                            portion: opt.label,
-                            portionId: opt.key,
-                          }));
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-                          isActive
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "snap-choice-chip"
-                        }`}
-                        data-testid={`chip-portion-${opt.key}`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          <MascotSpeechBubble mascotSrc={mascot} message={t("snap.label_subtitle")} testId="snap-review-mascot-message" />
+
+          {previewUrl && (
+            <div className="snap-photo-shell">
+              <img src={previewUrl} alt="Food photo" data-testid="img-snap-preview" />
+              <span className="snap-photo-captured"><CheckCircle2 size={15} />{t("snap.photo_captured")}</span>
             </div>
+          )}
 
-            {previewUrl && (
-              <div className="relative mx-4 my-1" style={{ overflow: "visible" }}>
-                <PointerLine position="top-left" />
-                <PointerLine position="top-right" />
-                <PointerLine position="bottom-left" />
-                <PointerLine position="bottom-right" />
-                <img
-                  src={previewUrl}
-                  alt="Food photo"
-                  className="w-full rounded-2xl object-cover max-h-56"
-                  data-testid="img-snap-preview"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-sauces" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1">
-                  <Droplets className="w-3 h-3" strokeWidth={2.5} />
-                  {t("snap.field_sauces")}
-                </Label>
-                {labelResult?.comboSource === "database" && labelResult?.sauceOptions?.length && !sauceManual ? (
-                  <div className="flex flex-wrap gap-1.5 h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-sauces">
-                    {labelResult.sauceOptions.map((opt) => {
-                      const selected = form.sauceIds.includes(opt.id);
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => {
-                            hapticTap("LIGHT");
-                            setForm((f) => {
-                              const ids = selected ? f.sauceIds.filter(id => id !== opt.id) : [...f.sauceIds, opt.id];
-                              const labels = ids.map(id => labelResult.sauceOptions!.find(o => o.id === id)?.label).filter(Boolean);
-                              return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map(id => ({ text: labelResult.sauceOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
-                            });
-                          }}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
-                            selected
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "snap-choice-chip"
-                          }`}
-                          data-testid={`chip-sauce-${opt.id}`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        hapticTap("LIGHT");
-                        setSauceManual(true);
-                        setForm((f) => ({ ...f, sauces: "", sauceIds: [], sauceResolutions: [] }));
-                      }}
-                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
-                      data-testid="chip-sauce-other"
-                    >
-                      {t("snap.something_else")}
-                    </button>
-                  </div>
-                ) : (
-                  <textarea
-                    id="snap-sauces"
-                    value={form.sauces}
-                    onChange={(e) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces: e.target.value, sauceIds: [], sauceResolutions: [] })); }}
-                    placeholder={t("snap.field_placeholder_sauces")}
-                    rows={2}
-                    className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    data-testid="input-snap-sauces"
-                  />
-                )}
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="snap-extras" className="text-xs font-bold text-foreground tracking-wide flex items-center gap-1 justify-end">
-                  {t("snap.field_extras")}
-                  <Cherry className="w-3 h-3" strokeWidth={2.5} />
-                </Label>
-                {labelResult?.comboSource === "database" && labelResult?.toppingOptions?.length && !toppingManual ? (
-                  <div className="flex flex-wrap gap-1.5 justify-end h-[4.5rem] items-start pt-1 overflow-y-auto" data-testid="dropdown-snap-extras">
-                    {labelResult.toppingOptions.map((opt) => {
-                      const selected = form.toppingIds.includes(opt.id);
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => {
-                            hapticTap("LIGHT");
-                            setForm((f) => {
-                              const ids = selected ? f.toppingIds.filter(id => id !== opt.id) : [...f.toppingIds, opt.id];
-                              const labels = ids.map(id => labelResult.toppingOptions!.find(o => o.id === id)?.label).filter(Boolean);
-                              return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map(id => ({ text: labelResult.toppingOptions!.find(o => o.id === id)?.label ?? id, resolvedId: id })) };
-                            });
-                          }}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
-                            selected
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "snap-choice-chip"
-                          }`}
-                          data-testid={`chip-topping-${opt.id}`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        hapticTap("LIGHT");
-                        setToppingManual(true);
-                        setForm((f) => ({ ...f, extras: "", toppingIds: [], toppingResolutions: [] }));
-                      }}
-                      className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted"
-                      data-testid="chip-topping-other"
-                    >
-                      {t("snap.something_else")}
-                    </button>
-                  </div>
-                ) : (
-                  <textarea
-                    id="snap-extras"
-                    value={form.extras}
-                    onChange={(e) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras: e.target.value, toppingIds: [], toppingResolutions: [] })); }}
-                    placeholder={t("snap.field_placeholder_extras")}
-                    rows={2}
-                    className="flex h-[4.5rem] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-right text-sm leading-snug ring-offset-background transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    data-testid="input-snap-extras"
-                  />
-                )}
-              </div>
-            </div>
-
-          </div>
+          <EditableMealDetailCard
+            name={form.name}
+            portion={form.portion}
+            sauces={form.sauces}
+            extras={form.extras}
+            portionOptions={labelResult?.portionOptions?.length ? labelResult.portionOptions : [
+              t("snap.portion_small"), t("snap.portion_medium"), t("snap.portion_large"),
+            ]}
+            portionIdMap={labelResult?.portionIdMap}
+            sauceOptions={labelResult?.comboSource === "database" ? labelResult.sauceOptions : undefined}
+            toppingOptions={labelResult?.comboSource === "database" ? labelResult.toppingOptions : undefined}
+            sauceIds={form.sauceIds}
+            toppingIds={form.toppingIds}
+            sauceManual={sauceManual}
+            toppingManual={toppingManual}
+            labels={{ name: t("snap.field_name"), portion: t("snap.field_portion"), sauces: t("snap.field_sauces"), extras: t("snap.field_extras"), namePlaceholder: t("snap.field_placeholder_name"), saucesPlaceholder: t("snap.field_placeholder_sauces"), extrasPlaceholder: t("snap.field_placeholder_extras"), somethingElse: t("snap.something_else"), edit: t("snap.tap_to_edit") }}
+            onNameChange={(name) => { fieldMethodRef.current.name = "typed"; setForm((f) => ({ ...f, name })); }}
+            onPortionChange={(portion, portionId) => { hapticTap("LIGHT"); setForm((f) => ({ ...f, portion, portionId })); }}
+            onSaucesChange={(sauces) => { fieldMethodRef.current.sauces = "typed"; hasTypedRef.current.sauces = true; setForm((f) => ({ ...f, sauces, sauceIds: [], sauceResolutions: [] })); }}
+            onExtrasChange={(extras) => { fieldMethodRef.current.extras = "typed"; hasTypedRef.current.extras = true; setForm((f) => ({ ...f, extras, toppingIds: [], toppingResolutions: [] })); }}
+            onToggleSauce={(opt) => { hapticTap("LIGHT"); setForm((f) => { const ids = f.sauceIds.includes(opt.id) ? f.sauceIds.filter((id) => id !== opt.id) : [...f.sauceIds, opt.id]; const options = labelResult?.sauceOptions ?? []; const labels = ids.map((id) => options.find((item) => item.id === id)?.label).filter(Boolean) as string[]; return { ...f, sauceIds: ids, sauces: labels.join(", "), sauceResolutions: ids.map((id) => ({ text: options.find((item) => item.id === id)?.label ?? id, resolvedId: id })) }; }); }}
+            onToggleTopping={(opt) => { hapticTap("LIGHT"); setForm((f) => { const ids = f.toppingIds.includes(opt.id) ? f.toppingIds.filter((id) => id !== opt.id) : [...f.toppingIds, opt.id]; const options = labelResult?.toppingOptions ?? []; const labels = ids.map((id) => options.find((item) => item.id === id)?.label).filter(Boolean) as string[]; return { ...f, toppingIds: ids, extras: labels.join(", "), toppingResolutions: ids.map((id) => ({ text: options.find((item) => item.id === id)?.label ?? id, resolvedId: id })) }; }); }}
+            onSauceManual={() => { hapticTap("LIGHT"); setSauceManual(true); setForm((f) => ({ ...f, sauces: "", sauceIds: [], sauceResolutions: [] })); }}
+            onToppingManual={() => { hapticTap("LIGHT"); setToppingManual(true); setForm((f) => ({ ...f, extras: "", toppingIds: [], toppingResolutions: [] })); }}
+          />
 
           {labelResult && (
             <CounterBadge
@@ -1287,7 +1098,7 @@ export default function Snap() {
             <Button
               onClick={() => { hapticTap("MEDIUM"); handleGetAdvice(); }}
               disabled={!form.name.trim() || disambigQueue.length > 0}
-              className="btn-pop h-14 w-full rounded-2xl bg-[var(--brand-culinary)] text-base font-semibold text-white shadow-md hover:bg-[var(--brand-culinary)] hover:brightness-105 active:bg-[var(--brand-culinary-pressed)]"
+              className="snap-cta btn-pop h-14 w-full text-base font-semibold"
               data-testid="button-snap-get-advice"
             >
               {t("snap.get_advice")}

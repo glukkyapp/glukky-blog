@@ -137,15 +137,14 @@ check("Food Log uses the strict opted-in fetch and exact cache key",
   && foodLog.includes("item.id === i.id") === false
   && foodLog.includes("i.id === item.id"));
 check("Daily uses yesterday for both explicit timeline bounds",
-  report.includes("startDate={yesterday}")
-  && report.includes("endDate={yesterday}")
-  && report.includes("includeFinalImpact"));
+  report.includes("dailyReportQueryKey(yesterday)")
+  && report.includes("fetchDailyReport(yesterday)"));
 check("Food Log and Daily timeline share strict response validation",
   foodLog.includes("fetchMealLog(month, true)")
   && reports.includes("fetchMealLog(month, includeFinalImpact)")
   && reports.includes("mealLogQueryKey(month, includeFinalImpact)"));
-check("Both compile-time MealTimeline callers use the parameterized signature",
-  (report.match(/<MealTimeline/g) ?? []).length === 1
+check("The remaining compile-time MealTimeline caller uses the parameterized signature",
+  (report.match(/<MealTimeline/g) ?? []).length === 0
   && (reports.match(/<MealTimeline/g) ?? []).length === 1
   && !reports.includes("<MealTimeline weekStart="));
 check("Onboarding profile save invalidates final-impact meal history",

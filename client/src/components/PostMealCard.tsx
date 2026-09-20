@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ChevronUp, ChevronDown, Delete } from "lucide-react";
+import { CheckCircle2, Minus, Plus, ShieldCheck } from "lucide-react";
 import { hapticTap } from "@/lib/haptics";
 import { track } from "@/lib/posthog";
 
@@ -23,9 +23,20 @@ interface Props {
   onHstixCorrectionExpired?: (readingId?: number) => void;
 }
 
-const INTEGER_RANGE = Array.from({ length: 19 }, (_, i) => i + 2);
-const DEFAULT_INT_IDX = 8;
+const MIN_INTEGER = 2;
+const MAX_INTEGER = 20;
+const DEFAULT_INTEGER = 10;
 const DECIMAL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const NOTE_PRESETS = [
+  "glucose.preset_after_medication",
+  "glucose.preset_feeling_well",
+  "glucose.preset_mild_dizziness",
+  "glucose.preset_large_meal",
+  "glucose.preset_walk",
+  "glucose.preset_water",
+  "glucose.preset_veg",
+  "glucose.preset_early",
+] as const;
 const NOTE_PRESET_SEPARATOR = /[\n\r,，、;；。!?！？]+/;
 
 function normalizeNoteSegment(value: string): string {
@@ -51,121 +62,55 @@ function appendNotePreset(note: string, preset: string): string {
   return nextNote.length <= 500 ? nextNote : note;
 }
 
-function IntegerWheel({
+function IntegerStepper({
   value,
   onChange,
+  decreaseLabel,
+  increaseLabel,
 }: {
   value: number | null;
   onChange: (n: number) => void;
+  decreaseLabel: string;
+  increaseLabel: string;
 }) {
-  const [wheelIdx, setWheelIdx] = useState(DEFAULT_INT_IDX);
-  const displayIdx = value !== null ? INTEGER_RANGE.indexOf(value) : wheelIdx;
-  const touchLastY = useRef<number | null>(null);
-  const touchAccum = useRef(0);
-  const STEP_PX = 20;
-
   const go = (delta: number) => {
-    const newIdx = Math.max(0, Math.min(INTEGER_RANGE.length - 1, displayIdx + delta));
-    setWheelIdx(newIdx);
+    const current = value ?? DEFAULT_INTEGER;
+    const next = Math.max(MIN_INTEGER, Math.min(MAX_INTEGER, current + delta));
     hapticTap("SOFT");
-    onChange(INTEGER_RANGE[newIdx]);
+    onChange(next);
   };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchLastY.current = e.touches[0].clientY;
-    touchAccum.current = 0;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (touchLastY.current === null) return;
-    const dy = touchLastY.current - e.touches[0].clientY;
-    touchLastY.current = e.touches[0].clientY;
-    touchAccum.current += dy;
-    const steps = Math.trunc(touchAccum.current / STEP_PX);
-    if (steps !== 0) {
-      go(steps);
-      touchAccum.current -= steps * STEP_PX;
-    }
-  };
-  const onTouchEnd = () => {
-    touchLastY.current = null;
-    touchAccum.current = 0;
-  };
-
-  const prevVal = displayIdx > 0 ? INTEGER_RANGE[displayIdx - 1] : null;
-  const currVal = INTEGER_RANGE[displayIdx];
-  const nextVal = displayIdx < INTEGER_RANGE.length - 1 ? INTEGER_RANGE[displayIdx + 1] : null;
-  const isSelected = value !== null;
 
   return (
-    <div className="flex flex-col items-center select-none" data-testid="int-wheel">
+    <div className="flex w-full items-center justify-between gap-3" data-testid="int-stepper">
       <button
         type="button"
         onClick={() => go(-1)}
-        disabled={displayIdx <= 0}
-        data-testid="button-int-wheel-up"
-        className="p-2 text-muted-foreground disabled:opacity-20 transition-opacity active:scale-95"
-        aria-label="decrease"
+        disabled={value === MIN_INTEGER}
+        data-testid="button-post-meal-int-minus"
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#F0EFEB] text-[#00583A] shadow-sm transition-transform active:scale-90 disabled:opacity-30"
+        aria-label={decreaseLabel}
       >
-        <ChevronUp className="w-5 h-5" />
+        <Minus className="h-8 w-8 stroke-[3]" />
       </button>
-
-      <div
-        className="relative flex flex-col items-center overflow-hidden w-24"
-        style={{ height: 116 }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        data-testid="int-wheel-body"
-      >
-        <div
-          className="absolute left-0 right-0 border-t border-foreground/10"
-          style={{ top: 36 }}
-        />
-        <div
-          className="absolute left-0 right-0 border-b border-foreground/10"
-          style={{ top: 80 }}
-        />
-
-        <div
-          className="flex items-center justify-center"
-          style={{ height: 36, opacity: prevVal !== null ? 0.25 : 0 }}
+      <div className="min-w-0 flex-1 text-center">
+        <span
+          className={`text-[2.5rem] font-extrabold tabular-nums tracking-tight ${
+            value === null ? "text-[#00583A]/35" : "text-[#00583A]"
+          }`}
+          data-testid="text-post-meal-reading"
         >
-          <span className="text-xl font-semibold tabular-nums text-foreground">
-            {prevVal ?? ""}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-center" style={{ height: 44 }}>
-          <span
-            className={`text-5xl font-bold tabular-nums transition-colors ${
-              isSelected ? "text-foreground" : "text-muted-foreground/40"
-            }`}
-            data-testid="text-int-wheel-current"
-          >
-            {currVal}
-          </span>
-        </div>
-
-        <div
-          className="flex items-center justify-center"
-          style={{ height: 36, opacity: nextVal !== null ? 0.25 : 0 }}
-        >
-          <span className="text-xl font-semibold tabular-nums text-foreground">
-            {nextVal ?? ""}
-          </span>
-        </div>
+          {value === null ? "–" : value}
+        </span>
       </div>
-
       <button
         type="button"
         onClick={() => go(1)}
-        disabled={displayIdx >= INTEGER_RANGE.length - 1}
-        data-testid="button-int-wheel-down"
-        className="p-2 text-muted-foreground disabled:opacity-20 transition-opacity active:scale-95"
-        aria-label="increase"
+        disabled={value === MAX_INTEGER}
+        data-testid="button-post-meal-int-plus"
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#F0EFEB] text-[#00583A] shadow-sm transition-transform active:scale-90 disabled:opacity-30"
+        aria-label={increaseLabel}
       >
-        <ChevronDown className="w-5 h-5" />
+        <Plus className="h-8 w-8 stroke-[3]" />
       </button>
     </div>
   );
@@ -205,15 +150,6 @@ export default function PostMealCard({
 
   const canConfirmKeypad = glucoseValue !== null;
 
-  const handleBackspace = () => {
-    hapticTap("SOFT");
-    if (decPart !== null) {
-      setDecPart(null);
-    } else {
-      setIntPart(null);
-    }
-  };
-
   const handleConfirmKeypad = () => {
     hapticTap("LIGHT");
     if (submitting) return;
@@ -248,12 +184,14 @@ export default function PostMealCard({
       const response = await apiRequest(hstixReadingId ? "PATCH" : "POST", hstixReadingId ? `/api/hstix/readings/${hstixReadingId}` : "/api/hstix/readings", {
         glucoseMmol: glucoseValue,
         ...(mealSnapId != null ? { mealSnapId } : {}),
-        ...(note.trim() ? { note: note.trim() } : {}),
+        note: note.trim() || null,
       });
       const result = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/hstix/readings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       queryClient.invalidateQueries({ queryKey: ["/api/snap/glucose-patterns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/daily-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/snap/daily-report"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/glucose-thresholds"] });
       if (!hstixReadingId) {
         queryClient.invalidateQueries({ queryKey: ["/api/piggybank"] });
@@ -272,107 +210,108 @@ export default function PostMealCard({
     }
   };
 
-  const cardStyle: React.CSSProperties = {
-    background: "#FFF8EC",
-    boxShadow: "0 4px 14px rgba(13,126,143,0.08)",
-  };
-
   const alertTitleKey =
     alertType === "low" ? "glucose.alert_low_title" : "glucose.alert_high_title";
   const alertBodyKey =
     alertType === "low" ? "glucose.alert_low_body" : "glucose.alert_high_body";
   const alertBodyLines = alertType ? t(alertBodyKey).split("\n") : [];
+  const copy = {
+    entryTitle: t("glucose.hstix_entry_title"),
+    decimalHint: t("glucose.hstix_decimal_hint"),
+    decimalAction: t("glucose.hstix_decimal_action"),
+    remarksTitle: t("glucose.hstix_remarks_title"),
+    decrease: t("glucose.hstix_decrease_integer"),
+    increase: t("glucose.hstix_increase_integer"),
+  };
 
   return (
     <>
-      <div
-        className="rounded-2xl p-5 flex flex-col gap-4"
-        style={cardStyle}
-        data-testid="card-post-meal-keypad"
-      >
-          <p className="text-sm font-medium text-foreground">{t("glucose.keypad_title")}</p>
-
-          <div className="flex items-center justify-center gap-2">
-            <span
-              className="text-4xl font-bold tabular-nums text-foreground"
-              data-testid="text-post-meal-reading"
-            >
-              {intPart !== null ? intPart : "–"}.{decPart !== null ? decPart : "–"}
+      <div className="flex flex-col gap-5" data-testid="card-post-meal-keypad">
+        <section className="rounded-2xl bg-white p-5 shadow-[0_4px_16px_rgba(30,58,95,0.06)]">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-bold tracking-wide text-foreground/75">{copy.entryTitle}</p>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EAE9E5] px-3 py-1 text-xs font-semibold text-[#00583A]">
+              <ShieldCheck className="h-4 w-4" />
+              {t("glucose.keypad_unit")}
             </span>
-            <span className="text-sm text-muted-foreground">{t("glucose.keypad_unit")}</span>
-            <button
-              type="button"
-              onClick={handleBackspace}
-              disabled={intPart === null && decPart === null}
-              data-testid="button-post-meal-backspace"
-              className="ml-1 p-1.5 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors active:scale-95"
-              aria-label="backspace"
-            >
-              <Delete className="w-5 h-5" />
-            </button>
           </div>
-
-          <div className="flex flex-col items-center gap-0.5">
-            <p className="text-xs text-muted-foreground/70 mb-0.5">
-              {t("glucose.alert_scroll_hint")}
-            </p>
-            <IntegerWheel value={intPart} onChange={setIntPart} />
+          <div className="relative">
+            <IntegerStepper
+              value={intPart}
+              onChange={setIntPart}
+              decreaseLabel={copy.decrease}
+              increaseLabel={copy.increase}
+            />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <span className="ml-[3.5rem] text-[2.5rem] font-extrabold tabular-nums tracking-tight text-[#00583A]">
+                .{decPart === null ? "–" : decPart}
+              </span>
+              <span className="ml-2 mt-3 text-xs font-bold text-foreground/65">{t("glucose.keypad_unit")}</span>
+            </div>
           </div>
-
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="mb-2 mt-5 flex items-center justify-between gap-3 text-xs">
+            <span className="text-muted-foreground">{copy.decimalHint}</span>
+            <span className="shrink-0 font-semibold text-[#00583A]">{copy.decimalAction}</span>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
             {DECIMAL_OPTIONS.map((n) => (
               <button
                 key={n}
                 type="button"
-                onClick={() => { hapticTap("SOFT"); setDecPart(n); }}
+                onClick={() => {
+                  hapticTap("SOFT");
+                  if (intPart === null) setIntPart(DEFAULT_INTEGER);
+                  setDecPart(n);
+                }}
+                aria-pressed={decPart === n}
                 data-testid={`button-post-meal-dec-${n}`}
-                className={`py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                className={`min-h-12 rounded-xl text-sm font-bold transition-colors ${
                   decPart === n
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground hover:bg-muted/70"
+                    ? "bg-[#00583A] text-white shadow-sm"
+                    : "bg-[#F0EFEB] text-foreground hover:bg-[#E7E6E2]"
                 }`}
               >
                 .{n}
               </button>
             ))}
           </div>
+        </section>
 
-          {standalone && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">
-                {t("glucose.hstix_note_label", "Note (optional)")}
-              </span>
+        {standalone && (
+          <section className="rounded-2xl bg-white p-5 shadow-[0_4px_16px_rgba(30,58,95,0.06)]">
+            <h2 className="mb-3 text-sm font-bold text-foreground">{copy.remarksTitle}</h2>
+            <div className="mb-3 flex flex-wrap gap-2" data-testid="hstix-note-presets">
+              {NOTE_PRESETS.map((key) => {
+                const preset = t(key);
+                const hasPreset = noteContainsPreset(note, preset);
+                const separatorLength = note.length > 0 && !/\s$/.test(note) ? 1 : 0;
+                const hasRoom = note.length + separatorLength + preset.length <= 500;
+                return <button type="button" key={key} disabled={hasPreset || !hasRoom}
+                  aria-pressed={hasPreset}
+                  onClick={() => {
+                    hapticTap("SOFT");
+                    setNote((current) => appendNotePreset(current, preset));
+                  }}
+                  className={`min-h-12 rounded-xl px-3.5 text-xs font-semibold transition-colors ${
+                    hasPreset ? "bg-[#00583A] text-white" : "bg-[#F0EFEB] text-foreground/75"
+                  } disabled:opacity-70`}
+                  data-testid={`button-hstix-preset-${key.split("_").pop()}`}>{preset}</button>;
+              })}
+            </div>
+            <label className="block">
+              <span className="sr-only">{t("glucose.hstix_note_label", "Note (optional)")}</span>
               <textarea
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={500}
                 rows={2}
-                className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full resize-none rounded-xl border-0 bg-[#F5F3EE] px-3.5 py-3 text-sm outline-none focus:ring-2 focus:ring-[#00583A]/25"
                 placeholder={t("glucose.hstix_note_placeholder", "Add a note")}
                 data-testid="input-hstix-note"
               />
-              <div className="flex flex-wrap gap-2" data-testid="hstix-note-presets">
-                {([
-                  ["hstix.preset_walk", "Walked after meal"],
-                  ["hstix.preset_water", "Drank water"],
-                  ["hstix.preset_veg", "Had vegetables"],
-                  ["hstix.preset_early", "Ate earlier"],
-                ] as const).map(([key, fallback]) => {
-                  const preset = t(key, fallback);
-                  const hasPreset = noteContainsPreset(note, preset);
-                  const separatorLength = note.length > 0 && !/\s$/.test(note) ? 1 : 0;
-                  const hasRoom = note.length + separatorLength + preset.length <= 500;
-                  return <button type="button" key={key} disabled={hasPreset || !hasRoom}
-                    onClick={() => {
-                      hapticTap("SOFT");
-                      setNote((current) => appendNotePreset(current, preset));
-                    }}
-                    className="min-h-12 rounded-full border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary disabled:opacity-40"
-                    data-testid={`button-hstix-preset-${key.split(".").pop()}`}>{preset}</button>;
-                })}
-              </div>
             </label>
-          )}
+          </section>
+        )}
 
         {submitError && (
           <p className="text-xs text-destructive text-center">
@@ -386,10 +325,13 @@ export default function PostMealCard({
           onClick={handleConfirmKeypad}
           disabled={!canConfirmKeypad || submitting}
           data-testid="button-post-meal-confirm-keypad"
+          className="min-h-14 rounded-2xl bg-[#00583A] text-base font-bold text-white shadow-lg hover:bg-[#00472F]"
         >
+          <CheckCircle2 className="mr-2 h-5 w-5" />
           {t("glucose.keypad_confirm")}
         </Button>
-        <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer-hstix">
+        <p className="flex items-start gap-2 rounded-xl bg-[#F5F3EE] p-3 text-center text-xs leading-relaxed text-muted-foreground" data-testid="text-disclaimer-hstix">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#00583A]" />
           {t("disclaimer.hstix")}
         </p>
       </div>
