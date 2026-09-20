@@ -62,6 +62,7 @@ export default function MainFontToggle() {
     location.startsWith("/food-log") ||
     location.startsWith("/snap") ||
     location.startsWith("/glucose-patterns") ||
+    location.startsWith("/hstix") ||
     location.startsWith("/health-info") ||
     location.startsWith("/profile");
 

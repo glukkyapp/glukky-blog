@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Volume2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { hapticTap } from "@/lib/haptics";
 import { startSpeech, isSpeechSupported, type SpeechHandle } from "@/lib/tts";
@@ -186,7 +187,10 @@ export function SnapAdvicePopup({
         <DialogTitle className="sr-only">{t("snap.advice_title")}</DialogTitle>
         <img src={mascot} alt="" aria-hidden="true" className="pointer-events-none absolute -top-16 left-1/2 z-10 h-28 w-28 -translate-x-1/2 object-contain" />
         <div className="snap-advice-content flex max-h-[calc(100dvh-6rem)] flex-col items-center gap-4 overflow-y-auto px-6 pb-5" data-testid={`card-snap-advice-${card}`}>
-          <span className="snap-advice-kicker">{advice.opener || t("snap.advice_title")}</span>
+            <span className="snap-advice-kicker">
+              <span aria-hidden="true">💬</span>
+              {advice.opener || t("snap.advice_title")}
+            </span>
           <h2 className="snap-advice-heading">{card === 0 ? impactLabel : card === 1 ? t("snap_popup.now_label") : t("snap_popup.next_label")}</h2>
           {card === 0 && (
             <>
@@ -259,7 +263,8 @@ export function SnapAdvicePopup({
 
           {listenButton && (
             <div className="snap-advice-audio">
-              <span className="text-left text-xs font-medium text-muted-foreground">{t("snap_popup.listen")}</span>
+              <span className="snap-advice-audio-icon" aria-hidden="true"><Volume2 className="h-5 w-5" /></span>
+              <span className="sr-only">{t("snap_popup.listen")}</span>
               {listenButton}
             </div>
           )}

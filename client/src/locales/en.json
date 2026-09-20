@@ -1060,6 +1060,20 @@
       "medium": "Yesterday was pretty steady overall! Adding a bit more veg to your meals would make it even better.",
       "high": "Had a bigger meal yesterday? No worries — why not try a short walk after eating today, take it easy!"
     },
+    "daily_summary": {
+      "no_meals_primary": "No meals were recorded yesterday.",
+      "no_meals_suggestion": "Regular meals can help keep your blood sugar steady throughout the day.",
+      "stable_primary": "Yesterday's meals had low glucose impact overall.",
+      "stable_meal_primary": "Yesterday's {{food}} had a low glucose impact.",
+      "stable_suggestion": "Keep choosing balanced meals and regular portions.",
+      "medium_primary": "Yesterday's diet was generally stable, with some meals showing medium glucose impact.",
+      "medium_suggestion": "Consider lower-GI choices, such as brown rice or oats instead of some refined starches.",
+      "high_primary": "At least one meal yesterday had a high glucose impact.",
+      "high_meal_primary": "Yesterday's {{food}} had a high glucose impact.",
+      "high_suggestion": "For that meal, try a smaller refined-starch portion and add vegetables or another balanced side.",
+      "unavailable_primary": "Yesterday's meal impact could not be assessed.",
+      "unavailable_suggestion": "Keep logging meals and glucose readings to build a clearer report."
+    },
     "heading": "Last 2 months",
     "loading": "Loading your report…",
     "not_enough_records": "Keep logging meals. There are not enough records yet to compare the last two months.",

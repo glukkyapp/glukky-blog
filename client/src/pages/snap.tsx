@@ -871,9 +871,24 @@ export default function Snap() {
           {t("snap.heading")}
         </h1>
       </div>
-      <p className="text-sm text-muted-foreground text-center">
-        {t("snap.subtitle")}
-      </p>
+      {step === "review" ? (
+        <>
+          <MascotSpeechBubble
+            mascotSrc={mascot}
+            message={t("snap.label_subtitle")}
+            testId="snap-review-mascot-message"
+          />
+          <div className="w-full px-1">
+            <p className="text-[17px] leading-relaxed text-[var(--snap-ink)]">{t("snap.subtitle")}</p>
+            <h2 className="mt-4 text-[22px] font-bold tracking-tight text-[var(--snap-ink)]">{t("snap.label_title")}</h2>
+            <p className="text-sm leading-snug text-muted-foreground">{t("snap.label_subtitle")}</p>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center">
+          {t("snap.subtitle")}
+        </p>
+      )}
 
       {step === "upload" && (
         <div className="snap-state-card flex flex-col items-center gap-5">
@@ -1005,11 +1020,6 @@ export default function Snap() {
 
       {step === "review" && (
         <div className="snap-state-card flex flex-col gap-4">
-          <div>
-            <p className="text-sm font-semibold">{t("snap.label_title")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
-          </div>
-
           {error && (
             <div
               className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive text-center"
@@ -1018,8 +1028,6 @@ export default function Snap() {
               {error}
             </div>
           )}
-
-          <MascotSpeechBubble mascotSrc={mascot} message={t("snap.label_subtitle")} testId="snap-review-mascot-message" />
 
           {previewUrl && (
             <div className="snap-photo-shell">

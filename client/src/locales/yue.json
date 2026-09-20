@@ -1064,6 +1064,20 @@
       "medium": "琴日整體好平穩！正餐如果加多兩啖菜，就更加完美啦！",
       "high": "琴日食得豐盛咗？唔緊要，今日可以試吓飯後散步，慢慢嚟！"
     },
+    "daily_summary": {
+      "no_meals_primary": "琴日未見飲食記錄。",
+      "no_meals_suggestion": "定時食飯有助穩定全日血糖。",
+      "stable_primary": "琴日飲食整體穩定，血糖影響輕微。",
+      "stable_meal_primary": "琴日嘅 {{food}}血糖影響較低。",
+      "stable_suggestion": "繼續揀均衡餐點同適量份量。",
+      "medium_primary": "琴日飲食整體穩定，部分餐點血糖影響中等。",
+      "medium_suggestion": "可以留意吓低升糖選擇，例如用糙米飯或燕麥代替部分精製澱粉。",
+      "high_primary": "琴日有餐點嘅血糖影響偏高。",
+      "high_meal_primary": "琴日嘅 {{food}}血糖影響偏高。",
+      "high_suggestion": "呢類餐點可以試吓減少精製澱粉份量，加返蔬菜或其他均衡配菜。",
+      "unavailable_primary": "琴日餐點嘅血糖影響暫時未能評估。",
+      "unavailable_suggestion": "繼續記錄餐點同血糖讀數，有助建立更完整嘅報告。"
+    },
     "heading": "最近兩個月",
     "loading": "載入緊報告…",
     "not_enough_records": "繼續記錄餐點，而家記錄未夠，未可以比較最近兩個月。",

@@ -114,6 +114,7 @@ export default function FloatingNavBar() {
             <motion.button
               key={key}
               onClick={() => handleNavClick(path, key)}
+              animate={{ y: active ? -3 : 0 }}
               whileTap={NAV_TAP}
               transition={NAV_TAP_TRANSITION}
               className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center select-none"

@@ -1064,6 +1064,20 @@
       "medium": "昨天整體頗為穩定！正餐如果多吃兩口蔬菜，就更完美了！",
       "high": "昨天吃得比較豐盛？沒關係，今天可以試試飯後散步，慢慢來！"
     },
+    "daily_summary": {
+      "no_meals_primary": "昨日未見飲食記錄。",
+      "no_meals_suggestion": "定時進食有助穩定全日血糖。",
+      "stable_primary": "昨日飲食整體穩定，血糖影響輕微。",
+      "stable_meal_primary": "昨日的 {{food}}血糖影響較低。",
+      "stable_suggestion": "繼續選擇均衡餐點及適量份量。",
+      "medium_primary": "昨日飲食整體穩定，部分餐點血糖影響中等。",
+      "medium_suggestion": "留意是否可進一步選擇低升糖食物，例如以糙米飯或燕麥代替部分精製澱粉。",
+      "high_primary": "昨日有餐點的血糖影響偏高。",
+      "high_meal_primary": "昨日的 {{food}}血糖影響偏高。",
+      "high_suggestion": "這類餐點可嘗試減少精製澱粉份量，並加入蔬菜或其他均衡配菜。",
+      "unavailable_primary": "昨日餐點的血糖影響暫時未能評估。",
+      "unavailable_suggestion": "繼續記錄餐點及血糖讀數，有助建立更完整的報告。"
+    },
     "heading": "最近兩個月",
     "loading": "正在載入報告…",
     "not_enough_records": "繼續記錄餐點，目前記錄不足，未能比較最近兩個月。",
