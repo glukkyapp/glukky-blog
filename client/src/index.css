@@ -64,7 +64,7 @@ textarea,
   --brand-teal-deep: #086574;
   --brand-teal-soft: #D7EEF0;
   --brand-teal-wash: #E8F5F3;
-  --brand-cream: #FCFBF2;
+  --brand-cream: hsl(var(--background));
   --brand-cream-card: #FFF8EC;
   --brand-cream-muted: #F7E8D2;
   --brand-ink: #173F46;
@@ -79,7 +79,8 @@ textarea,
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 54 62.5% 96.862745%;
+  /* #FCFBF2 — shared light page canvas (cards/loading stay separate). */
+  --background: 54 62.5% 96.862745098%;
   --foreground: 188.936 50.538% 18.235%;
   --border: 31 39% 82%;
   --card: 48 42% 99%;

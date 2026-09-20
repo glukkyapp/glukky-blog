@@ -58,6 +58,27 @@ test.use({
 });
 
 test.describe("teal refresh regression evidence", () => {
+  test("authenticated page shells and desktop gutters use the exact warm canvas", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.route("**/api/dev/check", route => route.fulfill({
+      contentType: "application/json", body: '{"isDev":true}',
+    }));
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of ["/", "/snap", "/health-info", "/profile", "/doctor-info", "/report", "/food-log", "/hstix", "/glucose-patterns", "/confidentiality", "/onboarding?preview=1", "/missing-page"]) {
+        await page.goto(path);
+        if (path.startsWith("/onboarding")) {
+          await expect(page.getByTestId("onboarding-container")).toBeVisible();
+        }
+        const shell = page.locator(".app-page-v2, main.min-h-screen, div.min-h-screen, #root > div > .bg-background, .sm\\:min-h-screen.bg-background").first();
+        await expect(shell).toHaveCSS("background-color", "rgb(252, 251, 242)");
+        for (const selector of ["html", "body", "#root"]) {
+          await expect(page.locator(selector)).toHaveCSS("background-color", "rgb(252, 251, 242)");
+        }
+      }
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("glukky_has_session", "1");

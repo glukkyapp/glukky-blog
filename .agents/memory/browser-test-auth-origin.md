@@ -8,3 +8,9 @@ Authenticated Playwright flows must use the exact same hostname for `context.req
 **Why:** Session cookies are host-scoped, so `127.0.0.1` API calls do not authenticate a page opened on `localhost`. Repeated registration attempts also consume the shared auth rate limit.
 
 **How to apply:** Use the configured browser `baseURL` consistently for both API and page traffic. In reusable setup, try login first and fall back to one registration attempt only after an unauthorized response.
+
+For isolated signed-out visual tests, mock the user response as JSON `null` rather than a 401 when identity cleanup is not under test.
+
+**Why:** In browser-only runs, the native notification bridge can exist without completing its remove-identity callback. A 401 then delays landing rendering beyond normal assertion timeouts, independently of styling.
+
+**How to apply:** Keep real 401 responses in identity/loading integration tests; do not change production authentication to accommodate visual tests.
