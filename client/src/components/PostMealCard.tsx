@@ -64,11 +64,15 @@ function appendNotePreset(note: string, preset: string): string {
 
 function IntegerStepper({
   value,
+  decimal,
+  unit,
   onChange,
   decreaseLabel,
   increaseLabel,
 }: {
   value: number | null;
+  decimal: number | null;
+  unit: string;
   onChange: (n: number) => void;
   decreaseLabel: string;
   increaseLabel: string;
@@ -92,15 +96,26 @@ function IntegerStepper({
       >
         <Minus className="h-8 w-8 stroke-[3]" />
       </button>
-      <div className="min-w-0 flex-1 text-center">
-        <span
-          className={`text-[2.5rem] font-extrabold tabular-nums tracking-tight ${
-            value === null ? "text-[#00583A]/35" : "text-[#00583A]"
-          }`}
-          data-testid="text-post-meal-reading"
-        >
-          {value === null ? "–" : value}
-        </span>
+      <div className="flex min-w-0 flex-1 justify-center overflow-hidden">
+        <div className="flex min-w-0 items-baseline whitespace-nowrap">
+          <span
+            className={`text-[2.5rem] font-extrabold tabular-nums tracking-tight ${
+              value === null ? "text-[#00583A]/35" : "text-[#00583A]"
+            }`}
+            data-testid="text-post-meal-reading"
+          >
+            {value === null ? "–" : value}
+          </span>
+          <span
+            className={`text-[2.5rem] font-extrabold tabular-nums tracking-tight ${
+              decimal === null ? "text-[#00583A]/35" : "text-[#00583A]"
+            }`}
+            data-testid="text-post-meal-decimal"
+          >
+            .{decimal === null ? "–" : decimal}
+          </span>
+          <span className="ml-2 text-xs font-bold text-foreground/65">{unit}</span>
+        </div>
       </div>
       <button
         type="button"
@@ -238,16 +253,12 @@ export default function PostMealCard({
           <div className="relative">
             <IntegerStepper
               value={intPart}
+              decimal={decPart}
+              unit={t("glucose.keypad_unit")}
               onChange={setIntPart}
               decreaseLabel={copy.decrease}
               increaseLabel={copy.increase}
             />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="ml-[3.5rem] text-[2.5rem] font-extrabold tabular-nums tracking-tight text-[#00583A]">
-                .{decPart === null ? "–" : decPart}
-              </span>
-              <span className="ml-2 mt-3 text-xs font-bold text-foreground/65">{t("glucose.keypad_unit")}</span>
-            </div>
           </div>
           <div className="mb-2 mt-5 flex items-center justify-between gap-3 text-xs">
             <span className="text-muted-foreground">{copy.decimalHint}</span>
