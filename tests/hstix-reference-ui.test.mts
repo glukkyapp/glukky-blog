@@ -9,6 +9,7 @@ const [card, page] = await Promise.all([
 assert.doesNotMatch(card, /function IntegerWheel/, "the integer wheel is removed");
 assert.match(card, /const MIN_INTEGER = 2/, "integer selection keeps its lower bound");
 assert.match(card, /const MAX_INTEGER = 20/, "integer selection keeps its upper bound");
+assert.match(card, /const DEFAULT_INTEGER = 5/, "decimal-first input starts at integer 5");
 assert.match(card, /data-testid="button-post-meal-int-minus"/, "minus control is reachable");
 assert.match(card, /data-testid="button-post-meal-int-plus"/, "plus control is reachable");
 assert.match(card, /value === null \? "–" : value/, "an unselected integer is never presented as a real reading");

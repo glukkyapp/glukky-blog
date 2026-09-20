@@ -25,7 +25,7 @@ interface Props {
 
 const MIN_INTEGER = 2;
 const MAX_INTEGER = 20;
-const DEFAULT_INTEGER = 10;
+const DEFAULT_INTEGER = 5;
 const DECIMAL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const NOTE_PRESETS = [
   "glucose.preset_after_medication",
