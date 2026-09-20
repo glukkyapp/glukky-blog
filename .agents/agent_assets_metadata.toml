@@ -166,3 +166,17 @@ mtime_ms = 1789820821413
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/069a7f21-8561-4aec-b051-3713091c7dd0/d33b3732-6f4f-41a8-bc88-e7494e068344"
 storage_version_token = "1789820850410862"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "zPMVo2yqXr71y1la9Hquj"
+uri = "file://screenshots/teal-refresh/review.html"
+type = "html"
+title = "Teal refresh — phone screenshots and CSS"
+description = "Homepage, all six FoodSnap states, advice popup, Daily, Food Log, and Glucose Patterns, with the updated shared CSS."
+logical_id = "42b650d8-99a5-4a03-a7d2-63bf45799067"
+content_hash = "sha256:1eb2d6af716ecdb836697da741010e44aef5ad0eb2cabde47aac092639304f13"
+size = 690581
+mtime_ms = 1789890208153
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/42b650d8-99a5-4a03-a7d2-63bf45799067/fd3e3eaa-3697-4a77-99a1-bc9e7e69c5d6"
+storage_version_token = "1789890222348411"
+content_type = "text/html"

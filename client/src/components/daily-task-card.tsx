@@ -53,14 +53,10 @@ export function DailyTaskCard() {
   const visibleTasks = data.completedTaskId ? [data.completedTaskId] : data.tasks;
 
   return (
-    <section
+    <div
       className="rounded-2xl border bg-card px-4 py-3 space-y-2"
-      aria-label={t("home.daily_tasks_heading")}
       data-testid="daily-task-card"
     >
-      <h2 className="font-semibold" style={{ color: "var(--brand-ink)" }}>
-        {t("home.daily_tasks_heading")}
-      </h2>
       {visibleTasks.map((taskId) => {
         const completed = data.completedTaskId === taskId;
         return (
@@ -86,6 +82,6 @@ export function DailyTaskCard() {
           {t("home.daily_task_good_job")}
         </p>
       )}
-    </section>
+    </div>
   );
 }

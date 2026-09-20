@@ -1380,12 +1380,15 @@
     "guidance_got_it": "知道了"
   },
   "food_log": {
-    "overlap_tooltip": "與上一餐相隔不足2小時，血糖讀數可能受影響。"
+    "overlap_tooltip": "與上一餐相隔不足2小時，血糖讀數可能受影響。",
+    "meals_error": "暫時未能載入餐點。"
   },
   "food_reports": {
     "timeline_title": "本週餐點",
     "timeline_error": "暫時未能載入餐點。",
     "timeline_empty": "本週尚未有餐點記錄。",
+    "yesterday_timeline_title": "昨日餐點",
+    "yesterday_timeline_empty": "昨日尚未有餐點記錄。",
     "unnamed_meal": "食物"
   },
   "consent": {

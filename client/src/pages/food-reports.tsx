@@ -10,8 +10,13 @@ import {
   isChineseLanguage,
   mealLabel,
   mealTimeLabel,
-  type MealLogItem,
+  type FinalImpactMealLogItem,
 } from "@/lib/meal-presentation";
+import {
+  fetchMealLog,
+  FINAL_IMPACT_STALE_TIME_MS,
+  mealLogQueryKey,
+} from "@/lib/meal-log-query";
 
 interface WeeklySummary {
   snapCount: number;
@@ -156,40 +161,56 @@ function addLocalDays(localDate: string, days: number): string {
     .slice(0, 10);
 }
 
-export function MealTimeline({ weekStart }: { weekStart: string }) {
+interface MealTimelineProps {
+  startDate: string;
+  endDate: string;
+  titleKey: string;
+  emptyKey: string;
+  includeFinalImpact: boolean;
+}
+
+export function MealTimeline({
+  startDate,
+  endDate,
+  titleKey,
+  emptyKey,
+  includeFinalImpact,
+}: MealTimelineProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language || "en";
   const isZh = isChineseLanguage(locale);
-  const weekEnd = addLocalDays(weekStart, 6);
-  const months = Array.from(new Set([weekStart.slice(0, 7), weekEnd.slice(0, 7)]));
+  const months = Array.from(new Set([startDate.slice(0, 7), endDate.slice(0, 7)]));
   const queries = useQueries({
     queries: months.map((month) => ({
-      queryKey: ["/api/snap/meal-log", "report", month],
-      queryFn: async (): Promise<{ items: MealLogItem[] }> => {
-        const res = await fetch(`/api/snap/meal-log?month=${month}`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed");
-        return res.json();
-      },
+      queryKey: mealLogQueryKey(month, includeFinalImpact),
+      queryFn: () => fetchMealLog(month, includeFinalImpact),
+      staleTime: includeFinalImpact ? FINAL_IMPACT_STALE_TIME_MS : undefined,
+      refetchOnMount: includeFinalImpact ? true : undefined,
+      refetchOnWindowFocus: includeFinalImpact ? true : undefined,
+      refetchOnReconnect: includeFinalImpact ? true : undefined,
     })),
   });
   const isLoading = queries.some((query) => query.isLoading);
   const isError = queries.some((query) => query.isError);
   const items = queries
     .flatMap((query) => query.data?.items ?? [])
-    .filter((item) => item.localDate >= weekStart && item.localDate <= weekEnd)
+    .filter((item) => item.localDate >= startDate && item.localDate <= endDate)
     .sort((a, b) => new Date(a.snapTime).getTime() - new Date(b.snapTime).getTime());
   return (
     <Card data-testid="card-meal-timeline">
       <CardHeader className="pb-2 pt-4">
-        <CardTitle className="text-base">{t("food_reports.timeline_title")}</CardTitle>
+        <CardTitle className="text-base">{t(titleKey)}</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
         {isLoading && <div className="space-y-2" data-testid="meal-timeline-loading">{[1, 2, 3].map(i => <div key={i} className="h-12 rounded-xl bg-muted animate-pulse" />)}</div>}
         {isError && <p className="text-sm text-muted-foreground" data-testid="meal-timeline-error">{t("food_reports.timeline_error")}</p>}
-        {!isLoading && !isError && items.length === 0 && <p className="text-sm text-muted-foreground" data-testid="meal-timeline-empty">{t("food_reports.timeline_empty")}</p>}
-        {!isError && <div className="space-y-2" data-testid="meal-timeline-list">
+        {!isLoading && !isError && items.length === 0 && <p className="text-sm text-muted-foreground" data-testid="meal-timeline-empty">{t(emptyKey)}</p>}
+        {items.length > 0 && <div className="space-y-2" data-testid="meal-timeline-list">
           {items.map(item => {
-            const impact = impactPresentation(item.glucoseImpact, isZh);
+            const displayedImpact = includeFinalImpact
+              ? (item as FinalImpactMealLogItem).finalGlucoseImpact
+              : item.glucoseImpact;
+            const impact = impactPresentation(displayedImpact, isZh);
             return <div key={item.id} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-xl border border-card-border bg-card px-3 py-2.5" data-testid={`meal-timeline-item-${item.id}`}>
               <span className="text-xs text-muted-foreground">{mealTimeLabel(item.snapTime, locale)}</span>
               <div className="min-w-0">
@@ -911,7 +932,13 @@ export default function FoodReports() {
       </div>
       <div className="px-4 pt-4 flex flex-col gap-4">
         <WeeklyCard weekStart={weekStart} variant="reports" />
-        <MealTimeline weekStart={weekStart} />
+        <MealTimeline
+          startDate={weekStart}
+          endDate={addLocalDays(weekStart, 6)}
+          titleKey="food_reports.timeline_title"
+          emptyKey="food_reports.timeline_empty"
+          includeFinalImpact={false}
+        />
         <MonthlyCard />
       </div>
     </div>

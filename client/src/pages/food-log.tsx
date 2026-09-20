@@ -10,13 +10,14 @@ import {
   impactPresentation,
   mealLabel as presentMealLabel,
   mealTimeLabel,
-  type MealLogItem,
+  type FinalImpactMealLogItem,
+  type FinalImpactMealLogResponse,
 } from "@/lib/meal-presentation";
-
-interface MealLogResponse {
-  month: string;
-  items: MealLogItem[];
-}
+import {
+  fetchMealLog,
+  FINAL_IMPACT_STALE_TIME_MS,
+  mealLogQueryKey,
+} from "@/lib/meal-log-query";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -65,22 +66,6 @@ const SYMPTOM_LABEL_ZH: Record<string, string> = {
   thirsty:       "😟 口渴",
 };
 
-interface ProfileData {
-  glucoseGroup?: string | null;
-}
-
-function classifyMmol(mmol: number, glucoseGroup?: string | null): "low" | "medium" | "high" {
-  const isT2dm = glucoseGroup === "t2dm";
-  if (isT2dm) {
-    if (mmol >= 10.0) return "high";
-    if (mmol >= 7.5) return "medium";
-    return "low";
-  }
-  if (mmol >= 7.8) return "high";
-  if (mmol >= 5.9) return "medium";
-  return "low";
-}
-
 export default function FoodLog() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
@@ -92,7 +77,7 @@ export default function FoodLog() {
   const [expandedOverlap, setExpandedOverlap] = useState<Set<number>>(new Set());
 
   const search = useSearch();
-  const hstixPathFor = (item: MealLogItem) => {
+  const hstixPathFor = (item: FinalImpactMealLogItem) => {
     const params = new URLSearchParams({ mealSnapId: String(item.id) });
     if (item.hstixReadingId) params.set("readingId", String(item.hstixReadingId));
     return `/hstix?${params.toString()}`;
@@ -104,18 +89,16 @@ export default function FoodLog() {
     }
   }, [search, setLocation]);
 
-  const { data: profile } = useQuery<ProfileData>({ queryKey: ["/api/profile"] });
-
-  const { data, isLoading } = useQuery<MealLogResponse>({
-    queryKey: ["/api/snap/meal-log", month],
-    queryFn: async () => {
-      const res = await fetch(`/api/snap/meal-log?month=${month}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+  const { data, isLoading, isError } = useQuery<FinalImpactMealLogResponse>({
+    queryKey: mealLogQueryKey(month, true),
+    queryFn: () => fetchMealLog(month, true),
+    staleTime: FINAL_IMPACT_STALE_TIME_MS,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
-  const grouped = new Map<string, MealLogItem[]>();
+  const grouped = new Map<string, FinalImpactMealLogItem[]>();
   for (const item of data?.items ?? []) {
     if (!grouped.has(item.localDate)) grouped.set(item.localDate, []);
     grouped.get(item.localDate)!.push(item);
@@ -187,7 +170,16 @@ export default function FoodLog() {
           </div>
         )}
 
-        {!isLoading && grouped.size === 0 && (
+        {!isLoading && isError && (
+          <div
+            data-testid="food-log-error"
+            className="text-center text-muted-foreground text-sm py-16"
+          >
+            {t("food_log.meals_error")}
+          </div>
+        )}
+
+        {!isLoading && !isError && grouped.size === 0 && (
           <div
             data-testid="food-log-empty"
             className="text-center text-muted-foreground text-sm py-16"
@@ -205,10 +197,7 @@ export default function FoodLog() {
                 </p>
                 <div className="space-y-2">
                   {items.map(item => {
-                    const effectiveImpact: "low" | "medium" | "high" | null =
-                      item.postMealGlucoseMmol != null
-                        ? classifyMmol(item.postMealGlucoseMmol, profile?.glucoseGroup)
-                        : (item.glucoseImpact as "low" | "medium" | "high" | null);
+                    const effectiveImpact = item.finalGlucoseImpact;
                     const badge = effectiveImpact ? GLUCOSE_BADGE[effectiveImpact] : null;
                     const pillColor = item.mealType
                       ? (MEAL_PILL_COLOR[item.mealType] ?? "bg-gray-100 text-gray-600")
@@ -218,9 +207,9 @@ export default function FoodLog() {
                     const overlapExpanded = expandedOverlap.has(item.id);
 
                     const handleDismissOverlap = () => {
-                      queryClient.setQueryData(["/api/snap/meal-log", month], (old: any) => {
+                      queryClient.setQueryData<FinalImpactMealLogResponse>(mealLogQueryKey(month, true), (old) => {
                         if (!old) return old;
-                        return { ...old, items: old.items.map((i: MealLogItem) => i.id === item.id ? { ...i, overlapDismissed: true } : i) };
+                        return { ...old, items: old.items.map(i => i.id === item.id ? { ...i, overlapDismissed: true } : i) };
                       });
                       setExpandedOverlap(prev => { const next = new Set(prev); next.delete(item.id); return next; });
                       void apiRequest("PATCH", `/api/snap/${item.id}/dismiss-overlap`, {}).catch(() => {});

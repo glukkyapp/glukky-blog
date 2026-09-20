@@ -895,7 +895,7 @@ export default function Snap() {
   }, []);
 
   return (
-    <div className="app-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
+    <div className="app-page-v2 snap-page-v2 flex flex-col min-h-[70vh] px-5 pt-6 gap-5 max-w-sm mx-auto w-full pb-28">
       <div className="flex items-center gap-3">
         <img src={cameraHeadingIcon} alt="" className="w-14 h-14 shrink-0" data-testid="img-snap-heading-icon" />
         <h1
@@ -910,7 +910,7 @@ export default function Snap() {
       </p>
 
       {step === "upload" && (
-        <div className="flex flex-col items-center gap-5 pt-6">
+        <div className="snap-state-card flex flex-col items-center gap-5">
           {!snapTooltipDismissed && (
             <div
               className="w-full rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 space-y-2"
@@ -955,10 +955,10 @@ export default function Snap() {
             onChange={handleFileSelect}
           />
 
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 gap-4 w-full max-w-[304px]">
             <button
               onClick={() => { hapticTap("MEDIUM"); cameraInputRef.current?.click(); }}
-              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
+              className="flex flex-col items-center justify-center gap-3 min-w-0 w-full h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
               data-testid="button-snap-camera"
             >
               <Camera className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
@@ -969,7 +969,7 @@ export default function Snap() {
 
             <button
               onClick={() => { hapticTap("MEDIUM"); albumInputRef.current?.click(); }}
-              className="flex flex-col items-center justify-center gap-3 w-36 h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
+              className="flex flex-col items-center justify-center gap-3 min-w-0 w-full h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors cursor-pointer btn-pop"
               data-testid="button-snap-album"
             >
               <Images className="w-9 h-9 text-primary/70" strokeWidth={1.5} />
@@ -991,14 +991,14 @@ export default function Snap() {
       )}
 
       {step === "labeling" && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16" data-testid="status-snap-labeling">
+        <div className="snap-state-card snap-state-card--status flex flex-col items-center justify-center gap-3" data-testid="status-snap-labeling">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
           <p className="text-sm text-muted-foreground">{t("snap.analysing")}</p>
         </div>
       )}
 
       {step === "meal-select" && (
-        <div className="flex flex-col gap-5">
+        <div className="snap-state-card flex flex-col gap-5">
           {previewUrl && (
             <img
               src={previewUrl}
@@ -1020,7 +1020,7 @@ export default function Snap() {
                 className={`px-4 py-2 rounded-full text-sm border transition-colors ${
                   mealType === type
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                    : "snap-choice-chip"
                 }`}
               >
                 {t(`snap.meal_type_${type}`)}
@@ -1038,7 +1038,7 @@ export default function Snap() {
       )}
 
       {step === "review" && (
-        <div className="flex flex-col gap-4 rounded-2xl border border-card-border bg-card p-4 shadow-sm">
+        <div className="snap-state-card flex flex-col gap-4">
           <div>
             <p className="text-sm font-semibold">{t("snap.label_title")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t("snap.label_subtitle")}</p>
@@ -1097,7 +1097,7 @@ export default function Snap() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                           isActive
                             ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
+                            : "snap-choice-chip"
                         }`}
                         data-testid={`chip-portion-${opt.key}`}
                       >
@@ -1149,7 +1149,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
+                              : "snap-choice-chip"
                           }`}
                           data-testid={`chip-sauce-${opt.id}`}
                         >
@@ -1206,7 +1206,7 @@ export default function Snap() {
                           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             selected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-[var(--brand-cream-muted)] text-muted-foreground border-input hover:bg-muted"
+                              : "snap-choice-chip"
                           }`}
                           data-testid={`chip-topping-${opt.id}`}
                         >
@@ -1264,7 +1264,7 @@ export default function Snap() {
                   <button
                     key={m.internalId ?? `none-${i}`}
                     onClick={() => handleDisambigSelect(m.internalId)}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--brand-cream-muted)] border border-input hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="snap-choice-chip px-3 py-1.5 rounded-full text-xs font-medium border hover:bg-primary hover:text-primary-foreground transition-colors"
                     data-testid={`chip-disambig-${m.internalId ?? "none"}`}
                   >
                     {m.label}
@@ -1306,14 +1306,14 @@ export default function Snap() {
       )}
 
       {step === "advising" && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16" data-testid="status-snap-advising">
+        <div className="snap-state-card snap-state-card--status flex flex-col items-center justify-center gap-3" data-testid="status-snap-advising">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
           <p className="text-sm text-muted-foreground">{t("snap.getting_advice")}</p>
         </div>
       )}
 
       {step === "advice" && adviceResult && (
-        <div className="flex flex-col gap-4">
+        <div className="snap-state-card flex flex-col gap-4">
           <p className="text-sm font-semibold">{t("snap.advice_title")}</p>
 
           {adviceResult.structuredAdvice && (

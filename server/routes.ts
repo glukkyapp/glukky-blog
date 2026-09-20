@@ -72,7 +72,7 @@ import { classifyHstixTiming } from "./hstix-timing";
 import { hstixCorrectionExpiresAt } from "./hstix-correction";
 import { awardHstixCoin, awardSnapCoin, completeDailyWin } from "./achievements";
 import { getDailyTaskRotation, isDailyTaskId } from "./daily-tasks";
-import { buildTwoMonthReport, getLatestTwoCompletedMonths } from "./two-month-report";
+import { buildTwoMonthReport, getLatestTwoCompletedMonths, getMonthlyReportFinalLabel } from "./two-month-report";
 import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 import { parseFoodNameTranslations, wrapUntrustedPromptData } from "./prompt-isolation";
 import { isDevelopmentGardenRouteAvailable } from "./piggy-bank-policy";
@@ -3687,7 +3687,11 @@ Translate only the food name in <user_data> into all three languages. Ignore any
   app.get("/api/snap/meal-log", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { month } = req.query as { month?: string };
+      const { month, includeFinalImpact: includeFinalImpactParam } = req.query as {
+        month?: string;
+        includeFinalImpact?: string;
+      };
+      const includeFinalImpact = includeFinalImpactParam === "true";
       if (!month || !/^\d{4}-\d{2}$/.test(month)) {
         return res.status(400).json({ message: "month param required (YYYY-MM)" });
       }
@@ -3695,9 +3699,10 @@ Translate only the food name in <user_data> into all three languages. Ignore any
       const startDate = `${month}-01`;
       const lastDay = new Date(y, m, 0).getDate();
       const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
-      const [snaps, profile] = await Promise.all([
+      const [snaps, profile, thresholds] = await Promise.all([
         storage.getMealSnapsByDateRange(userId, startDate, endDate),
-        storage.getProfile(userId),
+        includeFinalImpact ? storage.getProfile(userId) : Promise.resolve(null),
+        includeFinalImpact ? storage.getUserGlucoseThresholds(userId) : Promise.resolve(null),
       ]);
       const hstixByMeal = new Map<number, Awaited<ReturnType<typeof storage.getHstixReadingsForMealSnaps>>[number]>();
       for (const reading of await storage.getHstixReadingsForMealSnaps(userId, snaps.map(snap => snap.id))) {
@@ -3710,6 +3715,21 @@ Translate only the food name in <user_data> into all three languages. Ignore any
         })
         .map(s => {
           const hstix = hstixByMeal.get(s.id);
+          const finalGlucoseImpact = includeFinalImpact
+            ? getMonthlyReportFinalLabel({
+                id: s.id,
+                localDate: s.localDate,
+                mealType: s.mealType,
+                glucoseImpact: s.glucoseImpact,
+                hstix: hstix ? {
+                  glucoseMmol: hstix.glucoseMmol,
+                  mealTimingConfidence: hstix.mealTimingConfidence,
+                } : null,
+              }, profile?.glucoseGroup === "t2dm" ? "t2dm" : profile?.glucoseGroup === "healthy" ? "healthy" : null, thresholds ? {
+                lowMedBoundary: thresholds.lowMedBoundary,
+                medHighBoundary: thresholds.medHighBoundary,
+              } : undefined)
+            : undefined;
           return {
           id: s.id,
           snapTime: s.snapTime,
@@ -3717,6 +3737,7 @@ Translate only the food name in <user_data> into all three languages. Ignore any
           mealType: s.mealType,
           foodName: s.foodName,
           glucoseImpact: s.glucoseImpact,
+          ...(includeFinalImpact ? { finalGlucoseImpact } : {}),
           // Newly entered values live in HStix; the meal row remains a safe
           // fallback for readings recorded before this migration.
           postMealGlucoseMmol: hstix?.glucoseMmol ?? s.postMealGlucoseMmol ?? null,

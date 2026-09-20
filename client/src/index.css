@@ -392,8 +392,12 @@ html.font-small .floating-nav-label {
   animation: slide-in-from-right 0.3s ease-out both;
 }
 
-/* === Glukky shared page design tokens (lifted from Home) === */
-.app-page-v2 { background: var(--brand-cream); min-height: 100vh; color: var(--brand-ink); }
+/* === Glukky shared page design tokens === */
+.app-page-v2 {
+  background: hsl(var(--background));
+  min-height: 100vh;
+  color: var(--brand-ink);
+}
 .app-page-v2 [data-testid="text-greeting"] {
   font-family: 'Playfair Display', serif !important;
   font-weight: 700 !important;
@@ -423,68 +427,69 @@ html.font-small .floating-nav-label {
 .app-page-v2 .goal-bubble-wrap { margin-bottom: -6px; }
 /* Cards */
 .app-page-v2 .shadcn-card {
-  background-color: var(--brand-cream) !important;
-  border: 0 !important;
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--card-border)) !important;
   border-radius: 28px !important;
   box-shadow: 0 4px 14px rgba(13, 126, 143, 0.08) !important;
-}
-.app-page-v2:not(.home-page-v2) .shadcn-card {
-  background-color: var(--brand-cream-card) !important;
 }
 .app-page-v2 .shadcn-card > div { padding: 22px !important; padding-top: 22px !important; }
 .app-page-v2:not(.home-page-v2) .shadcn-card > div:first-child { padding: 22px 22px 6px 22px !important; }
 .app-page-v2:not(.home-page-v2) .shadcn-card > div + div { padding: 6px 22px 22px 22px !important; }
-/* Soft amber alert variant */
-.app-page-v2 .shadcn-card.is-alert {
-  background-color: #FBF4E4 !important;
-  border: 0 !important;
-}
-/* Emphasis card */
-.app-page-v2 .shadcn-card.is-emphasis {
-  background-color: var(--brand-teal-soft) !important;
-  border: 0 !important;
-}
-/* Calendar card */
-.app-page-v2 .shadcn-card.is-calendar {
-  background-color: var(--brand-teal-soft) !important;
-  border: 0 !important;
-}
-/* Strip card child borders */
-.app-page-v2 .shadcn-card .border,
-.app-page-v2 .shadcn-card [class*="border-"] { border-color: transparent !important; }
 /* Pill / button radius */
 .app-page-v2 button { border-radius: 22px; }
 .app-page-v2 [data-testid="button-toggle-calendar"] { border-radius: 0; }
 /* Day chip / muted overrides */
-.app-page-v2 .bg-muted { background-color: var(--brand-teal-soft) !important; }
-.app-page-v2 .bg-muted\/50 { background-color: var(--brand-cream-muted) !important; }
-.app-page-v2 .bg-muted\/30 { background-color: var(--brand-cream-card) !important; }
+.app-page-v2 .bg-muted { background-color: hsl(var(--muted)) !important; }
+.app-page-v2 .bg-muted\/50 { background-color: hsl(var(--muted) / 0.5) !important; }
+.app-page-v2 .bg-muted\/30 { background-color: hsl(var(--muted) / 0.3) !important; }
 .app-page-v2 .bg-green-100 { background-color: var(--brand-teal-soft) !important; color: var(--brand-teal-deep) !important; }
 .app-page-v2 .text-green-600 { color: var(--brand-teal-deep) !important; }
-/* === Popup / modal / sheet surfaces use the cream app background === */
+/* === Popup / modal / sheet surfaces use semantic surfaces === */
 /* Targets Radix Dialog, AlertDialog, Sheet, and Vaul Drawer content. They */
 /* render in a portal outside .app-page-v2, so we match by ARIA role. */
-[role="dialog"],
+[role="dialog"]:not([data-testid="glucose-food-detail-dialog"]),
 [role="alertdialog"] {
+  background-color: hsl(var(--popover)) !important;
+  border-color: hsl(var(--popover-border)) !important;
+}
+
+/* Glucose Patterns is outside the refresh: preserve its portal surfaces. */
+[data-testid="glucose-food-detail-dialog"] {
   background-color: var(--brand-cream) !important;
 }
-/* Inner surfaces inside popups: nudge off-white tokens to a slightly */
-/* off-cream tone so cards / inputs / fills still read against the app cream. */
-[role="dialog"] .bg-card,
-[role="dialog"] .bg-background,
-[role="dialog"] .bg-popover,
-[role="dialog"] .bg-white,
-[role="alertdialog"] .bg-card,
-[role="alertdialog"] .bg-background,
-[role="alertdialog"] .bg-popover,
-[role="alertdialog"] .bg-white {
+[data-testid="glucose-food-detail-dialog"] :is(.bg-card, .bg-background, .bg-popover, .bg-white, .bg-muted\/30) {
   background-color: var(--brand-cream-card) !important;
 }
-[role="dialog"] .bg-muted\/50,
-[role="alertdialog"] .bg-muted\/50 {
+[data-testid="glucose-food-detail-dialog"] .bg-muted\/50 {
   background-color: var(--brand-cream-muted) !important;
 }
-[role="dialog"] .bg-muted\/30,
-[role="alertdialog"] .bg-muted\/30 {
-  background-color: var(--brand-cream-card) !important;
+
+/* FoodSnap uses one semantic visual shell in every existing render state. */
+.snap-page-v2 .snap-state-card {
+  width: 100%;
+  border: 1px solid hsl(var(--card-border));
+  border-radius: 24px;
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+.snap-page-v2 .snap-state-card--status {
+  min-height: 220px;
+}
+
+.snap-page-v2 .snap-choice-chip {
+  border-color: hsl(var(--input));
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+}
+
+.snap-page-v2 .snap-choice-chip:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--muted));
+}
+
+.snap-advice-dialog {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--card-border)) !important;
 }

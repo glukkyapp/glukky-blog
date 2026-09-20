@@ -82,7 +82,7 @@ function toXPct(hourFloat: number): number {
   return ((clamped - HOUR_START) / (HOUR_END - HOUR_START)) * 100;
 }
 
-function getYesterday(tz?: string, dateOverride?: string | null): string {
+export function getYesterday(tz?: string, dateOverride?: string | null): string {
   if (dateOverride) {
     const [y, m, d] = dateOverride.split("-").map(Number);
     const dObj = new Date(Date.UTC(y, m - 1, d - 1, 12, 0, 0));

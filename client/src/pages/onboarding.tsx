@@ -160,6 +160,7 @@ export default function Onboarding() {
         diabetesMedication: healthCondition === "diabetes" ? (diabetesMedication || null) : null,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/snap/meal-log"] });
       syncOneSignalLanguage(i18n.language || "en");
       hapticNotify("SUCCESS");
       const onboardingProperties = {

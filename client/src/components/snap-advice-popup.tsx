@@ -177,7 +177,7 @@ export function SnapAdvicePopup({
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) dismiss(); }}>
       <DialogContent
-        className="top-[calc(50%+1rem)] max-h-[calc(100dvh-6rem)] max-w-sm mx-auto rounded-[28px] p-0 overflow-visible border-card-border bg-card"
+        className="snap-advice-dialog top-[calc(50%+1rem)] max-h-[calc(100dvh-6rem)] max-w-sm mx-auto rounded-[28px] p-0 overflow-visible border-card-border bg-card"
         aria-describedby={undefined}
         data-testid="dialog-snap-advice-popup"
         onTouchStart={handleTouchStart}

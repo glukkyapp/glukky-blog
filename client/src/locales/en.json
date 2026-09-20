@@ -1376,12 +1376,15 @@
     "guidance_got_it": "Got it"
   },
   "food_log": {
-    "overlap_tooltip": "Logged within 2 hrs of your previous meal — glucose reading may be affected."
+    "overlap_tooltip": "Logged within 2 hrs of your previous meal — glucose reading may be affected.",
+    "meals_error": "Meals are temporarily unavailable."
   },
   "food_reports": {
     "timeline_title": "This week’s meals",
     "timeline_error": "Meals are temporarily unavailable.",
     "timeline_empty": "No meals recorded this week.",
+    "yesterday_timeline_title": "Yesterday’s meals",
+    "yesterday_timeline_empty": "No meals were recorded yesterday.",
     "unnamed_meal": "Food"
   },
   "consent": {

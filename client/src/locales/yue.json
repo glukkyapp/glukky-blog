@@ -1376,7 +1376,16 @@
     "guidance_got_it": "知道了"
   },
   "food_log": {
-    "overlap_tooltip": "同上一餐相隔唔夠兩個鐘，血糖讀數可能受影響。"
+    "overlap_tooltip": "同上一餐相隔唔夠兩個鐘，血糖讀數可能受影響。",
+    "meals_error": "暫時載入唔到餐點。"
+  },
+  "food_reports": {
+    "timeline_title": "今個星期嘅餐點",
+    "timeline_error": "暫時載入唔到餐點。",
+    "timeline_empty": "今個星期未有餐點記錄。",
+    "yesterday_timeline_title": "琴日嘅餐點",
+    "yesterday_timeline_empty": "琴日未有餐點記錄。",
+    "unnamed_meal": "食物"
   },
   "consent": {
     "onboarding_title": "你嘅私隱設定",

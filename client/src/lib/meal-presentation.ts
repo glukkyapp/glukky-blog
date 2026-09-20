@@ -12,6 +12,22 @@ export interface MealLogItem {
   overlapDismissed?: boolean;
 }
 
+export type MealImpact = "low" | "medium" | "high" | null;
+
+export interface FinalImpactMealLogItem extends MealLogItem {
+  finalGlucoseImpact: MealImpact;
+}
+
+export interface MealLogResponse {
+  month: string;
+  items: MealLogItem[];
+}
+
+export interface FinalImpactMealLogResponse {
+  month: string;
+  items: FinalImpactMealLogItem[];
+}
+
 const MEALS = {
   breakfast: ["Breakfast", "早餐"],
   lunch: ["Lunch", "午餐"],

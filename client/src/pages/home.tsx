@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PiggyBankCard, type PiggyBankData } from "@/components/piggy-bank-card";
 import { DailyTaskCard } from "@/components/daily-task-card";
 import type { UserProfile } from "@shared/schema";
+import habitMascot from "@assets/hargawmascot_1789835862050.png";
 import "./home-scoped-trial.css";
 
 type CorrectableHstixReading = {
@@ -169,7 +170,35 @@ export default function Home() {
       </header>
 
       {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
-      <DailyTaskCard />
+      <section aria-labelledby="daily-habit-heading" className="space-y-3" data-testid="section-daily-habit">
+        <div className="flex items-center gap-3 px-1 pt-1">
+          <img
+            src={habitMascot}
+            alt=""
+            aria-hidden="true"
+            className="h-16 w-16 shrink-0 object-contain drop-shadow-sm"
+            data-testid="img-daily-habit-mascot"
+          />
+          <div className="relative flex min-h-16 flex-1 items-center rounded-2xl border-2 border-[var(--brand-teal-deep)] bg-[var(--brand-teal-soft)] px-3.5 py-3 shadow-sm">
+            <h2
+              id="daily-habit-heading"
+              className="text-[17px] font-bold leading-snug tracking-tight text-[var(--brand-teal-deep)]"
+            >
+              {t("home.daily_tasks_heading")}
+            </h2>
+            <svg
+              viewBox="0 0 10 16"
+              className="pointer-events-none absolute -left-2.5 top-1/2 h-4 w-2.5 -translate-y-1/2 overflow-visible"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path d="M10 0 L0 8 L10 16" fill="#D7EEF0" stroke="#086574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <line x1="10" y1="1" x2="10" y2="15" stroke="#D7EEF0" strokeWidth="3" />
+            </svg>
+          </div>
+        </div>
+        <DailyTaskCard />
+      </section>
 
       <section aria-label={t("glucose.hstix_heading")} data-testid="section-home-hstix">
         {correctableHstixReading ? (
