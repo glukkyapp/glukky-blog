@@ -13,7 +13,7 @@ export default function UnlockingOverlay() {
           position: "fixed",
           inset: 0,
           zIndex: 10000,
-          backgroundColor: "rgba(254, 242, 224, 0.96)",
+          backgroundColor: "rgba(252, 251, 242, 0.96)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

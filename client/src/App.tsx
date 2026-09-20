@@ -78,7 +78,7 @@ const RouteFallback = () => (
     style={{
       position: "fixed",
       inset: 0,
-      backgroundColor: "#FEF2E0",
+       backgroundColor: "#FCFBF2",
       pointerEvents: "none",
     }}
   />

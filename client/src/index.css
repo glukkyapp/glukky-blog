@@ -64,7 +64,7 @@ textarea,
   --brand-teal-deep: #086574;
   --brand-teal-soft: #D7EEF0;
   --brand-teal-wash: #E8F5F3;
-  --brand-cream: #FEF2E0;
+  --brand-cream: #FCFBF2;
   --brand-cream-card: #FFF8EC;
   --brand-cream-muted: #F7E8D2;
   --brand-ink: #173F46;
@@ -79,7 +79,7 @@ textarea,
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 48 65% 97%;
+  --background: 54 62.5% 96.862745%;
   --foreground: 188.936 50.538% 18.235%;
   --border: 31 39% 82%;
   --card: 48 42% 99%;
@@ -455,7 +455,7 @@ html.font-small .floating-nav-label {
 
 /* Glucose Patterns is outside the refresh: preserve its portal surfaces. */
 [data-testid="glucose-food-detail-dialog"] {
-  background-color: var(--brand-cream) !important;
+  background-color: var(--brand-cream-card) !important;
 }
 [data-testid="glucose-food-detail-dialog"] :is(.bg-card, .bg-background, .bg-popover, .bg-white, .bg-muted\/30) {
   background-color: var(--brand-cream-card) !important;
