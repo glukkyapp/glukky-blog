@@ -437,7 +437,7 @@ export type SnapMonthlyArchive = typeof snapMonthlyArchive.$inferSelect;
 export type InsertSnapMonthlyArchive = typeof snapMonthlyArchive.$inferInsert;
 
 // Retains only the dimensions needed for the rolling report after the
-// corresponding meal_snap (and its food/photo data) reaches its 30-day purge.
+// corresponding meal_snap (and its food/photo data) reaches its 180-day purge.
 export const snapReportMealFacts = pgTable("snap_report_meal_facts", {
   snapId: integer("snap_id").primaryKey(),
   userId: varchar("user_id").notNull(),

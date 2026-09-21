@@ -77,6 +77,7 @@ import { buildDailyReport } from "./daily-report";
 import { canResetGlucosePatternsSwipeTutorial } from "./glucose-pattern-swipe-tutorial";
 import { parseFoodNameTranslations, wrapUntrustedPromptData } from "./prompt-isolation";
 import { isDevelopmentGardenRouteAvailable } from "./piggy-bank-policy";
+import { runMealRetentionJob } from "./meal-retention";
 
 type SnapRow = {
   mealType: string | null;
@@ -4605,56 +4606,6 @@ Translate only the food name in <user_data> into all three languages. Ignore any
     console.log("[snap/archive] Monthly archive job completed.");
   }
 
-  async function runDailyDeleteJob() {
-    console.log("[snap/delete] Daily delete job started.");
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    let totalDeleted = 0;
-    const tzCache = new Map<string, string>();
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const batch = await storage.fetchMealSnapsBeforeDate(cutoff, 500);
-      if (batch.length === 0) break;
-      const userDayMap = new Map<string, Map<string, { low: number; medium: number; high: number; mealCount: number; hasLateMeal: boolean }>>();
-      for (const snap of batch) {
-        if (!userDayMap.has(snap.userId)) userDayMap.set(snap.userId, new Map());
-        const dayMap = userDayMap.get(snap.userId)!;
-        if (!dayMap.has(snap.localDate)) dayMap.set(snap.localDate, { low: 0, medium: 0, high: 0, mealCount: 0, hasLateMeal: false });
-        const entry = dayMap.get(snap.localDate)!;
-        entry.mealCount++;
-        if (snap.glucoseImpact === "low") entry.low++;
-        else if (snap.glucoseImpact === "medium") entry.medium++;
-        else if (snap.glucoseImpact === "high") entry.high++;
-        if (!entry.hasLateMeal && (snap.mealType === "dinner" || snap.mealType === "snack")) {
-          let tz = tzCache.get(snap.userId);
-          if (tz === undefined) {
-            const p = await storage.getProfile(snap.userId);
-            tz = p?.deviceTimezone || "UTC";
-            tzCache.set(snap.userId, tz);
-          }
-          const snapDate = snap.snapTime instanceof Date ? snap.snapTime : new Date(snap.snapTime as any);
-          const hour = parseInt(new Intl.DateTimeFormat("en", { timeZone: tz, hour: "numeric", hourCycle: "h23" }).format(snapDate), 10);
-          if (hour >= 21) entry.hasLateMeal = true;
-        }
-      }
-      for (const [userId, dayMap] of userDayMap) {
-        for (const [localDate, counts] of dayMap) {
-          await storage.upsertDailyGlucose(userId, localDate, counts);
-        }
-      }
-      // Preserve the final HStix-over-AI result and only the dimensions used
-      // for reporting before deleting the raw meal/photo record.
-      for (const snap of batch) {
-        await storage.upsertReportMealFactForSnap(snap.userId, snap.id);
-      }
-      // snap_daily_glucose is PERMANENT — only meal_snaps rows are purged here,
-      // after their glucose counts have been aggregated into snap_daily_glucose.
-      // Never add snap_daily_glucose purge logic to this job.
-      await storage.purgeMealSnapsByIds(batch.map(s => s.id));
-      totalDeleted += batch.length;
-    }
-    console.log(`[snap/delete] Completed. Deleted ${totalDeleted} snap rows.`);
-  }
-
   setInterval(() => {
     storage.expireStalePostMealWindows().catch(e =>
       console.error("[post-meal/expire] Error:", e?.message)
@@ -4756,7 +4707,7 @@ Translate only the food name in <user_data> into all three languages. Ignore any
     }
     if (utcHour === 3 && _lastDailyDeleteRun !== dateKey) {
       _lastDailyDeleteRun = dateKey;
-      runDailyDeleteJob().catch(e => console.error("[snap/delete] Scheduler:", e?.message));
+      runMealRetentionJob(storage).catch(e => console.error("[snap/delete] Scheduler:", e?.message));
     }
     if (utcHour === 2 && _lastThresholdRun !== dateKey) {
       _lastThresholdRun = dateKey;

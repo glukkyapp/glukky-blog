@@ -11,6 +11,7 @@ import {
   getReportView,
   isReportLocation,
 } from "../client/src/lib/report-navigation";
+import { runMealRetentionJob } from "../server/meal-retention";
 
 let passed = 0;
 
@@ -94,10 +95,34 @@ check("Home keeps the focused HStix, suggestion, piggy bank, and greeting while 
   !homeSource.includes('data-testid="text-goal-reminder"'));
 
 console.log("\nTwo-month retention");
-check(
-  "Raw-meal purge retains privacy-minimal report facts first",
-  routesSource.indexOf("upsertReportMealFactForSnap(snap.userId, snap.id)") < routesSource.indexOf("purgeMealSnapsByIds(batch.map"),
-);
+let releaseFact!: () => void;
+const factBlocked = new Promise<void>(resolve => { releaseFact = resolve; });
+let purged = false;
+let returnedEligibleMeal = false;
+const retentionRun = runMealRetentionJob({
+  fetchMealSnapsBeforeDate: async () => {
+    if (returnedEligibleMeal) return [];
+    returnedEligibleMeal = true;
+    return [{
+      id: 1, userId: "test-user", source: null, seedBatchId: null,
+      snapTime: new Date("2025-01-01T00:00:00Z"), localDate: "2025-01-01",
+      mealType: "lunch", foodName: null, portion: null, sauces: null, extras: null,
+      glucoseImpact: "medium", missedMealFlag: false, comboKey: null, foodItems: null,
+      postMealGlucoseMmol: null, postMealSymptom: null, postMealRecordedAt: null,
+      postMealSkipped: false, previousMealOverlap: false, overlapDismissed: false,
+      postMealWalked: null, isDeleted: false,
+    }];
+  },
+  getProfile: async () => null,
+  upsertDailyGlucose: async () => {},
+  upsertReportMealFactForSnap: async () => factBlocked,
+  purgeMealSnapsByIds: async () => { purged = true; },
+}, new Date("2026-01-01T00:00:00Z"));
+await new Promise(resolve => setImmediate(resolve));
+check("Raw-meal purge awaits the privacy-minimal report fact", !purged);
+releaseFact();
+await retentionRun;
+check("Raw-meal purge proceeds after the report fact is retained", purged);
 check(
   "Report reads retained facts rather than expiring raw meals",
   routesSource.includes("storage.getReportMealFacts(userId, window.startDate, window.endDate)")
