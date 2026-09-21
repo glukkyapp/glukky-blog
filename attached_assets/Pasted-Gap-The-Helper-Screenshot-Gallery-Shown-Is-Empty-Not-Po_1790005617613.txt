@@ -1,0 +1,24 @@
+Gap: The Helper Screenshot Gallery Shown Is Empty, Not Populated
+Look closely at the 小幫手 gallery box in the reference — it shows the "真實 App 介面" heading and the "向右滑動瀏覽實際操作畫面" hint text, but the content area below it is blank white space, not actual screenshots. This is explicitly called out in the ticket's own requirement: "Do not copy the reference screenshot panel as a blank box." That's good — the plan correctly recognizes this reference asset is incomplete and commits to populating it with the real supplied screenshots rather than reproducing the blank placeholder as-is. Worth just double-checking during verification that the built gallery actually shows real content here, since the visual reference itself gives no example of what a populated state should look like.
+
+Gap: Two Feature Bullets Under the Helper Copy Aren't Mentioned in the Plan
+The reference shows two specific feature bullets under "「蝦餃仔」智能小幫手助你管理日常": "拍一張照" (snap a photo) with supporting text about immediate meal-impact feedback, and "個人化分析" (personalized analysis) about finding which foods affect blood sugar more. The task plan's i18n.mjs proposal only shows top-level helper copy (helperEyebrow, helperTitle, helperLead) — it doesn't mention these two bullet items or a "試用「蝦餃仔」" CTA button that also appears in the reference. This is likely just an incomplete excerpt in what was shown to you rather than a genuine omission, but worth confirming explicitly.
+
+Ask: "Confirm the helper section's two feature bullets (拍一張照 / 個人化分析) and the 試用「蝦餃仔」CTA button are included in the i18n copy plan — they weren't shown in the excerpted proposal."
+
+Gap: Footer Structure Has One More Column Than Planned
+The reference footer shows three distinct columns: "Security Health" (with a one-line description), "導航與功能" (nav links: 文章/關於蝦餃仔/功能特色/免費聲明), and "法律政策與支援" (私隱政策/使用條款/hello@glukky.com). The plan's footer code only shows two link arrays (sectionLinks and legalLinks) without a visible mapping to three distinct rendered columns, and specifically doesn't mention "關於蝦餃仔" (About) or "功能特色" (Features) as footer nav items — both of which appear in the reference's middle column.
+
+Ask: "Confirm the footer implementation renders all three columns shown in the reference (Security Health blurb, 導航與功能 with all four listed links including 關於蝦餃仔 and 功能特色, and 法律政策與支援), not just the two link arrays shown in the excerpted plan."
+
+Confirmed Still Open: The Terms-of-Use Question
+The reference footer visibly includes "使用條款" as a real, displayed link in the 法律政策與支援 column — so this isn't a hypothetical edge case, it's confirmed present in the exact outcome you want. The three options from before still apply, and now there's no ambiguity that it needs an answer: omit it, temporarily point it at the privacy policy, or get a real terms document drafted first.
+
+This still needs your direct decision before implementation begins.
+
+One More Visual Detail Worth Confirming
+The reference hero includes two small secondary lines beneath the two buttons — "另設長者適用介面" (also offers an elderly-friendly interface) with an icon, and "收錄 3,000+ 家常菜、茶餐廳及其他香港菜式" (featuring 3,000+ home-style, cha chaan teng, and other Hong Kong dishes) with a fork/knife icon. These weren't mentioned anywhere in the task plan's hero copy excerpt.
+
+Ask: "Confirm these two hero sub-lines (elderly-friendly interface note, 3,000+ dish coverage note) are included in the i18n plan for the hero section — they're visible in the reference but weren't part of the excerpted proposal."
+
+Overall the scoping is structurally sound and hits every major section correctly — the gaps here are about content completeness (specific bullets, footer columns, hero sub-lines) rather than structural misunderstanding, likely just from the plan document being excerpted rather than fully shown. Worth a final content-completeness pass against this exact reference image before calling the ticket ready.
