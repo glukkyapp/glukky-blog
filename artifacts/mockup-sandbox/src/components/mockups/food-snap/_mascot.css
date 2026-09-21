@@ -1,0 +1,39 @@
+.mascot-speech-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.mascot-speech-bubble__mascot {
+  width: 20%;
+  height: auto;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.mascot-speech-bubble__message {
+  position: relative;
+  border: 1px solid rgba(8, 101, 116, .12);
+  background: #d7eef0;
+  color: #086574;
+  box-shadow: 0 2px 7px rgba(34, 56, 48, .06);
+  border-radius: 15px 15px 15px 4px;
+  padding: 12px 15px;
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.mascot-speech-bubble__message::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  bottom: 11px;
+  width: 11px;
+  height: 11px;
+  background: #d7eef0;
+  border-left: 1px solid rgba(8, 101, 116, .12);
+  border-bottom: 1px solid rgba(8, 101, 116, .12);
+  transform: rotate(45deg);
+}

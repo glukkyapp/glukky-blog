@@ -194,3 +194,381 @@ mtime_ms = 1789895611735
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/4765070a-45e7-47e3-89ba-22932ca95cd9/1dc4eab4-c4b4-48e0-b101-2bf653d552d5"
 storage_version_token = "1789895616280961"
 content_type = "text/html"
+
+[[outputs]]
+id = "NPj-E49XnGEsehzGU9kqj"
+uri = "file://screenshots/glucose-pattern-zh-hant.jpg"
+type = "image"
+title = "Traditional Chinese glucose impact mockup"
+description = "Screenshot fallback for the Mockup Sandbox preview."
+logical_id = "6871dd05-49c3-437c-b79a-2b3d90a04ca9"
+content_hash = "sha256:5430127b99a77e4410b6964435aa5062fe24336a51d87ae27305e20af3fb63fc"
+size = 44234
+mtime_ms = 1789978130982
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/6871dd05-49c3-437c-b79a-2b3d90a04ca9/689553e6-6213-4527-95a3-d5340e91dadc"
+storage_version_token = "1789978137256105"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "FKueuKOs5hEauQxYb7t35"
+uri = "file://screenshots/glucose-pattern-zh-hant-780x2350-final.jpg"
+type = "image"
+title = "Updated Traditional Chinese glucose impact mockup"
+description = "Updated 780×2350 preview with the lighter background, 70px top padding, and mascot above the recorded-food banner."
+logical_id = "e853b82e-ce36-4928-a97f-4da6d365ca26"
+content_hash = "sha256:51703e7dc488a144aa8d43574991b0ee05f2b857d31a6c070b899a0dcee806bb"
+size = 47229
+mtime_ms = 1789978389306
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/e853b82e-ce36-4928-a97f-4da6d365ca26/d65df9d0-6d7d-42e3-9c29-b4c2ae05137b"
+storage_version_token = "1789978399023263"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "K1ChuYzyzq0E53Vw0k3rp"
+uri = "file://screenshots/glucose-pattern-zh-hant-780x2350.png"
+type = "image"
+title = "Updated Traditional Chinese glucose mockup — 10px more top padding"
+description = "Traditional Chinese version with top padding increased from 70px to 80px; the English version remains unchanged."
+logical_id = "2bf11013-c65c-4a2e-a205-2a631533bcb0"
+content_hash = "sha256:dab88e5a8466d4e3178f846bf3967b6d534184d634f8b47a83149948a3f9adb9"
+size = 161846
+mtime_ms = 1789980963722
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/2bf11013-c65c-4a2e-a205-2a631533bcb0/27cd27ba-a142-4870-8a13-217fd6b7fc17"
+storage_version_token = "1789980981023522"
+content_type = "image/png"
+
+[[outputs]]
+id = "xUEdDb40XlW3N-Sg8by9n"
+uri = "file://screenshots/glucose-pattern-en-780x2350.png"
+type = "image"
+title = "English glucose impact mockup — 780×2350"
+description = "English translation with the original layout, colors, mascot placement, dimensions, and emphasized food pairing names preserved."
+logical_id = "29c55e2d-65a3-4eee-b70a-2565db731b27"
+content_hash = "sha256:914bcd849e0b3b0154c44afb47f54670c8166b6a7e7cea8ef620e340eee373ae"
+size = 138296
+mtime_ms = 1789979670006
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/29c55e2d-65a3-4eee-b70a-2565db731b27/aa1354c1-5d56-4bec-8198-25da59e1ab01"
+storage_version_token = "1789979680585204"
+content_type = "image/png"
+
+[[outputs]]
+id = "UwT5YwUGc9RmVIrnBmlAk"
+uri = "file://screenshots/health-info-zh-hant-new-ui.jpg"
+type = "image"
+title = "Updated Traditional Chinese health info mockup"
+description = "Health info screen regenerated with the new background color and 40px top padding."
+logical_id = "29510232-a0e0-4688-9d36-e991eb66fd82"
+content_hash = "sha256:bed8d9f68721aa3eb9e6fa795a81ffaa2df7d8b8900f6a76f376c43d55b565da"
+size = 52288
+mtime_ms = 1789981249810
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/29510232-a0e0-4688-9d36-e991eb66fd82/a3d17a45-172e-4165-9fa9-9106d4b3ef2d"
+storage_version_token = "1789981265462025"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "MtMKqrlYt5nUg2DF3Oie7"
+uri = "file://screenshots/health-info-zh-hant-780x2350.png"
+type = "image"
+title = "Traditional Chinese health info mockup — 780×2350"
+description = "Exact 780px wide × 2350px high health-info mockup with 40px top padding and the new background color."
+logical_id = "76721443-3a45-446a-ad39-f2cc57c67aef"
+content_hash = "sha256:c43112f7b75c25fdf96545517a2d49e0be1924db2ca2134d3e103973a8c6f467"
+size = 354738
+mtime_ms = 1789981412015
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/76721443-3a45-446a-ad39-f2cc57c67aef/4838aa58-b265-4f88-ab71-474b6e831d7b"
+storage_version_token = "1789981427620576"
+content_type = "image/png"
+
+[[outputs]]
+id = "PzKOIbhyKoBLQ0MaAoAc9"
+uri = "file://screenshots/health-info-zh-hant-780x2350-top-padding-70.png"
+type = "image"
+title = "Health info mockup — 70px top padding"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with top padding increased by 30px."
+logical_id = "b230a3dd-1ac2-46e3-8fd7-9761e02b5d9f"
+content_hash = "sha256:d8fa27832dc58969d70271a1d54ec3c69f4b72c8210307668c5bb2516130f234"
+size = 354716
+mtime_ms = 1789981492870
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/b230a3dd-1ac2-46e3-8fd7-9761e02b5d9f/1661aa81-e242-4e7f-accc-725256be22b4"
+storage_version_token = "1789981503580735"
+content_type = "image/png"
+
+[[outputs]]
+id = "FCNsFoLKYnEly-HpDN4QF"
+uri = "file://screenshots/health-info-zh-hant-780x2350-no-lightbulb-left-subtitle.png"
+type = "image"
+title = "Health info mockup — no lightbulb, left-aligned subtitle"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with the lightbulb removed and subtitle left-aligned."
+logical_id = "256359dd-e12e-4ac0-9f29-049f64784d79"
+content_hash = "sha256:8d1b33d277110a430b24ef3bf22503d6196e94bb9037e483f520591d5dba0a5b"
+size = 349784
+mtime_ms = 1789981893094
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/256359dd-e12e-4ac0-9f29-049f64784d79/3c2af70c-e184-4cf8-bd7e-d264e25fd318"
+storage_version_token = "1789981903285076"
+content_type = "image/png"
+
+[[outputs]]
+id = "VVTeYUqu77vBgsk7rVfwW"
+uri = "file://screenshots/health-info-zh-hant-780x2350-font-1-5-padding-80.png"
+type = "image"
+title = "Updated Traditional Chinese mockup — 1.5× font, 10px more top padding"
+description = "780×2350 Traditional Chinese health-info mockup with 1.5× overall typography and top padding increased to 80px."
+logical_id = "8b63fec7-dc3c-4b5a-ab4b-062044c863f3"
+content_hash = "sha256:77658c8e8025b957668453fc9fa2b373663a01482fddbd8e85bd5f163d0d8423"
+size = 402307
+mtime_ms = 1789982132346
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/8b63fec7-dc3c-4b5a-ab4b-062044c863f3/674fa015-a250-466a-abc5-d1b3ad0f6cde"
+storage_version_token = "1789982141981304"
+content_type = "image/png"
+
+[[outputs]]
+id = "7A6ikyOMfcpLUC1dfFF36"
+uri = "file://screenshots/glucose-pattern-zh-hant-font-1-5-padding-80.png"
+type = "image"
+title = "Glucose pattern mockup — 1.5× font, 10px more top padding"
+description = "780×2350 Traditional Chinese glucose-pattern mockup with 1.5× overall typography, 80px top padding, and the existing mascot pairing insight."
+logical_id = "46d387c4-0fdf-4043-9b43-21b0d58584d0"
+content_hash = "sha256:7e186b31854fb2619b52f9284fafc2e13e95f30b22aa44870b9885748eeb37fc"
+size = 216441
+mtime_ms = 1789982276662
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/46d387c4-0fdf-4043-9b43-21b0d58584d0/d89bf539-70e3-4230-a9c7-e7fbfeab39c5"
+storage_version_token = "1789982287838868"
+content_type = "image/png"
+
+[[outputs]]
+id = "Ul5ltlNHvNUPk2cJ-X0VH"
+uri = "file://screenshots/glucose-pattern-zh-hant-font-1-5-padding-80-title-normal.png"
+type = "image"
+title = "Glucose pattern mockup — normal-weight title"
+description = "Updated 780×2350 Traditional Chinese glucose-pattern mockup with the title unbolded."
+logical_id = "1a569a55-6256-4c1a-b6ef-38abf6a63fc9"
+content_hash = "sha256:b85d2594e139f60f043eac1a384544ece3e3a4cd425a7a5ba756621eb19076fa"
+size = 216518
+mtime_ms = 1789982379686
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/1a569a55-6256-4c1a-b6ef-38abf6a63fc9/5f95dac0-cabb-4f7d-ba15-4d6714bd57c4"
+storage_version_token = "1789982388792252"
+content_type = "image/png"
+
+[[outputs]]
+id = "SzYMn8DpfdCWiCFu0axw8"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-pingfang-16px-600.png"
+type = "image"
+title = "Glucose pattern mockup — PingFang TC title"
+description = "Regenerated 780×2350 Traditional Chinese glucose-pattern mockup with only the title changed to PingFang TC, 16px, weight 600."
+logical_id = "e3875a75-b745-4b1d-9856-4e50190447d7"
+content_hash = "sha256:af6fa3412daad2f0c874701feff91543cc516b90faf6abf989ded6628d113c24"
+size = 211141
+mtime_ms = 1789982626299
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/e3875a75-b745-4b1d-9856-4e50190447d7/7b0c90a9-d5ca-4beb-b36d-50c16a262ee5"
+storage_version_token = "1789982637091246"
+content_type = "image/png"
+
+[[outputs]]
+id = "iEPFxgCrmQw0eKYJrk5Dq"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-pingfang-16px-600-fixed.png"
+type = "image"
+title = "Glucose pattern mockup — title rendering fixed"
+description = "Regenerated 780×2350 Traditional Chinese glucose-pattern mockup with the title rendering correctly using PingFang TC first and a CJK fallback."
+logical_id = "3ee891e8-79d8-4d78-9f18-575b1397d20a"
+content_hash = "sha256:f2d4eb32270085f5d1b899c087ec427f063ccb63adbeb83cdee466cc8e55a186"
+size = 212674
+mtime_ms = 1789982724066
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/3ee891e8-79d8-4d78-9f18-575b1397d20a/eb3cea83-c1ec-4023-81e6-7bc9fbf15258"
+storage_version_token = "1789982735057351"
+content_type = "image/png"
+
+[[outputs]]
+id = "ZkG3qeHrmyA7LLcH93iqo"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-pingfang-78px-600.png"
+type = "image"
+title = "Glucose pattern mockup — 78px title"
+description = "Updated 780×2350 Traditional Chinese glucose-pattern mockup with the title changed to 78px; all other styling remains the same."
+logical_id = "1b17e87b-153a-40fa-9760-c00dad1b7faf"
+content_hash = "sha256:af7fe68bd86ca66c475890d1f4e40eaec1155a8984f3a02efdcdaeb49749023b"
+size = 216479
+mtime_ms = 1789982816415
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/1b17e87b-153a-40fa-9760-c00dad1b7faf/531e9e8b-5ea6-4768-b1e5-3f37506cf6bf"
+storage_version_token = "1789982828077839"
+content_type = "image/png"
+
+[[outputs]]
+id = "HP-Pjjjy93yPJdsyAaICo"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-pingfang-72px-padding-85.png"
+type = "image"
+title = "Glucose pattern mockup — 72px title, 85px top padding"
+description = "Updated 780×2350 Traditional Chinese glucose-pattern mockup with 5px more top padding and a slightly reduced 72px title."
+logical_id = "b8e023eb-7563-493e-9cec-5a1f377d2aa0"
+content_hash = "sha256:d5c2f6e2924f133d1eebb04a7f585c28129e03e689900b31e1ac576346d0181e"
+size = 216065
+mtime_ms = 1789982980679
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/b8e023eb-7563-493e-9cec-5a1f377d2aa0/77a11aad-3f6f-48d4-9f8b-53118fe4eff0"
+storage_version_token = "1789982992338638"
+content_type = "image/png"
+
+[[outputs]]
+id = "Fr1f9QZWetj2L7zq4kLIj"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-65-black-subtitle-black.png"
+type = "image"
+title = "Glucose pattern mockup — black title and subtitle"
+description = "Updated 780×2350 Traditional Chinese glucose-pattern mockup with a 65px black title and black subtitle; all other styling remains unchanged."
+logical_id = "6678175b-10a2-47c1-af5c-bf6ef713efe1"
+content_hash = "sha256:bd60cb3f13482247fa8cdbde905c388471b2c13bd6efd31107c77510d48cc73f"
+size = 215934
+mtime_ms = 1789983224534
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/6678175b-10a2-47c1-af5c-bf6ef713efe1/570b67bc-0fba-4087-bfb9-9424d605ef54"
+storage_version_token = "1789983235889323"
+content_type = "image/png"
+
+[[outputs]]
+id = "vyafvZ7MeCqkzLYET5XmU"
+uri = "file://screenshots/glucose-pattern-zh-hant-title-60-subtitle-normal.png"
+type = "image"
+title = "Glucose pattern mockup — 60px title, normal subtitle"
+description = "Updated 780×2350 Traditional Chinese glucose-pattern mockup with a 60px title and unbolded subtitle; all other styling remains unchanged."
+logical_id = "5a33109a-a2e2-4ff4-a5e3-9562a082c9a1"
+content_hash = "sha256:5216e37da517c72c6cbb6ccad964d707bc3a6c7153512cd0101e6ab345971291"
+size = 215507
+mtime_ms = 1789983399703
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/5a33109a-a2e2-4ff4-a5e3-9562a082c9a1/74cf1c15-3d94-47a3-8601-d76e5178b84a"
+storage_version_token = "1789983409181940"
+content_type = "image/png"
+
+[[outputs]]
+id = "YIMCdz64ppfTy8SiX4fc3"
+uri = "file://screenshots/health-info-zh-hant-title-60-subtitle-normal-black.png"
+type = "image"
+title = "Health info mockup — matching title treatment"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with the matching 60px black title and normal-weight black subtitle; all other content remains unchanged."
+logical_id = "cd10c1b2-12cf-40f2-b52a-09df798f41cb"
+content_hash = "sha256:2582eaeb5ffb3ffc5487b62e8c83ec743599653bbe05d89f1d89fa3ae84c2d8a"
+size = 387511
+mtime_ms = 1789983619331
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/cd10c1b2-12cf-40f2-b52a-09df798f41cb/c60170de-5ce6-448a-87c3-34caac6a1b24"
+storage_version_token = "1789983631696023"
+content_type = "image/png"
+
+[[outputs]]
+id = "APUjhLB_hszq5hdSOdfOg"
+uri = "file://screenshots/health-info-zh-hant-body-text-0-7.png"
+type = "image"
+title = "Health info mockup — reduced body text"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with the explanatory body paragraph reduced to 48px; everything else remains unchanged."
+logical_id = "25a9b372-c3a0-4d86-bcde-fe4836bc0f8f"
+content_hash = "sha256:cc57e4c17a7a58e43e1936206c0ef7fe0a25415e9802f9f57aceaa634f30b30d"
+size = 364341
+mtime_ms = 1789984207124
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/25a9b372-c3a0-4d86-bcde-fe4836bc0f8f/3ffbbc5c-f915-4efb-b70a-ebdf47ebfa99"
+storage_version_token = "1789984218270373"
+content_type = "image/png"
+
+[[outputs]]
+id = "ip8zlaTTdsdpZBxcvavDI"
+uri = "file://screenshots/health-info-zh-hant-body-and-advice-0-7.png"
+type = "image"
+title = "Health info mockup — reduced advice text"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with the three advice names and 飲食建議 heading reduced to approximately 0.7×; everything else remains unchanged."
+logical_id = "e809f6a5-1963-469a-aabf-ed00b1c5a8b1"
+content_hash = "sha256:5655ebd04d96d3c74e1bab1e9afe89feb9e244ccbaedd7138efa208fdfd248b1"
+size = 352627
+mtime_ms = 1789984378191
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/e809f6a5-1963-469a-aabf-ed00b1c5a8b1/b26b8272-fad9-42be-92e3-46c3dec9d0db"
+storage_version_token = "1789984391198643"
+content_type = "image/png"
+
+[[outputs]]
+id = "zJwQC6XRT2MfXriL12B3B"
+uri = "file://screenshots/health-info-zh-hant-increased-section-spacing.png"
+type = "image"
+title = "Health info mockup — increased section spacing"
+description = "Updated 780×2350 Traditional Chinese health-info mockup with more space between the heading/subheading, food advice, and steam-then-fry sections."
+logical_id = "366ed381-c67a-46ae-8f8b-378cfbaa70de"
+content_hash = "sha256:8a7efcb3cf053831717008d2231af43a4eab8039431570a761cdc9242e2f70e5"
+size = 352728
+mtime_ms = 1789984475982
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/366ed381-c67a-46ae-8f8b-378cfbaa70de/cd60ce95-917f-49d8-bd48-28c29ab4b55f"
+storage_version_token = "1789984487794218"
+content_type = "image/png"
+
+[[outputs]]
+id = "7L6ui4z0zZZENGvJzgiVP"
+uri = "file://screenshots/food-snap-zh-hant-reference-regenerated.png"
+type = "image"
+title = "FoodSnap mockup — reference-based regeneration"
+description = "Regenerated 390×844 Traditional Chinese FoodSnap screen using the reference styling, existing wonton noodle photo, scanner treatment, and all reference text."
+logical_id = "e2724fa0-5fef-4ed2-b123-6b8186645ab7"
+content_hash = "sha256:69c1585fd35f1f323a2cd6b4de7fa3252fcde2a50b455e65fd0a736b261ab3b3"
+size = 224219
+mtime_ms = 1789985722979
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/e2724fa0-5fef-4ed2-b123-6b8186645ab7/45649aaf-4b3a-4860-b0a6-40904660c52e"
+storage_version_token = "1789985742463499"
+content_type = "image/png"
+
+[[outputs]]
+id = "I-qHnnqroRDlldiiyVWml"
+uri = "file://screenshots/food-snap-zh-hant-with-mascot.png"
+type = "image"
+title = "FoodSnap mockup — mascot and typography update"
+description = "Updated 390×844 Traditional Chinese FoodSnap mockup with 50px top padding, black title, har gow mascot speech bubble, and selective emphasis on 食物快拍, 菜, and 冬粉."
+logical_id = "f560e859-ecfd-4e8d-9184-b47b0ea17fe5"
+content_hash = "sha256:fd1ff06e681eda058ae5fefc63db0c1ee5ba06be033cbe46bbf99a57c263b701"
+size = 233625
+mtime_ms = 1789986762311
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/f560e859-ecfd-4e8d-9184-b47b0ea17fe5/d73cbb1b-3b03-48bb-90ba-7c5e459f6b13"
+storage_version_token = "1789986779829589"
+content_type = "image/png"
+
+[[outputs]]
+id = "DaLW6I7IKqR8l2sjddWHd"
+uri = "file://screenshots/food-snap-zh-hant-with-production-mascot.png"
+type = "image"
+title = "FoodSnap mockup — production mascot treatment"
+description = "High-quality 390×844 Traditional Chinese FoodSnap mockup using the FoodSnap page's mascot and speech-bubble structure, with the requested Cantonese message and existing noodle photo."
+logical_id = "297f4019-02e9-473a-a05e-ef1d6232384b"
+content_hash = "sha256:212ad9a3e53c1366a5f7b0bb0f377c4b03f61123e7d191fcb895cbc8df0b18dd"
+size = 231741
+mtime_ms = 1789987010202
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/297f4019-02e9-473a-a05e-ef1d6232384b/1a8b9e47-ad66-4eef-9546-7686bd122720"
+storage_version_token = "1789987023729516"
+content_type = "image/png"
+
+[[outputs]]
+id = "7zAHNVvHofXLY2-66_4eR"
+uri = "file://screenshots/food-snap-zh-hant-larger-mascot.png"
+type = "image"
+title = "FoodSnap mockup — enlarged mascot treatment"
+description = "Updated 390×844 Traditional Chinese FoodSnap mockup with the mascot and speech bubble scaled proportionally to the phone content width."
+logical_id = "7e153992-547c-4ae3-8047-9c4311c81721"
+content_hash = "sha256:4126c947d9b37dcda900505041d27191d4664a85e9aa389d212fc4334b7787d0"
+size = 233510
+mtime_ms = 1789987147511
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/7e153992-547c-4ae3-8047-9c4311c81721/79b344b4-5612-4db6-8a5e-60d58fead6d7"
+storage_version_token = "1789987162902375"
+content_type = "image/png"
+
+[[outputs]]
+id = "suf7WSYAhE5r20YEVSXC7"
+uri = "file://screenshots/food-snap-zh-hant-reduced-top-padding.png"
+type = "image"
+title = "FoodSnap mockup — reduced top padding"
+description = "Updated 390×844 Traditional Chinese FoodSnap mockup with top padding reduced from 50px to 40px."
+logical_id = "395f699c-d691-4aa6-8d31-035592cea859"
+content_hash = "sha256:75b95737342cf4f1dfb9226507784982850c3051691b0d0039184b6ca825d10e"
+size = 233485
+mtime_ms = 1789987580466
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/395f699c-d691-4aa6-8d31-035592cea859/d87de301-1fb4-4540-8610-27909619bbe3"
+storage_version_token = "1789987598024128"
+content_type = "image/png"
+
+[[outputs]]
+id = "j-4KGQSererCTBPsumCMv"
+uri = "file://screenshots/food-snap-zh-hant-final.png"
+type = "image"
+title = "FoodSnap mockup — final stable export"
+description = "Stable 390×844 Traditional Chinese FoodSnap mockup export. The file remains in the workspace so the Library preview can load it."
+logical_id = "a3ee1402-6986-4b2b-bc8b-3562b15a1e25"
+content_hash = "sha256:75b95737342cf4f1dfb9226507784982850c3051691b0d0039184b6ca825d10e"
+size = 233485
+mtime_ms = 1789987657602
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5322b358-f4bd-4c78-9be1-d8e103e57e4b/a3ee1402-6986-4b2b-bc8b-3562b15a1e25/46a89f26-a7cf-4538-bce8-61736d4997fa"
+storage_version_token = "1789987671578233"
+content_type = "image/png"

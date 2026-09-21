@@ -1,105 +1,165 @@
-import { TrendingUp } from "lucide-react";
+import { Activity, ClipboardCheck } from "lucide-react";
+import harGowMascot from "../../../../../../attached_assets/hargawmascot_1789835862050.png";
+import "./_zh-hant.css";
 
 const COLORS = {
-  bg: "#fef2e0",
-  ink: "#214B36",
-  muted: "#6E8477",
-  card: "#ffffff",
-  green: "#5F9D7A",
-  greenDeep: "#2F6B43",
-  red: "#EF4444",
-  yellow: "#EAB308",
+  background: "#FCFBF4",
+  ink: "#163F35",
+  muted: "#667C73",
+  teal: "#168F95",
+  high: "#B54343",
+  highSoft: "#FFF4F3",
+  highBorder: "#F1B8B4",
+  card: "#FFFDF7",
+  inset: "#F4F7F2",
 };
 
-function SummaryCard({ label, food, color }: { label: string; food: string; color: string }) {
+function CountPill({
+  label,
+  count,
+  selected = false,
+}: {
+  label: string;
+  count: number;
+  selected?: boolean;
+}) {
   return (
     <div
-      className="flex-1 rounded-[20px] p-4 space-y-1"
-      style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.07)" }}
+      className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[14px] border px-1 py-2.5 text-center text-[18px] font-semibold leading-tight"
+      style={{
+        color: selected ? COLORS.high : COLORS.muted,
+        borderColor: selected ? COLORS.highBorder : "#D8DED7",
+        backgroundColor: selected ? "#FFE5E2" : "rgba(255,253,247,.72)",
+      }}
     >
-      <p className="text-[18px] uppercase font-semibold tracking-wide" style={{ color: COLORS.muted }}>
-        {label}
-      </p>
-      <p className="text-[27px] font-bold leading-snug" style={{ color }}>
-        {food}
-      </p>
+      <span
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: selected ? COLORS.high : "#7B8882" }}
+      />
+      <span className="whitespace-nowrap">{label} {count}</span>
     </div>
   );
 }
-
-type BarRow = { label: string; pct: number; color: string };
-
-function BarChart({ rows }: { rows: BarRow[] }) {
-  return (
-    <div className="space-y-4">
-      {rows.map(({ label, pct, color }) => (
-        <div key={label} className="space-y-1.5">
-          <p className="text-[25px] font-medium" style={{ color: COLORS.ink }}>{label}</p>
-          <div className="h-5 rounded-full overflow-hidden" style={{ backgroundColor: "#EEE8D8" }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const bars: BarRow[] = [
-  { label: "叉燒飯", pct: 88, color: COLORS.red },
-  { label: "香蕉配無糖乳酪", pct: 52, color: COLORS.yellow },
-  { label: "蒸魚配菜心", pct: 22, color: COLORS.green },
-];
 
 export default function GlucosePatternZhHant() {
   return (
-    <div
-      className="relative w-[390px] h-[844px] overflow-hidden"
-      style={{ backgroundColor: COLORS.bg, color: COLORS.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}
+    <main
+      className="relative h-[2350px] w-[780px] overflow-hidden"
+      style={{
+        backgroundColor: COLORS.background,
+        color: COLORS.ink,
+        fontFamily: '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif',
+      }}
+      aria-label="繁體中文血糖影響畫面"
     >
-      <div className="px-6 pt-14 pb-24 space-y-5 h-full overflow-y-auto">
-        {/* Page title */}
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-7 h-7" style={{ color: COLORS.green }} strokeWidth={2.5} />
-          <h1 className="text-[37px] font-bold leading-tight" style={{ color: COLORS.ink }}>
+      <div className="px-10 pb-10 pt-[85px]">
+        <header>
+          <h1
+            className="text-[60px] font-semibold leading-tight tracking-[-0.02em]"
+            style={{ fontFamily: '"PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif', color: "#000000" }}
+          >
             血糖規律
           </h1>
-        </div>
-
-        {/* Top two cards */}
-        <div className="flex gap-3">
-          <SummaryCard label="最佳食物" food="白灼蝦" color={COLORS.greenDeep} />
-          <SummaryCard label="最差食物" food="菠蘿包" color={COLORS.red} />
-        </div>
-
-        {/* Bar chart section */}
-        <div>
-          <p className="text-[23px] font-semibold mb-3" style={{ color: COLORS.muted }}>
-            你的食物升糖排行榜
+          <p className="mt-2 text-[38px] font-normal" style={{ color: "#000000" }}>
+            查看你已記錄的餐後血糖結果。
           </p>
+        </header>
+
+        <section className="mt-7 flex items-center">
+          <img
+            src={harGowMascot}
+            alt=""
+            aria-hidden="true"
+            className="z-10 h-[150px] w-[150px] shrink-0 object-contain"
+          />
           <div
-            className="rounded-[24px] p-5"
-            style={{ backgroundColor: COLORS.card, boxShadow: "0 4px 14px rgba(44,72,56,0.07)" }}
+            className="relative -ml-2 flex min-h-[112px] flex-1 items-center rounded-[32px] border px-4 py-5 text-[41px] font-bold leading-[1.2]"
+            style={{
+              backgroundColor: COLORS.card,
+              borderColor: "#D8DED7",
+              boxShadow: "0 10px 24px rgba(44,72,56,.08)",
+            }}
           >
-            <BarChart rows={bars} />
+            <span
+              className="absolute -left-3 h-6 w-6 rotate-45 border-b border-l bg-[#FFFDF7]"
+              style={{ borderColor: "#D8DED7" }}
+            />
+            <span className="relative">「讓我看看你的食物配搭！」</span>
           </div>
+        </section>
+
+        <div
+          className="mt-7 flex items-center justify-center gap-3 rounded-[30px] py-6 text-[41px] font-bold text-white"
+          style={{ backgroundColor: COLORS.teal, boxShadow: "0 7px 18px rgba(22,143,149,.18)" }}
+        >
+          <Activity className="h-8 w-8" strokeWidth={2.5} />
+          已記錄血糖的食物
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 text-[23px]" style={{ color: COLORS.muted }}>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.red }} />
-            升糖高
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.yellow }} />
-            中等
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.green }} />
-            升糖低
-          </span>
+        <div className="mt-5 flex gap-4">
+          <CountPill label="較低影響" count={1} />
+          <CountPill label="沒有明顯差異" count={0} />
+          <CountPill label="較高影響" count={1} selected />
         </div>
+
+        <div className="mt-7 flex items-end justify-between">
+          <h2 className="text-[48px] font-bold">你的實際記錄</h2>
+          <p className="text-[35px] font-medium" style={{ color: COLORS.muted }}>1 款食物</p>
+        </div>
+
+        <article
+          className="relative mt-4 overflow-hidden rounded-[42px] border p-8"
+          style={{
+            backgroundColor: COLORS.highSoft,
+            borderColor: COLORS.highBorder,
+            boxShadow: "0 10px 28px rgba(86,62,44,.08)",
+          }}
+        >
+          <div className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: "#F36C62" }} />
+
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-[63px] font-extrabold leading-none">白飯</h3>
+              <p className="mt-4 flex items-center gap-2 text-[36px] font-bold" style={{ color: COLORS.teal }}>
+                <Activity className="h-7 w-7" strokeWidth={2.5} />
+                實測餐後血糖規律
+              </p>
+            </div>
+            <span
+                className="whitespace-nowrap rounded-full border px-6 py-3 text-[33px] font-bold"
+              style={{ color: COLORS.high, borderColor: COLORS.highBorder, backgroundColor: "#FFE0DE" }}
+            >
+              較高影響
+            </span>
+          </div>
+
+          <p className="mt-6 text-[38px] font-medium leading-8" style={{ color: COLORS.muted }}>
+            這款食物的餐後血糖與平常比較高
+          </p>
+          <p className="mt-2 text-[38px] font-semibold">25 餐中有 19 次偏高</p>
+
+          <section
+            className="mt-6 rounded-[30px] p-6"
+            style={{ backgroundColor: COLORS.inset }}
+          >
+            <p className="flex items-center gap-3 text-[36px] font-bold" style={{ color: COLORS.teal }}>
+              <ClipboardCheck className="h-7 w-7" strokeWidth={2.4} />
+              食物配搭規律
+            </p>
+            <p className="mt-4 text-[36px] leading-[1.75]" style={{ color: COLORS.ink }}>
+              吃白飯時，配
+              <strong className="mx-2 text-[51px] font-extrabold leading-none">燒肉</strong>
+              的平均餐後血糖讀數較高；配
+              <strong className="mx-2 text-[51px] font-extrabold leading-none">雞肉</strong>
+              的較低。
+            </p>
+            <div className="my-5 h-px bg-[#D8E0DA]" />
+            <p className="text-[29px] leading-[1.55]" style={{ color: COLORS.muted }}>
+              這只是你記錄中的模式，不能證明是其中一種食物造成差異。份量、其他食物、活動和測量時間也會影響讀數。
+            </p>
+          </section>
+        </article>
       </div>
-    </div>
+    </main>
   );
 }

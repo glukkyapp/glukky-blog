@@ -133,7 +133,7 @@ function App() {
 
   if (previewPath) {
     return (
-      <div className="min-h-[100dvh] w-full bg-[#fef2e0]">
+      <div className="min-h-[100dvh] w-full bg-[#fcfbf4]">
         <PreviewRenderer
           componentPath={previewPath}
           modules={discoveredModules}

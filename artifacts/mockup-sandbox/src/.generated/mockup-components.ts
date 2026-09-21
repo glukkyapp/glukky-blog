@@ -8,6 +8,7 @@ export const modules: ModuleMap = {
   "./components/mockups/food-snap/ReviewState.tsx": () => import("../components/mockups/food-snap/ReviewState.tsx"),
   "./components/mockups/food-snap/ReviewStateZhHant.tsx": () => import("../components/mockups/food-snap/ReviewStateZhHant.tsx"),
   "./components/mockups/glucose/GlucosePattern.tsx": () => import("../components/mockups/glucose/GlucosePattern.tsx"),
+  "./components/mockups/glucose/GlucosePatternEn.tsx": () => import("../components/mockups/glucose/GlucosePatternEn.tsx"),
   "./components/mockups/glucose/GlucosePatternZhHant.tsx": () => import("../components/mockups/glucose/GlucosePatternZhHant.tsx"),
   "./components/mockups/glucose-patterns/Current.tsx": () => import("../components/mockups/glucose-patterns/Current.tsx"),
   "./components/mockups/glucose-patterns/NeedsMoreReadings.tsx": () => import("../components/mockups/glucose-patterns/NeedsMoreReadings.tsx"),
