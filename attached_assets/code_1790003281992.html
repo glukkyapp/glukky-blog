@@ -1,0 +1,356 @@
+<!DOCTYPE html><html lang="zh-HK" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><title>Glukky - 血糖健康生活小幫手</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Noto+Sans+TC:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;font-family:'Noto Sans TC','Noto Sans',sans-serif;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-secondary-fixed-variant":"#264c53","secondary-fixed-dim":"#a6cdd6","on-tertiary-container":"#ebfdff","on-primary-fixed-variant":"#004e5a","surface-tint":"#006877","secondary-container":"#c1e9f2","on-secondary-fixed":"#001f24","error":"#ba1a1a","inverse-primary":"#7ad3e6","on-primary-container":"#effcff","surface-container-high":"#e9e8e0","on-error-container":"#93000a","inverse-surface":"#30312b","surface-dim":"#dbdad2","surface-container-low":"#f5f4eb","primary":"#006472","on-surface":"#1b1c17","inverse-on-surface":"#f2f1e8","primary-fixed":"#a3eeff","surface-bright":"#fbfaf1","tertiary-container":"#617779","tertiary-fixed":"#d0e7e9","on-tertiary-fixed-variant":"#364a4c","on-error":"#ffffff","outline":"#6e797c","on-tertiary":"#ffffff","on-tertiary-fixed":"#091f20","primary-fixed-dim":"#7ad3e6","primary-container":"#0d7e8f","error-container":"#ffdad6","on-primary-fixed":"#001f25","outline-variant":"#bdc8cb","tertiary-fixed-dim":"#b4cbcd","on-primary":"#ffffff","on-surface-variant":"#3e484b","secondary-fixed":"#c1e9f2","on-secondary":"#ffffff","surface-container":"#efeee5","surface-variant":"#e3e3da","surface-container-highest":"#e3e3da","background":"#fbfaf1","surface-container-lowest":"#ffffff","secondary":"#3e646c","on-background":"#1b1c17","surface":"#fbfaf1","tertiary":"#495e60","on-secondary-container":"#446a72"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin":"1.25rem","space-xs":"0.5rem","margin-desktop":"3rem","space-xl":"3rem","gutter":"1.25rem","space-sm":"0.75rem","space-lg":"2rem","gutter-desktop":"2rem","space-md":"1.25rem"},"fontFamily":{"metric-display":["Noto Sans"],"headline-md":["Noto Sans"],"caption":["Noto Sans"],"headline-sm":["Noto Sans"],"label-md":["Noto Sans"],"label-lg":["Noto Sans"],"metric-display-mobile":["Noto Sans"],"headline-lg":["Noto Sans"],"body-lg":["Noto Sans"],"headline-lg-mobile":["Noto Sans"],"body-md":["Noto Sans"]},"fontSize":{"metric-display":["48px",{"lineHeight":"56px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["24px",{"lineHeight":"34px","letterSpacing":"0em","fontWeight":"600"}],"caption":["15px",{"lineHeight":"22px","letterSpacing":"0.01em","fontWeight":"500"}],"headline-sm":["20px",{"lineHeight":"30px","letterSpacing":"0em","fontWeight":"600"}],"label-md":["16px",{"lineHeight":"22px","letterSpacing":"0.02em","fontWeight":"500"}],"label-lg":["18px",{"lineHeight":"24px","letterSpacing":"0.02em","fontWeight":"600"}],"metric-display-mobile":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-lg":["32px",{"lineHeight":"44px","letterSpacing":"-0.01em","fontWeight":"700"}],"body-lg":["20px",{"lineHeight":"34px","letterSpacing":"0.01em","fontWeight":"400"}],"headline-lg-mobile":["26px",{"lineHeight":"36px","letterSpacing":"-0.01em","fontWeight":"700"}],"body-md":["18px",{"lineHeight":"30px","letterSpacing":"0.01em","fontWeight":"400"}]}}}}</script></head><body class="bg-background font-body-md text-on-surface min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between gap-4"><div class="flex items-center gap-4 shrink-0"><img alt="蝦餃仔 標誌" class="h-9 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaM6ma-8dhrwBI3DRyhsUdWPSGWeOf5duQKzT4YtBIJbmadKhwg_5wnEdr3XzqWRZ92OldiNlHeQecdTOJlz64LcJVOJm0R-TqvBjghR7x8UYjT2coXONsF8pHYklE53KDPnZojVPNARhKtooGXHsWhj3UZLLDvT-FFW-jCTCVQgUfxsRLhBW44H1B5-FyZM5Fpernz3lDHbpyymxsdIuYWYrlgwmnXHJ4gDNzF-9BtcTBgnuMqg7FQ7tXWvoGQbpH9A"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight leading-tight">蝦餃仔</span><span class="font-caption text-caption text-on-surface-variant leading-none mt-0.5">血糖健康生活小幫手</span></div></div><nav class="hidden xl:flex items-center gap-1" data-active-classes="bg-secondary-container text-on-secondary-fixed font-label-lg rounded-lg"><a aria-current="page" class="px-4 py-3 transition-colors bg-secondary-container text-on-secondary-fixed font-label-lg rounded-lg" data-path="health-notes" href="#">文章</a><a class="px-4 py-3 rounded-lg text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="clinical-disclaimer" href="#">免責聲明</a></nav><div class="flex items-center gap-4 shrink-0"><div class="flex items-center rounded-lg bg-surface-container-low p-1 text-on-surface-variant font-label-md text-label-md"><span class="px-2.5 py-1 rounded bg-surface-container-highest font-label-md text-on-surface font-semibold">繁體中文</span><span class="text-outline-variant px-1 font-normal">|</span><a class="px-2.5 py-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md" href="#">English</a></div><a class="min-h-[54px] px-6 py-3 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm hover:opacity-95 transition-opacity flex items-center justify-center text-center whitespace-nowrap" data-path="download-app" href="#">下載應用程式</a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"></div></div></div></header><main class="w-full pt-20 bg-background"><div class="flex flex-col w-full">
+<!-- CLINICAL ADVISORY TOP ALERT -->
+<section class="w-full bg-surface-container py-3 px-6 lg:px-12">
+<div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-on-surface-variant">
+<div class="flex items-center gap-2 text-center sm:text-left">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0">health_and_safety</span>
+<p class="font-caption text-caption">
+          香港關注血糖用家專屬</p>
+</div>
+<div class="flex items-center gap-2 shrink-0 font-label-md text-label-md text-primary font-semibold">
+<span class="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+</div>
+</div>
+</section>
+<!-- HERO SECTION -->
+<section class="w-full py-12 lg:py-20 px-6 lg:px-12 bg-background">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+<!-- Left Column: Editorial Medical Voice -->
+<div class="lg:col-span-7 flex flex-col items-start gap-6">
+<div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md font-medium">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span class="">GLUKKY 健康筆記 · 香港本地糖友生活指南</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight text-balance">了解你的血糖模式，由每日小習慣開始</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+          告訴你有關：糖尿前期飲食、飯後散步及晚餐時間的重要性、低 GI 食物及常見誤解。專為長者、家人與照顧者而設的清晰生活指引。</p>
+<!-- CTA Buttons -->
+<div class="flex flex-wrap items-center gap-4 pt-2 w-full sm:w-auto">
+<a class="w-full sm:w-auto min-h-[56px] px-8 py-4 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-primary transition-all flex items-center justify-center gap-2 text-center" data-path="health-notes" href="#">
+<span class="">閱讀全部文章</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+<a class="w-full sm:w-auto min-h-[56px] px-8 py-4 rounded-xl bg-surface-container text-primary font-label-lg text-label-lg hover:bg-surface-container-high transition-all flex items-center justify-center text-center" href="#workflow-showcase">
+<span class="">了解 Glukky 運作</span>
+</a>
+</div>
+<!-- Quick Access Stat Pill -->
+<div class="pt-4 flex flex-wrap items-center gap-6 text-on-surface-variant font-caption text-caption">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">elderly</span>
+<span class="">另設長者適用介面</span>
+</div>
+<div class="flex items-center gap-2">
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">restaurant</span>
+<span class="">收錄 3,000+ 家常菜、茶餐廳及其他香港菜式</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Real-in-App Authentic Interface Snapshot Card -->
+<div class="lg:col-span-5 w-full"><div class="relative mx-auto max-w-[340px] sm:max-w-[380px] p-3 sm:p-4 rounded-[40px] bg-surface-container-highest shadow-xl border border-outline-variant/40"><div class="relative rounded-[32px] overflow-hidden bg-background border border-outline-variant/30 shadow-inner"><img alt="Glukky App 飲食報告介面截圖" class="w-full h-auto object-cover block rounded-[30px]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADOZ-vbSke6MJayLdcZXUsE662vtvYfSdDGf77_HHe8-UZXgPAl1HlVwv6OvOrCmblhaPHjcdiX0AEfPxEIdbuQkTtsdOZESfr0h-rx13I5EIuDgosec3EyUjCiRDc4qXPOZIS0PBryysfWWBeKNyVMqve8OMy8wzGo8XwKiupJnj48HR-m39jxmBpcxRsqt_gldTj4VfuzCbFQ15fJHVt6P8IUmsEO9ils2ErQM6mN2r98zwqW1coiATg0i1iy98goQ"></div><div class="mt-3 flex items-center justify-center gap-2 text-on-surface-variant font-caption text-caption"><span class="material-symbols-outlined text-primary text-[18px]">phone_iphone</span><span class="">真實應用程式「飲食報告」介面</span></div></div></div>
+</div>
+</section>
+<!-- CLINICAL & DATA CREDIBILITY PILLARS -->
+
+<!-- FEATURED ARTICLES SECTION ("推薦閱讀") -->
+<section class="w-full py-16 px-6 lg:px-12 bg-background">
+<div class="max-w-7xl mx-auto flex flex-col gap-10">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 text-primary font-label-md text-label-md mb-2">
+<span class="material-symbols-outlined text-[18px]">article</span>
+<span class="">精選專欄&nbsp;</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">推薦閱讀</h2>
+</div>
+<a class="font-label-lg text-label-lg text-primary font-semibold flex items-center gap-1 hover:underline" data-path="health-notes" href="#">
+<span class="">查看全部專題文章</span>
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</a>
+</div>
+<!-- Articles Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md transition-shadow">
+<div class="relative w-full h-52 overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="An elderly Asian woman smiling warmly while taking an invigorating morning walk in an open lush green Hong Kong park, surrounded by trees with soft golden morning sunlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBY5uNGqScEzsZyynNx-57V7VPfNcHZ_JeW2Zf6s_6SEnWoodyP1BC5cJEGWSh97WrBDNbp9r8ptojhui4J3D__U1zTVUnuziv4jhxoJEx0nU_sKszvddEVeWHiSghE_jCoTAUk8g0B806IFvXKqvEGzxJHMxFzC6MJzt6vKJJK89YBDiUcz3ha9uDZjv28vzSobdH-YN7pm5ZtxynAhFwp4FbcEIclY36Q5RpTRx3F9Epl7zYcBcr5">
+<span class="absolute top-3 left-3 px-3 py-1 rounded-md bg-secondary-container text-on-secondary-fixed font-caption text-caption font-bold">
+              糖尿病護理
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-4">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2 group-hover:text-primary transition-colors">
+                天氣一熱，糖友要多留意這幾件事
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                夏天一到，血糖比平時更難控制——流汗多、口渴管理、藥物反應不同、胰島素保存都需要多加注意。幾個簡單習慣，幫你安心過夏天。
+              </p>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption pt-4">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                2026年7月22日
+              </span>
+<span class="text-primary font-bold">閱讀時間 4 分鐘</span>
+</div>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md transition-shadow">
+<div class="relative w-full h-52 overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A clean, wholesome balanced meal plate on a wooden kitchen table featuring grilled salmon, fresh steamed broccoli, whole quinoa, and a small bowl of berries beside a glass of fresh water, shot in bright warm natural kitchen lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAm1xAHfIfvyRsiBjcgb4PlNcEU5qPeqlRp8L41R4BAarbqK0AlvHGX4oE-U9h9TyuB7C3SBCRywyfyzAT8UGjaXCFnRRczIHX7bLhLiuhkeBzpR9A-e2LFNgOpJ-M9ZCEhRWsKTGqr92_ES2ohPKNf6yF597nr4Hwhg6k3eriEEy0umtL9tyH08aeHa8BqeXYM_09N3vg3GCn9TNoE9BaBmDzb7CfURyOf5aXaXNjFJm7HyLpXmyQK">
+<span class="absolute top-3 left-3 px-3 py-1 rounded-md bg-secondary-container text-on-secondary-fixed font-caption text-caption font-bold">
+              糖尿病前期
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-4">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2 group-hover:text-primary transition-colors">
+                糖尿病前期不是「已經確定」——原來是有機會逆轉的
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                聽到醫生說「你有糖尿病前期」，難免擔心遲早會確診。但糖尿病前期其實是寶貴的黃金期——醫學研究顯示，只要及早調整生活習慣，血糖真的有機會回到正常範圍。
+              </p>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption pt-4">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                2026年7月22日
+              </span>
+<span class="text-primary font-bold">閱讀時間 6 分鐘</span>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md transition-shadow">
+<div class="relative w-full h-52 overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A modern accurate blood glucose monitor showing a digital reading of 5.6 mmol per L, sitting neatly on a clean wooden desktop next to a lancet pen and test strips in an organized domestic setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAanOT4PsIfyx5ORVpy1wy0xy8FBIkCrjMixeXo5Bo9TvL84SwYo97CHmP3xxf3gGVEhdKHp4i5-pWwNxuzfkY7DodwGCpfpD_ADeUEQuo4jEpllZGEzMkhxU4c6pkYHYQepZ395HETVEPo2Fz1ZyNNi70-A3agfvjeGV4ifvii2lXJA9Kr2GbmXBQcqJXBnok1UpB8HAlUAVaUG8fxKOBO5nO3DqDfsBQ0o8kBCvfJSr2E_t-bhMf">
+<span class="absolute top-3 left-3 px-3 py-1 rounded-md bg-secondary-container text-on-secondary-fixed font-caption text-caption font-bold">
+              糖尿病認識
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-4">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2 group-hover:text-primary transition-colors">
+                為什麼身邊愈來愈多年輕人也有糖尿病？
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                以前總覺得糖尿病是上了年紀才會有的病，但這幾年連三十歲甚至十幾歲的年輕人都開始確診。背後作息與飲食成因是什麼，為何全家人都要重視，彼此可以怎麼做。
+              </p>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption pt-4">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                2026年7月22日
+              </span>
+<span class="text-primary font-bold">閱讀時間 5 分鐘</span>
+</div>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md transition-shadow">
+<div class="relative w-full h-52 overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A close-up view of a discreet circular continuous glucose monitor (CGM) sensor smoothly attached to the back of an adult's upper arm, soft clinical daylight, warm skin tones, conveying comfort and modern unobtrusive healthcare." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD220nwjE1hggmtHo5CfrfxdCmWdrLKXUp9brkrEHEhkD67XNtI3PhM9ol3Wpbv8dTmxoPA6Xvxf-3TZ_osj-6CazxnAzQiFN5UJNtuGSLOLXaoA9QuA1XJ0tyPOfzqndk7Y841tEuD__m8yr2CZHO0ZEw5yXWT1VSV6nWGighnE-FDasoZs_9fzSpuiFwBHP6gyK7oxF8pz3sbZBPA0wfcpm8Jrml9YJgCx5lnebn8R5q8wcnKlMoR">
+<span class="absolute top-3 left-3 px-3 py-1 rounded-md bg-secondary-container text-on-secondary-fixed font-caption text-caption font-bold">
+              工具與監測
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-4">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2 group-hover:text-primary transition-colors">
+                CGM 連續血糖監測儀適合你嗎？
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                免拮手指的連續血糖感應器近年在香港愈來愈流行。它是如何運作的？與傳統指尖採血有何不同？長者或糖尿前期人士真的需要佩戴嗎？一文看清優缺點。
+              </p>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption pt-4">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                2026年5月10日
+              </span>
+<span class="text-primary font-bold">閱讀時間 4 分鐘</span>
+</div>
+</div>
+</article>
+</div>
+</div>
+</section>
+<!-- CORE HEALTH TOPICS ("文章主題") -->
+<section class="w-full py-16 px-6 lg:px-12 bg-surface-container-low">
+<div class="max-w-7xl mx-auto flex flex-col gap-10">
+<div class="flex flex-col gap-2">
+<span class="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">實用生活四大支柱</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">文章主題</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          將醫護指導融入茶餐廳、街市買餸及香港家庭作息，簡明易懂的行動方針。
+        </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Topic 1 -->
+<div class="bg-surface rounded-2xl p-7 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">nutrition</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">糖尿前期飲食</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              由何處入手？最先要改善的是什麼？所謂「控糖飲食」在香港外賣、茶餐廳點餐與家庭聚餐中實際上如何做到？
+            </p>
+</div>
+<div class="pt-4 flex items-center gap-1 text-primary font-label-md text-label-md font-bold">
+<span class="">探索飲食指南</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</div>
+</div>
+<!-- Topic 2 -->
+<div class="bg-surface rounded-2xl p-7 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">footprint</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">飯後散步</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              為何只需 15 分鐘的慢走就能顯著撫平餐後血糖高峰？無需劇烈運動，如何在屋苑或屋邨平台持之以恆？
+            </p>
+</div>
+<div class="pt-4 flex items-center gap-1 text-primary font-label-md text-label-md font-bold">
+<span class="">了解散步方法</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</div>
+</div>
+<!-- Topic 3 -->
+<div class="bg-surface rounded-2xl p-7 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">schedule</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">晚餐時間</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              「何時吃」可能與「吃什麼」同樣重要 —— 實用的晚間生活節奏。</p>
+</div>
+<div class="pt-4 flex items-center gap-1 text-primary font-label-md text-label-md font-bold">
+<span class="">掌握晚餐節奏</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</div>
+</div>
+<!-- Topic 4 -->
+<div class="bg-surface rounded-2xl p-7 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">grain</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">低 GI 食物</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">優質碳水化合物如何令你更健康？一覽港人主食及生果的升糖指數。
+            </p>
+</div>
+<div class="pt-4 flex items-center gap-1 text-primary font-label-md text-label-md font-bold">
+<span class="">查看升糖對照表</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- IN-APP FEATURE SHOWCASE WORKFLOW SECTION -->
+<section class="w-full py-16 lg:py-24 px-6 lg:px-12 bg-background" id="workflow-showcase">
+<div class="max-w-7xl mx-auto rounded-3xl bg-surface-container p-8 lg:p-14">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+<!-- Left Side: Benefit Explanation -->
+<div class="lg:col-span-6 flex flex-col items-start gap-6">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md font-bold">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+<span class="">血糖貼身小秘書</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">「蝦餃仔<span style="letter-spacing: -0.025em;" class="">」</span><span style="letter-spacing: -0.025em;" class="">智能小幫手助你管理日常</span><br></h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed"></p><p data-pm-slice="1 1 []" class="">陪你從小處開始，每天累積健康</p><p></p><p></p>
+<div class="flex flex-col gap-4 w-full">
+<div class="flex items-start gap-3 bg-surface-container-low p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary text-[24px] shrink-0 mt-0.5">photo_camera</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">拍一張照</p>
+<p class="font-body-md text-body-md text-on-surface-variant"></p><p data-pm-slice="1 1 []" class="">馬上知道這一餐的血糖影響，提供即時及下一餐的飲食建議</p><p></p><p></p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-low p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary text-[24px] shrink-0 mt-0.5">family_restroom</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold"></p><p data-pm-slice="1 1 []" class="">個人化分析</p><p></p>
+<p class="font-body-md text-body-md text-on-surface-variant"></p><p data-pm-slice="1 1 []" class="">找出哪些食物對你的血糖影響較大，哪些較小</p><p></p>
+</div>
+</div>
+</div>
+<div class="pt-2">
+<a class="min-h-[54px] px-8 py-3.5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-semibold shadow-sm hover:opacity-95 transition-opacity inline-flex items-center gap-2" data-path="app-features" href="#">
+<span class="">試用「<span style="color: rgb(0, 100, 114); font-size: 20px; letter-spacing: -0.5px; background-color: rgba(251, 250, 241, 0.95);" class="">蝦餃仔</span></span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Right Side: Authentic In-App Workflow Card -->
+<div class="lg:col-span-6 w-full"><div class="bg-surface-container-lowest rounded-3xl p-5 lg:p-7 shadow-sm flex flex-col gap-4 border border-outline-variant/30"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/20"><div class="flex items-center gap-3"><img alt="蝦餃仔標誌" class="w-9 h-9 rounded-full object-contain bg-secondary-container p-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFf8WLEy9tCFvW6Cdp2RdwDPmpRwi6qy3OPX3fxLTqbZ3XFZN9jDqjq_kF5_TQlxF3VSdu3R7O6DWZ4iled6sTQJf5G3xtGmuvdZp89dy1yrAbFHW0CINA5p54PvaXBKGG180YBvDDOo_iEVsvUQq_LxEEJwLH5JVfFC0HcunbtDBZfANyBAX3P_L-51Hsqb0ZYKiQ5pCFiiXyOq9F5tNa7qylQ28yL86P4WgNaRpJF0Pxcur2xvZZ9ce9p2yPPz9jrA"><div class="flex flex-col"><span class="font-label-lg text-label-lg text-on-surface font-bold">真實 App 介面</span><span class="font-caption text-caption text-on-surface-variant">向右滑動瀏覽實際操作畫面</span></div></div><span class="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-fixed font-caption text-caption font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">swipe</span>滑動查看</span></div><div class="flex gap-5 overflow-x-auto pb-4 pt-1 px-1 snap-x snap-mandatory"><div class="shrink-0 w-[240px] sm:w-[260px] snap-center flex flex-col gap-2.5"><div class="rounded-2xl overflow-hidden border border-outline-variant/40 shadow-sm bg-surface-container-low"><img alt="香港舊照片歷史記憶與健康小習慣" class="w-full h-auto object-cover block" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGp51uBgfClB4ianUtTu2DXHmC0w9-Dg7v2Rlf-OKEtGszjqjdndCqcdOdTTdnb1LXSHDXijWNneDAz16Xs_Q4aXv6UR09QUKibS0uv6kt1m2JaMj0litQwtIUP4XUH9rUz0anyOrcLY-2E5gnI1xCaN5fxgyLSGF2O3ygC2whhAxrN7MaS62NyKpAB_AaAIdVAwB8CSZqfUsZ-NfFwScvgKdGc4G17E09QLEi1Yw69ZqDmKLLiY-k7DwuTKzWJvt4WQ"></div><div class="bg-surface-container-low rounded-xl p-2.5 text-center"><p class="font-label-md text-label-md font-bold text-on-surface">完成每日健康習慣，解鎖香港舊照</p></div></div><div class="shrink-0 w-[240px] sm:w-[260px] snap-center flex flex-col gap-2.5"><div class="rounded-2xl overflow-hidden border border-outline-variant/40 shadow-sm bg-surface-container-low"><img alt="血糖規律與食物搭配實測" class="w-full h-auto object-cover block" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjfb1SyQ79m6eW7v2SxdiJPKm7aM_I202ko5TZ1f9hD0E7H5AJTitjRxOYATgsVC8aGtvayjD1Pn6KvncqDwmsBhViNeAf7Q2RN4RsWqI_jOmY9rkvaW6ho9pf9Uc9mMRGF1ManbVECSx8YTGsbXuCeokGlTq6gD32_7A0QRCwYn1M0OkVE4gB_rEZhX1dbuOV78Z19xr8B9kwq_BEC1V6o0993BoVccd-6AC4ebB-p01gxnlBx_1vF_r54vm-1EKgwA"></div><div class="bg-surface-container-low rounded-xl p-2.5 text-center"><p class="font-label-md text-label-md font-bold text-on-surface">血糖規律與食物搭配</p></div></div><div class="shrink-0 w-[240px] sm:w-[260px] snap-center flex flex-col gap-2.5"><div class="rounded-2xl overflow-hidden border border-outline-variant/40 shadow-sm bg-surface-container-low"><img alt="蝦餃仔溫馨提示與優質蛋白質" class="w-full h-auto object-cover block" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtDys2VHFPEPaasecPviNEcsk3fUPTkpxTOGQewoTiZztRhQdwV2ZMoj_p2y5tlTk-_uewnKbAE7U2iUn4coVxt-VxpN2Q77LNc0j1AEoCzn7YtaBH0oVUpdV98odCPz7z91uN1LoROsjSYRHDVu5yeLIs8UwGvzL52nrjOqX4dItZ1nLzMjMAufVJMwjFMRlbDiJhqVNB2cgEH6eetenHMPYgda_0RPKgYSZ_QfHvGGcrcTdgHYPvX4ppKCE6m-dPtg"></div><div class="bg-surface-container-low rounded-xl p-2.5 text-center"><p class="font-label-md text-label-md font-bold text-on-surface">蝦餃仔<span style="color: rgb(62, 72, 75); font-size: 15px; font-weight: 500; letter-spacing: 0.15px;" class="">語音朗讀與加餸指引，</span><span style="color: rgb(0, 100, 114); font-size: 15px; letter-spacing: 0.15px; text-align: start; background-color: rgb(255, 255, 255);">支援廣東話語音</span></p></div></div></div><div class="flex items-center justify-between text-on-surface-variant font-caption text-caption pt-1 border-t border-outline-variant/20"><span class="text-primary font-semibold"><br></span></div></div></div>
+</div>
+</div>
+</section>
+<!-- PROMINENT CLINICAL & LEGAL DISCLAIMER -->
+<section class="w-full py-12 px-6 lg:px-12 bg-background">
+<div class="max-w-7xl mx-auto">
+<div class="bg-surface-container rounded-2xl p-8 lg:p-10 shadow-sm flex flex-col md:flex-row items-start gap-6">
+<div class="w-14 h-14 rounded-2xl bg-secondary-container text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[32px]">emergency</span>
+</div>
+<div class="flex flex-col gap-3">
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">
+            醫療安全提示與免責聲明
+          </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+            Glukky 所有文章、建議及記錄小幫手功能僅供日常生活健康管理與生活習慣參考，<strong>絕非醫療建議、診斷或治療方案</strong>。任何關於疾病、藥物的情況或飲食作息的急劇更動，請務必先向您的主治西醫或其他專業人士進行詳細諮詢。
+          </p>
+<div class="pt-1 flex flex-wrap items-center gap-4 text-on-surface-variant font-caption text-caption">
+<span class="font-semibold">Glukky 由 Security Health Limited 營運</span>
+<span class="">•</span>
+<span class="">電郵及查詢：hello@glukky.com</span>
+<span class="">•</span>
+<a class="text-primary font-bold hover:underline" data-path="clinical-disclaimer" href="#">閱讀完整免責聲明文件</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Simple micro-interaction for walk completion confirmation
+  (function() {
+    const btn = document.getElementById('walkConfirmBtn');
+    const btnText = document.getElementById('walkBtnText');
+    if (btn && btnText) {
+      let completed = false;
+      btn.addEventListener('click', function() {
+        if (!completed) {
+          completed = true;
+          btnText.textContent = '已記錄 10 分鐘散步！';
+          btn.classList.remove('bg-primary-container');
+          btn.classList.add('bg-secondary');
+        } else {
+          completed = false;
+          btnText.textContent = '完成 10 分鐘散步';
+          btn.classList.remove('bg-secondary');
+          btn.classList.add('bg-primary-container');
+        }
+      });
+    }
+  })();
+</script></main><footer class="w-full bg-surface-container-low border-t border-outline-variant/30 py-12 mt-16"><div class="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-8"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"><div class="flex flex-col gap-3"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[22px]">verified</span><span class="font-headline-sm text-headline-sm text-primary font-bold">Security Health</span></div><p class="font-body-md text-body-md text-on-surface-variant mt-2">專為香港家庭、長者及照顧者研發個人化血糖健康守護方案。</p></div><div class="flex flex-col gap-3"></div><div class="flex flex-col gap-3"><span class="font-label-lg text-label-lg text-on-surface font-bold">導航與功能</span><div class="flex flex-col gap-2"><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="health-notes" href="#">文章 (健康筆記)</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="about-glukky" href="#">關於蝦餃仔</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="app-features" href="#">功能特色</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="clinical-disclaimer" href="#">免責聲明</a></div></div><div class="flex flex-col gap-3"><span class="font-label-lg text-label-lg text-on-surface font-bold">法律政策與支援</span><div class="flex flex-col gap-2"><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="privacy-policy" href="#">私隱政策</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" data-path="terms-of-service" href="#">使用條款</a><div class="flex items-center gap-2 pt-2"><span class="material-symbols-outlined text-outline text-[18px]">mail</span><a class="font-body-md text-body-md text-primary font-medium hover:underline" href="mailto:hello@glukky.com">hello@glukky.com</a></div></div></div></div><div class="border-t border-outline-variant/30 pt-6 flex flex-col md:flex-row items-center justify-between gap-4"><p class="font-caption text-caption text-on-surface-variant text-center md:text-left">© Glukky 2026. All rights reserved.&nbsp;</p><div class="flex items-center gap-6"></div></div></div></footer>
+
+
+
+
+
+
+
+
+</body></html>
