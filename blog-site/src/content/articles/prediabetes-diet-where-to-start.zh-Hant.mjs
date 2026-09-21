@@ -72,7 +72,7 @@ export default {
 
 <p>除了飲食，另一個好習慣是飯後散步 <mark>10 至 15 分鐘</mark>。即使是輕鬆的步調，也能明顯降低餐後血糖高峰。<sup><a href="#src-8">8</a></sup>詳情可參考另一篇：<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</p>
 
-<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/app">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
+<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/#helper">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
 
 <aside class="disclaimer" role="note">本文只屬生活及健康資訊參考，並非醫療建議、診斷或治療。如你被診斷為糖尿前期，請與醫生或註冊營養師討論個人情況。</aside>
 `,

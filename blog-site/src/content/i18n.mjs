@@ -25,7 +25,7 @@ export const ui = {
     footer: {
       tagline:
         "Personalised blood-sugar wellbeing support developed for Hong Kong families, older adults and carers.",
-      securityTitle: "Security Health",
+      securityTitle: "Security Health Limited",
       sections: "Navigation & features",
       legal: "Legal policy & support",
       languages: "Languages",
@@ -106,11 +106,14 @@ export const ui = {
       galleryTitle: "Swipe through the real experience",
       galleryHint: "Scroll horizontally to explore each screen.",
       screenshotLabels: [
-        "Food photo analysis and immediate eating advice",
-        "Personalised protein suggestion card",
-        "Daily food report and meal timeline",
-        "Food pairing and blood-sugar pattern report",
-        "Health information and eating tips",
+        "Glukky home screen with daily health habits and old Hong Kong photos",
+        "Glucose patterns and food pairing analysis",
+        "Diet advice with spoken guidance and quality-protein suggestions",
+      ],
+      screenshotRemarks: [
+        "Complete daily healthy habits to unlock old Hong Kong photos",
+        "Glucose patterns and food pairing",
+        "Glukky voice playback and meal-addition guidance, with Cantonese voice support",
       ],
       disclaimerTitle: "Medical safety notice and disclaimer",
       disclaimerBody:
@@ -224,7 +227,7 @@ export const ui = {
     },
     footer: {
       tagline: "專為香港家庭、長者及照顧者研發個人化血糖健康守護方案。",
-      securityTitle: "Security Health",
+      securityTitle: "Security Health Limited",
       sections: "導航與功能",
       legal: "法律政策與支援",
       languages: "語言",
@@ -307,11 +310,14 @@ export const ui = {
       galleryTitle: "向右滑動瀏覽實際操作畫面",
       galleryHint: "滑動查看",
       screenshotLabels: [
-        "拍下食物，即時獲得飲食建議",
-        "個人化控糖建議及加餸提示",
-        "每日進度一覽，掌握自己的控糖節奏",
-        "了解食物配搭對血糖的影響",
-        "隨時重溫簡單易明的飲食貼士",
+        "蝦餃仔主頁顯示每日健康習慣與香港舊照",
+        "血糖規律與食物搭配分析",
+        "飲食建議、語音朗讀與加餸指引",
+      ],
+      screenshotRemarks: [
+        "完成每日健康習慣，解鎖香港舊照",
+        "血糖規律與食物搭配",
+        "蝦餃仔語音朗讀與加餸指引，支援廣東話語音",
       ],
       disclaimerTitle: "醫療安全提示與免責聲明",
       disclaimerBody:

@@ -25,7 +25,24 @@ const HOME_FEATURED_SLUGS = [
   "cgm-in-hong-kong",
 ];
 
-const HOME_SCREENSHOTS = ["03", "04", "05", "06", "07"];
+const HOME_MEDIA = {
+  en: {
+    hero: { src: "/images/screens/home-food-report.en.png", width: 441, height: 1600 },
+    gallery: [
+      { src: "/images/screens/home-daily-habits.en.png", width: 490, height: 1600 },
+      { src: "/images/screens/home-glucose-patterns.en.png", width: 780, height: 2350 },
+      { src: "/images/screens/home-diet-advice.en.png", width: 780, height: 1688 },
+    ],
+  },
+  "zh-Hant": {
+    hero: { src: "/images/screens/home-food-report.zh-Hant.png", width: 780, height: 2350 },
+    gallery: [
+      { src: "/images/screens/home-daily-habits.zh-Hant.png", width: 780, height: 2288 },
+      { src: "/images/screens/home-glucose-patterns.zh-Hant.png", width: 780, height: 2350 },
+      { src: "/images/screens/home-diet-advice.zh-Hant.png", width: 780, height: 1688 },
+    ],
+  },
+};
 
 function homeIcon(name) {
   const paths = {
@@ -79,6 +96,7 @@ function homeAppCta(locale, label, className = "btn btn-primary") {
 
 function homeScreenshotGallery(locale) {
   const t = ui[locale].home;
+  const screenshots = HOME_MEDIA[locale].gallery;
   return `<div class="home-gallery">
     <div class="home-gallery-head">
       <div>
@@ -89,8 +107,9 @@ function homeScreenshotGallery(locale) {
       <span class="home-swipe-hint" aria-hidden="true">↔</span>
     </div>
     <div class="home-screenshot-track" role="region" aria-label="${escapeAttr(t.galleryTitle)}" aria-describedby="home-gallery-hint" tabindex="0">
-      ${HOME_SCREENSHOTS.map((slug, index) => `<figure class="home-screenshot">
-        <img src="/images/screens/helper-${slug}.png" alt="${escapeAttr(t.screenshotLabels[index] || "")}" width="1284" height="2778" loading="lazy" />
+      ${screenshots.map((image, index) => `<figure class="home-screenshot">
+        <img src="${escapeAttr(image.src)}" alt="${escapeAttr(t.screenshotLabels[index] || "")}" width="${image.width}" height="${image.height}" loading="lazy" />
+        <figcaption>${escapeHtml(t.screenshotRemarks[index] || "")}</figcaption>
       </figure>`).join("")}
     </div>
   </div>`;
@@ -121,6 +140,7 @@ export function homePage(locale, articles) {
   const t = ui[locale];
   const featured = selectHomeArticles(locale, articles);
   const topicIcons = ["book", "walk", "clock", "grain"];
+  const heroImage = HOME_MEDIA[locale].hero;
 
   return `
 <div class="home-advisory">
@@ -145,7 +165,7 @@ export function homePage(locale, articles) {
     <div class="home-hero-visual">
       <div class="home-phone-card">
         <p class="home-phone-title">${escapeHtml(t.home.phoneTitle)}</p>
-        <img src="/images/screens/helper-05.png" alt="${escapeAttr(t.home.phoneAlt)}" width="1284" height="2778" fetchpriority="high" />
+        <img src="${escapeAttr(heroImage.src)}" alt="${escapeAttr(t.home.phoneAlt)}" width="${heroImage.width}" height="${heroImage.height}" fetchpriority="high" />
       </div>
     </div>
   </div>

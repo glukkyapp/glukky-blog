@@ -24,14 +24,14 @@ export function escapeAttr(s) {
  * @param {string} [opts.ogImage]      - absolute or root-relative image URL
  * @param {object} [opts.jsonLd]       - JSON-LD object to embed
  * @param {string} [opts.ogType]       - default "website"
+ * @param {boolean} [opts.hasLocaleAlternative] - default true
  */
 function head(opts) {
   const t = ui[opts.locale];
   const cleanPath = String(opts.path || "").replace(/^\/+|\/+$/g, "");
+  const hasLocaleAlternative = opts.hasLocaleAlternative !== false;
   const canonicalPath = urlFor(opts.locale, cleanPath);
-  const altPath = urlFor(altLocale(opts.locale), cleanPath);
   const canonicalUrl = SITE_URL + canonicalPath;
-  const altUrl = SITE_URL + altPath;
   const fullTitle = `${opts.title} | ${t.siteName}`;
   const ogImage = opts.ogImage
     ? opts.ogImage.startsWith("http")
@@ -49,7 +49,7 @@ function head(opts) {
 ${opts.description ? `<meta name="description" content="${escapeAttr(opts.description)}" />` : ""}
 <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
 <link rel="alternate" hreflang="en" href="${escapeAttr(SITE_URL + urlFor("en", cleanPath))}" />
-<link rel="alternate" hreflang="zh-Hant" href="${escapeAttr(SITE_URL + urlFor("zh-Hant", cleanPath))}" />
+${hasLocaleAlternative ? `<link rel="alternate" hreflang="zh-Hant" href="${escapeAttr(SITE_URL + urlFor("zh-Hant", cleanPath))}" />` : ""}
 <link rel="alternate" hreflang="x-default" href="${escapeAttr(SITE_URL + urlFor("en", cleanPath))}" />
 <meta property="og:type" content="${escapeAttr(opts.ogType || "website")}" />
 <meta property="og:site_name" content="${escapeAttr(t.siteName)}" />
@@ -58,7 +58,7 @@ ${opts.description ? `<meta property="og:description" content="${escapeAttr(opts
 <meta property="og:url" content="${escapeAttr(canonicalUrl)}" />
 <meta property="og:image" content="${escapeAttr(ogImage)}" />
 <meta property="og:locale" content="${escapeAttr(opts.locale === "en" ? "en_GB" : "zh_HK")}" />
-<meta property="og:locale:alternate" content="${escapeAttr(opts.locale === "en" ? "zh_HK" : "en_GB")}" />
+${hasLocaleAlternative ? `<meta property="og:locale:alternate" content="${escapeAttr(opts.locale === "en" ? "zh_HK" : "en_GB")}" />` : ""}
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escapeAttr(opts.title)}" />
 ${opts.description ? `<meta name="twitter:description" content="${escapeAttr(opts.description)}" />` : ""}
@@ -76,7 +76,7 @@ ${opts.jsonLd ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd
 </head>`;
 }
 
-function header(locale, currentPath, isHome) {
+function header(locale, currentPath, isHome, hasLocaleAlternative) {
   const t = ui[locale];
   const homeUrl = urlFor(locale, "");
   const downloadTrack = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'header'})}`;
@@ -87,8 +87,12 @@ function header(locale, currentPath, isHome) {
       ]
     : [
         { href: urlFor(locale, "blog"), label: t.nav.blog },
-        { href: urlFor(locale, "about"), label: t.nav.about },
-        { href: urlFor(locale, "app"), label: t.nav.app },
+        ...(locale === "en"
+          ? [
+              { href: urlFor(locale, "about"), label: t.nav.about },
+              { href: urlFor(locale, "app"), label: t.nav.app },
+            ]
+          : []),
       ];
   const altPath = urlFor(altLocale(locale), currentPath || "");
   const altLabel = locale === "en" ? "繁體中文" : "English";
@@ -105,7 +109,7 @@ function header(locale, currentPath, isHome) {
     <nav class="site-nav" aria-label="Main">
       <ul>
         ${links.map(l => `<li class="${l.className || ""}"><a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a></li>`).join("")}
-        <li><a class="lang-switch" href="${escapeAttr(altPath)}" hreflang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}" lang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}">${escapeHtml(altLabel)}</a></li>
+        ${hasLocaleAlternative ? `<li><a class="lang-switch" href="${escapeAttr(altPath)}" hreflang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}" lang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}">${escapeHtml(altLabel)}</a></li>` : ""}
         ${isHome ? `<li><a class="nav-download" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${downloadTrack}">${escapeHtml(t.home.downloadLabel)}</a></li>` : ""}
       </ul>
     </nav>
@@ -118,7 +122,7 @@ function footer(locale) {
   const homeUrl = urlFor(locale, "");
   const sectionLinks = [
     { href: urlFor(locale, "blog"), label: t.nav.blog },
-    { href: urlFor(locale, "about"), label: t.footer.about },
+    ...(locale === "en" ? [{ href: urlFor(locale, "about"), label: t.footer.about }] : []),
     { href: `${homeUrl}#helper`, label: t.footer.features },
     { href: `${homeUrl}#disclaimer`, label: t.footer.disclaimerLink },
   ];
@@ -126,13 +130,7 @@ function footer(locale) {
   return `<footer class="site-footer">
   <div class="container site-footer-grid">
     <div class="site-footer-brand">
-      <a class="brand" href="${homeUrl}">
-        <img src="/images/har-gow-app-icon.png" alt="" width="36" height="36" />
-        <span class="brand-copy">
-          <span class="brand-name">${escapeHtml(t.footer.securityTitle)}</span>
-          <span class="brand-tagline">${escapeHtml(t.siteName)}</span>
-        </span>
-      </a>
+      <a class="site-footer-owner" href="${homeUrl}">${escapeHtml(t.footer.securityTitle)}</a>
       <p class="muted">${escapeHtml(t.footer.tagline)}</p>
     </div>
     <div>
@@ -167,9 +165,10 @@ function footer(locale) {
  */
 export function renderPage(opts, bodyHtml) {
   const isHome = !opts.path;
+  const hasLocaleAlternative = opts.hasLocaleAlternative !== false;
   return `${head(opts)}
 <body class="lang-${opts.locale === "en" ? "en" : "zh"}${isHome ? " page-home" : ""}">
-${header(opts.locale, opts.path, isHome)}
+${header(opts.locale, opts.path, isHome, hasLocaleAlternative)}
 <main id="main">${bodyHtml}</main>
 ${footer(opts.locale)}
 </body>

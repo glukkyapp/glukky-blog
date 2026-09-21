@@ -2,7 +2,7 @@
 // Pure Node, zero npm deps. Generates `dist/` from src/ + content articles.
 // Run: `node build.mjs`
 
-import { readdir, mkdir, writeFile, copyFile, readFile, stat } from "node:fs/promises";
+import { readdir, mkdir, writeFile, copyFile, readFile, stat, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -131,6 +131,12 @@ async function build() {
   // wipe dist and re-create
   await ensureDir(DIST);
   // (We don't rm -rf to keep the script simple and dependency-free.)
+  // Remove the two intentionally retired locale-specific routes so an older
+  // build cannot leave stale pages behind.
+  await Promise.all([
+    rm(join(DIST, "zh", "about"), { recursive: true, force: true }),
+    rm(join(DIST, "zh", "app"), { recursive: true, force: true }),
+  ]);
 
   const articles = await loadArticles();
   console.log(`✓ Loaded ${articles.length} articles`);
@@ -187,8 +193,8 @@ async function build() {
       console.log(`  → ${out}`);
     }
 
-    // /about  or  /zh/about
-    {
+    // /about (there is intentionally no /zh/about route)
+    if (locale === "en") {
       const html = renderPage(
         {
           locale,
@@ -196,6 +202,7 @@ async function build() {
           description: t.about.lead,
           path: "about",
           cssFile: `/${cssFileName}`,
+          hasLocaleAlternative: false,
         },
         aboutPage(locale)
       );
@@ -204,8 +211,8 @@ async function build() {
       console.log(`  → ${out}`);
     }
 
-    // /app  or  /zh/app
-    {
+    // /app (there is intentionally no /zh/app route)
+    if (locale === "en") {
       const html = renderPage(
         {
           locale,
@@ -213,6 +220,7 @@ async function build() {
           description: t.app.lead,
           path: "app",
           cssFile: `/${cssFileName}`,
+          hasLocaleAlternative: false,
         },
         appPage(locale)
       );
@@ -263,8 +271,18 @@ async function build() {
 
   // sitemap.xml
   const sitemapEntries = [];
-  for (const path of ["", "blog", "about", "app", "privacy"]) {
+  for (const path of ["", "blog", "privacy"]) {
     sitemapEntries.push(...urlPair(path));
+  }
+  for (const path of ["about", "app"]) {
+    const loc = SITE_URL + urlFor("en", path);
+    sitemapEntries.push({
+      loc,
+      alternates: [
+        { hreflang: "en", href: loc },
+        { hreflang: "x-default", href: loc },
+      ],
+    });
   }
   // Also include each article in each locale
   for (const a of articles) {

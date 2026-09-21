@@ -4,13 +4,16 @@ import { escapeHtml, escapeAttr } from "./layout.mjs";
 
 export function ctaBanner(locale) {
   const t = ui[locale];
+  const button = locale === "en"
+    ? `<a class="btn btn-primary" href="${urlFor(locale, "app")}">${escapeHtml(t.blog.ctaButton)}</a>`
+    : "";
   return `<section class="cta-banner">
   <div class="container cta-banner-inner">
     <div>
       <h2>${escapeHtml(t.blog.ctaTitle)}</h2>
       <p>${escapeHtml(t.blog.ctaBody)}</p>
     </div>
-    <a class="btn btn-primary" href="${urlFor(locale, "app")}">${escapeHtml(t.blog.ctaButton)}</a>
+    ${button}
   </div>
 </section>`;
 }

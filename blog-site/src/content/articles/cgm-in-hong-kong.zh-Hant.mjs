@@ -59,7 +59,7 @@ export default {
   <li><strong>飯後散步：</strong>飯後散步 <mark>10 至 15 分鐘</mark>，是改善血糖其中一項最有效的生活習慣。詳見<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。</li>
 </ul>
 
-<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/app">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
+<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/#helper">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
 
 <aside class="disclaimer" role="note">本文只屬資訊參考，並非醫療建議。以上建議是否適合你，視乎你的具體情況 —— 糖尿病類型、所服藥物、其他疾病與目標。請與醫生或糖尿病專科團隊商討。</aside>
 

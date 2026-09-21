@@ -55,7 +55,7 @@ export default {
   <li>飯後散步 <mark>10 至 15 分鐘</mark>。（詳情可參考<a href="/zh/blog/post-meal-walk-blood-sugar">飯後散步如何幫助血糖穩定</a>。）</li>
 </ul>
 
-<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/app">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
+<p>如果你感到無所適從，或不知道如何開始，可試用 <a href="/zh/#helper">Glukky</a>：控糖小幫手，自動為你處理以上的問題。</p>
 
 <aside class="disclaimer" role="note">本文只屬資訊參考，並非個人化飲食計劃。如你患有糖尿病或其他影響身體處理碳水方式的疾病，請與醫生或註冊營養師討論如何將這些概念套用到你個人的餐單中。</aside>
 
