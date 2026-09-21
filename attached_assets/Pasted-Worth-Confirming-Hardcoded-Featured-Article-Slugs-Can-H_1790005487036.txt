@@ -1,0 +1,19 @@
+Worth Confirming: Hardcoded Featured Article Slugs Can Hard-Fail an Entire Locale Build
+The four hardcoded slugs (diabetes-summer-heat, prediabetes-reversal, young-people-diabetes, cgm-in-hong-kong) throw an error via .find() if any is missing for a given locale — which is good defensive practice in principle, but it means if even one of these four articles hasn't been published in English yet (a common lag in bilingual content pipelines), the entire English homepage build fails, not just that one card.
+
+Ask: "Confirm all four hardcoded slugs currently have both a published Chinese and English version. If English translation for any of these is still pending, decide now whether the build should hard-fail (current behavior) or gracefully substitute a different available article for that locale."
+
+Worth Confirming: Screenshot Dimensions Assumed Uniform
+The gallery hardcodes width="1284" height="2778" on every screenshot image, which is good for prevent layout shift — but only if all five supplied screenshot files (03 through 07) actually share that exact resolution. The ticket itself requires "preserved image aspect ratios," so if even one file has different native dimensions, this hardcoded value would misreserve space or distort that specific image.
+
+Ask: "Confirm all five supplied screenshot files share identical native pixel dimensions before hardcoding one width/height pair across every image in the gallery."
+
+Worth Confirming: Homepage Detection Across Both Locale Roots
+const isHome = !opts.path needs opts.path to be empty/falsy for both the English root (/) and the Chinese root (/zh/) — meaning locale and path need to be tracked as genuinely separate values. If opts.path instead encodes the locale prefix itself, this check could correctly detect the English homepage while silently failing to detect the Chinese one (or vice versa), which would mean the Chinese homepage never gets .page-home styling at all.
+
+Ask: "Confirm opts.path is empty for both / and /zh/ specifically, not just the English root — this is the one condition the entire homepage-scoped CSS strategy depends on."
+
+Minor: /about and /app Become Fully Orphaned Pages
+With both the header and footer nav now pointing exclusively at homepage anchors, there's no on-site link anywhere pointing to the standalone /about or /app pages anymore — they're only reachable by a direct URL or an external backlink. The ticket correctly preserves the routes for SEO, but a page with zero internal links pointing to it typically loses search-engine relevance over time regardless of whether the route itself still resolves. This is likely an intentional consequence of consolidating everything onto one homepage, but worth a one-line confirmation that losing internal link equity to those two pages is an accepted tradeoff, not an oversight.
+
+Everything else here is sound — the locale-scoped .page-home/.home-* class strategy correctly isolates the redesign from article pages and other routes, the featured-card copy override with fallback to real article title/description avoids blocking on missing translations, and the horizontal gallery's touch-and-keyboard-accessible implementation with scroll-snap and no global scrollbar-hiding matches the accessibility requirements precisely.
