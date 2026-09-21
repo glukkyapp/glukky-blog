@@ -4,7 +4,7 @@ import { isAppleSignInAvailable, triggerAppleSignIn } from "@/lib/natively-apple
 import { Loader2 } from "lucide-react";
 import { SiApple } from "react-icons/si";
 import { useTranslation } from "react-i18next";
-import preLoginBrandMark from "@assets/generated-image_(5)_copy_1788506043742.png";
+import preLoginBrandMark from "@assets/generated-image_(5)-modified_1789982128606.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -271,7 +271,7 @@ export default function Landing() {
           <img
             src={preLoginBrandMark}
             alt="Glukky"
-            style={{ width: "min(96px, 26vw)", display: "block" }}
+            style={{ width: "min(96px, 26vw)", height: "auto", objectFit: "contain", display: "block" }}
           />
           <p className="text-sm text-muted-foreground text-center">
             {t("landing.choose_language")}
@@ -332,7 +332,7 @@ export default function Landing() {
           <img
             src={preLoginBrandMark}
             alt="Glukky"
-            style={{ width: 64, display: "inline-block" }}
+            style={{ width: 64, height: "auto", objectFit: "contain", display: "inline-block" }}
           />
         </div>
 
@@ -524,7 +524,7 @@ export default function Landing() {
           <img
             src={preLoginBrandMark}
             alt="Glukky"
-            style={{ width: "min(112px, 30vw)", display: "block" }}
+            style={{ width: "min(112px, 30vw)", height: "auto", objectFit: "contain", display: "block" }}
             data-testid="text-app-title"
           />
           <button
@@ -600,7 +600,7 @@ export default function Landing() {
           <img
             src={preLoginBrandMark}
             alt="Glukky"
-            style={{ width: "min(96px, 26vw)", display: "block" }}
+            style={{ width: "min(96px, 26vw)", height: "auto", objectFit: "contain", display: "block" }}
           />
         </div>
       </div>

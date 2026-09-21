@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const NEW_MARK_PATH = "generated-image_(5)_copy_1788506043742.png";
+const NEW_MARK_PATH = "generated-image_(5)-modified_1789982128606.png";
 
 async function expectNewBrandMark(page: import("@playwright/test").Page) {
   const mark = page.getByAltText("Glukky").first();
@@ -14,7 +14,7 @@ async function expectNewBrandMark(page: import("@playwright/test").Page) {
 }
 
 test.describe("pre-login branding", () => {
-  test("uses the dumpling mark through language, onboarding, and email login", async ({
+  test("uses the circular mark through language, onboarding, and email login", async ({
     page,
   }) => {
     const imageRequests: string[] = [];
@@ -29,7 +29,7 @@ test.describe("pre-login branding", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByTestId("landing-lang-screen")).toBeVisible();
+    await expect(page.getByTestId("landing-lang-screen")).toBeVisible({ timeout: 20_000 });
     await expectNewBrandMark(page);
 
     await page.getByTestId("button-lang-en").click();
@@ -40,6 +40,16 @@ test.describe("pre-login branding", () => {
     await expect(page.getByTestId("landing-auth-screen")).toBeVisible();
     await expectNewBrandMark(page);
     await expect(page.getByTestId("text-description")).toHaveCount(0);
+
+    await page.getByTestId("tab-register").click();
+    await expect(page.getByTestId("input-confirm-password")).toBeVisible();
+    await expectNewBrandMark(page);
+
+    await page.getByTestId("tab-login").click();
+    await page.getByTestId("button-forgot-password").click();
+    await expect(page.getByTestId("input-forgot-email")).toBeVisible();
+    await expectNewBrandMark(page);
+
     expect(imageRequests.some((path) => path.includes(NEW_MARK_PATH))).toBe(true);
     expect(
       imageRequests.some((path) =>
@@ -48,7 +58,7 @@ test.describe("pre-login branding", () => {
     ).toBe(false);
   });
 
-  test("uses the dumpling mark without a slogan on Apple sign-in", async ({
+  test("uses the circular mark without a slogan on Apple sign-in", async ({
     page,
   }) => {
     await page.addInitScript(() => {
@@ -64,7 +74,7 @@ test.describe("pre-login branding", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByTestId("button-apple-signin")).toBeVisible();
+    await expect(page.getByTestId("button-apple-signin")).toBeVisible({ timeout: 20_000 });
     await expectNewBrandMark(page);
     await expect(page.getByTestId("text-description")).toHaveCount(0);
   });

@@ -16,7 +16,7 @@
 //           users who never see the paywall).
 
 // Stage 1 — launch
-import preLoginBrandMark from "@assets/generated-image_(5)_copy_1788506043742.png";
+import preLoginBrandMark from "@assets/generated-image_(5)-modified_1789982128606.png";
 
 // Stage 2 — onboarding question illustrations
 import nightShiftImg from "@assets/generated-image_(3)_1776591773408.png";
