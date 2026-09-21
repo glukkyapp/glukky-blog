@@ -1,6 +1,6 @@
 // Page bodies: home, blog index, article, about, app.
 import {
-  ui, urlFor, articleUrl, blogIndexUrl, altLocale, fmtDate, SITE_URL,
+  ui, urlFor, articleUrl, blogIndexUrl, altLocale, fmtDate, SITE_URL, APP_STORE_URL,
 } from "../content/i18n.mjs";
 import {
   ctaBanner, articleCard, faqBlock, sourcesBlock,
@@ -17,6 +17,84 @@ const SCREEN_SLUGS = [
   "4-report",
   "5-schedule",
 ];
+
+const HOME_FEATURED_SLUGS = [
+  "diabetes-summer-heat",
+  "prediabetes-reversal",
+  "young-people-diabetes",
+  "cgm-in-hong-kong",
+];
+
+const HOME_SCREENSHOTS = ["03", "04", "05", "06", "07"];
+
+function homeIcon(name) {
+  const paths = {
+    shield: '<path d="M12 3 5 6v5c0 4.6 2.8 8.2 7 10 4.2-1.8 7-5.4 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',
+    elderly: '<circle cx="12" cy="5" r="2"/><path d="m10 22 1-7-3-3 2-3 4 1 2 3 3 1"/><path d="m14 22-2-7"/><path d="M18 22v-7"/>',
+    food: '<path d="M7 3v7"/><path d="M4 3v4a3 3 0 0 0 6 0V3"/><path d="M7 10v11"/><path d="M17 3v18"/><path d="M17 3c3 2 3 7 0 9"/>',
+    camera: '<path d="M14.5 5 13 3h-2L9.5 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4.5Z"/><circle cx="12" cy="12" r="4"/>',
+    chart: '<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/>',
+    book: '<path d="M4 5a3 3 0 0 1 3-3h5v18H7a3 3 0 0 0-3 2V5Z"/><path d="M20 5a3 3 0 0 0-3-3h-5v18h5a3 3 0 0 1 3 2V5Z"/>',
+    walk: '<circle cx="13" cy="5" r="2"/><path d="m10 22 1-6-3-3 2-4 4 2 2 4 4 1"/><path d="m14 22 1-7"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    grain: '<path d="M12 22V7"/><path d="M12 12C7 12 5 9 5 5c5 0 7 3 7 7Z"/><path d="M12 17c5 0 7-3 7-7-5 0-7 3-7 7Z"/>',
+  };
+  return `<svg class="home-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.shield}</svg>`;
+}
+
+function selectHomeArticles(locale, articles) {
+  const available = articles
+    .filter(a => a.locale === locale)
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  const selected = [];
+  for (const slug of HOME_FEATURED_SLUGS) {
+    const article = available.find(a => a.slug === slug);
+    if (article) selected.push(article);
+    else console.warn(`[blog home] Missing featured article ${locale}/${slug}; using latest available fallback`);
+  }
+  for (const article of available) {
+    if (selected.length >= 4) break;
+    if (!selected.some(a => a.slug === article.slug)) selected.push(article);
+  }
+  return selected.slice(0, 4);
+}
+
+function homeArticleCard(locale, article) {
+  const t = ui[locale];
+  return `<a class="home-article-card" href="${escapeAttr(articleUrl(locale, article.slug))}">
+    ${article.heroImage ? `<div class="home-article-image"><img src="${escapeAttr(article.heroImage)}" alt="${escapeAttr(article.heroAlt || "")}" loading="lazy" /></div>` : ""}
+    <div class="home-article-copy">
+      <p class="home-card-label">${escapeHtml(article.pillar)}</p>
+      <h3>${escapeHtml(article.title)}</h3>
+      <p>${escapeHtml(article.description)}</p>
+      <p class="home-article-meta">${escapeHtml(fmtDate(article.publishedAt, locale))}<span aria-hidden="true"> · </span>${escapeHtml(t.blog.readingMin(article.readingMinutes))}</p>
+    </div>
+  </a>`;
+}
+
+function homeAppCta(locale, label, className = "btn btn-primary") {
+  const track = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'homepage'})}`;
+  return `<a class="${className}" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${track}">${escapeHtml(label)}</a>`;
+}
+
+function homeScreenshotGallery(locale) {
+  const t = ui[locale].home;
+  return `<div class="home-gallery">
+    <div class="home-gallery-head">
+      <div>
+        <p class="home-card-label">${escapeHtml(t.galleryEyebrow)}</p>
+        <h3>${escapeHtml(t.galleryTitle)}</h3>
+        <p id="home-gallery-hint">${escapeHtml(t.galleryHint)}</p>
+      </div>
+      <span class="home-swipe-hint" aria-hidden="true">↔</span>
+    </div>
+    <div class="home-screenshot-track" role="region" aria-label="${escapeAttr(t.galleryTitle)}" aria-describedby="home-gallery-hint" tabindex="0">
+      ${HOME_SCREENSHOTS.map((slug, index) => `<figure class="home-screenshot">
+        <img src="/images/screens/helper-${slug}.png" alt="${escapeAttr(t.screenshotLabels[index] || "")}" width="1284" height="2778" loading="lazy" />
+      </figure>`).join("")}
+    </div>
+  </div>`;
+}
 
 function screensStrip(locale) {
   const t = ui[locale];
@@ -41,47 +119,104 @@ function screensStrip(locale) {
 
 export function homePage(locale, articles) {
   const t = ui[locale];
-  // pick the 4 most recent articles in this locale as "Start here"
-  const featured = articles
-    .filter(a => a.locale === locale)
-    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-    .slice(0, 4);
+  const featured = selectHomeArticles(locale, articles);
+  const topicIcons = ["book", "walk", "clock", "grain"];
 
   return `
-<section class="hero">
-  <div class="container">
-    <p class="eyebrow">${escapeHtml(t.home.eyebrow)}</p>
-    <h1 class="hero-title">${escapeHtml(t.home.heroTitle)}</h1>
-    <p class="hero-lead">${escapeHtml(t.home.heroLead)}</p>
-    <p class="hero-actions">
-      <a class="btn btn-primary" href="${urlFor(locale, "blog")}">${escapeHtml(t.home.heroPrimary)}</a>
-      <a class="btn btn-ghost" href="${urlFor(locale, "app")}">${escapeHtml(t.home.heroSecondary)}</a>
-    </p>
-  </div>
-</section>
+<div class="home-advisory">
+  <div class="home-container">${homeIcon("shield")}<span>${escapeHtml(t.home.advisory)}</span></div>
+</div>
 
-<section class="featured">
-  <div class="container">
-    <h2>${escapeHtml(t.home.featuredHeading)}</h2>
-    <div class="article-grid">
-      ${featured.map(a => articleCard(locale, a)).join("")}
+<section class="home-hero">
+  <div class="home-container home-hero-grid">
+    <div class="home-hero-copy">
+      <p class="home-kicker">${escapeHtml(t.home.eyebrow)}</p>
+      <h1>${escapeHtml(t.home.heroTitle)}</h1>
+      <p class="home-hero-lead">${escapeHtml(t.home.heroLead)}</p>
+      <div class="home-actions">
+        <a class="btn btn-primary" href="#articles">${escapeHtml(t.home.heroPrimary)}</a>
+        <a class="btn btn-ghost" href="#helper">${escapeHtml(t.home.heroSecondary)}</a>
+      </div>
+      <div class="home-hero-notes">
+        <span>${homeIcon("elderly")}${escapeHtml(t.home.elderlyNote)}</span>
+        <span>${homeIcon("food")}${escapeHtml(t.home.foodNote)}</span>
+      </div>
+    </div>
+    <div class="home-hero-visual">
+      <div class="home-phone-card">
+        <p class="home-phone-title">${escapeHtml(t.home.phoneTitle)}</p>
+        <img src="/images/screens/helper-05.png" alt="${escapeAttr(t.home.phoneAlt)}" width="1284" height="2778" fetchpriority="high" />
+      </div>
     </div>
   </div>
 </section>
 
-<section class="clusters">
-  <div class="container">
+<section id="articles" class="home-section home-featured">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <p class="home-kicker">${escapeHtml(t.home.featuredEyebrow)}</p>
+        <h2>${escapeHtml(t.home.featuredHeading)}</h2>
+      </div>
+      <a href="${urlFor(locale, "blog")}">${escapeHtml(t.home.allArticles)} <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="home-article-grid">
+      ${featured.map(a => homeArticleCard(locale, a)).join("")}
+    </div>
+  </div>
+</section>
+
+<section id="topics" class="home-section home-topics">
+  <div class="home-container">
+    <p class="home-kicker">${escapeHtml(t.home.topicsEyebrow)}</p>
     <h2>${escapeHtml(t.home.clusterHeading)}</h2>
-    <div class="cluster-grid">
-      ${t.home.clusters.map(c => `<div class="cluster">
+    <p class="home-section-lead">${escapeHtml(t.home.topicsLead)}</p>
+    <div class="home-topic-grid">
+      ${t.home.clusters.map((c, index) => `<a class="home-topic-card" href="${escapeAttr(articleUrl(locale, c.slug))}">
+        <span class="home-icon-box">${homeIcon(topicIcons[index])}</span>
         <h3>${escapeHtml(c.title)}</h3>
-        <p class="muted">${escapeHtml(c.desc)}</p>
-      </div>`).join("")}
+        <p>${escapeHtml(c.desc)}</p>
+        <strong>${escapeHtml(c.linkLabel)} <span aria-hidden="true">→</span></strong>
+      </a>`).join("")}
     </div>
   </div>
 </section>
 
-${ctaBanner(locale)}
+<section id="helper" class="home-section home-helper">
+  <div class="home-container">
+    <div class="home-helper-panel">
+      <div class="home-helper-copy">
+        <div class="home-helper-brand">
+          <img src="/images/har-gow-app-icon.png" alt="" width="48" height="48" />
+          <p class="home-kicker">${escapeHtml(t.home.helperEyebrow)}</p>
+        </div>
+        <h2>${escapeHtml(t.home.helperTitle)}</h2>
+        <p class="home-section-lead">${escapeHtml(t.home.helperLead)}</p>
+        <div class="home-feature-list">
+          ${t.home.helperFeatures.map((feature, index) => `<div class="home-feature">
+            <span class="home-icon-box">${homeIcon(index === 0 ? "camera" : "chart")}</span>
+            <div><h3>${escapeHtml(feature.title)}</h3><p>${escapeHtml(feature.desc)}</p></div>
+          </div>`).join("")}
+        </div>
+        ${homeAppCta(locale, t.home.helperCta)}
+      </div>
+      ${homeScreenshotGallery(locale)}
+    </div>
+  </div>
+</section>
+
+<section id="disclaimer" class="home-section home-disclaimer">
+  <div class="home-container">
+    <div class="home-disclaimer-card">
+      <span class="home-icon-box">${homeIcon("shield")}</span>
+      <div>
+        <h2>${escapeHtml(t.home.disclaimerTitle)}</h2>
+        <p>${escapeHtml(t.home.disclaimerBody)}</p>
+        <p class="home-disclaimer-meta">${escapeHtml(t.footer.operator)} <span aria-hidden="true"> · </span> <a href="mailto:hello@glukky.com">hello@glukky.com</a> <span aria-hidden="true"> · </span> <a href="${urlFor(locale, "privacy")}">${escapeHtml(t.footer.privacy)}</a></p>
+      </div>
+    </div>
+  </div>
+</section>
 `;
 }
 

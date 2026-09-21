@@ -1,5 +1,5 @@
 // Site shell: header + footer + <head>. Used by every page.
-import { ui, urlFor, articleUrl, altLocale, SITE_URL } from "../content/i18n.mjs";
+import { ui, urlFor, articleUrl, altLocale, SITE_URL, APP_STORE_URL } from "../content/i18n.mjs";
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s)
@@ -76,26 +76,37 @@ ${opts.jsonLd ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd
 </head>`;
 }
 
-function header(locale, currentPath) {
+function header(locale, currentPath, isHome) {
   const t = ui[locale];
-  const links = [
-    { href: urlFor(locale, "blog"), label: t.nav.blog },
-    { href: urlFor(locale, "about"), label: t.nav.about },
-    { href: urlFor(locale, "app"), label: t.nav.app },
-  ];
+  const homeUrl = urlFor(locale, "");
+  const downloadTrack = `if(!sessionStorage.getItem('_phT')&&window.posthog){sessionStorage.setItem('_phT','1');posthog.capture('waitlist_button_clicked',{locale:'${locale}',button_variant:'header'})}`;
+  const links = isHome
+    ? [
+        { href: `${homeUrl}#articles`, label: t.nav.blog },
+        { href: `${homeUrl}#disclaimer`, label: t.home.disclaimerNav, className: "nav-secondary" },
+      ]
+    : [
+        { href: urlFor(locale, "blog"), label: t.nav.blog },
+        { href: urlFor(locale, "about"), label: t.nav.about },
+        { href: urlFor(locale, "app"), label: t.nav.app },
+      ];
   const altPath = urlFor(altLocale(locale), currentPath || "");
   const altLabel = locale === "en" ? "繁體中文" : "English";
 
   return `<header class="site-header">
   <div class="container site-header-inner">
-    <a class="brand" href="${urlFor(locale, "")}" aria-label="${escapeAttr(t.siteName)} ${escapeAttr(t.nav.home)}">
-      <img src="/images/logo.png" alt="" width="40" height="40" />
-      <span class="brand-name">${escapeHtml(t.siteName)}</span>
+    <a class="brand" href="${homeUrl}" aria-label="${escapeAttr(t.siteName)} ${escapeAttr(t.nav.home)}">
+      <img src="/images/har-gow-app-icon.png" alt="" width="40" height="40" />
+      <span class="brand-copy">
+        <span class="brand-name">${escapeHtml(t.siteName)}</span>
+        <span class="brand-tagline">${escapeHtml(t.tagline)}</span>
+      </span>
     </a>
     <nav class="site-nav" aria-label="Main">
       <ul>
-        ${links.map(l => `<li><a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a></li>`).join("")}
+        ${links.map(l => `<li class="${l.className || ""}"><a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a></li>`).join("")}
         <li><a class="lang-switch" href="${escapeAttr(altPath)}" hreflang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}" lang="${altLocale(locale) === "en" ? "en" : "zh-Hant"}">${escapeHtml(altLabel)}</a></li>
+        ${isHome ? `<li><a class="nav-download" href="${escapeAttr(APP_STORE_URL)}" target="_blank" rel="noopener" data-cta="app-store" onclick="${downloadTrack}">${escapeHtml(t.home.downloadLabel)}</a></li>` : ""}
       </ul>
     </nav>
   </div>
@@ -104,35 +115,41 @@ function header(locale, currentPath) {
 
 function footer(locale) {
   const t = ui[locale];
+  const homeUrl = urlFor(locale, "");
   const sectionLinks = [
     { href: urlFor(locale, "blog"), label: t.nav.blog },
-    { href: urlFor(locale, "about"), label: t.nav.about },
-    { href: urlFor(locale, "app"), label: t.nav.app },
-    { href: urlFor(locale, "privacy"), label: t.footer.privacy },
+    { href: urlFor(locale, "about"), label: t.footer.about },
+    { href: `${homeUrl}#helper`, label: t.footer.features },
+    { href: `${homeUrl}#disclaimer`, label: t.footer.disclaimerLink },
   ];
   const year = new Date().getFullYear();
   return `<footer class="site-footer">
   <div class="container site-footer-grid">
     <div class="site-footer-brand">
-      <a class="brand" href="${urlFor(locale, "")}">
-        <img src="/images/logo.png" alt="" width="36" height="36" />
-        <span class="brand-name">${escapeHtml(t.siteName)}</span>
+      <a class="brand" href="${homeUrl}">
+        <img src="/images/har-gow-app-icon.png" alt="" width="36" height="36" />
+        <span class="brand-copy">
+          <span class="brand-name">${escapeHtml(t.footer.securityTitle)}</span>
+          <span class="brand-tagline">${escapeHtml(t.siteName)}</span>
+        </span>
       </a>
       <p class="muted">${escapeHtml(t.footer.tagline)}</p>
-      <p class="muted">${escapeHtml(t.footer.contact).replace("hello@glukky.com", '<a href="mailto:hello@glukky.com">hello@glukky.com</a>')}</p>
     </div>
-    <div class="site-footer-cols">
-      <div>
-        <h4>${escapeHtml(t.footer.sections)}</h4>
-        <ul>${sectionLinks.map(l => `<li><a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a></li>`).join("")}</ul>
-      </div>
-      <div>
-        <h4>${escapeHtml(t.footer.languages)}</h4>
-        <ul>
-          <li><a href="${escapeAttr(urlFor("en", ""))}" hreflang="en" lang="en">${escapeHtml(t.footer.english)}</a></li>
-          <li><a href="${escapeAttr(urlFor("zh-Hant", ""))}" hreflang="zh-Hant" lang="zh-Hant">${escapeHtml(t.footer.chinese)}</a></li>
-        </ul>
-      </div>
+    <div>
+      <h4>${escapeHtml(t.footer.sections)}</h4>
+      <ul>${sectionLinks.map(l => `<li><a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a></li>`).join("")}</ul>
+    </div>
+    <div>
+      <h4>${escapeHtml(t.footer.legal)}</h4>
+      <ul>
+        <li><a href="${escapeAttr(urlFor(locale, "privacy"))}">${escapeHtml(t.footer.privacy)}</a></li>
+        <li><a href="mailto:hello@glukky.com">${escapeHtml(t.footer.contact)}</a></li>
+        <li class="footer-languages">
+          <a href="${escapeAttr(urlFor("en", ""))}" hreflang="en" lang="en">${escapeHtml(t.footer.english)}</a>
+          <span aria-hidden="true"> · </span>
+          <a href="${escapeAttr(urlFor("zh-Hant", ""))}" hreflang="zh-Hant" lang="zh-Hant">${escapeHtml(t.footer.chinese)}</a>
+        </li>
+      </ul>
     </div>
   </div>
   <div class="container site-footer-foot">
@@ -149,9 +166,10 @@ function footer(locale) {
  * Wrap body content in the full HTML shell.
  */
 export function renderPage(opts, bodyHtml) {
+  const isHome = !opts.path;
   return `${head(opts)}
-<body class="lang-${opts.locale === "en" ? "en" : "zh"}">
-${header(opts.locale, opts.path)}
+<body class="lang-${opts.locale === "en" ? "en" : "zh"}${isHome ? " page-home" : ""}">
+${header(opts.locale, opts.path, isHome)}
 <main id="main">${bodyHtml}</main>
 ${footer(opts.locale)}
 </body>
