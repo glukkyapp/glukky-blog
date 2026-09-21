@@ -172,29 +172,22 @@ export default function Home() {
       {piggy && <PiggyBankCard data={piggy} isDev={devCheck?.isDev} />}
       <section aria-labelledby="daily-habit-heading" className="space-y-3" data-testid="section-daily-habit">
         <div className="flex items-center gap-3 px-1 pt-1">
-          <img
-            src={habitMascot}
-            alt=""
-            aria-hidden="true"
-            className="h-16 w-16 shrink-0 object-contain drop-shadow-sm"
-            data-testid="img-daily-habit-mascot"
-          />
-          <div className="relative flex min-h-16 flex-1 items-center rounded-2xl border-2 border-[var(--brand-teal-deep)] bg-[var(--brand-teal-soft)] px-3.5 py-3 shadow-sm">
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-white p-1 shadow-md">
+            <img
+              src={habitMascot}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-contain"
+              data-testid="img-daily-habit-mascot"
+            />
+          </div>
+          <div className="relative flex-1 rounded-2xl rounded-tl-sm bg-[#d7eef0] p-3.5 text-sm font-bold leading-snug text-[#086574] shadow-sm">
+            <span className="absolute -left-2 top-4 border-y-[6px] border-r-[8px] border-y-transparent border-r-[#d7eef0]" aria-hidden="true" />
             <h2
               id="daily-habit-heading"
-              className="text-[17px] font-bold leading-snug tracking-tight text-[var(--brand-teal-deep)]"
             >
               {t("home.daily_tasks_heading")}
             </h2>
-            <svg
-              viewBox="0 0 10 16"
-              className="pointer-events-none absolute -left-2.5 top-1/2 h-4 w-2.5 -translate-y-1/2 overflow-visible"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path d="M10 0 L0 8 L10 16" fill="#D7EEF0" stroke="#086574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <line x1="10" y1="1" x2="10" y2="15" stroke="#D7EEF0" strokeWidth="3" />
-            </svg>
           </div>
         </div>
         <DailyTaskCard />
