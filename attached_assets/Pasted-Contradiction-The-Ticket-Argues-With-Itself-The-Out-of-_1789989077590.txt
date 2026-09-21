@@ -1,0 +1,23 @@
+Contradiction: The Ticket Argues With Itself
+The "Out of scope" section explicitly states this ticket will not touch "re-importing, seeding, or otherwise changing the glucose test account." But the closing "Task #994 also plans to" section directly restates all of the account-restoration work as if it's still part of this ticket: re-importing the account, verifying non-empty pattern results, and strengthening the importer's failure behavior.
+
+These two sections can't both be true. Either the restoration work has actually been split into a separate ticket (likely #994's sibling, since your earlier message described this exact restoration work under a task also numbered #994) and that trailing section is stale leftover text that should be deleted, or the restoration work is still secretly in scope despite what "Out of scope" claims. Given you're clearly in the process of splitting this into two focused tickets, this reads like the "also plans to" block wasn't cleaned up after the split.
+
+Ask before approving: "Confirm the 'Task #994 also plans to' section describing re-import, verification, and importer strengthening is leftover text from before the split and should be deleted from this ticket entirely — the account-restoration work lives in a separate ticket, not here."
+
+Standing Issue: Regression Tests Are Still String-Matching, Not Behavioral
+This is the same gap flagged the first time this retention change came up. Both planned checks only confirm that specific literal text exists somewhere in the source file:
+
+text
+routesSource.includes("Date.now() - 180 * 24 * 60 * 60 * 1000")
+routesSource.indexOf(upsertReportMealFactForSnap...) < routesSource.indexOf(purgeMealSnapsByIds...)
+Neither test actually runs the delete job and checks what gets deleted and what survives. A refactor that extracts 180 into a named constant would break the first check even though behavior is correct (false failure). A bug where the report-fact write isn't properly awaited before the purge proceeds would still pass the second check, because it only verifies text order in the file, not execution order at runtime (false pass on a real race condition). Given this logic protects against irreversible data loss — exactly the kind of loss that motivated this ticket in the first place — a source-text check isn't sufficient assurance.
+
+Ask: "Replace the source-string regression checks with a behavioral test: seed meal rows at various ages (e.g., 179 days, 180 days, 181 days old), run the actual delete job, and assert which rows are purged and which report facts persist afterward — rather than checking for literal text patterns in the file."
+
+Worth Confirming: Step 3 Needs a Concrete Test, Not Just a Verification Step
+"Verify the glucose-pattern calculations continue using active qualifying meals without changing their eligibility or reliability rules" is listed as a step, but there's no shown test or method for how this gets checked, distinct from the two regression checks above. Given glucose-patterns.ts and food-frequency.ts are both listed as relevant files but neither has a corresponding change described, it's worth confirming this step is actually a no-op (the retention change alone is sufficient for those files to naturally see more data) rather than requiring any code change there.
+
+Ask: "Confirm glucose-patterns.ts and food-frequency.ts require zero code changes — the 180-day retention change alone is sufficient for pattern calculations to see more qualifying evidence — and specify which existing test (glucose-pattern-ranked-cards.test.mts?) confirms eligibility/reliability rules are unaffected."
+
+Once the stale restoration section is removed and the regression tests are behavioral rather than textual, this narrowed scope is clean and appropriately conservative — extending retention while explicitly protecting the two-month report's existing retained-fact architecture is the right boundary to hold.
