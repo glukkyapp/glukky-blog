@@ -185,6 +185,7 @@ export default function Home() {
             <span className="absolute -left-2 top-4 border-y-[6px] border-r-[8px] border-y-transparent border-r-[#d7eef0]" aria-hidden="true" />
             <h2
               id="daily-habit-heading"
+              className="text-[0.7rem]"
             >
               {t("home.daily_tasks_heading")}
             </h2>
